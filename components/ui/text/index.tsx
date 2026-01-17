@@ -23,9 +23,14 @@ const Text = React.forwardRef<React.ComponentRef<typeof RNText>, ITextProps>(
     },
     ref
   ) {
+    let fontFamily = 'GoogleSans-Regular';
+    if (bold && italic) fontFamily = 'GoogleSans-BoldItalic';
+    else if (bold) fontFamily = 'GoogleSans-Bold';
+    else if (italic) fontFamily = 'GoogleSans-Italic';
+
     return (
       <RNText
-        style={[{ fontFamily: 'Outfit' }, props.style]}
+        style={[{ fontFamily }, props.style]}
         className={textStyle({
           isTruncated: isTruncated as boolean,
           bold: bold as boolean,

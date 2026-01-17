@@ -22,7 +22,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, SafeAreaView, ScrollView } from 'react-native';
 
-const Login = () => {
+export default function LoginScreen() {
   const auth = states.auth((state) => state);
 
   const [values, setValues] = useState({
@@ -120,14 +120,14 @@ const Login = () => {
     <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView className="bg-primary-0">
-          <VStack className="my-24 px-4 space-y-8">
-            <Logo />
+          <VStack className="my-20 px-4 space-y-8">
+            <Logo type="auth" />
 
-            <VStack space="xs">
-              <Text size="4xl" className="text-inherit font-bold">
+            <VStack className="space-y-2">
+              <Text size="4xl" bold className="text-inherit text-center">
                 Welcome back!
               </Text>
-              <Text size="md" className="text-typography-500">
+              <Text size="md" className="text-typography-500 text-center">
                 Login to your account
               </Text>
             </VStack>
@@ -172,7 +172,10 @@ const Login = () => {
                 />
                 <Box className="items-center justify-center">
                   <Divider />
-                  <Text className="top-[-12] absolute bg-primary-0 text-center px-4 z-10">
+                  <Text
+                    size="md"
+                    className="top-[-12] absolute bg-primary-0 text-center px-4 z-10"
+                  >
                     Or continue with
                   </Text>
                 </Box>
@@ -186,10 +189,7 @@ const Login = () => {
                     source={require('@/assets/images/google-logo.png')}
                     className="h-[24] w-[24]"
                   />
-                  <ButtonText
-                    style={{ fontFamily: 'Outfit' }}
-                    className="text-inherit"
-                  >
+                  <ButtonText className="text-inherit">
                     Login with Google
                   </ButtonText>
 
@@ -199,12 +199,12 @@ const Login = () => {
             </VStack>
 
             <Center>
-              <HStack className="" space="xs">
-                <Text size="lg" className="text-gray-500">
+              <HStack className="space-x-1">
+                <Text size="md" className="text-gray-400">
                   No account yet?
                 </Text>
                 <Link onPress={() => router.push('/(auth)/sign-up')}>
-                  <Text size="lg" className="text-primary-500">
+                  <Text size="md" className="text-primary-500">
                     Sign up
                   </Text>
                 </Link>
@@ -215,6 +215,4 @@ const Login = () => {
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
-};
-
-export default Login;
+}

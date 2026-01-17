@@ -20,11 +20,17 @@ const Text = React.forwardRef<React.ComponentRef<'span'>, ITextProps>(
     }: { className?: string } & ITextProps,
     ref
   ) {
+    // Determine the correct Google Sans font variant for web
+    let fontFamily = 'GoogleSans-Regular, sans-serif';
+    if (bold && italic) fontFamily = 'GoogleSans-BoldItalic, sans-serif';
+    else if (bold) fontFamily = 'GoogleSans-Bold, sans-serif';
+    else if (italic) fontFamily = 'GoogleSans-Italic, sans-serif';
+
     return (
       <span
         style={{
           ...props.style,
-          fontFamily: 'Outfit'
+          fontFamily
         }}
         className={textStyle({
           isTruncated: isTruncated as boolean,

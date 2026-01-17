@@ -4,21 +4,45 @@ import { Text } from './ui/text';
 import { VStack } from './ui/vstack';
 
 type LogoProps = {
-  type: 'splash' | 'nav';
+  type?: 'splash' | 'auth' | 'nav';
 };
 
-export default function Logo({ type }: { type?: LogoProps }) {
-  return (
-    <VStack className="gap-y-2 justify-center items-center">
-      <Box className="justify-center items-center bg-primary-0 border-secondary-400 rounded-xl w-24 h-24 shadow-md">
-        <HandCoins size={56} className="text-primary-400" />
-      </Box>
-      <Text className="text-inherit text-center font-bold" size="3xl">
-        Ambagan{' '}
-        <Text className="text-primary-400 font-bold" size="3xl">
-          PH
+export default function Logo({ type = 'splash' }: LogoProps) {
+  if (type === 'splash') {
+    return (
+      <VStack className="gap-y-2 justify-center items-center">
+        <Box className="justify-center items-center bg-primary-0 border-secondary-400 rounded-xl w-24 h-24">
+          <HandCoins size={56} className="text-primary-400" />
+        </Box>
+        <Text bold className="text-typography-0 text-center" size="3xl">
+          Ambagan{' '}
+          <Text bold className="text-primary-400" size="3xl">
+            PH
+          </Text>
         </Text>
-      </Text>
-    </VStack>
+      </VStack>
+    );
+  }
+
+  if (type === 'auth') {
+    return (
+      <VStack className="gap-y-2 justify-center items-center">
+        <Box className="justify-center items-center bg-primary-50 border-secondary-400 rounded-xl w-24 h-24">
+          <HandCoins size={56} className="text-primary-400" />
+        </Box>
+        <Text bold className="text-inherit text-center" size="3xl">
+          Ambagan{' '}
+          <Text bold className="text-primary-400" size="3xl">
+            PH
+          </Text>
+        </Text>
+      </VStack>
+    );
+  }
+
+  return (
+    <Box className="justify-center items-center bg-primary-50 border-secondary-400 rounded-xl w-10 h-10">
+      <HandCoins size={24} className="text-primary-400" />
+    </Box>
   );
 }

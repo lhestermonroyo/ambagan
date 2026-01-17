@@ -21,9 +21,12 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const [loaded] = useFonts({
-    Outfit: require('@/assets/fonts/Outfit-Regular.ttf'),
-    'Outfit-Medium': require('@/assets/fonts/Outfit-Medium.ttf'),
-    'Outfit-Bold': require('@/assets/fonts/Outfit-Bold.ttf')
+    'GoogleSans-Regular': require('@/assets/fonts/GoogleSans-Regular.ttf'),
+    'GoogleSans-Italic': require('@/assets/fonts/GoogleSans-Italic.ttf'),
+    'GoogleSans-Medium': require('@/assets/fonts/GoogleSans-Medium.ttf'),
+    'GoogleSans-MediumItalic': require('@/assets/fonts/GoogleSans-MediumItalic.ttf'),
+    'GoogleSans-Bold': require('@/assets/fonts/GoogleSans-Bold.ttf'),
+    'GoogleSans-BoldItalic': require('@/assets/fonts/GoogleSans-BoldItalic.ttf')
   });
 
   useEffect(() => {

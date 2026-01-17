@@ -321,7 +321,7 @@ const ButtonText = React.forwardRef<
       ref={ref}
       {...props}
       style={{
-        fontFamily: 'Outfit'
+        fontFamily: 'GoogleSans-Medium'
       }}
       className={buttonTextStyle({
         parentVariants: {
