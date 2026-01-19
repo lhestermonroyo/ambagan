@@ -1,19 +1,70 @@
+import FormButton from '@/components/FormButton';
+import Icon from '@/components/Icon';
 import Logo from '@/components/Logo';
 import { Box } from '@/components/ui/box';
-import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { View } from '@/components/ui/view';
 import { VStack } from '@/components/ui/vstack';
+import services from '@/services';
+import states from '@/states';
+import { supabase } from '@/utils/supabase';
 import { Redirect, useRouter } from 'expo-router';
-import { ArrowRight } from 'lucide-react-native';
-import { useState } from 'react';
+import { ChevronRight } from 'lucide-react-native';
+import { useEffect } from 'react';
 import { ImageBackground } from 'react-native';
 
 export default function Index() {
-  const [isAuth, setIsAuth] = useState(false);
+  const auth = states.auth((state) => state);
   const router = useRouter();
 
-  if (isAuth) {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      states.auth.setState((prev) => ({
+        ...prev,
+        session
+      }));
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      states.auth.setState((prev) => ({
+        ...prev,
+        session
+      }));
+    });
+
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (auth.session) {
+      fetchUser(auth.session.user.id);
+    }
+  }, [auth.session]);
+
+  const fetchUser = async (id: string) => {
+    try {
+      const response = await services.user.getUserById(id);
+      console.log('response', response);
+
+      if (response && response.data) {
+        states.auth.setState((prev) => ({
+          ...prev,
+          user: response.data
+        }));
+      }
+    } catch (error) {
+      console.log('Error fetching user:', error);
+      states.auth.setState((prev) => ({
+        ...prev,
+        session: null,
+        user: null
+      }));
+    }
+  };
+
+  if (auth.session) {
     return <Redirect href="/(tabs)" />;
   }
 
@@ -33,29 +84,25 @@ export default function Index() {
     >
       <View className="absolute inset-0 bg-neutral-900 opacity-60" />
       <View className="flex-1">
-        <VStack className="flex-[3] items-center justify-center">
-          <VStack className="gap-y-12">
+        <VStack className="flex-[4] items-center justify-center">
+          <VStack space="2xl" className="gap-y-12">
             <Logo />
             <VStack className="gap-y-1">
-              <Text className="text-typography-100 text-center" size="md">
+              <Text className="text-typography-100 text-center" size="lg">
                 Clear ang hatian.
               </Text>
-              <Text className="text-typography-0 text-center" size="md">
+              <Text className="text-typography-0 text-center" size="lg">
                 Clear ang samahan.
               </Text>
             </VStack>
           </VStack>
         </VStack>
-        <Box className="flex-1 p-4 gap-y-4 justify-center items-center w-full">
-          <Button
-            className="bg-primary-400 self-center p-4 w-[64] h-[64] rounded-full shadow-lg"
+        <Box className="flex-1 p-4 gap-y-4 justify-center w-full">
+          <FormButton
+            iconEnd={<Icon name={ChevronRight} />}
             onPress={() => router.push('/(auth)/login')}
-          >
-            <ArrowRight size={64} className="text-typography-0" />
-          </Button>
-          <Text className="text-typography-100" size="sm">
-            Tap the button to get started with Ambagan PH
-          </Text>
+            text="Get Started"
+          />
         </Box>
       </View>
     </ImageBackground>

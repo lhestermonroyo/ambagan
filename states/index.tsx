@@ -1,4 +1,4 @@
-import AUTH_STATE from './auth';
+import AUTH_STATE from './auth.state';
 
 const states = {
   auth: AUTH_STATE

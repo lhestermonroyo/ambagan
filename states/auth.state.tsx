@@ -4,6 +4,7 @@ import { create } from 'zustand';
 const initialState: AuthState = {
   authenticated: false,
   loggingOut: false,
+  session: null,
   user: null
 };
 

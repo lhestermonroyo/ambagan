@@ -1,7 +1,10 @@
+import { Session } from '@supabase/supabase-js';
+
 export type AuthState = {
   authenticated: boolean;
   loggingOut: boolean;
   user: User | null;
+  session: Session | null;
 };
 
 export type User = {

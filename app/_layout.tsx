@@ -20,6 +20,7 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     'GoogleSans-Regular': require('@/assets/fonts/GoogleSans-Regular.ttf'),
     'GoogleSans-Italic': require('@/assets/fonts/GoogleSans-Italic.ttf'),
@@ -38,8 +39,6 @@ export default function RootLayout() {
   if (!loaded) {
     return null;
   }
-
-  const colorScheme = useColorScheme();
 
   return (
     <GluestackUIProvider mode="light">

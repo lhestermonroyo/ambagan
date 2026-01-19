@@ -1,0 +1,5 @@
+[auth.external.google]
+enabled = true
+client_id = "env(EXPO_OAUTH_CLIENT_ID)"
+secret = "env(EXPO_OAUTH_CLIENT_SECRET)"
+skip_nonce_check = false
