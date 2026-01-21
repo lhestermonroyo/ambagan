@@ -12,16 +12,16 @@ export default function HomeHeader(props: BottomTabHeaderProps) {
   const auth = states.auth((state) => state);
 
   return (
-    <View className="bg-white px-4 pb-4 pt-16">
+    <View className="bg-primary-400 px-4 pb-4 pt-16">
       <HStack className="gap-x-2 items-center">
         <VStack className="flex-1">
-          <Text className="text-secondary-950">Hello,</Text>
-          <Text bold className="text-2xl">
+          <Text className="text-white">Hello,</Text>
+          <Text bold className="text-2xl text-white">
             {auth.user?.first_name} {auth.user?.last_name}
           </Text>
-        </VStack>
-        <Button variant="outline" className="rounded-full p-6 h-[18] w-[18]">
-          <Icon as={Bell} className="text-primary-400" />
+        </VStack>x
+        <Button variant="link" className="rounded-full p-6 h-[18] w-[18]">
+          <Icon as={Bell} />
         </Button>
       </HStack>
     </View>

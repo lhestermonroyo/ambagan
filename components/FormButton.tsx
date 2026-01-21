@@ -10,8 +10,8 @@ interface IFormButtonProps {
   loading?: boolean;
   disabled?: boolean;
   onPress?: () => void;
-  icon?: React.ReactNode;
-  iconEnd?: React.ReactNode;
+  icon?: any;
+  iconEnd?: any;
 }
 
 const FormButton: FC<IFormButtonProps> = ({

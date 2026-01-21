@@ -1,9 +1,10 @@
-import { User } from './auth';
+import { UserPreview } from './auth';
+import { TransactionPreview } from './transactions';
 
-type UserPreview = Pick<
-  User,
-  'id' | 'email' | 'first_name' | 'last_name' | 'avatar_url'
->;
+export type GroupState = {
+  groups: GroupPreview[];
+  details: Group | null;
+};
 
 export type Group = {
   id: string;
@@ -13,5 +14,16 @@ export type Group = {
   description: string;
   color: string;
   avatar: string | null;
-  members: UserPreview[];
+  members: Member[];
+  transactions: TransactionPreview[];
 };
+
+export type Member = {
+  joined_at: string;
+  user: UserPreview;
+};
+
+export type GroupPreview = Pick<
+  Group,
+  'id' | 'created_at' | 'creator' | 'name' | 'avatar' | 'color'
+>;

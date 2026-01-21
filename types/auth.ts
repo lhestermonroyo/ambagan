@@ -1,7 +1,6 @@
 import { Session } from '@supabase/supabase-js';
 
 export type AuthState = {
-  authenticated: boolean;
   loggingOut: boolean;
   user: User | null;
   session: Session | null;
@@ -16,3 +15,8 @@ export type User = {
   last_name: string;
   avatar_url: string | null;
 };
+
+export type UserPreview = Pick<
+  User,
+  'id' | 'email' | 'first_name' | 'last_name' | 'avatar_url'
+>;
