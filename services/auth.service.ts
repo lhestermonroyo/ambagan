@@ -24,7 +24,7 @@ export const signUp = async ({
   return data;
 };
 
-export const login = async (email: string, password: string) => {
+export const loginWithEmail = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password
@@ -47,4 +47,9 @@ export const loginWithGoogle = async () => {
     return result;
   }
   return data;
+};
+
+export const logout = async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 };

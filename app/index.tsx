@@ -5,68 +5,12 @@ import { Box } from '@/components/ui/box';
 import { Text } from '@/components/ui/text';
 import { View } from '@/components/ui/view';
 import { VStack } from '@/components/ui/vstack';
-import services from '@/services';
-import states from '@/states';
-import { supabase } from '@/utils/supabase';
-import { Redirect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
-import { useEffect } from 'react';
 import { ImageBackground } from 'react-native';
 
 export default function Index() {
-  const auth = states.auth((state) => state);
   const router = useRouter();
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      states.auth.setState((prev) => ({
-        ...prev,
-        session
-      }));
-    });
-
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      states.auth.setState((prev) => ({
-        ...prev,
-        session
-      }));
-    });
-
-    return () => {
-      data.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (auth.session) {
-      fetchUser(auth.session.user.id);
-    }
-  }, [auth.session]);
-
-  const fetchUser = async (id: string) => {
-    try {
-      const response = await services.user.getUserById(id);
-      console.log('response', response);
-
-      if (response && response.data) {
-        states.auth.setState((prev) => ({
-          ...prev,
-          user: response.data
-        }));
-      }
-    } catch (error) {
-      console.log('Error fetching user:', error);
-      states.auth.setState((prev) => ({
-        ...prev,
-        session: null,
-        user: null
-      }));
-    }
-  };
-
-  if (auth.session) {
-    return <Redirect href="/(tabs)" />;
-  }
 
   return (
     <ImageBackground
@@ -99,8 +43,8 @@ export default function Index() {
         </VStack>
         <Box className="flex-1 p-4 gap-y-4 justify-center w-full">
           <FormButton
-            iconEnd={<Icon name={ChevronRight} />}
-            onPress={() => router.push('/(auth)/login')}
+            iconEnd={<Icon as={ChevronRight} />}
+            onPress={() => router.push('/login')}
             text="Get Started"
           />
         </Box>

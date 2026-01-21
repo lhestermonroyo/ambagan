@@ -16,7 +16,7 @@ export default function Logo({ type = 'splash' }: LogoProps) {
         <Box className="justify-center items-center bg-primary-0 border-secondary-400 rounded-xl w-24 h-24">
           <HandCoins size={56} color={color} />
         </Box>
-        <Text bold className="text-center" size="3xl">
+        <Text bold className="text-white text-center" size="3xl">
           Ambagan{' '}
           <Text bold className="text-primary-400" size="3xl">
             PH

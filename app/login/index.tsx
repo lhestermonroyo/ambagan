@@ -1,10 +1,17 @@
 import FormButton from '@/components/FormButton';
 import FormInput from '@/components/FormInput';
 import Logo from '@/components/Logo';
+import { Box } from '@/components/ui/box';
+import { Button, ButtonText } from '@/components/ui/button';
 import { Center } from '@/components/ui/center';
+import { Divider } from '@/components/ui/divider';
 import { HStack } from '@/components/ui/hstack';
 import { EyeIcon, EyeOffIcon } from '@/components/ui/icon';
+import { Image } from '@/components/ui/image';
+import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
 import { Link } from '@/components/ui/link';
+import { SafeAreaView } from '@/components/ui/safe-area-view';
+import { ScrollView } from '@/components/ui/scroll-view';
 import { Text } from '@/components/ui/text';
 import {
   Toast,
@@ -17,24 +24,17 @@ import services from '@/services';
 import states from '@/states';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, SafeAreaView, ScrollView } from 'react-native';
 
-export default function SignUpScreen() {
+export default function LoginScreen() {
   const auth = states.auth((state) => state);
 
   const [values, setValues] = useState({
-    firstname: '',
-    lastname: '',
     email: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   });
   const [formErrors, setFormErrors] = useState({
-    firstname: '',
-    lastname: '',
     email: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   }) as any;
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -78,27 +78,16 @@ export default function SignUpScreen() {
         return;
       }
 
-      const response = await services.auth.signUp({
-        email: values.email.trim(),
-        password: values.password.trim(),
-        first_name: values.firstname.trim(),
-        last_name: values.lastname.trim()
-      });
+      const response = await services.auth.loginWithEmail(
+        values.email.trim(),
+        values.password.trim()
+      );
 
-      if (response.user) {
-        await services.user.saveUser({
-          id: response.user.id,
-          email: values.email.trim(),
-          first_name: values.firstname.trim(),
-          last_name: values.lastname.trim()
-        });
-
+      if (response && response.session) {
         states.auth.setState((prev) => ({
           ...prev,
           session: response.session
         }));
-
-        router.push('/(tabs)');
       }
     } catch (error) {
       console.log('Error creating account:', error);
@@ -112,47 +101,42 @@ export default function SignUpScreen() {
     }
   };
 
+  const handleLoginWithGoogle = async () => {
+    try {
+      setSubmitting(true);
+
+      const response = await services.auth.loginWithGoogle();
+
+      console.log('response', response);
+    } catch (error) {
+      console.log('Error logging in with Google:', error);
+      handleToast(
+        'Login Failed',
+        'An error occurred while logging in with Google. Please try again.',
+        'error'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-      <ScrollView className="bg-primary-0">
-        <SafeAreaView style={{ flex: 1 }}>
-          <VStack className="my-12 px-4 gap-y-8">
+    <KeyboardAvoidingView className="bg-primary-0 flex-1" behavior="padding">
+      <ScrollView>
+        <SafeAreaView>
+          <VStack className="my-12 px-4 gap-y-10">
             <Logo type="auth" />
 
-            <VStack className="gap-y-1">
-              <Text size="4xl" bold className="text-inherit text-center">
-                Create an Account
+            <VStack>
+              <Text size="4xl" bold className="text-center">
+                Hello there!
               </Text>
-              <Text className="text-secondary-950 text-center">
-                Enter your details to create an account
+              <Text className="text-center text-xl text-secondary-950">
+                Login to your account
               </Text>
             </VStack>
 
             <VStack className="gap-y-6">
-              <FormInput
-                type="text"
-                label="Firstname"
-                placeholder="Enter your firstname"
-                value={values.firstname}
-                onChangeText={(text) =>
-                  setValues({ ...values, firstname: text })
-                }
-                autoCapitalize="none"
-                errorMessage={formErrors.firstname}
-              />
-
-              <FormInput
-                type="text"
-                label="Lastname"
-                placeholder="Enter your lastname"
-                value={values.lastname}
-                onChangeText={(text) =>
-                  setValues({ ...values, lastname: text })
-                }
-                autoCapitalize="none"
-                errorMessage={formErrors.lastname}
-              />
-
               <FormInput
                 type="text"
                 label="Email"
@@ -178,33 +162,49 @@ export default function SignUpScreen() {
                 errorMessage={formErrors.password}
               />
 
-              <FormInput
-                type={showPassword ? 'text' : 'password'}
-                label="Confirm Password"
-                placeholder="Enter your confirm password"
-                value={values.confirmPassword}
-                onChangeText={(text) =>
-                  setValues({ ...values, confirmPassword: text })
-                }
-                rightIcon={showPassword ? EyeIcon : EyeOffIcon}
-                onPressRightIcon={() => setShowPassword(!showPassword)}
-                errorMessage={formErrors.confirmPassword}
-              />
+              <Link onPress={() => router.push('/forgot-password')}>
+                <Text className="text-primary-400 text-center">
+                  Forgot Password?
+                </Text>
+              </Link>
 
-              <FormButton
-                text="Sign Up"
-                loading={submitting}
-                onPress={handleSubmit}
-              />
+              <VStack className="gap-y-8">
+                <FormButton
+                  text="Login"
+                  loading={submitting}
+                  onPress={handleSubmit}
+                />
+                <Box className="items-center justify-center">
+                  <Divider />
+                  <Text className="top-[-12] absolute bg-primary-0 text-center text-secondary-950 px-4 z-10">
+                    Or continue with
+                  </Text>
+                </Box>
+                <Button
+                  className="rounded-full border-gray-300 bg-white border"
+                  size="xl"
+                  variant="outline"
+                  action="default"
+                  onPress={handleLoginWithGoogle}
+                >
+                  <Image
+                    source={require('@/assets/images/google-logo.png')}
+                    className="h-[24] w-[24]"
+                    resizeMode="cover"
+                    alt="google-logo"
+                  />
+                  <ButtonText className="text-inherit">
+                    Login with Google
+                  </ButtonText>
+                </Button>
+              </VStack>
             </VStack>
 
             <Center>
               <HStack className="gap-x-1">
-                <Text className="text-secondary-950">
-                  Already have an account?
-                </Text>
-                <Link onPress={() => router.push('/(auth)/login')}>
-                  <Text className="text-primary-500">Login</Text>
+                <Text className="text-secondary-950">No account yet?</Text>
+                <Link onPress={() => router.push('/sign-up')}>
+                  <Text className="text-primary-400">Sign up</Text>
                 </Link>
               </HStack>
             </Center>
