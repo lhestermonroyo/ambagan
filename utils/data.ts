@@ -16,7 +16,7 @@ export const mockUsers: User[] = [
     phone: '+639123456789',
     first_name: 'John',
     last_name: 'Doe',
-    avatar_url:
+    avatar:
       'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
   },
   {
@@ -26,7 +26,7 @@ export const mockUsers: User[] = [
     phone: '+639987654321',
     first_name: 'Jane',
     last_name: 'Smith',
-    avatar_url:
+    avatar:
       'https://images.unsplash.com/photo-1494790108755-2616b612b5bc?w=150&h=150&fit=crop&crop=face'
   },
   {
@@ -36,7 +36,7 @@ export const mockUsers: User[] = [
     phone: null,
     first_name: 'Mike',
     last_name: 'Johnson',
-    avatar_url:
+    avatar:
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
   },
   {
@@ -46,7 +46,7 @@ export const mockUsers: User[] = [
     phone: '+639111222333',
     first_name: 'Sarah',
     last_name: 'Wilson',
-    avatar_url:
+    avatar:
       'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face'
   },
   {
@@ -56,7 +56,7 @@ export const mockUsers: User[] = [
     phone: '+639444555666',
     first_name: 'Alex',
     last_name: 'Brown',
-    avatar_url:
+    avatar:
       'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face'
   },
   {
@@ -66,7 +66,7 @@ export const mockUsers: User[] = [
     phone: null,
     first_name: 'Emma',
     last_name: 'Davis',
-    avatar_url:
+    avatar:
       'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face'
   }
 ];
@@ -77,7 +77,7 @@ export const mockUserPreviews: UserPreview[] = mockUsers.map((user) => ({
   email: user.email,
   first_name: user.first_name,
   last_name: user.last_name,
-  avatar_url: user.avatar_url
+  avatar: user.avatar
 }));
 
 // Mock current user (first user in the list)
@@ -108,6 +108,7 @@ export const mockSession: Session = {
 // Mock Transactions
 export const mockTransactions: Transaction[] = [
   {
+    id: 'transaction-1',
     created_at: '2024-01-15T12:30:00Z',
     created_by: mockUserPreviews[0],
     paid_by: mockUserPreviews[0],
@@ -125,6 +126,7 @@ export const mockTransactions: Transaction[] = [
     ]
   },
   {
+    id: 'transaction-2',
     created_at: '2024-01-16T18:45:00Z',
     created_by: mockUserPreviews[1],
     paid_by: mockUserPreviews[1],
@@ -141,6 +143,7 @@ export const mockTransactions: Transaction[] = [
     ]
   },
   {
+    id: 'transaction-3',
     created_at: '2024-01-17T14:20:00Z',
     created_by: mockUserPreviews[2],
     paid_by: mockUserPreviews[0],
@@ -155,6 +158,7 @@ export const mockTransactions: Transaction[] = [
     ]
   },
   {
+    id: 'transaction-4',
     created_at: '2024-01-18T10:15:00Z',
     created_by: mockUserPreviews[3],
     paid_by: mockUserPreviews[3],
@@ -172,6 +176,7 @@ export const mockTransactions: Transaction[] = [
     ]
   },
   {
+    id: 'transaction-5',
     created_at: '2024-01-19T16:30:00Z',
     created_by: mockUserPreviews[0],
     paid_by: mockUserPreviews[0],
@@ -208,8 +213,8 @@ export const mockGroups: Group[] = [
     creator: mockUserPreviews[0],
     name: 'College Roommates',
     description: 'Sharing expenses for our apartment and daily costs',
-    color: '#3B82F6',
-    avatar:
+    category: 'household',
+    cover:
       'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=150&h=150&fit=crop&crop=center',
     members: [
       { joined_at: '2024-01-15T10:30:00Z', user: mockUserPreviews[0] },
@@ -225,8 +230,8 @@ export const mockGroups: Group[] = [
     creator: mockUserPreviews[1],
     name: 'Family',
     description: 'Family expenses and household bills',
-    color: '#10B981',
-    avatar: null,
+    category: 'family',
+    cover: null,
     members: [
       { joined_at: '2024-01-20T14:15:00Z', user: mockUserPreviews[1] },
       { joined_at: '2024-01-20T14:20:00Z', user: mockUserPreviews[4] },
@@ -240,8 +245,8 @@ export const mockGroups: Group[] = [
     creator: mockUserPreviews[2],
     name: 'Weekend Trip',
     description: 'Expenses for our weekend getaway to Baguio',
-    color: '#8B5CF6',
-    avatar:
+    category: 'travel',
+    cover:
       'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=150&h=150&fit=crop&crop=center',
     members: [
       { joined_at: '2024-01-22T09:45:00Z', user: mockUserPreviews[2] },
@@ -256,8 +261,8 @@ export const mockGroups: Group[] = [
     creator: mockUserPreviews[3],
     name: 'Office Team',
     description: 'Team lunches and office parties',
-    color: '#F59E0B',
-    avatar: null,
+    category: 'work',
+    cover: null,
     members: [
       { joined_at: '2024-01-25T16:20:00Z', user: mockUserPreviews[3] },
       { joined_at: '2024-01-25T16:25:00Z', user: mockUserPreviews[1] },
@@ -273,8 +278,8 @@ export const mockGroups: Group[] = [
     creator: mockUserPreviews[4],
     name: 'Gym Buddies',
     description: 'Sharing gym membership and supplements costs',
-    color: '#EF4444',
-    avatar:
+    category: 'sports',
+    cover:
       'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=150&h=150&fit=crop&crop=center',
     members: [
       { joined_at: '2024-01-28T11:10:00Z', user: mockUserPreviews[4] },
@@ -289,8 +294,8 @@ export const mockGroups: Group[] = [
     creator: mockUserPreviews[5],
     name: 'Book Club',
     description: 'Monthly book purchases and coffee meetups',
-    color: '#6366F1',
-    avatar: null,
+    category: 'social',
+    cover: null,
     members: [
       { joined_at: '2024-02-01T13:30:00Z', user: mockUserPreviews[5] },
       { joined_at: '2024-02-01T13:35:00Z', user: mockUserPreviews[1] },
@@ -305,8 +310,8 @@ export const mockGroupPreviews: GroupPreview[] = mockGroups.map((group) => ({
   created_at: group.created_at,
   creator: group.creator,
   name: group.name,
-  avatar: group.avatar,
-  color: group.color
+  cover: group.cover,
+  category: group.category
 }));
 
 // Mock States
@@ -322,5 +327,6 @@ export const mockGroupState: GroupState = {
 };
 
 export const mockTransactionState: TransactionState = {
+  preview: mockTransactionPreviews,
   details: mockTransactions[0] // First transaction as current selected transaction
 };

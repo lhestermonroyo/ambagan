@@ -12,8 +12,8 @@ export type Group = {
   creator: UserPreview;
   name: string;
   description: string;
-  color: string;
-  avatar: string | null;
+  category: string;
+  cover: string | null;
   members: Member[];
   transactions: TransactionPreview[];
 };
@@ -25,5 +25,14 @@ export type Member = {
 
 export type GroupPreview = Pick<
   Group,
-  'id' | 'created_at' | 'creator' | 'name' | 'avatar' | 'color'
+  'id' | 'created_at' | 'creator' | 'name' | 'cover' | 'category'
 >;
+
+export enum GroupCategory {
+  TRIP = 'trip',
+  EVENT = 'event',
+  HOUSEHOLD = 'household',
+  COUPLE = 'couple',
+  FAMILY = 'family',
+  OTHER = 'other'
+}

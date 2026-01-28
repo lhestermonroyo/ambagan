@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import {
   FormControl,
   FormControlError,
@@ -8,23 +7,15 @@ import {
   FormControlLabel,
   FormControlLabelText
 } from '@/components/ui/form-control';
-import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
-import { LucideIcon } from 'lucide-react-native';
+import { Textarea, TextareaInput } from '@/components/ui/textarea';
 import React, { FC } from 'react';
 import { TextInputProps } from 'react-native';
 
-interface IFormInputProps extends TextInputProps {
-  type?: 'text' | 'password' | undefined;
-  label?: string;
+interface IFormTextareaProps extends TextInputProps {
   placeholder: string;
+  label: string;
   value: string;
   onChangeText: (text: string) => void;
-  onPressRightIcon?: () => void;
-  leftIcon?: LucideIcon | string;
-  rightIcon?:
-    | React.ElementType<any, keyof React.JSX.IntrinsicElements>
-    | undefined;
-
   helperText?: string;
   isRequired?: boolean;
   isReadOnly?: boolean;
@@ -32,15 +23,11 @@ interface IFormInputProps extends TextInputProps {
   errorMessage?: string;
 }
 
-const FormInput: FC<IFormInputProps> = ({
-  type = 'text',
-  label,
+const FormTextarea: FC<IFormTextareaProps> = ({
   placeholder,
+  label,
   value,
   onChangeText,
-  onPressRightIcon,
-  leftIcon,
-  rightIcon,
   helperText,
   isRequired = false,
   isReadOnly = false,
@@ -56,32 +43,22 @@ const FormInput: FC<IFormInputProps> = ({
       isRequired={isRequired}
       isInvalid={!!errorMessage}
     >
-      {label && (
-        <FormControlLabel>
-          <FormControlLabelText>{label}</FormControlLabelText>
-        </FormControlLabel>
-      )}
-      <Input variant="rounded" className="bg-white" size="xl">
-        <InputField
-          autoCapitalize="none"
-          type={type}
+      <FormControlLabel>
+        <FormControlLabelText>{label}</FormControlLabelText>
+      </FormControlLabel>
+
+      <Textarea className="bg-white rounded-3xl px-2 py-1 h-[120]" size="xl">
+        <TextareaInput
           placeholder={placeholder}
           value={value}
           onChangeText={onChangeText}
           {...props}
         />
-        {rightIcon && (
-          <InputSlot>
-            <Button onPress={onPressRightIcon} variant="link" className="mr-4">
-              <InputIcon as={rightIcon} className="text-primary-500" />
-            </Button>
-          </InputSlot>
-        )}
-      </Input>
+      </Textarea>
 
       {helperText && (
         <FormControlHelper>
-          <FormControlHelperText className="text-secondary-950">
+          <FormControlHelperText className="text-gray-500">
             {helperText}
           </FormControlHelperText>
         </FormControlHelper>
@@ -96,4 +73,4 @@ const FormInput: FC<IFormInputProps> = ({
   );
 };
 
-export default FormInput;
+export default FormTextarea;

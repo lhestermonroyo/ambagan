@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/avatar';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Box } from '@/components/ui/box';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { HStack } from '@/components/ui/hstack';
 import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
@@ -18,10 +19,12 @@ import services from '@/services';
 import states from '@/states';
 import { TransactionPreview } from '@/types/transactions';
 import { useRouter } from 'expo-router';
-import { Plus, UserPlus } from 'lucide-react-native';
+import { Bell, Plus, UserPlus } from 'lucide-react-native';
 
 export default function HomeScreen() {
-  const transaction = states.transaction((state) => state);
+  const auth = states.auth.getState();
+  const transaction = states.transaction.getState();
+
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -33,10 +36,22 @@ export default function HomeScreen() {
     }
   };
 
-  console.log('transactions', transaction);
-
   return (
     <KeyboardAvoidingView className="bg-primary-0 flex-1" behavior="padding">
+      <Box className="sticky top-0 bg-primary-400 px-4 pb-4 pt-20">
+        <HStack className="gap-x-2 items-center">
+          <VStack className="flex-1">
+            <Text className="text-white">Hello,</Text>
+            <Text bold className="text-2xl text-white">
+              {auth.user?.first_name} {auth.user?.last_name}
+            </Text>
+          </VStack>
+          x
+          <Button className="rounded-full p-6 h-[18] w-[18]">
+            <Icon as={Bell} />
+          </Button>
+        </HStack>
+      </Box>
       <ScrollView>
         <Box className="bg-primary-400 px-4 pb-4">
           <VStack className="gap-y-4">
@@ -49,23 +64,18 @@ export default function HomeScreen() {
                 className="flex-1"
                 icon={<Icon as={Plus} />}
                 text="Add Expense"
-                onPress={() => router.push('/(tabs)/groups')}
+                onPress={() => router.push('/(tabs)/home/add-expense')}
               />
               <FormButton
                 className="flex-1"
                 text="Create Group"
                 icon={<Icon as={UserPlus} />}
-                onPress={() => router.push('/(tabs)/groups')}
+                onPress={() => router.push('/(tabs)/groups/create')}
               />
             </HStack>
           </VStack>
         </Box>
         <VStack className="p-4 gap-y-4">
-          {/* <HStack className="gap-x-2">
-            <StatCard type="RECEIVE" amount={0} />
-            <StatCard type="PAY" amount={0} />
-          </HStack> */}
-
           <Card className="rounded-xl p-0">
             <HStack className="p-4 border-b border-secondary-200 items-center justify-between">
               <Text bold className="text-xl flex-1">

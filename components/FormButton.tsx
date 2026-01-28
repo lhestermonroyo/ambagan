@@ -29,7 +29,7 @@ const FormButton: FC<IFormButtonProps> = ({
 }) => {
   return (
     <Button
-      className={`disabled:bg-primary-200 rounded-full ${className}`}
+      className={`disabled:opacity-70 rounded-full ${className}`}
       size={size}
       variant={variant}
       action={action}

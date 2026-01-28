@@ -26,8 +26,6 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 export default function LoginScreen() {
-  const auth = states.auth((state) => state);
-
   const [values, setValues] = useState({
     email: '',
     password: ''
@@ -181,7 +179,7 @@ export default function LoginScreen() {
                   </Text>
                 </Box>
                 <Button
-                  className="rounded-full border-gray-300 bg-white border"
+                  className="rounded-full border-secondary-800 bg-white border"
                   size="xl"
                   variant="outline"
                   action="default"

@@ -1,26 +1,19 @@
-import { Button } from '@/components/ui/button';
+import { TextInputProps } from 'react-native';
+import { Button } from './ui/button';
 import {
   FormControl,
-  FormControlError,
-  FormControlErrorText,
-  FormControlHelper,
-  FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
-} from '@/components/ui/form-control';
-import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
-import { LucideIcon } from 'lucide-react-native';
-import React, { FC } from 'react';
-import { TextInputProps } from 'react-native';
+} from './ui/form-control';
+import { Input, InputField, InputIcon, InputSlot } from './ui/input';
+import { Text } from './ui/text';
 
 interface IFormInputProps extends TextInputProps {
-  type?: 'text' | 'password' | undefined;
   label?: string;
   placeholder: string;
   value: string;
   onChangeText: (text: string) => void;
   onPressRightIcon?: () => void;
-  leftIcon?: LucideIcon | string;
   rightIcon?:
     | React.ElementType<any, keyof React.JSX.IntrinsicElements>
     | undefined;
@@ -32,14 +25,12 @@ interface IFormInputProps extends TextInputProps {
   errorMessage?: string;
 }
 
-const FormInput: FC<IFormInputProps> = ({
-  type = 'text',
+const AmountInput: React.FC<IFormInputProps> = ({
   label,
   placeholder,
   value,
   onChangeText,
   onPressRightIcon,
-  leftIcon,
   rightIcon,
   helperText,
   isRequired = false,
@@ -62,9 +53,12 @@ const FormInput: FC<IFormInputProps> = ({
         </FormControlLabel>
       )}
       <Input variant="rounded" className="bg-white" size="xl">
+        <InputSlot className="ml-4">
+          <Text className="text-inherit text-xl">₱</Text>
+        </InputSlot>
+
         <InputField
           autoCapitalize="none"
-          type={type}
           placeholder={placeholder}
           value={value}
           onChangeText={onChangeText}
@@ -78,22 +72,8 @@ const FormInput: FC<IFormInputProps> = ({
           </InputSlot>
         )}
       </Input>
-
-      {helperText && (
-        <FormControlHelper>
-          <FormControlHelperText className="text-secondary-950">
-            {helperText}
-          </FormControlHelperText>
-        </FormControlHelper>
-      )}
-
-      {errorMessage && (
-        <FormControlError>
-          <FormControlErrorText>{errorMessage}</FormControlErrorText>
-        </FormControlError>
-      )}
     </FormControl>
   );
 };
 
-export default FormInput;
+export default AmountInput;

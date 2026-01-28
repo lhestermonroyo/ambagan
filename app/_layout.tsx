@@ -1,6 +1,5 @@
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import '@/global.css';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import services from '@/services';
 import states from '@/states';
 import { supabase } from '@/utils/supabase';
@@ -9,7 +8,7 @@ import { useFonts } from 'expo-font';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import 'react-native-reanimated';
 import {
   configureReanimatedLogger,
@@ -21,12 +20,11 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
-  const auth = states.auth((state) => state);
+  const [loading, setLoading] = useState(true);
 
   const router = useRouter();
   const isMounted = useRef(false);
 
-  const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     'GoogleSans-Regular': require('@/assets/fonts/GoogleSans-Regular.ttf'),
     'GoogleSans-Italic': require('@/assets/fonts/GoogleSans-Italic.ttf'),
@@ -87,6 +85,8 @@ export default function RootLayout() {
         session: null,
         user: null
       }));
+    } finally {
+      setLoading(false);
     }
   };
 

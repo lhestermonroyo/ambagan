@@ -13,10 +13,10 @@ export type User = {
   phone: string | null;
   first_name: string;
   last_name: string;
-  avatar_url: string | null;
+  avatar: string | null;
 };
 
 export type UserPreview = Pick<
   User,
-  'id' | 'email' | 'first_name' | 'last_name' | 'avatar_url'
+  'id' | 'email' | 'first_name' | 'last_name' | 'avatar'
 >;
