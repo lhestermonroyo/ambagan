@@ -6,6 +6,7 @@ import Icon from '@/components/Icon';
 import SearchInput from '@/components/SearchInput';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
+import { Divider } from '@/components/ui/divider';
 import {
   FormControl,
   FormControlLabel,
@@ -18,11 +19,12 @@ import { ScrollView } from '@/components/ui/scroll-view';
 import { Text } from '@/components/ui/text';
 import { VirtualizedList } from '@/components/ui/virtualized-list';
 import { VStack } from '@/components/ui/vstack';
+import UploadCoverPhoto from '@/components/UploadCoverPhoto';
 import { User } from '@/types/auth';
 import { categories } from '@/utils/constants';
 import { mockUsers } from '@/utils/data';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Check, Upload, X } from 'lucide-react-native';
+import { ArrowLeft, Check, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 
 export default function CreateGroupScreen() {
@@ -32,7 +34,7 @@ export default function CreateGroupScreen() {
   const [values, setValues] = useState({
     name: '',
     description: '',
-    cover: null,
+    cover: null as string | null,
     category: ''
   });
   const [formErrors, setFormErrors] = useState({
@@ -50,7 +52,6 @@ export default function CreateGroupScreen() {
   };
 
   const handleSubmit = () => {
-    // Handle form submission logic here
     if (!values.name) {
       setFormErrors((prev: any) => ({ ...prev, name: 'Name is required' }));
       return;
@@ -78,7 +79,7 @@ export default function CreateGroupScreen() {
 
   return (
     <KeyboardAvoidingView className="bg-primary-0 flex-1" behavior="padding">
-      <Box className="sticky top-0 bg-white px-4 pb-4 pt-16">
+      <Box className="sticky top-0 bg-white px-4 pb-4 pt-20 border-b border-background-100">
         <HStack className="items-center justify-between">
           <Button
             variant="link"
@@ -95,12 +96,9 @@ export default function CreateGroupScreen() {
       </Box>
       <ScrollView>
         <VStack className="gap-y-6 p-4">
-          <Pressable className="border-dashed border-2 border-secondary-800 rounded-3xl h-32 w-full justify-center items-center flex">
-            <VStack className="items-center gap-y-2">
-              <Icon as={Upload} className="text-secondary-950" size={36} />
-              <Text className="text-secondary-950">Add Cover Photo</Text>
-            </VStack>
-          </Pressable>
+          <UploadCoverPhoto
+            onSelect={(uri) => setValues({ ...values, cover: uri })}
+          />
 
           <FormInput
             type="text"
@@ -155,7 +153,7 @@ export default function CreateGroupScreen() {
           </FormControl>
         </VStack>
       </ScrollView>
-      <HStack className="sticky bottom-0 bg-white px-4 pt-4 pb-10">
+      <HStack className="sticky bottom-0 bg-white px-4 pt-4 pb-10 border-t border-background-100">
         <FormButton
           className="flex-1"
           text="Continue"
@@ -188,7 +186,7 @@ function SelectMembersStep({
 
   return (
     <KeyboardAvoidingView className="bg-primary-0 flex-1" behavior="padding">
-      <Box className="sticky top-0 bg-white px-4 pb-4 pt-16">
+      <Box className="sticky top-0 bg-white px-4 pb-4 pt-20 border-b border-background-100">
         <VStack className="gap-y-4">
           <HStack className="items-center justify-between">
             <Button
@@ -268,9 +266,10 @@ function SelectMembersStep({
             isSelected={formattedMembers.some((u) => u.id === item.id)}
           />
         )}
-        className="bg-white"
+        ItemSeparatorComponent={() => <Divider className="bg-secondary-100" />}
+        className="flex-1 m-4 rounded-lg bg-white"
       />
-      <HStack className="sticky bottom-0 bg-white px-4 pt-4 pb-10">
+      <HStack className="sticky bottom-0 bg-white px-4 pt-4 pb-10 border-t border-background-100">
         <FormButton
           className="flex-1"
           text="Create Group"

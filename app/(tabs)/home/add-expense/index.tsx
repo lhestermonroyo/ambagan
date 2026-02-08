@@ -6,6 +6,8 @@ import Avatar from '@/components/_Avatar';
 import AvatarGroup from '@/components/_AvatarGroup';
 import { Box } from '@/components/ui/box';
 import { Button } from '@/components/ui/button';
+import { Divider } from '@/components/ui/divider';
+import { FlatList } from '@/components/ui/flat-list';
 import {
   FormControl,
   FormControlHelper,
@@ -91,7 +93,7 @@ export default function AddExpenseScreen() {
 
   return (
     <KeyboardAvoidingView className="bg-primary-0 flex-1" behavior="padding">
-      <Box className="sticky top-0 bg-white px-4 pb-4 pt-16">
+      <Box className="sticky top-0 bg-white px-4 pb-4 pt-20 border-b border-background-100">
         <HStack className="items-center justify-between">
           <Button
             variant="link"
@@ -155,7 +157,7 @@ export default function AddExpenseScreen() {
           </VStack>
         </VStack>
       </ScrollView>
-      <HStack className="sticky bottom-0 bg-white px-4 pt-4 pb-10 gap-x-2">
+      <HStack className="sticky bottom-0 bg-white px-4 pt-4 pb-10 gap-x-2 border-t border-background-100">
         <FormButton
           className="flex-1"
           variant="outline"
@@ -334,9 +336,9 @@ function SplitSelection({
 
   return (
     <KeyboardAvoidingView className="bg-primary-0 flex-1" behavior="padding">
-      <Box className="sticky top-0 bg-white px-4 pb-4 pt-16">
+      <Box className="sticky top-0 bg-white pb-4 pt-20 border-b border-background-100">
         <VStack className="gap-y-4">
-          <HStack className="items-center justify-between">
+          <HStack className="items-center justify-between px-4">
             <Button
               variant="link"
               className="rounded-full h-[18] w-[18]"
@@ -349,14 +351,14 @@ function SplitSelection({
             </Text>
             <Box className="w-6" />
           </HStack>
-          <VStack>
+          <VStack className="px-4">
             <Text className="text-3xl font-bold">
               ₱ {values.amount || '0.00'}
             </Text>
             <Text>{values.description || 'No description provided.'}</Text>
           </VStack>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <HStack className="justify-center items-center gap-x-2">
+            <HStack className="justify-center items-center gap-x-2 px-4">
               {splitTypes.map((type) => (
                 <FormButton
                   key={type.value}
@@ -377,7 +379,6 @@ function SplitSelection({
             {group.members.length} people
           </Text>
 
-          {/* Summary */}
           <Box className="p-3 bg-background-100 rounded-lg">
             <Text className="text-sm text-typography-600 mb-1">
               Total Amount: ₱{totalSplitAmount.toFixed(2)} / ₱
@@ -393,31 +394,37 @@ function SplitSelection({
             )}
           </Box>
 
-          {group.members.map((member) => (
-            <MemberItem
-              key={member.user.id}
-              member={member}
-              splitType={tab}
-              split={
-                splits[member.user.id] || {
-                  amount: '0.00',
-                  percentage: '0.00',
-                  isIncluded: false
+          <FlatList
+            data={group.members}
+            keyExtractor={(member) => member.user.id}
+            ItemSeparatorComponent={() => (
+              <Divider className="bg-secondary-100" />
+            )}
+            renderItem={({ item: member }) => (
+              <MemberItem
+                member={member}
+                splitType={tab}
+                split={
+                  splits[member.user.id] || {
+                    amount: '0.00',
+                    percentage: '0.00',
+                    isIncluded: false
+                  }
                 }
-              }
-              totalAmount={totalAmount}
-              onToggle={() => toggleMemberInclusion(member.user.id)}
-              onAmountChange={(amount) =>
-                updateSplitAmount(member.user.id, amount)
-              }
-              onPercentageChange={(percentage) =>
-                updateSplitPercentage(member.user.id, percentage)
-              }
-            />
-          ))}
+                totalAmount={totalAmount}
+                onToggle={() => toggleMemberInclusion(member.user.id)}
+                onAmountChange={(amount) =>
+                  updateSplitAmount(member.user.id, amount)
+                }
+                onPercentageChange={(percentage) =>
+                  updateSplitPercentage(member.user.id, percentage)
+                }
+              />
+            )}
+          />
         </VStack>
       </ScrollView>
-      <HStack className="sticky bottom-0 bg-white px-4 pt-4 pb-10 gap-x-2">
+      <HStack className="sticky bottom-0 bg-white px-4 pt-4 pb-10 gap-x-2 border-t border-background-100">
         <FormButton
           className="flex-1"
           variant="outline"
@@ -454,7 +461,7 @@ function MemberItem({
   const user = member.user;
 
   return (
-    <Box className="py-4 border-b border-background-200">
+    <Box className="py-4">
       <HStack className="gap-x-4 items-center">
         {/* Checkbox */}
         <Pressable onPress={onToggle}>
@@ -473,10 +480,8 @@ function MemberItem({
           <Text className="text-lg font-medium">
             {user.first_name} {user.last_name}
           </Text>
-          <Text className="text-secondary-950">{user.email}</Text>
         </VStack>
 
-        {/* Amount/Percentage Input */}
         {split.isIncluded && (
           <VStack className="items-end">
             {splitType === 'equal' && (

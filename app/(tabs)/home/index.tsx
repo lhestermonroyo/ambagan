@@ -140,7 +140,7 @@ function ActivityItem({ data }: { data: TransactionPreview }) {
               </AvatarFallbackText>
               <AvatarImage
                 source={{
-                  uri: data.created_by.avatar_url || undefined
+                  uri: data.created_by?.avatar || undefined
                 }}
               />
             </Avatar>
