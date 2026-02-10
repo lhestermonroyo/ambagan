@@ -1,4 +1,5 @@
 import { Session } from '@supabase/supabase-js';
+import { v4 as uuid } from 'uuid';
 import { AuthState, User, UserPreview } from '../types/auth';
 import { Group, GroupPreview, GroupState } from '../types/groups';
 import {
@@ -10,7 +11,7 @@ import {
 // Mock Users
 export const mockUsers: User[] = [
   {
-    id: 'user-1',
+    id: uuid(),
     created_at: '2024-01-01T08:00:00Z',
     email: 'john.doe@email.com',
     phone: '+639123456789',
@@ -20,7 +21,7 @@ export const mockUsers: User[] = [
       'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
   },
   {
-    id: 'user-2',
+    id: uuid(),
     created_at: '2024-01-02T09:15:00Z',
     email: 'jane.smith@email.com',
     phone: '+639987654321',
@@ -30,7 +31,7 @@ export const mockUsers: User[] = [
       'https://images.unsplash.com/photo-1494790108755-2616b612b5bc?w=150&h=150&fit=crop&crop=face'
   },
   {
-    id: 'user-3',
+    id: uuid(),
     created_at: '2024-01-03T10:30:00Z',
     email: 'mike.johnson@email.com',
     phone: null,
@@ -40,7 +41,7 @@ export const mockUsers: User[] = [
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
   },
   {
-    id: 'user-4',
+    id: uuid(),
     created_at: '2024-01-04T11:45:00Z',
     email: 'sarah.wilson@email.com',
     phone: '+639111222333',
@@ -50,7 +51,7 @@ export const mockUsers: User[] = [
       'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face'
   },
   {
-    id: 'user-5',
+    id: uuid(),
     created_at: '2024-01-05T12:00:00Z',
     email: 'alex.brown@email.com',
     phone: '+639444555666',
@@ -60,7 +61,7 @@ export const mockUsers: User[] = [
       'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face'
   },
   {
-    id: 'user-6',
+    id: uuid(),
     created_at: '2024-01-06T13:15:00Z',
     email: 'emma.davis@email.com',
     phone: null,

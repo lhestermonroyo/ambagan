@@ -18,6 +18,22 @@ export const saveUser = async ({
   ]);
 
   if (error) throw error;
+  return {
+    message: 'User saved successfully',
+    data
+  };
+};
+
+export const searchUsers = async (query: string) => {
+  const { data, error } = await supabase
+    .from(tables.USERS_TBL)
+    .select('*')
+    .or(
+      `first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`
+    )
+    .limit(10);
+
+  if (error) throw error;
   return data;
 };
 

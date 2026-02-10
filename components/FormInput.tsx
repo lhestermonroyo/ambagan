@@ -61,7 +61,7 @@ const FormInput: FC<IFormInputProps> = ({
           <FormControlLabelText>{label}</FormControlLabelText>
         </FormControlLabel>
       )}
-      <Input variant="rounded" className="bg-white" size="xl">
+      <Input variant="rounded" className="bg-secondary-100 border-0" size="xl">
         <InputField
           autoCapitalize="none"
           type={type}

@@ -47,7 +47,10 @@ const FormTextarea: FC<IFormTextareaProps> = ({
         <FormControlLabelText>{label}</FormControlLabelText>
       </FormControlLabel>
 
-      <Textarea className="bg-white rounded-3xl px-2 py-1 h-[120]" size="xl">
+      <Textarea
+        className="bg-secondary-100 border-0 rounded-3xl px-2 py-1 h-[120]"
+        size="xl"
+      >
         <TextareaInput
           placeholder={placeholder}
           value={value}

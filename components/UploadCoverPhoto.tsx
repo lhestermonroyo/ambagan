@@ -13,7 +13,7 @@ import { VStack } from './ui/vstack';
 const UploadCoverPhoto = ({
   onSelect
 }: {
-  onSelect: (uri: string) => void;
+  onSelect: (result: ImagePicker.ImagePickerSuccessResult) => void;
 }) => {
   const [image, setImage] = useState<string | null>(null);
 
@@ -40,7 +40,7 @@ const UploadCoverPhoto = ({
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
-      onSelect(result.assets[0].uri);
+      onSelect(result);
     }
   };
 

@@ -86,17 +86,19 @@ export default function SignUpScreen() {
       });
 
       if (response.user) {
-        await services.user.saveUser({
+        const user = await services.user.saveUser({
           id: response.user.id,
           email: values.email.trim(),
           first_name: values.firstname.trim(),
           last_name: values.lastname.trim()
         });
 
-        states.auth.setState((prev) => ({
-          ...prev,
-          session: response.session
-        }));
+        if (user.data) {
+          states.auth.setState((prev) => ({
+            ...prev,
+            session: response.session
+          }));
+        }
       }
     } catch (error) {
       console.log('Error creating account:', error);
@@ -111,7 +113,7 @@ export default function SignUpScreen() {
   };
 
   return (
-    <KeyboardAvoidingView className="bg-primary-0 flex-1" behavior="padding">
+    <KeyboardAvoidingView className="bg-white flex-1" behavior="padding">
       <ScrollView>
         <SafeAreaView>
           <VStack className="my-12 px-4 gap-y-8">

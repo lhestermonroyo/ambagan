@@ -35,8 +35,9 @@ const SearchInput: React.FC<IFormInputProps> = ({
   errorMessage,
   ...props
 }) => {
+  
   return (
-    <Input variant="rounded" className="bg-white" size="xl">
+    <Input variant="rounded" className="bg-secondary-100 border-0" size="xl">
       <InputSlot className="ml-2">
         <Icon as={Search} className="text-secondary-950" />
       </InputSlot>

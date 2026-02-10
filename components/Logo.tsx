@@ -17,10 +17,7 @@ export default function Logo({ type = 'splash' }: LogoProps) {
           <HandCoins size={56} color={color} />
         </Box>
         <Text bold className="text-white text-center" size="3xl">
-          Ambagan{' '}
-          <Text bold className="text-primary-400" size="3xl">
-            PH
-          </Text>
+          Ambagan PH
         </Text>
       </VStack>
     );

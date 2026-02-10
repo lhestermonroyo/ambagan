@@ -16,7 +16,7 @@ const SplashLoading = ({
 
   return (
     <View className="flex-1 justify-center items-center bg-primary-400">
-      <VStack className="gap-y-4">
+      <VStack className="gap-y-12">
         <Logo type="splash" />
         <Spinner size="large" className="text-white" />
       </VStack>

@@ -119,7 +119,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView className="bg-primary-0 flex-1" behavior="padding">
+    <KeyboardAvoidingView className="bg-white flex-1" behavior="padding">
       <ScrollView>
         <SafeAreaView>
           <VStack className="my-12 px-4 gap-y-10">
@@ -174,7 +174,7 @@ export default function LoginScreen() {
                 />
                 <Box className="items-center justify-center">
                   <Divider />
-                  <Text className="top-[-12] absolute bg-primary-0 text-center text-secondary-950 px-4 z-10">
+                  <Text className="top-[-12] absolute bg-white text-center text-secondary-950 px-4 z-10">
                     Or continue with
                   </Text>
                 </Box>

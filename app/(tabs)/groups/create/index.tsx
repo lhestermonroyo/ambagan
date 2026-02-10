@@ -17,24 +17,31 @@ import { KeyboardAvoidingView } from '@/components/ui/keyboard-avoiding-view';
 import { Pressable } from '@/components/ui/pressable';
 import { ScrollView } from '@/components/ui/scroll-view';
 import { Text } from '@/components/ui/text';
+import {
+  Toast,
+  ToastDescription,
+  ToastTitle,
+  useToast
+} from '@/components/ui/toast';
 import { VirtualizedList } from '@/components/ui/virtualized-list';
 import { VStack } from '@/components/ui/vstack';
 import UploadCoverPhoto from '@/components/UploadCoverPhoto';
+import services from '@/services';
 import { User } from '@/types/auth';
 import { categories } from '@/utils/constants';
 import { mockUsers } from '@/utils/data';
+import { ImagePickerSuccessResult } from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Check, X } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function CreateGroupScreen() {
-  const router = useRouter();
-
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [values, setValues] = useState({
     name: '',
     description: '',
-    cover: null as string | null,
+    cover: null as ImagePickerSuccessResult | null,
     category: ''
   });
   const [formErrors, setFormErrors] = useState({
@@ -42,6 +49,26 @@ export default function CreateGroupScreen() {
     category: ''
   }) as any;
   const [members, setMembers] = useState<string[]>([]);
+
+  const router = useRouter();
+  const toast = useToast();
+
+  const handleToast = (title: string, description: string, type: any) => {
+    toast.show({
+      placement: 'top',
+      duration: 5000,
+      render: ({ id }) => {
+        const uniqueToastId = 'toast-' + id;
+
+        return (
+          <Toast nativeID={uniqueToastId} action={type} variant="outline">
+            <ToastTitle>{title}</ToastTitle>
+            <ToastDescription>{description}</ToastDescription>
+          </Toast>
+        );
+      }
+    });
+  };
 
   const handleSelectMember = (userId: string) => {
     if (members.includes(userId)) {
@@ -51,7 +78,7 @@ export default function CreateGroupScreen() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!values.name) {
       setFormErrors((prev: any) => ({ ...prev, name: 'Name is required' }));
       return;
@@ -63,14 +90,53 @@ export default function CreateGroupScreen() {
       }));
       return;
     }
+
+    if (members.length === 0) {
+      handleToast(
+        'No Members Selected',
+        'Please select at least one member to create a group.',
+        'error'
+      );
+      return;
+    }
+
+    try {
+      const response = await services.group.saveGroup({
+        name: values.name,
+        description: values.description,
+        cover: values.cover,
+        category: values.category,
+        members
+      });
+
+      if (response) {
+        handleToast(
+          'Group Created',
+          'Your group has been successfully created.',
+          'success'
+        );
+        // go to group's main page
+        router.push('/(tabs)/groups');
+      }
+    } catch (error) {
+      console.error('Error creating group:', error);
+      handleToast(
+        'Group Creation Failed',
+        'An error occurred while creating the group. Please try again.',
+        'error'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (step === 2) {
     return (
       <SelectMembersStep
+        loading={loading}
+        members={members}
         onSelect={handleSelectMember}
         onRemoveAll={() => setMembers([])}
-        members={members}
         onBack={() => setStep(1)}
         onSubmit={handleSubmit}
       />
@@ -78,7 +144,7 @@ export default function CreateGroupScreen() {
   }
 
   return (
-    <KeyboardAvoidingView className="bg-primary-0 flex-1" behavior="padding">
+    <KeyboardAvoidingView className="bg-white flex-1" behavior="padding">
       <Box className="sticky top-0 bg-white px-4 pb-4 pt-20 border-b border-background-100">
         <HStack className="items-center justify-between">
           <Button
@@ -97,7 +163,7 @@ export default function CreateGroupScreen() {
       <ScrollView>
         <VStack className="gap-y-6 p-4">
           <UploadCoverPhoto
-            onSelect={(uri) => setValues({ ...values, cover: uri })}
+            onSelect={(result) => setValues({ ...values, cover: result })}
           />
 
           <FormInput
@@ -170,22 +236,40 @@ function SelectMembersStep({
   onRemoveAll,
   onSubmit,
   onBack,
-  members
+  members,
+  loading
 }: {
   onSelect: (userId: string) => void;
   onRemoveAll: () => void;
   onSubmit: () => void;
   onBack: () => void;
   members: string[];
+  loading: boolean;
 }) {
-  const [tab, setTab] = useState<'all' | 'favorites'>('all');
+  const [tab, setTab] = useState<'recent' | 'favorites'>('recent');
+  const [searchInput, setSearchInput] = useState('');
+  const [globalFilter, setGlobalFilter] = useState('');
+  const []
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setGlobalFilter(searchInput);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchInput]);
+
+  const searchUser = (user: User) => {
+    const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
+    return fullName.includes(globalFilter.toLowerCase());
+  }
 
   const formattedMembers = useMemo(() => {
     return members.map((id) => mockUsers.find((user) => user.id === id)!);
   }, [members]);
 
   return (
-    <KeyboardAvoidingView className="bg-primary-0 flex-1" behavior="padding">
+    <KeyboardAvoidingView className="bg-white flex-1" behavior="padding">
       <Box className="sticky top-0 bg-white px-4 pb-4 pt-20 border-b border-background-100">
         <VStack className="gap-y-4">
           <HStack className="items-center justify-between">
@@ -203,8 +287,8 @@ function SelectMembersStep({
           </HStack>
           <SearchInput
             placeholder="Search members"
-            value=""
-            onChangeText={() => {}}
+            value={searchInput}
+            onChangeText={(val) => setSearchInput(val)}
           />
           {formattedMembers.length > 0 ? (
             <VStack className="gap-y-2">
@@ -240,10 +324,10 @@ function SelectMembersStep({
           )}
           <HStack className="gap-x-2">
             <FormButton
-              variant={tab === 'all' ? 'solid' : 'outline'}
+              variant={tab === 'recent' ? 'solid' : 'outline'}
               className="flex-1"
-              text="All"
-              onPress={() => setTab('all')}
+              text="Recent"
+              onPress={() => setTab('recent')}
             />
             <FormButton
               variant={tab === 'favorites' ? 'solid' : 'outline'}
@@ -255,7 +339,7 @@ function SelectMembersStep({
         </VStack>
       </Box>
       <VirtualizedList
-        data={tab === 'all' ? mockUsers : []}
+        data={tab === 'recent' ? mockUsers : []}
         keyExtractor={(item) => item.id.toString()}
         getItemCount={(data) => data.length}
         getItem={(data, index) => data[index]}
@@ -267,7 +351,6 @@ function SelectMembersStep({
           />
         )}
         ItemSeparatorComponent={() => <Divider className="bg-secondary-100" />}
-        className="flex-1 m-4 rounded-lg bg-white"
       />
       <HStack className="sticky bottom-0 bg-white px-4 pt-4 pb-10 border-t border-background-100">
         <FormButton
@@ -275,6 +358,7 @@ function SelectMembersStep({
           text="Create Group"
           disabled={members.length === 0}
           onPress={onSubmit}
+          loading={loading}
         />
       </HStack>
     </KeyboardAvoidingView>

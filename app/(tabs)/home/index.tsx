@@ -46,7 +46,6 @@ export default function HomeScreen() {
               {auth.user?.first_name} {auth.user?.last_name}
             </Text>
           </VStack>
-          x
           <Button className="rounded-full p-6 h-[18] w-[18]">
             <Icon as={Bell} />
           </Button>
@@ -97,7 +96,7 @@ export default function HomeScreen() {
               <Text className="text-primary-400">View All</Text>
             </Link>
           </HStack>
-          {/* <FormButton text="Logout" onPress={handleLogout} /> */}
+          <FormButton text="Logout" onPress={handleLogout} />
         </VStack>
       </ScrollView>
     </KeyboardAvoidingView>
