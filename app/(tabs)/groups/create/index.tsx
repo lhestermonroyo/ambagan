@@ -249,7 +249,6 @@ function SelectMembersStep({
   const [tab, setTab] = useState<'recent' | 'favorites'>('recent');
   const [searchInput, setSearchInput] = useState('');
   const [globalFilter, setGlobalFilter] = useState('');
-  const []
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -262,7 +261,7 @@ function SelectMembersStep({
   const searchUser = (user: User) => {
     const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
     return fullName.includes(globalFilter.toLowerCase());
-  }
+  };
 
   const formattedMembers = useMemo(() => {
     return members.map((id) => mockUsers.find((user) => user.id === id)!);
