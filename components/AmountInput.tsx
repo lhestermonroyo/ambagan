@@ -1,12 +1,12 @@
-import { TextInputProps } from 'react-native';
-import { Button } from './ui/button';
+import { TextInputProps } from "react-native";
+import { Button } from "./ui/button";
 import {
   FormControl,
   FormControlLabel,
   FormControlLabelText
-} from './ui/form-control';
-import { Input, InputField, InputIcon, InputSlot } from './ui/input';
-import { Text } from './ui/text';
+} from "./ui/form-control";
+import { Input, InputField, InputIcon, InputSlot } from "./ui/input";
+import { Text } from "./ui/text";
 
 interface IFormInputProps extends TextInputProps {
   label?: string;
@@ -52,13 +52,17 @@ const AmountInput: React.FC<IFormInputProps> = ({
           <FormControlLabelText>{label}</FormControlLabelText>
         </FormControlLabel>
       )}
-      <Input variant="rounded" className="bg-white" size="xl">
-        <InputSlot className="ml-4">
-          <Text className="text-inherit text-xl">₱</Text>
+      <Input variant="underlined" className="h-[64]">
+        <InputSlot className="mx-4 place-self-center">
+          <Text bold className="text-4xl mt-1">
+            ₱
+          </Text>
         </InputSlot>
 
         <InputField
+          className="text-4xl font-bold place-self-center"
           autoCapitalize="none"
+          keyboardType="numeric"
           placeholder={placeholder}
           value={value}
           onChangeText={onChangeText}

@@ -3,7 +3,7 @@ import { mockTransactionPreviews } from '@/utils/data';
 import { create } from 'zustand';
 
 const initialState: TransactionState = {
-  preview: [...mockTransactionPreviews],
+  preview: [],
   details: null
 };
 

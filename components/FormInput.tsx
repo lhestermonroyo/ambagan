@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   FormControl,
   FormControlError,
@@ -7,14 +7,14 @@ import {
   FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
-} from '@/components/ui/form-control';
-import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
-import { LucideIcon } from 'lucide-react-native';
-import React, { FC } from 'react';
-import { TextInputProps } from 'react-native';
+} from "@/components/ui/form-control";
+import { Input, InputField, InputIcon, InputSlot } from "@/components/ui/input";
+import { LucideIcon } from "lucide-react-native";
+import React, { FC } from "react";
+import { TextInputProps } from "react-native";
 
 interface IFormInputProps extends TextInputProps {
-  type?: 'text' | 'password' | undefined;
+  type?: "text" | "password" | undefined;
   label?: string;
   placeholder: string;
   value: string;
@@ -33,7 +33,7 @@ interface IFormInputProps extends TextInputProps {
 }
 
 const FormInput: FC<IFormInputProps> = ({
-  type = 'text',
+  type = "text",
   label,
   placeholder,
   value,
@@ -61,7 +61,7 @@ const FormInput: FC<IFormInputProps> = ({
           <FormControlLabelText>{label}</FormControlLabelText>
         </FormControlLabel>
       )}
-      <Input variant="rounded" className="bg-secondary-100 border-0" size="xl">
+      <Input variant="rounded" className="bg-background-50" size="lg">
         <InputField
           autoCapitalize="none"
           type={type}

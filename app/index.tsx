@@ -1,30 +1,34 @@
-import SplashLoading from '@/components/SplashLoading';
-import SplashScreen from '@/components/SplashScreen';
-import services from '@/services';
-import states from '@/states';
-import { supabase } from '@/utils/supabase';
-import { useRouter } from 'expo-router';
+import SplashLoading from "@/components/SplashLoading";
+import SplashScreen from "@/components/SplashScreen";
+import services from "@/services";
+import states from "@/states";
+import { supabase } from "@/utils/supabase";
+import { useRouter } from "expo-router";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 export default function Index() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const { user, session } = states.auth.getState();
-
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      states.auth.setState((prev) => ({
-        ...prev,
-        session
-      }));
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        states.user.setState((prev) => ({
+          ...prev,
+          session
+        }));
 
-      fetchUser(session?.user.id!);
-    });
+        fetchUser(session?.user.id!);
+      })
+      .catch((error) => {
+        console.log("Error getting session:", error);
+        setLoading(false);
+      });
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      states.auth.setState((prev) => ({
+      states.user.setState((prev) => ({
         ...prev,
         session
       }));
@@ -32,11 +36,7 @@ export default function Index() {
       fetchUser(session?.user.id!);
     });
 
-    return () => {
-      if (data.subscription) {
-        data.subscription.unsubscribe();
-      }
-    };
+    return () => data.subscription && data.subscription.unsubscribe();
   }, []);
 
   const fetchUser = async (id: string) => {
@@ -44,18 +44,18 @@ export default function Index() {
       const response = await services.user.getUserById(id);
 
       if (response) {
-        states.auth.setState((prev) => ({
+        states.user.setState((prev) => ({
           ...prev,
-          user: response
+          details: response
         }));
-        router.push('/(tabs)/home');
+        router.push("/home");
       }
     } catch (error) {
-      console.log('Error fetching user:', error);
-      states.auth.setState((prev) => ({
+      console.log("Error fetching user:", error);
+      states.user.setState((prev) => ({
         ...prev,
         session: null,
-        user: null
+        details: null
       }));
     } finally {
       setLoading(false);

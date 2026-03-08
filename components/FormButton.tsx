@@ -1,11 +1,12 @@
-import React, { FC } from 'react';
-import { Button, ButtonSpinner, ButtonText } from './ui/button';
+import React, { FC } from "react";
+import { Box } from "./ui/box";
+import { Button, ButtonSpinner, ButtonText } from "./ui/button";
 
 interface IFormButtonProps {
   className?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  variant?: 'solid' | 'outline' | 'link';
-  action?: 'primary' | 'secondary';
+  size?: "sm" | "md" | "lg" | "xl";
+  variant?: "solid" | "outline" | "link";
+  action?: "primary" | "secondary" | "positive" | "negative";
   text: string;
   loading?: boolean;
   disabled?: boolean;
@@ -16,9 +17,9 @@ interface IFormButtonProps {
 
 const FormButton: FC<IFormButtonProps> = ({
   className,
-  variant = 'solid',
-  action = 'primary',
-  size = 'xl',
+  variant = "solid",
+  action = "primary",
+  size = "lg",
   text,
   loading,
   disabled,
@@ -37,10 +38,10 @@ const FormButton: FC<IFormButtonProps> = ({
       onPress={onPress}
       {...props}
     >
-      {icon}
+      {icon && <Box className="ml-[-8px] mr-[-4px]">{icon}</Box>}
       <ButtonText>{text}</ButtonText>
-      {iconEnd}
-      {loading && <ButtonSpinner className="text-white" />}
+      {iconEnd && <Box className="ml-[-4px] mr-[-8px]">{iconEnd}</Box>}
+      {loading && <ButtonSpinner className="text-background-0" />}
     </Button>
   );
 };

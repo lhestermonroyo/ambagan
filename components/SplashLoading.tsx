@@ -1,7 +1,7 @@
-import Logo from './Logo';
-import { Spinner } from './ui/spinner';
-import { View } from './ui/view';
-import { VStack } from './ui/vstack';
+import Logo from "./Logo";
+import { Spinner } from "./ui/spinner";
+import { View } from "./ui/view";
+import { VStack } from "./ui/vstack";
 
 const SplashLoading = ({
   loading,
@@ -18,7 +18,7 @@ const SplashLoading = ({
     <View className="flex-1 justify-center items-center bg-primary-400">
       <VStack className="gap-y-12">
         <Logo type="splash" />
-        <Spinner size="large" className="text-white" />
+        <Spinner size="large" className="text-background-0" />
       </VStack>
     </View>
   );

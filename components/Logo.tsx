@@ -1,19 +1,22 @@
-import { HandCoins } from 'lucide-react-native';
-import { Box } from './ui/box';
-import { Text } from './ui/text';
-import { VStack } from './ui/vstack';
+import { HandCoins } from "lucide-react-native";
+import { useColorScheme } from "react-native";
+import { Box } from "./ui/box";
+import { HStack } from "./ui/hstack";
+import { Text } from "./ui/text";
+import { VStack } from "./ui/vstack";
 
 type LogoProps = {
-  type?: 'splash' | 'auth' | 'nav';
+  type?: "splash" | "auth" | "nav";
 };
 
-const color = '#3B82F6';
+export default function Logo({ type = "splash" }: LogoProps) {
+  const theme = useColorScheme();
+  const color = theme === "dark" ? "#3B82F6" : "#2563EB";
 
-export default function Logo({ type = 'splash' }: LogoProps) {
-  if (type === 'splash') {
+  if (type === "splash") {
     return (
       <VStack className="gap-y-2 justify-center items-center">
-        <Box className="justify-center items-center bg-primary-0 border-secondary-400 rounded-xl w-24 h-24">
+        <Box className="justify-center items-center bg-primary-0 rounded-2xl w-24 h-24">
           <HandCoins size={56} color={color} />
         </Box>
         <Text bold className="text-white text-center" size="3xl">
@@ -23,24 +26,24 @@ export default function Logo({ type = 'splash' }: LogoProps) {
     );
   }
 
-  if (type === 'auth') {
+  if (type === "auth") {
     return (
-      <VStack className="gap-y-2 justify-center items-center">
-        <Box className="justify-center items-center bg-primary-50 border-secondary-400 rounded-xl w-20 h-20">
-          <HandCoins size={48} color={color} />
+      <HStack className="gap-x-2 justify-center items-center">
+        <Box className="justify-center items-center bg-primary-50 rounded-2xl w-12 h-12">
+          <HandCoins size={28} color={color} />
         </Box>
-        <Text bold className="text-inherit text-center" size="2xl">
-          Ambagan{' '}
-          <Text bold className="text-primary-400" size="2xl">
+        <Text bold className="text-center" size="2xl">
+          Ambagan{" "}
+          <Text bold className="text-primary-500" size="2xl">
             PH
           </Text>
         </Text>
-      </VStack>
+      </HStack>
     );
   }
 
   return (
-    <Box className="justify-center items-center bg-primary-50 border-secondary-400 rounded-xl w-10 h-10">
+    <Box className="justify-center items-center bg-primary-50 border-secondary-400 border-2 rounded-xl w-10 h-10">
       <HandCoins size={24} color={color} />
     </Box>
   );

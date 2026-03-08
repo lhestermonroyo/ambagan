@@ -1,13 +1,13 @@
-import { User } from '@/types/auth';
-import { tables } from '@/utils/constants';
-import { supabase } from '@/utils/supabase';
+import { User } from "@/types/user";
+import { tables } from "@/utils/constants";
+import { supabase } from "@/utils/supabase";
 
 export const saveUser = async ({
   id,
   email,
   first_name,
   last_name
-}: Pick<User, 'id' | 'email' | 'first_name' | 'last_name'>) => {
+}: Pick<User, "id" | "email" | "first_name" | "last_name">) => {
   const { error, data } = await supabase.from(tables.USERS_TBL).insert([
     {
       id,
@@ -19,7 +19,7 @@ export const saveUser = async ({
 
   if (error) throw error;
   return {
-    message: 'User saved successfully',
+    message: "User saved successfully",
     data
   };
 };
@@ -27,7 +27,7 @@ export const saveUser = async ({
 export const searchUsers = async (query: string) => {
   const { data, error } = await supabase
     .from(tables.USERS_TBL)
-    .select('*')
+    .select("id, created_at, first_name, last_name, email, phone, avatar")
     .or(
       `first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`
     )
@@ -40,8 +40,8 @@ export const searchUsers = async (query: string) => {
 export const getUserById = async (id: string) => {
   const { data, error } = await supabase
     .from(tables.USERS_TBL)
-    .select('*')
-    .eq('id', id)
+    .select("*")
+    .eq("id", id)
     .single();
 
   if (error) throw error;

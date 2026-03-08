@@ -1,9 +1,8 @@
-import { HapticTab } from '@/components/haptic-tab';
-import TabButton from '@/components/TabButton';
-import { View } from '@/components/ui/view';
-import { Tabs } from 'expo-router';
-import { Home, ListCheck, UserCircle, Users } from 'lucide-react-native';
-import React from 'react';
+import { HapticTab } from "@/components/haptic-tab";
+import TabButton from "@/components/TabButton";
+import { View } from "@/components/ui/view";
+import { Tabs } from "expo-router";
+import React from "react";
 
 export default function TabLayout() {
   return (
@@ -11,10 +10,10 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: '#3B82F6',
-          tabBarInactiveTintColor: 'red',
+          tabBarActiveTintColor: "#3B82F6",
+          tabBarInactiveTintColor: "red",
           tabBarStyle: {
-            backgroundColor: '#fff',
+            backgroundColor: "#fff",
             borderTopWidth: 0,
             height: 85,
             paddingTop: 10,
@@ -27,7 +26,7 @@ export default function TabLayout() {
           name="home/index"
           options={{
             tabBarButton: (props) => (
-              <TabButton {...props} label="Home" icon={Home} />
+              <TabButton {...props} label="Home" icon="home" />
             )
           }}
         />
@@ -36,25 +35,25 @@ export default function TabLayout() {
           name="groups/index"
           options={{
             tabBarButton: (props) => (
-              <TabButton {...props} label="Groups" icon={Users} />
+              <TabButton {...props} label="Groups" icon="groups" />
             )
           }}
         />
         <Tabs.Screen
           name="activity/index"
           options={{
-            title: 'Activity',
+            title: "Activity",
             tabBarButton: (props) => (
-              <TabButton {...props} label="Activity" icon={ListCheck} />
+              <TabButton {...props} label="Activity" icon="checklist" />
             )
           }}
         />
         <Tabs.Screen
           name="profile/index"
           options={{
-            title: 'Profile',
+            title: "Profile",
             tabBarButton: (props) => (
-              <TabButton {...props} label="Profile" icon={UserCircle} />
+              <TabButton {...props} label="Profile" icon="account-circle" />
             )
           }}
         />
@@ -62,16 +61,32 @@ export default function TabLayout() {
           name="groups/create/index"
           options={{
             href: null,
-            title: 'Create Group',
-            tabBarStyle: { display: 'none' }
+            title: "Create Group",
+            tabBarStyle: { display: "none" }
           }}
         />
         <Tabs.Screen
           name="home/add-expense/index"
           options={{
             href: null,
-            title: 'Add Expense',
-            tabBarStyle: { display: 'none' }
+            title: "Add Expense",
+            tabBarStyle: { display: "none" }
+          }}
+        />
+        <Tabs.Screen
+          name="groups/[id]/index"
+          options={{
+            href: null,
+            title: "Group Details",
+            tabBarStyle: { display: "none" }
+          }}
+        />
+        <Tabs.Screen
+          name="groups/[id]/edit/index"
+          options={{
+            href: null,
+            title: "Edit Group",
+            tabBarStyle: { display: "none" }
           }}
         />
       </Tabs>

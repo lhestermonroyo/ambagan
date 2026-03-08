@@ -1,9 +1,8 @@
-import { UserPreview } from './auth';
-import { TransactionPreview } from './transactions';
+import { UserPreview } from "./user";
 
 export type GroupState = {
-  groups: GroupPreview[];
-  details: Group | null;
+  groups: Group[];
+  details: GroupDetails | null;
 };
 
 export type Group = {
@@ -11,28 +10,20 @@ export type Group = {
   created_at: string;
   creator: UserPreview;
   name: string;
-  description: string;
   category: string;
-  cover: string | null;
-  members: Member[];
-  transactions: TransactionPreview[];
+  avatar: string | null;
+  members_count: number;
 };
 
-export type Member = {
-  joined_at: string;
-  user: UserPreview;
-};
+export type GroupDetails = Group & { members: Member[] };
 
-export type GroupPreview = Pick<
-  Group,
-  'id' | 'created_at' | 'creator' | 'name' | 'cover' | 'category'
->;
+export type Member = UserPreview & { joined_at: string };
 
 export enum GroupCategory {
-  TRIP = 'trip',
-  EVENT = 'event',
-  HOUSEHOLD = 'household',
-  COUPLE = 'couple',
-  FAMILY = 'family',
-  OTHER = 'other'
+  TRIP = "trip",
+  EVENT = "event",
+  HOUSEHOLD = "household",
+  COUPLE = "couple",
+  FAMILY = "family",
+  OTHER = "other"
 }

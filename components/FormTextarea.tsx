@@ -6,10 +6,10 @@ import {
   FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
-} from '@/components/ui/form-control';
-import { Textarea, TextareaInput } from '@/components/ui/textarea';
-import React, { FC } from 'react';
-import { TextInputProps } from 'react-native';
+} from "@/components/ui/form-control";
+import { Textarea, TextareaInput } from "@/components/ui/textarea";
+import React, { FC } from "react";
+import { TextInputProps } from "react-native";
 
 interface IFormTextareaProps extends TextInputProps {
   placeholder: string;
@@ -48,8 +48,8 @@ const FormTextarea: FC<IFormTextareaProps> = ({
       </FormControlLabel>
 
       <Textarea
-        className="bg-secondary-100 border-0 rounded-3xl px-2 py-1 h-[120]"
-        size="xl"
+        className="bg-background-50 rounded-2xl px-2 py-1 h-[100]"
+        size="lg"
       >
         <TextareaInput
           placeholder={placeholder}

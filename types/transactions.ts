@@ -1,4 +1,4 @@
-import { UserPreview } from './auth';
+import { UserPreview } from "./user";
 
 export type TransactionState = {
   preview: TransactionPreview[];
@@ -8,15 +8,16 @@ export type TransactionState = {
 export type Transaction = {
   id: string;
   created_at: string;
+  group_id: string;
   created_by: UserPreview;
   paid_by: UserPreview;
-  type: 'expense' | 'payment';
+  type: TransactionType;
   amount: number;
   description: string;
-  receipt_ref_number: string | null;
-  receipt_photo: string | null;
-  splits: MemberSplit[];
+  receipt: string | null;
 };
+
+export type TransactionType = "expense" | "payment";
 
 export type MemberSplit = {
   member: UserPreview;
@@ -25,11 +26,11 @@ export type MemberSplit = {
 
 export type TransactionPreview = Pick<
   Transaction,
-  | 'id'
-  | 'created_at'
-  | 'created_by'
-  | 'paid_by'
-  | 'type'
-  | 'amount'
-  | 'description'
+  | "id"
+  | "created_at"
+  | "created_by"
+  | "paid_by"
+  | "type"
+  | "amount"
+  | "description"
 >;

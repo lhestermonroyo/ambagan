@@ -1,14 +1,15 @@
-import { Search } from 'lucide-react-native';
-import { TextInputProps } from 'react-native';
-import Icon from './Icon';
-import { Button } from './ui/button';
-import { Input, InputField, InputIcon, InputSlot } from './ui/input';
+import { useEffect, useState } from "react";
+import { TextInputProps } from "react-native";
+import Icon from "./Icon";
+import { Button } from "./ui/button";
+import { Input, InputField, InputIcon, InputSlot } from "./ui/input";
 
 interface IFormInputProps extends TextInputProps {
   label?: string;
   placeholder: string;
   value: string;
   onChangeText: (text: string) => void;
+  onSetSearching?: (searching: boolean) => void;
   onPressRightIcon?: () => void;
   rightIcon?:
     | React.ElementType<any, keyof React.JSX.IntrinsicElements>
@@ -26,6 +27,7 @@ const SearchInput: React.FC<IFormInputProps> = ({
   placeholder,
   value,
   onChangeText,
+  onSetSearching,
   onPressRightIcon,
   rightIcon,
   helperText,
@@ -35,18 +37,27 @@ const SearchInput: React.FC<IFormInputProps> = ({
   errorMessage,
   ...props
 }) => {
-  
+  const [searchValue, setSearchValue] = useState("");
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      onSetSearching?.(searchValue.length > 0);
+      onChangeText(searchValue);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchValue]);
+
   return (
-    <Input variant="rounded" className="bg-secondary-100 border-0" size="xl">
-      <InputSlot className="ml-2">
-        <Icon as={Search} className="text-secondary-950" />
+    <Input variant="rounded" className="bg-background-50 border-0" size="lg">
+      <InputSlot className="ml-2 mr-[-6]">
+        <Icon as="search" />
       </InputSlot>
 
       <InputField
         autoCapitalize="none"
         placeholder={placeholder}
-        value={value}
-        onChangeText={onChangeText}
+        onChangeText={setSearchValue}
         {...props}
       />
       {rightIcon && (

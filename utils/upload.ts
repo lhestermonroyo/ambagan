@@ -1,12 +1,15 @@
-import { ImagePickerAsset } from 'expo-image-picker';
-import { supabase } from './supabase';
+import { decode } from "base64-arraybuffer";
+import * as FileSystem from "expo-file-system/legacy";
+import { ImagePickerAsset } from "expo-image-picker";
+import { supabase } from "./supabase";
 
-type Bucket = 'avatars' | 'group_covers' | 'receipt_images';
+type Bucket = "avatars" | "receipts" | "group_covers";
 
 const uriToBlob = async (uri: string): Promise<Blob> => {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  return blob;
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64
+  });
+  return decode(base64) as unknown as Blob;
 };
 
 export const uploadFile = async (asset: ImagePickerAsset, bucket: Bucket) => {
@@ -14,7 +17,7 @@ export const uploadFile = async (asset: ImagePickerAsset, bucket: Bucket) => {
 
   const filePath = `${Date.now()}_${asset.fileName}`;
   const { error } = await supabase.storage.from(bucket).upload(filePath, blob, {
-    cacheControl: '3600',
+    cacheControl: "3600",
     upsert: true,
     contentType: asset.mimeType
   });
@@ -24,5 +27,5 @@ export const uploadFile = async (asset: ImagePickerAsset, bucket: Bucket) => {
   }
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
-  return { error: false, message: 'File uploaded successfully', data };
+  return { error: false, message: "File uploaded successfully", data };
 };

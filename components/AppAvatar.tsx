@@ -1,29 +1,29 @@
 import {
+  Avatar,
   AvatarBadge,
   AvatarFallbackText,
-  AvatarImage,
-  Avatar as UIAvatar
-} from '@/components/ui/avatar';
-import React, { ComponentPropsWithRef, useState } from 'react';
+  AvatarImage
+} from "@/components/ui/avatar";
+import React, { ComponentPropsWithRef, useState } from "react";
 
-type AppAvatar = {
+type AppAvatarProps = {
   name: string;
   uri?: string;
   unread?: boolean;
-} & ComponentPropsWithRef<typeof UIAvatar>;
+} & ComponentPropsWithRef<typeof Avatar>;
 
-const Avatar = ({ name, uri, unread = false, ...props }: AppAvatar) => {
+const AppAvatar = ({ name, uri, unread = false, ...props }: AppAvatarProps) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const showFallback = !uri || imageError;
 
   return (
-    <UIAvatar {...props}>
+    <Avatar {...props}>
       {uri && (
         <AvatarImage
           source={{ uri: uri }}
-          alt={name || 'Avatar'}
+          alt={name || "Avatar"}
           onError={() => setImageError(true)}
           onLoad={() => setImageLoaded(true)}
         />
@@ -31,15 +31,15 @@ const Avatar = ({ name, uri, unread = false, ...props }: AppAvatar) => {
       {showFallback && (
         <AvatarFallbackText size="lg" allowFontScaling={false}>
           {name
-            .split(' ')
+            .split(" ")
             .map((n) => n[0])
-            .join('')
-            .toUpperCase() || 'A'}
+            .join("")
+            .toUpperCase() || "A"}
         </AvatarFallbackText>
       )}
       {unread && <AvatarBadge className="bg-red-500" />}
-    </UIAvatar>
+    </Avatar>
   );
 };
 
-export default Avatar;
+export default AppAvatar;

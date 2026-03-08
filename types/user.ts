@@ -1,9 +1,9 @@
-import { Session } from '@supabase/supabase-js';
+import { Session } from "@supabase/supabase-js";
 
-export type AuthState = {
+export type UserState = {
   loggingOut: boolean;
-  user: User | null;
   session: Session | null;
+  details: User | null;
 };
 
 export type User = {
@@ -18,5 +18,5 @@ export type User = {
 
 export type UserPreview = Pick<
   User,
-  'id' | 'email' | 'first_name' | 'last_name' | 'avatar'
+  "id" | "email" | "first_name" | "last_name" | "avatar"
 >;
