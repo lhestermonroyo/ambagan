@@ -1,16 +1,20 @@
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import SearchInput from "@/components/SearchInput";
 import { Box } from "@/components/ui/box";
+import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
+import { Menu, MenuItem, MenuItemLabel } from "@/components/ui/menu";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import TransactionSheet from "@/features/transaction/components/TransactionSheet";
+import TransactionSheet from "@/features/transaction/components/ExpenseDetailsSheet";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
-import { GroupDetails, Member } from "@/types/groups";
+import states from "@/states";
+import { Member } from "@/types/groups";
 import { Transaction } from "@/types/transactions";
 import { categories } from "@/utils/constants";
 import formatDate from "@/utils/formatDate";
@@ -23,11 +27,11 @@ export default function GroupDetailPage() {
   const params = useLocalSearchParams();
 
   const [loading, setLoading] = useState(true);
-  const [groupDetails, setGroupDetails] = useState<GroupDetails | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTransaction, setCurrentTransaction] =
     useState<Transaction | null>(null);
+
+  const group = states.group.getState();
 
   useFocusEffect(
     useMemo(
@@ -54,9 +58,14 @@ export default function GroupDetailPage() {
         ]);
 
       if (groupDetailsResponse && membersResponse && transactionResponse) {
-        setGroupDetails(groupDetailsResponse);
-        setMembers(membersResponse);
-        setTransactions(transactionResponse);
+        states.group.setState((prev) => ({
+          ...prev,
+          details: {
+            ...groupDetailsResponse,
+            members: membersResponse,
+            expenses: transactionResponse
+          }
+        }));
       }
     } catch (error) {
       console.log("Error fetching group details:", error);
@@ -65,40 +74,102 @@ export default function GroupDetailPage() {
     }
   };
 
+  const handleBack = () => {
+    states.group.setState((prev) => ({
+      ...prev,
+      details: null
+    }));
+    router.push("/groups");
+  };
+
   if (loading) {
     return null;
   }
 
   return (
     <Fragment>
-      <InnerLayout title="Group Details" onBack={() => router.push("/groups")}>
+      <InnerLayout
+        title="Group Details"
+        onBack={handleBack}
+        actions={[
+          <>
+            <Menu
+              isOpen={isMenuOpen}
+              placement="bottom right"
+              closeOnSelect
+              trigger={({ ...triggerProps }) => (
+                <Button
+                  variant="link"
+                  className="rounded-full"
+                  {...triggerProps}
+                  onPress={() => setIsMenuOpen(true)}
+                >
+                  <Icon
+                    as="more-vert"
+                    size={28}
+                    className="text-secondary-950"
+                  />
+                </Button>
+              )}
+              onClose={() => setIsMenuOpen(false)}
+            >
+              <MenuItem
+                textValue="edit-group"
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push(`/groups/${params.id}/edit`);
+                }}
+              >
+                <HStack className="gap-x-2 items-center">
+                  <Icon as="edit" className="text-primary-500" />
+                  <MenuItemLabel>Edit Group</MenuItemLabel>
+                </HStack>
+              </MenuItem>
+              <MenuItem
+                textValue="view-members"
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push(`/groups/${params.id}/members`);
+                }}
+              >
+                <HStack className="gap-x-2 items-center">
+                  <Icon as="groups" className="text-primary-500" />
+                  <MenuItemLabel>Members</MenuItemLabel>
+                </HStack>
+              </MenuItem>
+            </Menu>
+          </>
+        ]}
+      >
         <FlatList
-          data={transactions}
+          data={group.details?.expenses}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={() => (
-            <VStack className="px-4 gap-y-6">
+            <VStack className="px-4 pb-4 gap-y-6">
               <HStack className="gap-x-4">
                 <AppAvatar
-                  uri={groupDetails?.avatar || ""}
-                  name={groupDetails?.name || "Group Avatar"}
+                  uri={group.details?.avatar || ""}
+                  name={group.details?.name || "Group Avatar"}
                   size="lg"
                 />
                 <VStack className="flex-1 gap-y-2">
                   <VStack>
                     <Text bold className="text-xl" numberOfLines={3}>
-                      {groupDetails?.name}
+                      {group.details?.name}
                     </Text>
                     <Text className="text-secondary-950">
-                      Joined {formatDate(groupDetails?.created_at || "")} &bull;{" "}
-                      {groupDetails?.members_count || 0}{" "}
-                      {groupDetails?.members_count === 1 ? "member" : "members"}
+                      Joined {formatDate(group.details?.created_at || "")}{" "}
+                      &bull; {group.details?.members_count || 0}{" "}
+                      {group.details?.members_count === 1
+                        ? "member"
+                        : "members"}
                     </Text>
                   </VStack>
-                  {groupDetails?.category && (
+                  {group.details?.category && (
                     <Text className="text-lg self-start py-2 px-4 bg-primary-100 text-primary-800 rounded-full">
                       {
                         categories.find(
-                          (cat) => cat.value === groupDetails.category
+                          (cat) => cat.value === group.details?.category
                         )?.label
                       }
                     </Text>
@@ -127,37 +198,21 @@ export default function GroupDetailPage() {
                 </VStack>
               </HStack>
 
-              <HStack className="gap-x-2">
-                <FormButton
+              <VStack className="flex-1 gap-x-2 items-center">
+                <SearchInput
+                  placeholder="Search expenses"
                   className="flex-1"
-                  variant="outline"
-                  text="Edit Group"
-                  icon={<Icon as="edit" className="text-primary-500" />}
-                  onPress={() => router.push(`/groups/${params.id}/edit`)}
+                  onChangeText={() => {}}
+                  value=""
                 />
-                <FormButton
-                  className="flex-1"
-                  variant="outline"
-                  text="View Members"
-                  icon={<Icon as="groups" className="text-primary-500" />}
-                  // onPress={() =>
-                  //   router.push(`/home/group-members?groupId=${params.id}`)
-                  // }
-                />
-              </HStack>
-
-              <HStack>
-                <Text bold className="text-xl">
-                  Recent Expenses
-                </Text>
-              </HStack>
+              </VStack>
             </VStack>
           )}
-          renderItem={({ item }) => (
+          renderItem={({ item }: { item: Transaction | Member }) => (
             <ExpenseItem
               key={item.id}
-              expense={item}
-              onOpen={() => setCurrentTransaction(item)}
+              expense={item as Transaction}
+              onOpen={() => setCurrentTransaction(item as Transaction)}
             />
           )}
           ItemSeparatorComponent={() => (
@@ -199,17 +254,21 @@ function ExpenseItem({
           <Text className="text-lg" numberOfLines={2} ellipsizeMode="tail">
             {expense.description}
           </Text>
-          <Text className="text-secondary-950">
-            Paid by {expense.paid_by.first_name}
-          </Text>
+          <HStack className="gap-x-1">
+            <Text className="text-secondary-950">Paid by</Text>
+            <AppAvatar
+              name={expense.paid_by.first_name}
+              uri={expense.paid_by.avatar || ""}
+              size="xs"
+            />
+            <Text className="text-secondary-950">
+              {expense.paid_by.first_name} {expense.paid_by.last_name}
+            </Text>
+          </HStack>
         </VStack>
         <VStack>
-          <Text
-            className={`text-lg text-right ${
-              expense.type === "expense" ? "text-red-500" : "text-green-500"
-            }`}
-          >
-            {expense.type === "expense" ? "-" : "+"}₱{expense.amount.toFixed(2)}
+          <Text className="text-lg text-right">
+            ₱{expense.amount.toFixed(2)}
           </Text>
           <Text className="text-secondary-950 text-right">
             {formatDate(expense.created_at)}

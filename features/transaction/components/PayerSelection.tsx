@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import AppBadge from "@/components/AppBadge";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import {
@@ -18,9 +19,10 @@ import {
 } from "@/components/ui/radio";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import states from "@/states";
 import { Member } from "@/types/groups";
 import { CircleIcon } from "lucide-react-native";
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Pressable } from "react-native";
 
 export default function PayerSelection({
@@ -32,6 +34,7 @@ export default function PayerSelection({
   members: Member[];
   onChangePayer: (payer: Member) => void;
 }) {
+  const user = states.user.getState();
   const [openActionsheet, setOpenActionsheet] = useState(false);
 
   return (
@@ -45,9 +48,12 @@ export default function PayerSelection({
             <HStack className="gap-x-2">
               <AppAvatar name={payer?.first_name} uri={payer.avatar || ""} />
               <VStack>
-                <Text className="text-lg">
-                  {payer?.first_name} {payer?.last_name}
-                </Text>
+                <HStack className="gap-x-1 items-center">
+                  <Text className="text-lg">
+                    {payer?.first_name} {payer?.last_name}
+                  </Text>
+                  {user.details?.id === payer.id && <AppBadge text="You" />}
+                </HStack>
                 <Text className="text-secondary-950">{payer?.email}</Text>
               </VStack>
             </HStack>
@@ -79,7 +85,19 @@ function PayerSelectionActionSheet({
   onChangePayer: (payer: Member) => void;
   members: Member[];
 }) {
+  const user = states.user.getState();
   const [selectedPayer, setSelectedPayer] = useState(currentPayer.id);
+
+  const sortedMembers = useMemo(
+    () =>
+      members
+        ? [
+            ...members.filter((m) => m.id === user.details?.id),
+            ...members.filter((m) => m.id !== user.details?.id)
+          ]
+        : [],
+    [members, user.details?.id]
+  );
 
   return (
     <>
@@ -99,7 +117,7 @@ function PayerSelectionActionSheet({
                 setSelectedPayer(value);
               }}
             >
-              {members.map((item, index) => (
+              {sortedMembers.map((item, index) => (
                 <Radio
                   key={item.id}
                   value={item.id.toString()}
@@ -113,9 +131,14 @@ function PayerSelectionActionSheet({
                     />
                     <VStack className="gap-y-4 py-4">
                       <VStack>
-                        <Text className="text-lg">
-                          {item?.first_name} {item?.last_name}
-                        </Text>
+                        <HStack className="gap-x-1 items-center">
+                          <Text className="text-lg">
+                            {item?.first_name} {item?.last_name}
+                          </Text>
+                          {user.details?.id === item.id && (
+                            <AppBadge text="You" />
+                          )}
+                        </HStack>
                         <Text className="text-secondary-950">
                           {item?.email}
                         </Text>

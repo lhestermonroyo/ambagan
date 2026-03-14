@@ -18,7 +18,6 @@ import { Pressable } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 export default function GroupsScreen() {
-  const [groups, setGroups] = useState<Group[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
 
@@ -27,25 +26,22 @@ export default function GroupsScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    setGroups(group.groups);
-  }, []);
-
-  useEffect(() => {
     if (searchInput.length > 0) {
       setSearching(true);
-      filterGroups(searchInput);
     } else {
       setSearching(false);
-      setGroups(group.groups);
     }
   }, [searchInput]);
 
-  const filterGroups = (input: string) => {
-    const filtered = group.groups.filter((g) =>
-      g.name.toLowerCase().includes(input.toLowerCase())
+  const filteredGroups = useMemo(() => {
+    if (searchInput.length === 0) {
+      return group.groups;
+    }
+
+    return group.groups.filter((g) =>
+      g.name.toLowerCase().includes(searchInput.toLowerCase())
     );
-    setGroups(filtered);
-  };
+  }, [searchInput, group.groups]);
 
   return (
     <TabLayout
@@ -56,13 +52,13 @@ export default function GroupsScreen() {
           className="rounded-full"
           onPress={() => router.push("/groups/create?isGroup=true")}
         >
-          <Icon as="group-add" size={28} />
+          <Icon as="group-add" size={28} className="text-primary-400" />
         </Button>
       ]}
     >
       <SwipeListView
         className="flex-1"
-        data={groups}
+        data={filteredGroups}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <GroupItem

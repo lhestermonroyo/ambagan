@@ -75,11 +75,14 @@ export const createExpense = async (
   return { success: true, message: "Expense created successfully" };
 };
 
-export const getTransactionsByGroup = async (groupId: string, type = 'expense') => {
+export const getTransactionsByGroup = async (
+  groupId: string,
+  type = "expense"
+) => {
   const { data, error } = await supabase
     .from(tables.TRANSACTIONS_TBL)
     .select(
-      `*, created_by:created_by!inner(first_name, last_name), paid_by:paid_by!inner(first_name, last_name)`
+      `*, created_by:created_by!inner(id, email, first_name, last_name, avatar), paid_by:paid_by!inner(id, email, first_name, last_name, avatar)`
     )
     .eq("group_id", groupId)
     .eq("type", type)
@@ -95,7 +98,7 @@ export const getTransactionsByGroup = async (groupId: string, type = 'expense') 
 export const getSplitsByTransaction = async (transactionId: string) => {
   const { data, error } = await supabase
     .from(tables.TRANSACTION_SPLITS_TBL)
-    .select("*")
+    .select(`*, member:user_id!inner(id, email, first_name, last_name, avatar)`)
     .eq("transaction_id", transactionId);
 
   if (error) {

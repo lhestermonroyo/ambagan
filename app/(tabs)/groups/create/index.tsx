@@ -1,4 +1,3 @@
-import AppAvatarGroup from "@/components/AppAvatarGroup";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
 import { Button, ButtonText } from "@/components/ui/button";
@@ -8,12 +7,10 @@ import {
   FormControlLabelText
 } from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
-import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
-import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadAvatar from "@/components/UploadAvatar";
-import SelectMembersSheet from "@/features/group/components/SelectMemberSheet";
+import MembersSelection from "@/features/group/components/MembersSelection";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
@@ -196,43 +193,27 @@ export default function CreateGroupScreen() {
                 ))}
               </HStack>
             </FormControl>
-
             <FormControl size="md">
-              <FormControlLabel>
-                <FormControlLabelText>Members</FormControlLabelText>
-              </FormControlLabel>
-              <Pressable
-                className="p-4 bg-background-0 border border-background-200 rounded-2xl"
-                onPress={() => setOpenSelectMembers(true)}
-              >
-                <HStack className="gap-y-2 items-center">
-                  <VStack className="flex-1">
-                    <Text className="text-primary-500">Edit Members</Text>
-                    <Text className="text-secondary-950">
-                      {members.length}{" "}
-                      {members.length === 1 ? "member" : "members"}
-                    </Text>
-                  </VStack>
-                  <AppAvatarGroup
-                    size="md"
-                    maxDisplay={4}
-                    items={members.map((member) => ({
-                      id: member.id,
-                      name: member.first_name,
-                      avatar: member.avatar
-                    }))}
-                  />
-                </HStack>
-              </Pressable>
+              <HStack>
+                <FormControlLabel className="flex-1">
+                  <FormControlLabelText>Members</FormControlLabelText>
+                </FormControlLabel>
+                <FormButton
+                  size="md"
+                  text="Add Members"
+                  variant="link"
+                  onPress={() => setOpenSelectMembers(true)}
+                />
+              </HStack>
+              <MembersSelection
+                onSaveMembers={handleSaveMembers}
+                isOpen={openSelectMembers}
+                onClose={() => setOpenSelectMembers(false)}
+              />
             </FormControl>
           </VStack>
         </ScrollView>
       </FormLayout>
-      <SelectMembersSheet
-        isOpen={openSelectMembers}
-        onClose={() => setOpenSelectMembers(false)}
-        onSaveMembers={handleSaveMembers}
-      />
     </Fragment>
   );
 }

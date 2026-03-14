@@ -180,10 +180,6 @@ export default function SplitSelection({
     0
   );
 
-  const isValidSplit =
-    Math.abs(totalSplitAmount - totalAmount) < 0.01 &&
-    Math.abs(totalPercentage - 100) < 0.01;
-
   const expenseValues = useMemo(() => {
     const includedCount = splits
       ? Object.values(splits).filter((split) => split.isIncluded).length
@@ -211,9 +207,10 @@ export default function SplitSelection({
           <HStack className="gap-x-2 px-4">
             {splitTypes.map((type) => (
               <FormButton
+                size="md"
                 key={type.value}
                 variant={type.value === tab ? "solid" : "outline"}
-                className="flex-1"
+                className="flex-1 h-10"
                 text={type.label}
                 onPress={() => setTab(type.value)}
               />
@@ -302,6 +299,12 @@ export default function SplitSelection({
             </Text>
           </VStack>
         )}
+
+        {includedCount < 2 && (
+          <Text className="text-red-500 mt-2">
+            Please include at least 2 members or more to split the expense.
+          </Text>
+        )}
       </Box>
     </Fragment>
   );
@@ -374,8 +377,6 @@ function MemberItem({
     );
     onAmountChange(clampedValue.toFixed(2));
   };
-
-  // Optionally show error message if user over-inputs
 
   // Clamp manual input for percentage
   const handleManualPercentageChange = (input: string) => {

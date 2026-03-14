@@ -89,6 +89,14 @@ export default function TabLayout() {
             tabBarStyle: { display: "none" }
           }}
         />
+        <Tabs.Screen
+          name="groups/[id]/members/index"
+          options={{
+            href: null,
+            title: "Edit Group",
+            tabBarStyle: { display: "none" }
+          }}
+        />
       </Tabs>
     </View>
   );

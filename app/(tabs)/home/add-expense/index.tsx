@@ -136,54 +136,13 @@ export default function AddExpenseScreen() {
       return;
     }
 
-    if (Object.keys(splits).length === 0) {
+    if (Object.keys(splits).length < 2) {
       showToast(
-        "No Splits Added",
-        "Please add at least one split to save the expense.",
+        "Invalid Split",
+        "Please include at least 2 members or more to split the expense.",
         "error"
       );
       return;
-    }
-
-    try {
-      setSubmitting(true);
-
-      const expensePayload = {
-        amount: parseFloat(values.amount),
-        description: values.description,
-        receipt: values.receipt,
-        groupId: values.group!.id,
-        payerId: values.payer!.id
-      };
-      const mappedSplits = Object.keys(splits).map((userId) => ({
-        userId,
-        amount: parseFloat(splits[userId].amount),
-        percentage: parseFloat(splits[userId].percentage)
-      }));
-
-      const response = await services.transaction.createExpense(
-        expensePayload,
-        mappedSplits
-      );
-
-      if (response) {
-        showToast(
-          "Expense Created",
-          "Your expense has been created successfully.",
-          "success"
-        );
-
-        handleBack();
-      }
-    } catch (error) {
-      console.log("Error", error);
-      showToast(
-        "Expense Creation Failed",
-        "An error occurred while creating the expense. Please try again.",
-        "error"
-      );
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -212,6 +171,11 @@ export default function AddExpenseScreen() {
       Math.abs(totalPercentage - 100) < 0.01
     );
   }, [splits, values.amount]);
+  const isMultipleMembers = useMemo(
+    () =>
+      Object.keys(splits).filter((key) => splits[key].isIncluded).length > 1,
+    [splits]
+  );
 
   if (!values.group) {
     return (
@@ -300,7 +264,7 @@ export default function AddExpenseScreen() {
           className="flex-1"
           text="Save Expense"
           loading={submitting}
-          disabled={!isValidSplit}
+          disabled={!isValidSplit || !isMultipleMembers}
           onPress={handleSubmit}
         />
       ]}

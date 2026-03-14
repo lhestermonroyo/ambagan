@@ -22,6 +22,8 @@ export type TransactionType = "expense" | "payment";
 export type MemberSplit = {
   member: UserPreview;
   amount: number;
+  percentage: number;
+  status: "settled" | "pending";
 };
 
 export type TransactionPreview = Pick<

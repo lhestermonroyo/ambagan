@@ -29,7 +29,7 @@ const AppAvatar = ({ name, uri, unread = false, ...props }: AppAvatarProps) => {
         />
       )}
       {showFallback && (
-        <AvatarFallbackText size="lg" allowFontScaling={false}>
+        <AvatarFallbackText size={props.size} allowFontScaling={false}>
           {name
             .split(" ")
             .map((n) => n[0])

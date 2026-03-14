@@ -1,3 +1,4 @@
+import { Transaction } from "./transactions";
 import { UserPreview } from "./user";
 
 export type GroupState = {
@@ -15,7 +16,9 @@ export type Group = {
   members_count: number;
 };
 
-export type GroupDetails = Group & { members: Member[] };
+export type GroupDetails = Group & { members: Member[] } & {
+  expenses: Transaction[];
+};
 
 export type Member = UserPreview & { joined_at: string };
 
