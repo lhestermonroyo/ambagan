@@ -66,7 +66,7 @@ export default function ExpenseDetailsScreen() {
   const fetchSplits = async (transactionId: string) => {
     setLoading(true);
 
-    
+    try {
       const response =
         await services.transaction.getSplitsByTransaction(transactionId);
 
