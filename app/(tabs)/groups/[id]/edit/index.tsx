@@ -1,5 +1,6 @@
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
+import LoadingWrapper from "@/components/LoadingWrapper";
 import { Button, ButtonText } from "@/components/ui/button";
 import {
   FormControl,
@@ -19,6 +20,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useMemo, useState } from "react";
 
 export default function EditGroupScreen() {
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
     name: "",
@@ -50,16 +52,19 @@ export default function EditGroupScreen() {
   );
 
   const fetchGroupDetails = async (id: string) => {
+    setLoading(true);
+
     try {
       const response = await services.group.getGroupById(id);
-      if (response) {
-        setValues({
-          name: response.name,
-          avatar: null,
-          category: response.category
-        });
-        setDefaultAvatar(response.avatar || null);
-      }
+
+      if (!response) return;
+
+      setValues({
+        name: response.name,
+        avatar: null,
+        category: response.category
+      });
+      setDefaultAvatar(response.avatar || null);
     } catch (error) {
       console.error("Error fetching group details:", error);
       showToast(
@@ -67,6 +72,8 @@ export default function EditGroupScreen() {
         "An error occurred while loading the group details. Please try again.",
         "error"
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,23 +98,25 @@ export default function EditGroupScreen() {
       return;
     }
 
-    try {
-      setSubmitting(true);
+    setSubmitting(true);
 
+    try {
       const response = await services.group.updateGroup(params.id as string, {
         name: values.name,
         category: values.category,
         avatar: values.avatar
       });
 
-      if (response) {
-        showToast(
-          "Group Updated",
-          "Your group has been successfully updated.",
-          "success"
-        );
-        handleBack();
+      if (!response) {
+        throw new Error("Failed to update group");
       }
+
+      showToast(
+        "Group Updated",
+        "Your group has been successfully updated.",
+        "success"
+      );
+      handleBack();
     } catch (error) {
       console.error("Error updating group:", error);
       showToast(
@@ -141,57 +150,62 @@ export default function EditGroupScreen() {
         ]}
       >
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          <VStack className="gap-y-6 p-4">
-            <UploadAvatar
-              defaultAvatar={defaultAvatar || undefined}
-              onSelect={(result) => setValues({ ...values, avatar: result })}
-            />
+          <LoadingWrapper
+            isLoading={loading}
+            text="Loading group details, please wait..."
+          >
+            <VStack className="gap-y-6 p-4">
+              <UploadAvatar
+                defaultAvatar={defaultAvatar || undefined}
+                onSelect={(result) => setValues({ ...values, avatar: result })}
+              />
 
-            <FormInput
-              type="text"
-              label="Group Name"
-              placeholder="Enter group name (e.g. Japan 2026)"
-              value={values.name}
-              onChangeText={(text) => setValues({ ...values, name: text })}
-              autoCapitalize="none"
-              errorMessage={formErrors.name}
-            />
+              <FormInput
+                type="text"
+                label="Group Name"
+                placeholder="Enter group name (e.g. Japan 2026)"
+                value={values.name}
+                onChangeText={(text) => setValues({ ...values, name: text })}
+                autoCapitalize="none"
+                errorMessage={formErrors.name}
+              />
 
-            <FormControl size="md">
-              <FormControlLabel>
-                <FormControlLabelText>Pick Category</FormControlLabelText>
-              </FormControlLabel>
-              <HStack className="gap-2 flex-wrap">
-                {categories.map((category) => (
-                  <Button
-                    key={category.value}
-                    size="md"
-                    variant={
-                      values.category === category.value ? "solid" : "outline"
-                    }
-                    onPress={() =>
-                      setValues({ ...values, category: category.value })
-                    }
-                    className={`items-center px-4 rounded-full ${
-                      values.category === category.value
-                        ? "border-primary-500"
-                        : "border-background-200 bg-background-50 dark:bg-background-100"
-                    }`}
-                  >
-                    <ButtonText
-                      className={
-                        values.category === category.value
-                          ? "text-background-0"
-                          : "text-inherit"
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>Pick Category</FormControlLabelText>
+                </FormControlLabel>
+                <HStack className="gap-2 flex-wrap">
+                  {categories.map((category) => (
+                    <Button
+                      key={category.value}
+                      size="md"
+                      variant={
+                        values.category === category.value ? "solid" : "outline"
                       }
+                      onPress={() =>
+                        setValues({ ...values, category: category.value })
+                      }
+                      className={`items-center px-4 rounded-full ${
+                        values.category === category.value
+                          ? "border-primary-500"
+                          : "border-background-200 bg-background-50 dark:bg-background-100"
+                      }`}
                     >
-                      {category.label}
-                    </ButtonText>
-                  </Button>
-                ))}
-              </HStack>
-            </FormControl>
-          </VStack>
+                      <ButtonText
+                        className={
+                          values.category === category.value
+                            ? "text-background-0"
+                            : "text-inherit"
+                        }
+                      >
+                        {category.label}
+                      </ButtonText>
+                    </Button>
+                  ))}
+                </HStack>
+              </FormControl>
+            </VStack>
+          </LoadingWrapper>
         </ScrollView>
       </FormLayout>
     </Fragment>

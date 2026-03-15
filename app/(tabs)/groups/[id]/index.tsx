@@ -6,22 +6,21 @@ import LoadingWrapper from "@/components/LoadingWrapper";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
-import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
-import { Member } from "@/types/groups";
 import { Transaction } from "@/types/transactions";
 import { categories } from "@/utils/constants";
 import formatDate from "@/utils/formatDate";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useMemo, useState } from "react";
 import { Pressable } from "react-native";
+import { SwipeListView } from "react-native-swipe-list-view";
 
-export default function GroupDetailPage() {
+export default function GroupDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
@@ -44,9 +43,9 @@ export default function GroupDetailPage() {
   );
 
   const init = async (groupId: string) => {
-    try {
-      setLoading(true);
+    setLoading(true);
 
+    try {
       const [groupDetailsResponse, membersResponse, transactionResponse] =
         await Promise.all([
           services.group.getGroupById(groupId),
@@ -54,16 +53,19 @@ export default function GroupDetailPage() {
           services.transaction.getTransactionsByGroup(groupId)
         ]);
 
-      if (groupDetailsResponse && membersResponse && transactionResponse) {
-        states.group.setState((prev) => ({
-          ...prev,
-          details: {
-            ...groupDetailsResponse,
-            members: membersResponse,
-            expenses: transactionResponse
-          }
-        }));
+      if (!groupDetailsResponse || !membersResponse || !transactionResponse) {
+        router.push("/groups");
+        return;
       }
+
+      states.group.setState((prev) => ({
+        ...prev,
+        details: {
+          ...groupDetailsResponse,
+          members: membersResponse,
+          expenses: transactionResponse
+        }
+      }));
     } catch (error) {
       console.log("Error fetching group details:", error);
       router.push("/groups");
@@ -109,13 +111,13 @@ export default function GroupDetailPage() {
           isLoading={loading}
           text="Loading group details, please wait..."
         >
-          <FlatList
+          <SwipeListView
             data={group.details?.expenses}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }: { item: Transaction | Member }) => (
+            renderItem={({ item }: { item: Transaction }) => (
               <ExpenseItem
                 key={item.id}
-                expense={item as Transaction}
+                expense={item}
                 onOpen={() =>
                   router.push(
                     `/groups/${params.id}/expense-details?transactionId=${item.id}`
@@ -128,6 +130,25 @@ export default function GroupDetailPage() {
                 <Divider className="border-secondary-100" />
               </Box>
             )}
+            renderHiddenItem={({ item }) => (
+              <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
+                <Button
+                  variant="solid"
+                  className="rounded-full h-[40] w-[40] p-0"
+                >
+                  <Icon as="edit" className="text-background-0" />
+                </Button>
+                <Button
+                  variant="solid"
+                  action="negative"
+                  className="rounded-full h-[40] w-[40] p-0"
+                >
+                  <Icon as="delete-forever" className="text-background-0" />
+                </Button>
+              </HStack>
+            )}
+            rightOpenValue={-116}
+            disableRightSwipe
             ListEmptyComponent={() => (
               <VStack className="flex-1 justify-center items-center py-4">
                 <Text className="text-secondary-950">
@@ -193,9 +214,7 @@ export default function GroupDetailPage() {
               className="flex-1"
               text="Add Expense"
               icon={<Icon as="post-add" className="text-background-0" />}
-              onPress={() =>
-                router.push(`/home/add-expense?groupId=${params.id}`)
-              }
+              onPress={() => router.push(`/groups/${params.id}/add-expense`)}
             />
           </Box>
         </LoadingWrapper>
@@ -212,7 +231,7 @@ function ExpenseItem({
   onOpen: () => void;
 }) {
   return (
-    <Pressable onPress={onOpen}>
+    <Pressable onPress={onOpen} className="bg-background-0">
       <HStack className="justify-between items-center py-3 px-4 rounded-lg">
         <VStack className="flex-1">
           <Text className="text-lg" numberOfLines={2} ellipsizeMode="tail">

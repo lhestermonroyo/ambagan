@@ -16,8 +16,8 @@ import { useEffect, useMemo, useState } from "react";
 export default function AddExpenseScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const isQuick = params.quick === "true";
-  const groupId = params.groupId as string | undefined;
+  const groupId = params.id as string | undefined;
+  const isQuick = groupId === "[id]";
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -77,22 +77,24 @@ export default function AddExpenseScreen() {
     try {
       const members = await services.member.getMembersByGroupId(groupId);
 
-      if (members) {
-        const includedMembers = members.map((member) => ({
-          ...member,
-          isIncluded: true
-        }));
+      if (!members) return;
 
-        const payer = includedMembers.find(
-          (member) => member.id === user.details?.id
-        );
+      const includedMembers = members.map((member) => ({
+        ...member,
+        isIncluded: true
+      }));
 
-        if (payer) {
-          setValues((prevValues) => ({ ...prevValues, payer }));
-        }
+      const payer = includedMembers.find(
+        (member) => member.id === user.details?.id
+      );
 
-        setMembers(includedMembers);
+      if (!payer) {
+        throw new Error("Current user is not a member of the group");
       }
+
+      setValues((prevValues) => ({ ...prevValues, payer }));
+
+      setMembers(includedMembers);
     } catch (error) {
       console.error("Error fetching group members:", error);
     }
@@ -146,9 +148,9 @@ export default function AddExpenseScreen() {
       return;
     }
 
-    try {
-      setSubmitting(true);
+    setSubmitting(true);
 
+    try {
       const expensePayload = {
         amount: parseFloat(values.amount),
         description: values.description,
@@ -167,15 +169,16 @@ export default function AddExpenseScreen() {
         mappedSplits
       );
 
-      if (response) {
-        showToast(
-          "Expense Created",
-          "Your expense has been created successfully.",
-          "success"
-        );
-
-        handleBack();
+      if (!response) {
+        throw new Error("Failed to create expense");
       }
+
+      showToast(
+        "Expense Created",
+        "Your expense has been created successfully.",
+        "success"
+      );
+      handleBack();
     } catch (error) {
       console.log("Error", error);
       showToast(
@@ -191,10 +194,10 @@ export default function AddExpenseScreen() {
   const handleBack = () => {
     handleReset();
 
-    if (isQuick) {
-      router.push("/home");
-    } else {
+    if (!isQuick && groupId) {
       router.push(`/groups/${groupId || ""}`);
+    } else {
+      router.push("/home");
     }
   };
 
@@ -250,10 +253,7 @@ export default function AddExpenseScreen() {
     return (
       <FormLayout
         title={isQuick ? "Quick Expense" : "Add Expense"}
-        onBack={() => {
-          handleReset();
-          handleBack();
-        }}
+        onBack={handleBack}
         footer={[
           <FormButton
             className="flex-1"
@@ -282,7 +282,7 @@ export default function AddExpenseScreen() {
           setValues={setValues}
           formErrors={formErrors}
           members={members}
-          isLockedGroup={!!groupId}
+          isLockedGroup={!isQuick}
         />
       </FormLayout>
     );

@@ -43,13 +43,13 @@ export default function Index() {
     try {
       const response = await services.user.getUserById(id);
 
-      if (response) {
-        states.user.setState((prev) => ({
-          ...prev,
-          details: response
-        }));
-        router.push("/home");
-      }
+      if (!response) return;
+
+      states.user.setState((prev) => ({
+        ...prev,
+        details: response
+      }));
+      router.push("/home");
     } catch (error) {
       console.log("Error fetching user:", error);
       states.user.setState((prev) => ({

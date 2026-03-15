@@ -52,18 +52,19 @@ export default function GroupsScreen() {
   }, [searchInput]);
 
   const fetchGroup = async () => {
+    setLoading(true);
+
     try {
-      setLoading(true);
       const groups = await services.group.getGroupsByUserId(
         user.details?.id || ""
       );
 
-      if (groups) {
-        states.group.setState((prev) => ({
-          ...prev,
-          groups
-        }));
-      }
+      if (!groups) return;
+
+      states.group.setState((prev) => ({
+        ...prev,
+        groups
+      }));
     } catch (error) {
       console.error("Failed to fetch groups:", error);
     } finally {
@@ -106,26 +107,18 @@ export default function GroupsScreen() {
               key={item.id}
             />
           )}
-          renderHiddenItem={() => (
-            <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2">
+          renderHiddenItem={({ item }) => (
+            <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
               <Button
                 variant="solid"
                 className="rounded-full h-[40] w-[40] p-0"
-                onPress={() => router.push("/groups/create")}
+                onPress={() => router.push(`/groups/${item.id}/edit`)}
               >
                 <Icon as="edit" className="text-background-0" />
               </Button>
-              <Button
-                variant="solid"
-                action="negative"
-                className="rounded-full h-[42] w-[42] p-0"
-                onPress={() => router.push("/groups/create")}
-              >
-                <Icon as="delete-outline" className="text-background-0" />
-              </Button>
             </HStack>
           )}
-          rightOpenValue={-150}
+          rightOpenValue={-70}
           disableRightSwipe
           ItemSeparatorComponent={() => (
             <Box className="mx-4">
@@ -199,6 +192,7 @@ function GroupItem({
             </Text>
           </HStack>
         </VStack>
+        <Icon as="chevron-right" className="text-secondary-950" />
       </HStack>
     </Pressable>
   );

@@ -49,7 +49,7 @@ export default function AddExpenseStep({
   isLockedGroup = false
 }: AddExpenseStepProps) {
   return (
-    <ScrollView>
+    <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
       <VStack className="gap-y-6 p-4">
         <AmountInput
           label="Amount to Split"

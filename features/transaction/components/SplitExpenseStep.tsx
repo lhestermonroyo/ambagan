@@ -9,16 +9,11 @@ import { Input, InputField, InputSlot } from "@/components/ui/input";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
-import {
-  Toast,
-  ToastDescription,
-  ToastTitle,
-  useToast
-} from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast";
 import { VStack } from "@/components/ui/vstack";
 import { Member } from "@/types/groups";
 import { splitTypes } from "@/utils/constants";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   getAmountPerPerson,
   getPercentagePerPerson
@@ -71,7 +66,7 @@ export default function SplitSelection({
               : "0.00",
           percentage:
             tab === "equal" ? (100 / members.length).toFixed(2) : "0.00",
-          isIncluded: tab === "equal"
+          isIncluded: tab === "equal" ? true : false
         };
       } else {
         initialSplits[member.id] = splits[member.id];
@@ -79,7 +74,6 @@ export default function SplitSelection({
     });
 
     if (tab === "equal") {
-      // For equal split, recalculate amounts
       const includedMembers = Object.entries(initialSplits).filter(
         ([_, split]) => split.isIncluded
       );
@@ -97,9 +91,15 @@ export default function SplitSelection({
             percentages[idx]?.toFixed(2) || "0";
           idx++;
         } else {
-          initialSplits[userId].amount = "0.00";
+          initialSplits[userId].amount = "";
           initialSplits[userId].percentage = "0";
         }
+      });
+    } else {
+      Object.keys(initialSplits).forEach((userId) => {
+        initialSplits[userId].amount = "";
+        initialSplits[userId].percentage = "";
+        initialSplits[userId].isIncluded = true;
       });
     }
 
@@ -226,36 +226,24 @@ export default function SplitSelection({
             <Divider className="border-secondary-100" />
           </Box>
         )}
-        renderItem={({ item: member }) => {
-          const canFillRemainingPercentage =
-            tab === "percentage" && totalPercentage < 100;
-          const canFillRemainingCustom =
-            tab === "custom" && totalSplitAmount < totalAmount;
-
-          return (
-            <MemberItem
-              member={member}
-              splitType={tab}
-              split={
-                splits[member.id] || {
-                  amount: "0.00",
-                  percentage: "0.00",
-                  isIncluded: false
-                }
+        renderItem={({ item: member }) => (
+          <MemberItem
+            member={member}
+            splitType={tab}
+            split={
+              splits[member.id] || {
+                amount: "0.00",
+                percentage: "0",
+                isIncluded: false
               }
-              canFillRemainingPercentage={canFillRemainingPercentage}
-              canFillRemainingCustom={canFillRemainingCustom}
-              totalAmount={totalAmount}
-              totalPercentage={totalPercentage}
-              totalSplitAmount={totalSplitAmount}
-              onToggle={() => toggleMemberInclusion(member.id)}
-              onAmountChange={(amount) => updateSplitAmount(member.id, amount)}
-              onPercentageChange={(percentage) =>
-                updateSplitPercentage(member.id, percentage)
-              }
-            />
-          );
-        }}
+            }
+            onToggle={() => toggleMemberInclusion(member.id)}
+            onAmountChange={(amount) => updateSplitAmount(member.id, amount)}
+            onPercentageChange={(percentage) =>
+              updateSplitPercentage(member.id, percentage)
+            }
+          />
+        )}
       />
 
       <Box className="p-4 bg-background-50 rounded-lg">
@@ -272,7 +260,12 @@ export default function SplitSelection({
 
         {tab === "percentage" && (
           <VStack className="items-center">
-            <Text className="text-lg">
+            <Text
+              className="text-lg"
+              style={{
+                color: totalPercentage > 100 ? "#ef4444" : undefined
+              }}
+            >
               {totalPercentage.toFixed(0)}% of 100%
             </Text>
             <Text className="text-secondary-950 text-sm">
@@ -289,7 +282,12 @@ export default function SplitSelection({
 
         {tab === "custom" && (
           <VStack className="items-center">
-            <Text className="text-lg">
+            <Text
+              className="text-lg"
+              style={{
+                color: totalSplitAmount > totalAmount ? "#ef4444" : undefined
+              }}
+            >
               ₱{totalSplitAmount.toFixed(2)} of ₱{totalAmount.toFixed(2)}
             </Text>
             <Text className="text-secondary-950 text-sm">
@@ -313,11 +311,6 @@ function MemberItem({
   member,
   splitType,
   split,
-  canFillRemainingPercentage = false,
-  canFillRemainingCustom = false,
-  totalAmount,
-  totalPercentage,
-  totalSplitAmount,
   onToggle,
   onAmountChange,
   onPercentageChange
@@ -325,88 +318,18 @@ function MemberItem({
   member: Member;
   splitType: string;
   split: { amount: string; percentage: string; isIncluded: boolean };
-  canFillRemainingPercentage: boolean;
-  canFillRemainingCustom: boolean;
-  totalAmount: number;
-  totalPercentage: number;
-  totalSplitAmount: number;
   onToggle: () => void;
   onAmountChange: (amount: string) => void;
   onPercentageChange: (percentage: string) => void;
 }) {
   const toast = useToast();
 
-  const handleToast = useCallback(
-    (title: string, description: string, type: any) => {
-      toast.show({
-        placement: "top",
-        duration: 5000,
-        render: ({ id }) => {
-          const uniqueToastId = "toast-" + id;
-
-          return (
-            <Toast nativeID={uniqueToastId} action={type} variant="outline">
-              <ToastTitle>{title}</ToastTitle>
-              <ToastDescription>{description}</ToastDescription>
-            </Toast>
-          );
-        }
-      });
-    },
-    [toast]
-  );
-
-  // Clamp input so total does not exceed 100% or totalAmount
-  const handleFillRemainingPercentage = () => {
-    const remaining = Math.max(0, 100 - totalPercentage);
-    const newValue = (parseFloat(split.percentage) || 0) + remaining;
-    const clampedValue = Math.min(
-      newValue,
-      100 - (totalPercentage - (parseFloat(split.percentage) || 0))
-    );
-    onPercentageChange(clampedValue.toFixed(0));
-  };
-
-  const handleFillRemainingCustom = () => {
-    const remaining = Math.max(0, totalAmount - totalSplitAmount);
-    const newValue = (parseFloat(split.amount) || 0) + remaining;
-    const clampedValue = Math.min(
-      newValue,
-      totalAmount - (totalSplitAmount - (parseFloat(split.amount) || 0))
-    );
-    onAmountChange(clampedValue.toFixed(2));
-  };
-
   const handleManualPercentageChange = (input: string) => {
-    let value = parseFloat(input) || 0;
-    const maxAllowed =
-      100 - (totalPercentage - (parseFloat(split.percentage) || 0));
-    if (value > maxAllowed) {
-      value = maxAllowed;
-      handleToast(
-        "Input Error",
-        `Max allowed is ${maxAllowed.toFixed(0)}%`,
-        "error"
-      );
-    }
-    onPercentageChange(value.toString());
+    onPercentageChange(input);
   };
 
-  // Clamp manual input for amount
   const handleManualAmountChange = (input: string) => {
-    let value = parseFloat(input) || 0;
-    const maxAllowed =
-      totalAmount - (totalSplitAmount - (parseFloat(split.amount) || 0));
-    if (value > maxAllowed) {
-      value = maxAllowed;
-      handleToast(
-        "Input Error",
-        `Max allowed is ₱${maxAllowed.toFixed(2)}`,
-        "error"
-      );
-      return;
-    }
-    onAmountChange(value.toString());
+    onAmountChange(input);
   };
 
   return (
@@ -457,11 +380,6 @@ function MemberItem({
                     </InputSlot>
                   </Input>
                 </HStack>
-                {canFillRemainingPercentage && (
-                  <Pressable onPress={handleFillRemainingPercentage}>
-                    <Text className="text-primary-500">Fill Remaining</Text>
-                  </Pressable>
-                )}
                 <Text className="text-secondary-950 text-sm">
                   ₱{split.amount || 0}
                 </Text>
@@ -493,11 +411,6 @@ function MemberItem({
                     />
                   </Input>
                 </HStack>
-                {canFillRemainingCustom && (
-                  <Pressable onPress={handleFillRemainingCustom}>
-                    <Text className="text-primary-500">Fill Remaining</Text>
-                  </Pressable>
-                )}
                 <Text className="text-secondary-950 text-sm">
                   {split.percentage || 0}%
                 </Text>

@@ -108,9 +108,9 @@ export default function CreateGroupScreen() {
       return;
     }
 
-    try {
-      setSubmitting(true);
+    setSubmitting(true);
 
+    try {
       const response = await services.group.saveGroup({
         name: values.name,
         avatar: values.avatar,
@@ -118,14 +118,16 @@ export default function CreateGroupScreen() {
         members: members.map((member) => member.id)
       });
 
-      if (response) {
-        showToast(
-          "Group Created",
-          "Your group has been successfully created.",
-          "success"
-        );
-        handleBack();
+      if (!response) {
+        throw new Error("Failed to create group");
       }
+
+      showToast(
+        "Group Created",
+        "Your group has been successfully created.",
+        "success"
+      );
+      handleBack();
     } catch (error) {
       console.error("Error creating group:", error);
       showToast(

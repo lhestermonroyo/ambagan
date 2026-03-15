@@ -70,20 +70,22 @@ export default function LoginScreen() {
       return;
     }
 
-    try {
-      setSubmitting(true);
+    setSubmitting(true);
 
+    try {
       const response = await services.auth.loginWithEmail(
         values.email.trim(),
         values.password.trim()
       );
 
-      if (response && response.session) {
-        states.user.setState((prev) => ({
-          ...prev,
-          session: response.session
-        }));
+      if (!response) {
+        throw new Error("Login failed");
       }
+
+      states.user.setState((prev) => ({
+        ...prev,
+        session: response.session
+      }));
     } catch (error) {
       console.log("Error logging in:", error);
       handleToast(
@@ -97,9 +99,9 @@ export default function LoginScreen() {
   };
 
   const handleLoginWithGoogle = async () => {
-    try {
-      setSubmitting(true);
+    setSubmitting(true);
 
+    try {
       const response = await services.auth.loginWithGoogle();
 
       console.log("response", response);

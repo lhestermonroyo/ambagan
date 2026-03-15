@@ -66,14 +66,6 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="home/add-expense/index"
-          options={{
-            href: null,
-            title: "Add Expense",
-            tabBarStyle: { display: "none" }
-          }}
-        />
-        <Tabs.Screen
           name="groups/[id]/index"
           options={{
             href: null,
@@ -94,6 +86,14 @@ export default function TabLayout() {
           options={{
             href: null,
             title: "Edit Group",
+            tabBarStyle: { display: "none" }
+          }}
+        />
+        <Tabs.Screen
+          name="groups/[id]/add-expense/index"
+          options={{
+            href: null,
+            title: "Add Expense",
             tabBarStyle: { display: "none" }
           }}
         />

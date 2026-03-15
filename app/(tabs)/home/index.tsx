@@ -41,12 +41,12 @@ export default function HomeScreen() {
         user.details?.id || ""
       );
 
-      if (groups) {
-        states.group.setState((prev) => ({
-          ...prev,
-          groups
-        }));
-      }
+      if (!groups) return;
+
+      states.group.setState((prev) => ({
+        ...prev,
+        groups
+      }));
     } catch (error) {
       console.error("Failed to fetch groups:", error);
     }
@@ -66,8 +66,8 @@ export default function HomeScreen() {
       <Box className="sticky top-0 bg-primary-400 px-4 pb-2 pt-20">
         <HStack className="gap-x-2 items-center">
           <VStack className="flex-1">
-            <Text className="text-white opacity-80">Hello,</Text>
-            <Text bold className="text-2xl text-white">
+            <Text className="text-background-0 opacity-80">Hello,</Text>
+            <Text bold className="text-2xl text-background-0">
               {user.details?.first_name} {user.details?.last_name}
             </Text>
           </VStack>
@@ -100,7 +100,7 @@ export default function HomeScreen() {
               <HeroButton
                 icon="bolt"
                 text="Quick Expense"
-                onPress={() => router.push("/home/add-expense?quick=true")}
+                onPress={() => router.push("/groups/[id]/add-expense")}
               />
               <HeroButton
                 text="Create Group"
@@ -155,10 +155,10 @@ function StatItem({
     <VStack className="py-4 flex-1">
       <HStack className="gap-x-4 items-center">
         <VStack className="gap-y-4 flex-1">
-          <Text className="text-white">
+          <Text className="text-background-0">
             {type === "RECEIVE" ? "They Owe You" : "You Owe"}
           </Text>
-          <Text bold className="text-5xl text-white">
+          <Text bold className="text-5xl text-background-0">
             ₱{amount.toFixed(2)}
           </Text>
         </VStack>
@@ -236,7 +236,7 @@ function HeroButton({
       <Box className="ml-[-8px]">
         <Icon as={icon} className="text-background-0" />
       </Box>
-      <ButtonText className="text-white">{text}</ButtonText>
+      <ButtonText className="text-background-0">{text}</ButtonText>
     </Button>
   );
 }

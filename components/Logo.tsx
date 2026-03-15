@@ -19,7 +19,7 @@ export default function Logo({ type = "splash" }: LogoProps) {
         <Box className="justify-center items-center bg-primary-0 rounded-2xl w-24 h-24">
           <HandCoins size={56} color={color} />
         </Box>
-        <Text bold className="text-white text-center" size="3xl">
+        <Text bold className="text-background-0 text-center" size="3xl">
           Ambagan PH
         </Text>
       </VStack>

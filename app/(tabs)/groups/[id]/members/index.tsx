@@ -16,7 +16,7 @@ import { Member } from "@/types/groups";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useState } from "react";
 
-export default function MembersPage() {
+export default function MembersScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
 

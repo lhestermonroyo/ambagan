@@ -10,6 +10,7 @@ import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import RequestPaidSheet from "@/features/transaction/components/RequestPaidSheet";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
@@ -25,7 +26,7 @@ const expenseDetailsTabTypes = [
   { label: "You", value: "you" }
 ];
 
-export default function ExpenseDetailsPage() {
+export default function ExpenseDetailsScreen() {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<string>(expenseDetailsTabTypes[0].value);
   const [splits, setSplits] = useState<MemberSplit[]>([]);
@@ -65,7 +66,7 @@ export default function ExpenseDetailsPage() {
   const fetchSplits = async (transactionId: string) => {
     setLoading(true);
 
-    try {
+    
       const response =
         await services.transaction.getSplitsByTransaction(transactionId);
 
@@ -139,7 +140,7 @@ export default function ExpenseDetailsPage() {
         text="Loading expense details, please wait..."
       >
         <FlatList
-          className="flex-1 w-full"
+          className="flex-1"
           data={formattedSplits}
           keyExtractor={(item) => item.member.id}
           renderItem={({ item }) => (
@@ -155,7 +156,7 @@ export default function ExpenseDetailsPage() {
             </Box>
           )}
           ListHeaderComponent={() => (
-            <VStack className="gap-y-6">
+            <VStack className="gap-y-6 pb-4">
               <VStack className="w-full gap-y-6 px-4">
                 <VStack className="items-center">
                   <Text className="text-xl" bold>
@@ -208,7 +209,7 @@ export default function ExpenseDetailsPage() {
                 </HStack>
               </VStack>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <HStack className="gap-x-2 px-4 pb-2">
+                <HStack className="gap-x-2 px-4">
                   {expenseDetailsTabTypes.map((type) => (
                     <FormButton
                       key={type.value}
@@ -236,6 +237,9 @@ function SplitItem({
   transaction: Transaction | null;
   split: MemberSplit;
 }) {
+  const [requestPaidSplitMember, setRequestPaidSplitMember] =
+    useState<MemberSplit | null>(null);
+
   const user = states.user.getState();
   const userDetails = user?.details;
 
@@ -244,77 +248,91 @@ function SplitItem({
   const isCurrentUserSplit = split.member.id === userDetails?.id;
 
   return (
-    <HStack className="p-4">
-      <HStack className="gap-x-2 flex-1">
-        <VStack className="items-center" style={{ width: 92 }}>
-          <AppAvatar
-            name={split.member.first_name}
-            uri={split.member.avatar || ""}
-          />
-          <Text>
-            {split.member.first_name} {split.member.last_name}
-          </Text>
-        </VStack>
-        <VStack className="flex-1 gap-y-4 items-center">
-          <VStack className="items-center gap-y-0">
-            <Text className="text-xl" bold>
-              ₱{split.amount.toFixed(2)}
+    <Fragment>
+      <HStack className="p-4">
+        <HStack className="gap-x-2 flex-1">
+          <VStack className="items-center" style={{ width: 92 }}>
+            <AppAvatar
+              name={split.member.first_name}
+              uri={split.member.avatar || ""}
+            />
+            <Text>
+              {split.member.first_name} {split.member.last_name}
             </Text>
-            <Icon as="arrow-right-alt" className="text-secondary-950" />
-            {isPayer ? (
-              <AppBadge text="Payer" action="success" />
-            ) : (
-              <Fragment>
-                {split.status === "paid" ? (
-                  <AppBadge text="Paid" action="success" />
-                ) : (
-                  <AppBadge text="Pending" action="warning" />
+          </VStack>
+          <VStack className="flex-1 gap-y-4 items-center">
+            <VStack className="items-center gap-y-0">
+              <Text className="text-xl" bold>
+                ₱{split.amount.toFixed(2)}
+              </Text>
+              <Icon as="arrow-right-alt" className="text-secondary-950" />
+              {isPayer ? (
+                <AppBadge text="Payer" action="success" />
+              ) : (
+                <Fragment>
+                  {split.status === "paid" ? (
+                    <AppBadge text="Paid" action="success" />
+                  ) : (
+                    <AppBadge text="Pending" action="warning" />
+                  )}
+                </Fragment>
+              )}
+            </VStack>
+            {split.status === "pending" ? (
+              <VStack className="items-center">
+                {!isPayer && isCurrentUserSplit && (
+                  <FormButton
+                    text="Request as Paid"
+                    icon={
+                      <Icon
+                        as="check-circle-outline"
+                        className="text-background-0"
+                      />
+                    }
+                    onPress={() => setRequestPaidSplitMember(split)}
+                  />
                 )}
-              </Fragment>
+                {!isPayer && isCurrentUserPayer && (
+                  <FormButton
+                    text="Mark as Paid"
+                    icon={
+                      <Icon
+                        as="check-circle-outline"
+                        className="text-background-0"
+                      />
+                    }
+                  />
+                )}
+              </VStack>
+            ) : (
+              <VStack className="items-center">
+                {!isPayer && isCurrentUserSplit && (
+                  <FormButton
+                    text="Undo Paid"
+                    variant="outline"
+                    icon={<Icon as="refresh" className="text-primary-400" />}
+                  />
+                )}
+              </VStack>
             )}
           </VStack>
-          {split.status === "pending" ? (
-            <VStack className="items-center">
-              {!isPayer && isCurrentUserSplit && (
-                <FormButton
-                  text="Request as Paid"
-                  icon={
-                    <Icon as="check-circle-outline" className="text-white" />
-                  }
-                />
-              )}
-              {!isPayer && isCurrentUserPayer && (
-                <FormButton
-                  text="Mark as Paid"
-                  icon={
-                    <Icon as="check-circle-outline" className="text-white" />
-                  }
-                />
-              )}
-            </VStack>
-          ) : (
-            <VStack className="items-center">
-              {!isPayer && isCurrentUserSplit && (
-                <FormButton
-                  text="Undo Paid"
-                  variant="outline"
-                  icon={<Icon as="refresh" className="text-primary-400" />}
-                />
-              )}
-            </VStack>
-          )}
-        </VStack>
 
-        <VStack className="items-center" style={{ width: 92 }}>
-          <AppAvatar
-            name={transaction?.paid_by.first_name || ""}
-            uri={transaction?.paid_by.avatar || ""}
-          />
-          <Text>
-            {transaction?.paid_by.first_name} {transaction?.paid_by.last_name}
-          </Text>
-        </VStack>
+          <VStack className="items-center" style={{ width: 92 }}>
+            <AppAvatar
+              name={transaction?.paid_by.first_name || ""}
+              uri={transaction?.paid_by.avatar || ""}
+            />
+            <Text>
+              {transaction?.paid_by.first_name} {transaction?.paid_by.last_name}
+            </Text>
+          </VStack>
+        </HStack>
       </HStack>
-    </HStack>
+      <RequestPaidSheet
+        isOpen={!!requestPaidSplitMember}
+        onClose={() => setRequestPaidSplitMember(null)}
+        splitMember={requestPaidSplitMember as MemberSplit}
+      />
+    </Fragment>
   );
 }

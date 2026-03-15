@@ -57,24 +57,24 @@ export default function SignUpScreen() {
   };
 
   const handleSubmit = async () => {
+    let errors: any = {};
+
+    if (!values.email) {
+      errors.email = "Email is required";
+    }
+
+    if (!values.password) {
+      errors.password = "Password is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    setSubmitting(true);
+
     try {
-      setSubmitting(true);
-
-      let errors: any = {};
-
-      if (!values.email) {
-        errors.email = "Email is required";
-      }
-
-      if (!values.password) {
-        errors.password = "Password is required";
-      }
-
-      if (Object.keys(errors).length > 0) {
-        setFormErrors(errors);
-        return;
-      }
-
       const response = await services.auth.signUp({
         email: values.email.trim(),
         password: values.password.trim(),
@@ -82,25 +82,29 @@ export default function SignUpScreen() {
         last_name: values.lastname.trim()
       });
 
-      if (response.user) {
-        const user = await services.user.saveUser({
-          id: response.user.id,
-          email: values.email.trim(),
-          first_name: values.firstname.trim(),
-          last_name: values.lastname.trim()
-        });
-
-        if (user.data) {
-          states.user.setState((prev) => ({
-            ...prev,
-            session: response.session
-          }));
-        }
+      if (!response.session || !response.user) {
+        throw new Error("Sign up failed");
       }
+
+      const user = await services.user.saveUser({
+        id: response.user.id,
+        email: values.email.trim(),
+        first_name: values.firstname.trim(),
+        last_name: values.lastname.trim()
+      });
+
+      if (!user) {
+        throw new Error("Failed to save user details");
+      }
+
+      states.user.setState((prev) => ({
+        ...prev,
+        session: response.session
+      }));
     } catch (error) {
       console.log("Error creating account:", error);
       handleToast(
-        "Login Failed",
+        "Sign Up Failed",
         "An error occurred while creating your account. Please try again.",
         "error"
       );
