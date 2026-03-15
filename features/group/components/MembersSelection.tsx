@@ -214,7 +214,7 @@ export default function MembersSelection({
                             )
                           }
                         >
-                          <VStack className="relative justify-center items-center gap-y-2 max-w-[70px]">
+                          <VStack className="relative justify-center items-center gap-y-2">
                             <VStack>
                               {!isCreator && (
                                 <Box className="absolute right-0 bottom-0 z-10 bg-primary-500 rounded-full p-1">
@@ -236,9 +236,7 @@ export default function MembersSelection({
                                 {member.first_name} {member.last_name}
                               </Text>
                               {isCreator && (
-                                <Text className="text-secondary-950">
-                                  Creator
-                                </Text>
+                                <AppBadge text="Creator" action="success" />
                               )}
                             </VStack>
                           </VStack>
@@ -348,7 +346,7 @@ function SelectedMemberItem({
             {isYou && <AppBadge text="You" />}
             {isCreator && <AppBadge text="Creator" />}
           </HStack>
-          <Text className="text-secondary-950">{item?.email}</Text>
+          <Text className="text-secondary-950 text-sm">{item?.email}</Text>
         </VStack>
       </HStack>
       {!isCreator && (
@@ -387,7 +385,7 @@ function UserItem({
               <Text className="text-lg">
                 {item?.first_name} {item?.last_name} {isCreator && "(Creator)"}
               </Text>
-              <Text className="text-secondary-950">{item?.email}</Text>
+              <Text className="text-secondary-950 text-sm">{item?.email}</Text>
             </VStack>
           </HStack>
           <CheckboxIndicator>

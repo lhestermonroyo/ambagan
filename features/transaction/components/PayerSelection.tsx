@@ -54,7 +54,9 @@ export default function PayerSelection({
                   </Text>
                   {user.details?.id === payer.id && <AppBadge text="You" />}
                 </HStack>
-                <Text className="text-secondary-950">{payer?.email}</Text>
+                <Text className="text-secondary-950 text-sm">
+                  {payer?.email}
+                </Text>
               </VStack>
             </HStack>
           </VStack>
@@ -139,7 +141,7 @@ function PayerSelectionActionSheet({
                             <AppBadge text="You" />
                           )}
                         </HStack>
-                        <Text className="text-secondary-950">
+                        <Text className="text-secondary-950 text-sm">
                           {item?.email}
                         </Text>
                       </VStack>

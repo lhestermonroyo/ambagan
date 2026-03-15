@@ -1,6 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
@@ -9,21 +10,38 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import TabLayout from "@/layouts/TabLayout";
+import services from "@/services";
 import states from "@/states";
 import { Group } from "@/types/groups";
+import { categories } from "@/utils/constants";
 import formatDate from "@/utils/formatDate";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 export default function GroupsScreen() {
+  const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
 
   const group = states.group.getState();
+  const user = states.user.getState();
+  const params = useLocalSearchParams();
+  const needsRefetch = params.refetch === "true";
 
   const router = useRouter();
+
+  useFocusEffect(
+    useMemo(
+      () => () => {
+        if (!group.groups.length || needsRefetch) {
+          fetchGroup();
+        }
+      },
+      [group.groups.length, needsRefetch]
+    )
+  );
 
   useEffect(() => {
     if (searchInput.length > 0) {
@@ -32,6 +50,26 @@ export default function GroupsScreen() {
       setSearching(false);
     }
   }, [searchInput]);
+
+  const fetchGroup = async () => {
+    try {
+      setLoading(true);
+      const groups = await services.group.getGroupsByUserId(
+        user.details?.id || ""
+      );
+
+      if (groups) {
+        states.group.setState((prev) => ({
+          ...prev,
+          groups
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch groups:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredGroups = useMemo(() => {
     if (searchInput.length === 0) {
@@ -56,80 +94,82 @@ export default function GroupsScreen() {
         </Button>
       ]}
     >
-      <SwipeListView
-        className="flex-1"
-        data={filteredGroups}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <GroupItem
-            details={item}
-            onOpen={() => router.push(`/groups/${item.id}`)}
-            key={item.id}
-          />
-        )}
-        renderHiddenItem={() => (
-          <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2">
-            <Button
-              variant="solid"
-              className="rounded-full h-[40] w-[40] p-0"
-              onPress={() => router.push("/groups/create")}
-            >
-              <Icon as="edit" className="text-background-0" />
-            </Button>
-            <Button
-              variant="solid"
-              action="negative"
-              className="rounded-full h-[42] w-[42] p-0"
-              onPress={() => router.push("/groups/create")}
-            >
-              <Icon as="delete-outline" className="text-background-0" />
-            </Button>
-          </HStack>
-        )}
-        rightOpenValue={-150}
-        disableRightSwipe
-        ItemSeparatorComponent={() => (
-          <Box className="mx-4">
-            <Divider className="border-secondary-100" />
-          </Box>
-        )}
-        ListHeaderComponent={useMemo(
-          () => (
-            <Box className="px-4 pb-4 bg-background-0">
-              <SearchInput
-                onChangeText={setSearchInput}
-                value={searchInput}
-                placeholder="Search group"
-              />
+      <LoadingWrapper isLoading={loading} text="Loading groups, please wait...">
+        <SwipeListView
+          className="flex-1"
+          data={filteredGroups}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <GroupItem
+              details={item}
+              onOpen={() => router.push(`/groups/${item.id}`)}
+              key={item.id}
+            />
+          )}
+          renderHiddenItem={() => (
+            <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2">
+              <Button
+                variant="solid"
+                className="rounded-full h-[40] w-[40] p-0"
+                onPress={() => router.push("/groups/create")}
+              >
+                <Icon as="edit" className="text-background-0" />
+              </Button>
+              <Button
+                variant="solid"
+                action="negative"
+                className="rounded-full h-[42] w-[42] p-0"
+                onPress={() => router.push("/groups/create")}
+              >
+                <Icon as="delete-outline" className="text-background-0" />
+              </Button>
+            </HStack>
+          )}
+          rightOpenValue={-150}
+          disableRightSwipe
+          ItemSeparatorComponent={() => (
+            <Box className="mx-4">
+              <Divider className="border-secondary-100" />
             </Box>
-          ),
-          [searchInput]
-        )}
-        ListEmptyComponent={() => {
-          if (searching) {
+          )}
+          ListHeaderComponent={useMemo(
+            () => (
+              <Box className="px-4 pb-4 bg-background-0">
+                <SearchInput
+                  onChangeText={setSearchInput}
+                  value={searchInput}
+                  placeholder="Search group"
+                />
+              </Box>
+            ),
+            [searchInput]
+          )}
+          ListEmptyComponent={() => {
+            if (searching) {
+              return (
+                <VStack className="flex-1 justify-center items-center py-4">
+                  <Text className="text-secondary-950">
+                    No results found on your search.
+                  </Text>
+                </VStack>
+              );
+            }
+
             return (
-              <VStack className="flex-1 justify-center items-center gap-y-2">
+              <VStack className="flex-1 justify-center items-center gap-y-4 py-4">
                 <Text className="text-secondary-950">
-                  No results found on your search.
+                  You have no groups yet.
                 </Text>
+                <FormButton
+                  text="Create your first group"
+                  onPress={() => router.push("/groups/create")}
+                />
               </VStack>
             );
-          }
-
-          return (
-            <VStack className="flex-1 justify-center items-center gap-y-4">
-              <Text className="text-secondary-950">
-                You have no groups yet.
-              </Text>
-              <FormButton
-                text="Create your first group"
-                onPress={() => router.push("/groups/create")}
-              />
-            </VStack>
-          );
-        }}
-        stickyHeaderIndices={[0]}
-      />
+          }}
+          stickyHeaderIndices={[0]}
+        />
+      </LoadingWrapper>
     </TabLayout>
   );
 }
@@ -149,14 +189,16 @@ function GroupItem({
           <Text className="text-lg" numberOfLines={2} ellipsizeMode="tail">
             {details.name}
           </Text>
-          <Text className="text-secondary-950">
-            {details.members_count}{" "}
-            {details.members_count === 1 ? "member" : "members"}
-          </Text>
+          <HStack className="gap-x-1 items-center">
+            <Text className="text-secondary-950 text-sm">
+              Joined {formatDate(details.created_at)}
+            </Text>
+            <Text>&bull;</Text>
+            <Text className="text-xs self-start py-1 px-2 bg-primary-100 text-primary-800 rounded-full">
+              {categories.find((cat) => cat.value === details?.category)?.label}
+            </Text>
+          </HStack>
         </VStack>
-        <Text className="text-secondary-950">
-          {formatDate(details.created_at)}
-        </Text>
       </HStack>
     </Pressable>
   );

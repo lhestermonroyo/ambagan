@@ -129,21 +129,23 @@ export const getGroupsByUserId = async (userId: string) => {
       `${tables.GROUPS_TBL} (
         id,
         created_at,
+        category,
         name,
         avatar
       )`
     )
-    .order("created_at", {
-      ascending: false,
-      foreignTable: tables.GROUPS_TBL
-    })
     .eq("user_id", userId);
 
   if (error) {
     throw error;
   }
 
-  const groups = (data as any[]).map((item) => item[tables.GROUPS_TBL]);
+  const groups = (data as any[])
+    .map((item) => item[tables.GROUPS_TBL])
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   const groupIds = groups.map((g: any) => g.id);
 
   let membersCount: Record<string, number> = {};

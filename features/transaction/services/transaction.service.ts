@@ -64,9 +64,11 @@ export const createExpense = async (
         user_id: split.userId,
         amount: split.amount,
         percentage: split.percentage,
-        status: "pending"
+        status: payerId === split.userId ? "paid" : "pending"
       }))
     );
+
+  console.log("splitResponses", splitResponses);
 
   if (splitResponses.error) {
     throw splitResponses.error;
@@ -87,6 +89,22 @@ export const getTransactionsByGroup = async (
     .eq("group_id", groupId)
     .eq("type", type)
     .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+export const getByTransactionById = async (id: string) => {
+  const { data, error } = await supabase
+    .from(tables.TRANSACTIONS_TBL)
+    .select(
+      `*, created_by:created_by!inner(id, email, first_name, last_name, avatar), paid_by:paid_by!inner(id, email, first_name, last_name, avatar)`
+    )
+    .eq("id", id)
+    .single();
 
   if (error) {
     throw error;

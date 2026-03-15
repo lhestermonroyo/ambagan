@@ -15,7 +15,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
-import { User } from "@/types/user";
+import { Member } from "@/types/groups";
 import { categories } from "@/utils/constants";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -33,7 +33,7 @@ export default function CreateGroupScreen() {
     category: ""
   }) as any;
   const [openSelectMembers, setOpenSelectMembers] = useState(false);
-  const [members, setMembers] = useState<User[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
 
   const user = states.user.getState();
 
@@ -45,7 +45,15 @@ export default function CreateGroupScreen() {
 
   useEffect(() => {
     if (user.session && user.details) {
-      setMembers([user.details]);
+      setMembers([
+        {
+          id: user.details.id,
+          first_name: user.details.first_name,
+          last_name: user.details.last_name,
+          email: user.details.email,
+          avatar: user.details.avatar
+        } as Member
+      ]);
     }
 
     return () => {
@@ -59,10 +67,22 @@ export default function CreateGroupScreen() {
       avatar: null,
       category: ""
     });
-    setMembers(user.details ? [user.details] : []);
+    setMembers(
+      user.details
+        ? [
+            {
+              id: user.details.id,
+              first_name: user.details.first_name,
+              last_name: user.details.last_name,
+              email: user.details.email,
+              avatar: user.details.avatar
+            } as Member
+          ]
+        : []
+    );
   };
 
-  const handleSaveMembers = (selectedMembers: User[]) => {
+  const handleSaveMembers = (selectedMembers: Member[]) => {
     setMembers(selectedMembers);
   };
 
@@ -122,7 +142,7 @@ export default function CreateGroupScreen() {
     handleReset();
 
     if (isGroup) {
-      router.push("/groups");
+      router.push("/groups?refetch=true");
     } else {
       router.push("/home");
     }

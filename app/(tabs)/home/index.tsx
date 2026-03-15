@@ -30,15 +30,15 @@ export default function HomeScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user.session) {
+    if (user.details) {
       fetchGroup();
     }
-  }, [user.session]);
+  }, [user.details]);
 
   const fetchGroup = async () => {
     try {
       const groups = await services.group.getGroupsByUserId(
-        user.session?.user.id || ""
+        user.details?.id || ""
       );
 
       if (groups) {

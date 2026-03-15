@@ -83,7 +83,7 @@ export default function AddExpenseStep({
           />
           {!isLockedGroup && (
             <FormControlHelper>
-              <FormControlHelperText className="text-secondary-950">
+              <FormControlHelperText className="text-secondary-950 text-sm">
                 Latest joined or created group will be selected by default. You
                 can change group by tapping the group card.
               </FormControlHelperText>
@@ -114,7 +114,7 @@ export default function AddExpenseStep({
             title="Upload Proof of Expense"
             onSelect={(result) => setValues({ ...values, receipt: result })}
           />
-          <Text className="text-secondary-950">
+          <Text className="text-secondary-950 text-sm">
             Proof could be a photo of receipt, screenshot of online payment, or
             any document that shows the expense details.
           </Text>

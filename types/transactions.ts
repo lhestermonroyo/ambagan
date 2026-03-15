@@ -23,7 +23,7 @@ export type MemberSplit = {
   member: UserPreview;
   amount: number;
   percentage: number;
-  status: "settled" | "pending";
+  status: "paid" | "pending";
 };
 
 export type TransactionPreview = Pick<

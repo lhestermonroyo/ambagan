@@ -97,6 +97,14 @@ export default function TabLayout() {
             tabBarStyle: { display: "none" }
           }}
         />
+        <Tabs.Screen
+          name="groups/[id]/expense-details/index"
+          options={{
+            href: null,
+            title: "Expense Details",
+            tabBarStyle: { display: "none" }
+          }}
+        />
       </Tabs>
     </View>
   );

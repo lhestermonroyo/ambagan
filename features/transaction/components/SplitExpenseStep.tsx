@@ -71,7 +71,7 @@ export default function SplitSelection({
               : "0.00",
           percentage:
             tab === "equal" ? (100 / members.length).toFixed(2) : "0.00",
-          isIncluded: tab === "equal" ? true : false
+          isIncluded: tab === "equal"
         };
       } else {
         initialSplits[member.id] = splits[member.id];
@@ -87,14 +87,15 @@ export default function SplitSelection({
         totalAmount,
         includedMembers.length
       );
-      const percentagePerPerson = getPercentagePerPerson(
-        includedMembers.length
-      );
-
+      const percentages = getPercentagePerPerson(includedMembers.length);
+      let idx = 0;
       Object.keys(initialSplits).forEach((userId) => {
         if (initialSplits[userId].isIncluded) {
-          initialSplits[userId].amount = amountPerPerson.toFixed(2);
-          initialSplits[userId].percentage = percentagePerPerson.toFixed(0);
+          initialSplits[userId].amount =
+            amountPerPerson[idx]?.toFixed(2) || "0";
+          initialSplits[userId].percentage =
+            percentages[idx]?.toFixed(2) || "0";
+          idx++;
         } else {
           initialSplits[userId].amount = "0.00";
           initialSplits[userId].percentage = "0";
@@ -117,21 +118,19 @@ export default function SplitSelection({
         totalAmount,
         includedMembers.length
       );
-      const percentagePerPerson = getPercentagePerPerson(
-        includedMembers.length
-      );
-
+      const percentages = getPercentagePerPerson(includedMembers.length);
+      let idx = 0;
       Object.keys(newSplits).forEach((userId) => {
         if (newSplits[userId].isIncluded) {
-          newSplits[userId].amount = amountPerPerson.toFixed(2);
-          newSplits[userId].percentage = percentagePerPerson.toFixed(0);
+          newSplits[userId].amount = amountPerPerson[idx]?.toFixed(2) || "0";
+          newSplits[userId].percentage = percentages[idx]?.toFixed(2) || "0";
+          idx++;
         } else {
           newSplits[userId].amount = "0.00";
           newSplits[userId].percentage = "0";
         }
       });
     } else if (!newSplits[userId].isIncluded) {
-      // If unchecked, reset their amount/percentage
       newSplits[userId].amount = "0.00";
       newSplits[userId].percentage = "0";
     }
@@ -196,11 +195,11 @@ export default function SplitSelection({
   return (
     <Fragment>
       <VStack className="gap-y-4 pb-4">
-        <VStack className="px-4">
+        <VStack className="px-4 items-center">
           <Text bold className="text-2xl">
             ₱{amount.toFixed(2)}
           </Text>
-          <Text className="text-secondary-950 text-lg">Amount to Split</Text>
+          <Text className="text-secondary-950 text-sm">Amount to Split</Text>
         </VStack>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -261,22 +260,22 @@ export default function SplitSelection({
 
       <Box className="p-4 bg-background-50 rounded-lg">
         {tab === "equal" && (
-          <VStack>
+          <VStack className="items-center">
             <Text className="text-lg">
-              ₱{equalSplits.toFixed(2)} per person
+              ₱{equalSplits[0]?.toFixed(2) || "0"} per person
             </Text>
-            <Text className="text-secondary-950">
+            <Text className="text-secondary-950 text-sm">
               ({includedCount} {includedCount === 1 ? "person" : "people"})
             </Text>
           </VStack>
         )}
 
         {tab === "percentage" && (
-          <VStack>
+          <VStack className="items-center">
             <Text className="text-lg">
               {totalPercentage.toFixed(0)}% of 100%
             </Text>
-            <Text className="text-secondary-950">
+            <Text className="text-secondary-950 text-sm">
               {Math.max(0, 100 - totalPercentage).toFixed(0)}% left to allocate
               (₱
               {Math.max(
@@ -289,11 +288,11 @@ export default function SplitSelection({
         )}
 
         {tab === "custom" && (
-          <VStack>
+          <VStack className="items-center">
             <Text className="text-lg">
               ₱{totalSplitAmount.toFixed(2)} of ₱{totalAmount.toFixed(2)}
             </Text>
-            <Text className="text-secondary-950">
+            <Text className="text-secondary-950 text-sm">
               ₱{Math.max(0, totalAmount - totalSplitAmount).toFixed(2)} left to
               allocate
             </Text>
@@ -301,7 +300,7 @@ export default function SplitSelection({
         )}
 
         {includedCount < 2 && (
-          <Text className="text-red-500 mt-2">
+          <Text className="text-red-500 text-sm mt-2">
             Please include at least 2 members or more to split the expense.
           </Text>
         )}
@@ -378,7 +377,6 @@ function MemberItem({
     onAmountChange(clampedValue.toFixed(2));
   };
 
-  // Clamp manual input for percentage
   const handleManualPercentageChange = (input: string) => {
     let value = parseFloat(input) || 0;
     const maxAllowed =
@@ -406,6 +404,7 @@ function MemberItem({
         `Max allowed is ₱${maxAllowed.toFixed(2)}`,
         "error"
       );
+      return;
     }
     onAmountChange(value.toString());
   };
@@ -435,7 +434,9 @@ function MemberItem({
             {splitType === "equal" && (
               <VStack className="items-end gap-y-2">
                 <Text className="text-lg">₱{split.amount}</Text>
-                <Text className="text-secondary-950">{split.percentage}%</Text>
+                <Text className="text-secondary-950 text-sm">
+                  {split.percentage}%
+                </Text>
               </VStack>
             )}
 
@@ -461,7 +462,9 @@ function MemberItem({
                     <Text className="text-primary-500">Fill Remaining</Text>
                   </Pressable>
                 )}
-                <Text className="text-secondary-950">₱{split.amount || 0}</Text>
+                <Text className="text-secondary-950 text-sm">
+                  ₱{split.amount || 0}
+                </Text>
               </VStack>
             )}
 
@@ -495,7 +498,7 @@ function MemberItem({
                     <Text className="text-primary-500">Fill Remaining</Text>
                   </Pressable>
                 )}
-                <Text className="text-secondary-950">
+                <Text className="text-secondary-950 text-sm">
                   {split.percentage || 0}%
                 </Text>
               </VStack>

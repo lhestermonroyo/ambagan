@@ -1,6 +1,8 @@
 import { differenceInDays, format, formatDistanceToNow } from "date-fns";
 
 const formatDate = (date: string) => {
+  if (!date) return "";
+
   const parsedDate = new Date(date);
   const daysDifference = differenceInDays(new Date(), parsedDate);
   const isLastYear = parsedDate.getFullYear() === new Date().getFullYear() - 1;

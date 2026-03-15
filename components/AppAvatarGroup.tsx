@@ -16,7 +16,7 @@ const AppAvatarGroup = ({
   size
 }: AppAvatarGroupProps) => {
   return (
-    <AvatarGroup className="self-start">
+    <AvatarGroup className="items-center">
       {items.slice(0, maxDisplay).map((avatar, index) => {
         return (
           <Avatar

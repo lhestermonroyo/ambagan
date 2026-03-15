@@ -99,6 +99,7 @@ export default function AddExpenseScreen() {
   };
 
   const handleReset = () => {
+    setStep(1);
     setValues((prev) => ({
       ...prev,
       amount: "",
@@ -143,6 +144,47 @@ export default function AddExpenseScreen() {
         "error"
       );
       return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const expensePayload = {
+        amount: parseFloat(values.amount),
+        description: values.description,
+        receipt: values.receipt,
+        groupId: values.group!.id,
+        payerId: values.payer!.id
+      };
+      const mappedSplits = Object.keys(splits).map((userId) => ({
+        userId,
+        amount: parseFloat(splits[userId].amount),
+        percentage: parseFloat(splits[userId].percentage)
+      }));
+
+      const response = await services.transaction.createExpense(
+        expensePayload,
+        mappedSplits
+      );
+
+      if (response) {
+        showToast(
+          "Expense Created",
+          "Your expense has been created successfully.",
+          "success"
+        );
+
+        handleBack();
+      }
+    } catch (error) {
+      console.log("Error", error);
+      showToast(
+        "Expense Creation Failed",
+        "An error occurred while creating the expense. Please try again.",
+        "error"
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -216,13 +258,11 @@ export default function AddExpenseScreen() {
           <FormButton
             className="flex-1"
             variant="outline"
-            text="Save & Exit"
-            disabled={
-              !values.amount ||
-              !values.description ||
-              !values.group ||
-              !values.payer
-            }
+            text="Cancel"
+            onPress={() => {
+              handleBack();
+              handleReset();
+            }}
           />,
           <FormButton
             className="flex-1"

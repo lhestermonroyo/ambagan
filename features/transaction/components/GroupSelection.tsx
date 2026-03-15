@@ -73,7 +73,7 @@ export default function GroupSelection({
               <AppAvatar name={group.name} uri={group.avatar || ""} />
               <VStack>
                 <Text className="text-lg">{group.name}</Text>
-                <Text className="text-secondary-950">
+                <Text className="text-secondary-950 text-sm">
                   Joined {formatDate(group.created_at)}
                 </Text>
               </VStack>
@@ -110,72 +110,70 @@ function GroupSelectionActionSheet({
   const group = states.group.getState();
 
   return (
-    <>
-      <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[92]}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full p-4 flex-1" space="xl">
-            <Text bold className="text-xl">
-              Select Group to Add Expense
-            </Text>
-            <RadioGroup
-              value={selectedGroup.toString()}
-              onChange={(value) => {
-                setSelectedGroup(value);
-              }}
-            >
-              {group.groups.map((item, index) => (
-                <Radio
-                  key={item.id}
-                  value={item.id.toString()}
-                  size="lg"
-                  className={`justify-between ${index !== group.groups.length - 1 && "border-b border-background-200"}`}
-                >
-                  <HStack className="flex-1 items-center gap-x-2">
-                    <AppAvatar name={item.name} uri={item.avatar || ""} />
-                    <VStack className="gap-y-4 py-4">
-                      <VStack>
-                        <Text className="text-lg">{item?.name}</Text>
-                        <Text className="text-secondary-950">
-                          Joined {formatDate(item?.created_at)}
-                        </Text>
-                      </VStack>
+    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[92]}>
+      <ActionsheetBackdrop />
+      <ActionsheetContent className="p-0">
+        <ActionsheetDragIndicatorWrapper>
+          <ActionsheetDragIndicator />
+        </ActionsheetDragIndicatorWrapper>
+        <VStack className="w-full p-4 flex-1" space="xl">
+          <Text bold className="text-xl">
+            Select Group to Add Expense
+          </Text>
+          <RadioGroup
+            value={selectedGroup.toString()}
+            onChange={(value) => {
+              setSelectedGroup(value);
+            }}
+          >
+            {group.groups.map((item, index) => (
+              <Radio
+                key={item.id}
+                value={item.id.toString()}
+                size="lg"
+                className={`justify-between ${index !== group.groups.length - 1 && "border-b border-background-200"}`}
+              >
+                <HStack className="flex-1 items-center gap-x-2">
+                  <AppAvatar name={item.name} uri={item.avatar || ""} />
+                  <VStack className="gap-y-4 py-4">
+                    <VStack>
+                      <Text className="text-lg">{item?.name}</Text>
+                      <Text className="text-secondary-950 text-sm">
+                        Joined {formatDate(item?.created_at)}
+                      </Text>
                     </VStack>
-                  </HStack>
-                  <RadioIndicator>
-                    <RadioIcon as={CircleIcon} />
-                  </RadioIndicator>
-                </Radio>
-              ))}
-            </RadioGroup>
-          </VStack>
-          <Box className="sticky bottom-0 w-full px-4 pt-4">
-            <HStack className="gap-x-2">
-              <FormButton
-                className="flex-1"
-                variant="outline"
-                text="Cancel"
-                onPress={onClose}
-              />
-              <FormButton
-                className="flex-1"
-                text="Save Group"
-                disabled={!selectedGroup}
-                onPress={() => {
-                  const newGroup = group.groups.find(
-                    (g) => g.id.toString() === selectedGroup
-                  );
-                  if (newGroup) onChangeGroup(newGroup);
-                  onClose();
-                }}
-              />
-            </HStack>
-          </Box>
-        </ActionsheetContent>
-      </Actionsheet>
-    </>
+                  </VStack>
+                </HStack>
+                <RadioIndicator>
+                  <RadioIcon as={CircleIcon} />
+                </RadioIndicator>
+              </Radio>
+            ))}
+          </RadioGroup>
+        </VStack>
+        <Box className="sticky bottom-0 w-full px-4 pt-4">
+          <HStack className="gap-x-2">
+            <FormButton
+              className="flex-1"
+              variant="outline"
+              text="Cancel"
+              onPress={onClose}
+            />
+            <FormButton
+              className="flex-1"
+              text="Save Group"
+              disabled={!selectedGroup}
+              onPress={() => {
+                const newGroup = group.groups.find(
+                  (g) => g.id.toString() === selectedGroup
+                );
+                if (newGroup) onChangeGroup(newGroup);
+                onClose();
+              }}
+            />
+          </HStack>
+        </Box>
+      </ActionsheetContent>
+    </Actionsheet>
   );
 }
