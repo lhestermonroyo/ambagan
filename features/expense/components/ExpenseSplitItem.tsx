@@ -23,7 +23,7 @@ export default memo(function ExpenseSplitItem({
   item: ExpenseSplitPreview;
   onOpen: () => void;
 }) {
-  const user = states.user.getState();
+  const user = states.user();
   const { details: userDetails } = user;
 
   const member = item.member;

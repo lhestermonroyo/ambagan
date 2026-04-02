@@ -16,6 +16,7 @@ import PayerTransactionHeader from "@/features/expense/components/PayerTransacti
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
 import StatusBadge from "@/features/expense/components/StatusBadge";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
@@ -42,8 +43,8 @@ export default function ExpenseDetailsScreen() {
     split: null as ExpenseSplit | null
   });
 
-  const user = states.user.getState();
-  const group = states.group.getState();
+  const user = states.user();
+  const group = states.group();
   const { details: groupDetails } = group;
   const { details: userDetails } = user;
 
@@ -51,6 +52,8 @@ export default function ExpenseDetailsScreen() {
   const params = useLocalSearchParams();
   const expenseId = params.expenseId as string;
   const groupId = params.groupId as string;
+
+  const showToast = useAppToast();
 
   useFocusEffect(
     useMemo(
@@ -160,10 +163,16 @@ export default function ExpenseDetailsScreen() {
       const deleteResponse = await services.expense.deleteExpense(expenseId);
 
       if (deleteResponse.success) {
+        showToast("Success", "Expense deleted successfully", "success");
         router.push(`/groups/${groupId}`);
       }
     } catch (error) {
       console.log("Error deleting expense:", error);
+      showToast(
+        "Error",
+        "Failed to delete expense. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -310,7 +319,7 @@ function ExpenseSplitItem({
   onReviewRequestPaid?: (split: ExpenseSplit) => void;
   onMarkAsPaid?: (split: ExpenseSplit) => void;
 }) {
-  const { details: userDetails } = states.user.getState();
+  const { details: userDetails } = states.user();
 
   const isPayer = split.member.id === expense?.paid_by.id;
   const isCurrentUserPayer = expense?.paid_by.id === userDetails?.id;

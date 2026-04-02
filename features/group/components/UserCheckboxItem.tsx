@@ -18,7 +18,7 @@ export function UserCheckboxItem({
   item: User;
   disabled?: boolean;
 }) {
-  const { details: userDetails } = states.user.getState();
+  const { details: userDetails } = states.user();
   const isCreator = item.id === userDetails?.id;
 
   return (

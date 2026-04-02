@@ -36,7 +36,7 @@ export default function CreateGroupScreen() {
   const [openSelectMembers, setOpenSelectMembers] = useState(false);
   const [finalMembers, setFinalMembers] = useState<Member[]>([]);
 
-  const user = states.user.getState();
+  const user = states.user();
 
   const params = useLocalSearchParams();
   const router = useRouter();

@@ -16,7 +16,7 @@ import { format, parseISO } from "date-fns";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 
-const tabs = ["All", "They Owe", "You Owe", "You Paid"] as const;
+const tabs = ["All", "They Owe You", "You Owe", "You Paid"] as const;
 
 export default function ActivitiesScreen() {
   const [initialized, setInitialized] = useState(false);
@@ -64,20 +64,15 @@ export default function ActivitiesScreen() {
 
       if (!response) return;
 
-      console.log(response.pagination);
-
       states.expense.setState((prev) => ({
         ...prev,
         list: response.data || []
       }));
-      setPage(response.pagination?.page || 0);
       setHasNextPage(response.pagination?.hasNext || false);
     } catch (error) {
       console.log("Error fetching recent expenses", error);
     } finally {
-      if (!isInitialized) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
@@ -85,20 +80,21 @@ export default function ActivitiesScreen() {
     try {
       setLoadMoreLoading(true);
 
+      const nextPage = page + 1;
       const response = await services.expense.getActivitiesByUserId(
         userDetails?.id || "",
-        page,
+        nextPage,
         10,
         true
       );
 
-      if (!response || response.length === 0) return;
+      if (!response) return;
 
       states.expense.setState((prev) => ({
         ...prev,
         list: [...prev.list, ...(response.data || [])]
       }));
-      setPage(response.pagination?.page || 0);
+      setPage(nextPage);
       setHasNextPage(response.pagination?.hasNext || false);
     } catch (error) {
       console.log("Error loading more activities", error);
@@ -112,7 +108,7 @@ export default function ActivitiesScreen() {
 
     if (tab === "All") {
       filteredList = expenseList;
-    } else if (tab === "They Owe") {
+    } else if (tab === "They Owe You") {
       filteredList = expenseList.filter(
         (item) =>
           item.paid_by === userDetails?.id && item.paid_by !== item.member.id

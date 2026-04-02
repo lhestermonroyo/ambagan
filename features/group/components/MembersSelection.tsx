@@ -44,7 +44,7 @@ export default function MembersSelection({
   const [users, setUsers] = useState<User[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
 
-  const user = states.user.getState();
+  const user = states.user();
   const { details: userDetails } = user;
 
   useEffect(() => {
@@ -303,7 +303,7 @@ function FinalSelectedMemberItem({
   item: Member;
   onRemove: () => void;
 }) {
-  const user = states.user.getState();
+  const user = states.user();
   const { details: userDetails } = user;
 
   const isCreator = item.id === userDetails?.id;

@@ -15,7 +15,7 @@ export default function GroupItem({
   details: Group;
   onOpen: () => void;
 }) {
-  const { details: userDetails } = states.user.getState();
+  const { details: userDetails } = states.user();
   const isCreator = details.creator?.id === userDetails?.id;
 
   return (

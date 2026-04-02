@@ -87,6 +87,20 @@ export const updateGroup = async (
     throw new Error("User not authenticated");
   }
 
+  const { data: groupData, error: groupError } = await supabase
+    .from(tables.GROUPS_TBL)
+    .select("creator")
+    .eq("id", groupId)
+    .single();
+
+  if (groupError) {
+    throw groupError;
+  }
+
+  if (groupData.creator !== user.data.user.id) {
+    throw new Error("Only the group creator can update the group");
+  }
+
   const { name, category, avatar } = payload;
 
   let avatarUrl: string | null = null;
@@ -119,6 +133,82 @@ export const updateGroup = async (
 
   return {
     message: "Group updated successfully"
+  };
+};
+
+export const deleteGroup = async (groupId: string) => {
+  const user = await supabase.auth.getUser();
+
+  if (!user.data.user) {
+    throw new Error("User not authenticated");
+  }
+
+  const { data: groupData, error: groupError } = await supabase
+    .from(tables.GROUPS_TBL)
+    .select("creator")
+    .eq("id", groupId)
+    .single();
+
+  if (groupError) {
+    throw groupError;
+  }
+
+  if (groupData.creator !== user.data.user.id) {
+    throw new Error("Only the group creator can delete the group");
+  }
+
+  const { data: expenses, error: expensesError } = await supabase
+    .from(tables.EXPENSES_TBL)
+    .select("id")
+    .eq("group_id", groupId);
+
+  if (expensesError) {
+    throw expensesError;
+  }
+
+  const expenseIds = expenses.map((e) => e.id);
+
+  if (expenseIds.length > 0) {
+    const { error: deleteExpensesError } = await supabase
+      .from(tables.EXPENSES_TBL)
+      .delete()
+      .in("id", expenseIds);
+
+    if (deleteExpensesError) {
+      throw deleteExpensesError;
+    }
+
+    const { error: deleteSplitsError } = await supabase
+      .from(tables.EXPENSE_SPLITS_TBL)
+      .delete()
+      .in("expense_id", expenseIds);
+
+    if (deleteSplitsError) {
+      throw deleteSplitsError;
+    }
+  }
+
+  const { error: membersError } = await supabase
+    .from(tables.GROUP_MEMBERS_TBL)
+    .delete()
+    .eq("group_id", groupId);
+
+  if (membersError) {
+    throw membersError;
+  }
+
+  const groupResponse = await supabase
+    .from(tables.GROUPS_TBL)
+    .delete()
+    .eq("id", groupId);
+
+  if (groupResponse.error) {
+    throw groupResponse.error;
+  }
+
+  return {
+    success: true,
+    message: "Group deleted successfully"
   };
 };
 

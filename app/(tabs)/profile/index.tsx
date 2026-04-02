@@ -44,7 +44,7 @@ const settingsOptions: SettingsOption[] = [
 ];
 
 export default function ProfileScreen() {
-  const user = states.user.getState();
+  const user = states.user();
   const { details: userDetails } = user;
 
   return (

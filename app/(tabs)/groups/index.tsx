@@ -1,3 +1,4 @@
+import ConfirmIconButton from "@/components/ConfirmIconButton";
 import Icon from "@/components/Icon";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
@@ -9,6 +10,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import GroupItem from "@/features/group/components/GroupItem";
+import useAppToast from "@/hooks/use-app-toast";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
@@ -18,14 +20,16 @@ import { SwipeListView } from "react-native-swipe-list-view";
 
 export default function GroupsScreen() {
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [initialized, setInitialized] = useState(false);
 
-  const { list } = states.group.getState();
-  const { details: userDetails } = states.user.getState();
+  const { list } = states.group();
+  const { details: userDetails } = states.user();
 
   const router = useRouter();
+  const showToast = useAppToast();
 
   useFocusEffect(
     useMemo(
@@ -78,6 +82,23 @@ export default function GroupsScreen() {
     }
   };
 
+  const handleDeleteGroup = async (groupId: string) => {
+    setDeleting(true);
+    try {
+      const response = await services.group.deleteGroup(groupId);
+
+      if (response.success) {
+        showToast("Success", "Group deleted successfully.", "success");
+        await fetchGroup(true);
+      }
+    } catch (error) {
+      console.error("Failed to delete group:", error);
+      showToast("Error", "Failed to delete group. Please try again.", "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const filteredGroups = useMemo(() => {
     if (searchInput.length === 0) {
       return list;
@@ -126,9 +147,23 @@ export default function GroupsScreen() {
               >
                 <Icon as="edit" className="text-background-0" />
               </Button>
+              {item.creator.id === userDetails?.id && (
+                <ConfirmIconButton
+                  icon="delete"
+                  iconClassName="text-background-0"
+                  variant="solid"
+                  action="negative"
+                  className="rounded-full h-[40] w-[40] p-0"
+                  confirmTitle="Delete Group"
+                  confirmDescription="Deleting this group will remove all associated expenses and members. Are you sure you want to proceed?"
+                  isLoading={deleting}
+                  isDelete
+                  onConfirm={() => handleDeleteGroup(item.id)}
+                />
+              )}
             </HStack>
           )}
-          rightOpenValue={-70}
+          rightOpenValue={-116}
           disableRightSwipe
           ItemSeparatorComponent={() => (
             <Box className="mx-4">

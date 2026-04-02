@@ -14,6 +14,7 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
@@ -26,13 +27,17 @@ import { useMemo, useState } from "react";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 export default function GroupDetailsScreen() {
-  const router = useRouter();
-  const params = useLocalSearchParams();
-  const groupId = params.groupId as string | undefined;
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const { details: groupDetails } = states.group();
   const { details: userDetails } = states.user();
+
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const groupId = params.groupId as string | undefined;
+
+  const showToast = useAppToast();
 
   useFocusEffect(
     useMemo(
@@ -83,15 +88,38 @@ export default function GroupDetailsScreen() {
     }
   };
 
+  const handleDeleteGroup = async () => {
+    setDeleting(true);
+    try {
+      const deleteResponse = await services.group.deleteGroup(groupId!);
+
+      if (deleteResponse.success) {
+        showToast("Success", "Group deleted successfully", "success");
+        router.push("/groups");
+      }
+    } catch (error) {
+      console.log("Error deleting group:", error);
+      showToast("Error", "Failed to delete group. Please try again.", "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleDeleteExpense = async (expenseId: string) => {
     try {
       const deleteResponse = await services.expense.deleteExpense(expenseId);
 
       if (deleteResponse.success) {
+        showToast("Success", "Expense deleted successfully", "success");
         init(groupId!, true);
       }
     } catch (error) {
       console.log("Error deleting expense:", error);
+      showToast(
+        "Error",
+        "Failed to delete expense. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -152,7 +180,19 @@ export default function GroupDetailsScreen() {
           onPress={() => router.push(`/groups/${groupId}/edit`)}
         >
           <Icon as="edit" size={28} className="text-secondary-950" />
-        </Button>
+        </Button>,
+        <ConfirmIconButton
+          icon="delete"
+          iconSize={28}
+          iconClassName="text-secondary-950"
+          variant="link"
+          className="rounded-full"
+          confirmTitle="Delete Group"
+          confirmDescription="Deleting this group will remove all associated expenses and payments. Are you sure you want to proceed?"
+          isDelete
+          isLoading={deleting}
+          onConfirm={handleDeleteGroup}
+        />
       ]}
     >
       <Fab
@@ -322,7 +362,7 @@ function ExpenseItem({
   expense: Expense;
   onOpen: () => void;
 }) {
-  const { details: userDetails } = states.user.getState();
+  const { details: userDetails } = states.user();
   const isCurrentUserPayer = expense.paid_by.id === userDetails?.id;
 
   return (

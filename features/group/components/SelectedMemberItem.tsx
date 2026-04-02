@@ -16,7 +16,7 @@ export default function SelectedMemberItem({
   disabled?: boolean;
   onRemoveMember: () => void;
 }) {
-  const user = states.user.getState();
+  const user = states.user();
   const { details: userDetails } = user;
 
   const isCreator = member.id === userDetails?.id;

@@ -125,7 +125,7 @@ function GroupSelectionActionSheet({
 }) {
   const [selectedGroup, setSelectedGroup] = useState(currentGroup.id);
 
-  const { list: groupList } = states.group.getState();
+  const { list: groupList } = states.group();
 
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[92]}>

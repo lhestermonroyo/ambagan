@@ -41,8 +41,8 @@ export default function AddExpenseScreen() {
     };
   }>({});
 
-  const { list: groupList } = states.group.getState();
-  const user = states.user.getState();
+  const { list: groupList } = states.group();
+  const user = states.user();
 
   const showToast = useAppToast();
 

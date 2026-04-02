@@ -15,19 +15,23 @@ import { Text } from "./ui/text";
 
 const ConfirmIconButton = ({
   icon,
+  iconSize,
   iconClassName,
   onConfirm,
   confirmTitle,
   confirmDescription,
   isDelete = false,
+  isLoading = false,
   ...buttonProps
 }: {
   icon: React.ComponentProps<typeof Icon>["as"];
+  iconSize?: number;
   iconClassName?: string;
   onConfirm: () => void;
   confirmTitle?: string;
   confirmDescription?: string;
   isDelete?: boolean;
+  isLoading?: boolean;
 } & React.ComponentProps<typeof Button>) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -39,7 +43,7 @@ const ConfirmIconButton = ({
   return (
     <Fragment>
       <Button {...buttonProps} onPress={() => setIsOpen(true)}>
-        <Icon as={icon} className={iconClassName} />
+        <Icon as={icon} size={iconSize || 24} className={iconClassName} />
       </Button>
       <ConfirmModal
         isOpen={isOpen}
@@ -47,6 +51,7 @@ const ConfirmIconButton = ({
         onConfirm={handleConfirm}
         title={confirmTitle}
         description={confirmDescription}
+        isLoading={isLoading}
         isDelete={isDelete}
       />
     </Fragment>
@@ -57,7 +62,7 @@ const ConfirmModal = ({
   isOpen,
   onClose,
   onConfirm,
-  loading,
+  isLoading,
   title = "Confirm Action",
   description = "Are you sure you want to proceed?",
   isDelete = false
@@ -65,7 +70,7 @@ const ConfirmModal = ({
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  loading?: boolean;
+  isLoading?: boolean;
   title?: string;
   description?: string;
   isDelete: boolean;
@@ -77,20 +82,20 @@ const ConfirmModal = ({
           <Heading size="lg">{title}</Heading>
         </ModalHeader>
         <ModalBody>
-          <Text>{description}</Text>
+          <Text className="text-secondary-950">{description}</Text>
         </ModalBody>
         <ModalFooter>
           <HStack className="gap-x-2">
             <FormButton
               variant="outline"
               text="Cancel"
-              disabled={loading}
+              disabled={isLoading}
               onPress={onClose}
             />
             <FormButton
               text="Yes"
               action={isDelete ? "negative" : "primary"}
-              loading={loading}
+              loading={isLoading}
               onPress={onConfirm}
             />
           </HStack>

@@ -41,8 +41,8 @@ export default function EditMembersSheet({
   const [lockedMembers, setLockedMembers] = useState<Member[]>([]);
   const [tab, setTab] = useState<"recent" | "favorites">("recent");
 
-  const group = states.group.getState();
-  const user = states.user.getState();
+  const group = states.group();
+  const user = states.user();
   const { details: userDetails } = user;
   const { details: groupDetails } = group;
 

@@ -25,8 +25,8 @@ export default function MembersScreen() {
   const [loading, setLoading] = useState(false);
   const [isEditMembersOpen, setIsEditMembersOpen] = useState(false);
 
-  const user = states.user.getState();
-  const group = states.group.getState();
+  const user = states.user();
+  const group = states.group();
   const { details: userDetails } = user;
   const { details: groupDetails } = group;
 

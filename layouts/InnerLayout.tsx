@@ -30,7 +30,7 @@ export default function InnerLayout({
             </Text>
           </HStack>
           {actions && (
-            <HStack className="gap-x-2 items-center">
+            <HStack className="gap-x-4 items-center">
               {actions.map((item, index) => (
                 <Fragment key={index}>{item}</Fragment>
               ))}

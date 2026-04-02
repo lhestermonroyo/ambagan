@@ -35,7 +35,7 @@ export default function PayerSelection({
   members: Member[];
   onChangePayer: (payer: Member) => void;
 }) {
-  const user = states.user.getState();
+  const user = states.user();
   const [openActionsheet, setOpenActionsheet] = useState(false);
 
   return (
@@ -88,7 +88,7 @@ function PayerSelectionActionSheet({
   onChangePayer: (payer: Member) => void;
   members: Member[];
 }) {
-  const user = states.user.getState();
+  const user = states.user();
   const [selectedPayer, setSelectedPayer] = useState(currentPayer.id);
 
   const sortedMembers = useMemo(
@@ -163,7 +163,7 @@ function PayerSelectionActionSheet({
 }
 
 function MemberItem({ member }: { member: Member }) {
-  const user = states.user.getState();
+  const user = states.user();
   const isMe = user.details?.id === member.id;
 
   return (
