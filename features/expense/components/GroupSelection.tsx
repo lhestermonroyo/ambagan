@@ -1,6 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import PressableListItem from "@/components/PressableListItem";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -9,6 +10,8 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
+import { Divider } from "@/components/ui/divider";
+import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import {
   Radio,
@@ -20,11 +23,10 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { Group } from "@/types/groups";
-import formatDate from "@/utils/formatDate";
+import { formatDate } from "@/utils/formatDate";
 import { useRouter } from "expo-router";
 import { CircleIcon } from "lucide-react-native";
 import { Fragment, useState } from "react";
-import { Pressable } from "react-native";
 
 export default function GroupSelection({
   group,
@@ -41,49 +43,65 @@ export default function GroupSelection({
 
   if (!group)
     return (
-      <Pressable
-        className="p-4 bg-background-0 border border-background-200 rounded-2xl"
+      <PressableListItem
+        className="p-4 border border-background-200 rounded-2xl"
         onPress={() => router.push("/groups/create")}
       >
         <HStack className="gap-x-4 justify-center items-center">
           <VStack className="flex-1 gap-y-4">
             <VStack>
-              <Text className="text-xl">No group created yet.</Text>
-              <Text className="text-secondary-950">
+              <Text className="text-lg">No group created yet.</Text>
+              <Text className="text-secondary-950 text-sm">
                 Group is required to add expenses. Create a group to start
                 adding expenses and sharing with friends.
               </Text>
             </VStack>
           </VStack>
-          <Icon as="group-add" />
+          <Icon as="group-add" className="text-primary-400" />
         </HStack>
-      </Pressable>
+      </PressableListItem>
     );
 
   return (
     <Fragment>
-      <Pressable
-        className="p-4 bg-background-0 border border-background-200 rounded-2xl"
-        disabled={isLocked}
-        onPress={() => setOpenActionsheet(true)}
-      >
-        <HStack className="gap-x-4 justify-center items-center">
-          <VStack className="flex-1 gap-y-4">
-            <HStack className="gap-x-2">
-              <AppAvatar name={group.name} uri={group.avatar || ""} />
-              <VStack>
-                <Text className="text-lg">{group.name}</Text>
-                <Text className="text-secondary-950 text-sm">
-                  Joined {formatDate(group.created_at)}
-                </Text>
-              </VStack>
-            </HStack>
-          </VStack>
-          {!isLocked && (
+      {isLocked ? (
+        <Box className="p-4 border border-background-200 rounded-2xl">
+          <HStack className="gap-x-4 justify-center items-center">
+            <VStack className="flex-1 gap-y-4">
+              <HStack className="gap-x-2">
+                <AppAvatar name={group.name} uri={group.avatar || ""} />
+                <VStack>
+                  <Text className="text-lg">{group.name}</Text>
+                  <Text className="text-secondary-950 text-sm">
+                    Joined {formatDate(group.created_at)}
+                  </Text>
+                </VStack>
+              </HStack>
+            </VStack>
+          </HStack>
+        </Box>
+      ) : (
+        <PressableListItem
+          className="p-4 border border-background-200 rounded-2xl"
+          onPress={() => setOpenActionsheet(true)}
+        >
+          <HStack className="gap-x-4 justify-center items-center">
+            <VStack className="flex-1 gap-y-4">
+              <HStack className="gap-x-2">
+                <AppAvatar name={group.name} uri={group.avatar || ""} />
+                <VStack>
+                  <Text className="text-lg">{group.name}</Text>
+                  <Text className="text-secondary-950 text-sm">
+                    Joined {formatDate(group.created_at)}
+                  </Text>
+                </VStack>
+              </HStack>
+            </VStack>
             <Icon as="unfold-more" className="text-secondary-950" />
-          )}
-        </HStack>
-      </Pressable>
+          </HStack>
+        </PressableListItem>
+      )}
+
       <GroupSelectionActionSheet
         isOpen={openActionsheet}
         onClose={() => setOpenActionsheet(false)}
@@ -107,7 +125,7 @@ function GroupSelectionActionSheet({
 }) {
   const [selectedGroup, setSelectedGroup] = useState(currentGroup.id);
 
-  const group = states.group.getState();
+  const { list: groupList } = states.group.getState();
 
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[92]}>
@@ -121,34 +139,28 @@ function GroupSelectionActionSheet({
             Select Group to Add Expense
           </Text>
           <RadioGroup
+            className="flex-1"
             value={selectedGroup.toString()}
             onChange={(value) => {
               setSelectedGroup(value);
             }}
           >
-            {group.groups.map((item, index) => (
-              <Radio
-                key={item.id}
-                value={item.id.toString()}
-                size="lg"
-                className={`justify-between ${index !== group.groups.length - 1 && "border-b border-background-200"}`}
-              >
-                <HStack className="flex-1 items-center gap-x-2">
-                  <AppAvatar name={item.name} uri={item.avatar || ""} />
-                  <VStack className="gap-y-4 py-4">
-                    <VStack>
-                      <Text className="text-lg">{item?.name}</Text>
-                      <Text className="text-secondary-950 text-sm">
-                        Joined {formatDate(item?.created_at)}
-                      </Text>
-                    </VStack>
-                  </VStack>
-                </HStack>
-                <RadioIndicator>
-                  <RadioIcon as={CircleIcon} />
-                </RadioIndicator>
-              </Radio>
-            ))}
+            <FlatList
+              className="flex-1"
+              data={groupList}
+              renderItem={({ item, index }) => (
+                <GroupItem
+                  group={item}
+                  onPress={() => setSelectedGroup(item.id.toString())}
+                />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              ItemSeparatorComponent={() => (
+                <Box className="mx-4">
+                  <Divider className="border-secondary-100" />
+                </Box>
+              )}
+            />
           </RadioGroup>
         </VStack>
         <Box className="sticky bottom-0 w-full px-4 pt-4">
@@ -164,7 +176,7 @@ function GroupSelectionActionSheet({
               text="Save Group"
               disabled={!selectedGroup}
               onPress={() => {
-                const newGroup = group.groups.find(
+                const newGroup = groupList.find(
                   (g) => g.id.toString() === selectedGroup
                 );
                 if (newGroup) onChangeGroup(newGroup);
@@ -175,5 +187,32 @@ function GroupSelectionActionSheet({
         </Box>
       </ActionsheetContent>
     </Actionsheet>
+  );
+}
+
+function GroupItem({ group, onPress }: { group: Group; onPress: () => void }) {
+  return (
+    <Radio
+      key={group.id}
+      value={group.id.toString()}
+      size="lg"
+      className="justify-between"
+      onPress={onPress}
+    >
+      <HStack className="flex-1 items-center gap-x-2">
+        <AppAvatar name={group.name} uri={group.avatar || ""} />
+        <VStack className="gap-y-4 py-4">
+          <VStack>
+            <Text className="text-lg">{group?.name}</Text>
+            <Text className="text-secondary-950 text-sm">
+              Joined {formatDate(group?.created_at)}
+            </Text>
+          </VStack>
+        </VStack>
+      </HStack>
+      <RadioIndicator>
+        <RadioIcon as={CircleIcon} />
+      </RadioIndicator>
+    </Radio>
   );
 }

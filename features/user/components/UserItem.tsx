@@ -1,5 +1,4 @@
 import AppAvatar from "@/components/AppAvatar";
-import AppBadge from "@/components/AppBadge";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -9,12 +8,12 @@ import { ReactNode } from "react";
 export default function UserItem({
   item,
   isCreator,
-  isYou,
+  isMe,
   action
 }: {
   item: Member;
   isCreator: boolean;
-  isYou: boolean;
+  isMe: boolean;
   action: ReactNode[];
 }) {
   return (
@@ -28,8 +27,8 @@ export default function UserItem({
                 <Text className="text-lg">
                   {item?.first_name} {item?.last_name}
                 </Text>
-                {isYou && <AppBadge text="You" />}
-                {isCreator && <AppBadge text="Creator" />}
+                {isMe && "(Me)"}
+                {isCreator && "(Creator)"}
               </HStack>
               <Text className="text-secondary-950">{item?.email}</Text>
             </VStack>

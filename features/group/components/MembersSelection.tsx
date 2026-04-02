@@ -1,8 +1,4 @@
-import {
-  default as AppAvatar,
-  default as Avatar
-} from "@/components/AppAvatar";
-import AppBadge from "@/components/AppBadge";
+import { default as AppAvatar } from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import SearchInput from "@/components/SearchInput";
@@ -15,12 +11,9 @@ import {
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
-import {
-  Checkbox,
-  CheckboxGroup,
-  CheckboxIcon,
-  CheckboxIndicator
-} from "@/components/ui/checkbox";
+import { CheckboxGroup } from "@/components/ui/checkbox";
+import { Divider } from "@/components/ui/divider";
+import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -30,16 +23,19 @@ import services from "@/services";
 import states from "@/states";
 import { Member } from "@/types/groups";
 import { User } from "@/types/user";
-import { CheckIcon } from "lucide-react-native";
 import { Fragment, useEffect, useState } from "react";
+import SelectedMemberItem from "./SelectedMemberItem";
+import { UserCheckboxItem } from "./UserCheckboxItem";
 
 export default function MembersSelection({
   isOpen,
   onClose,
+  finalMembers,
   onSaveMembers
 }: {
   isOpen: boolean;
   onClose: () => void;
+  finalMembers: Member[];
   onSaveMembers: (members: Member[]) => void;
 }) {
   const [tab, setTab] = useState<"recent" | "favorites">("recent");
@@ -49,7 +45,7 @@ export default function MembersSelection({
   const [members, setMembers] = useState<Member[]>([]);
 
   const user = states.user.getState();
-  const group = states.group.getState();
+  const { details: userDetails } = user;
 
   useEffect(() => {
     init();
@@ -57,28 +53,29 @@ export default function MembersSelection({
     return () => {
       setMembers([]);
     };
-  }, []);
-
-  const init = () => {
-    if (group.details?.members) {
-      setMembers(group.details.members);
-    } else {
-      const initialUser = user.details as User;
-      setMembers([
-        {
-          id: initialUser.id,
-          email: initialUser.email,
-          avatar: initialUser.avatar,
-          first_name: initialUser.first_name,
-          last_name: initialUser.last_name
-        } as Member
-      ]);
-    }
-  };
+  }, [isOpen]);
 
   useEffect(() => {
     fetchUsers();
   }, [searchInput]);
+
+  const init = () => {
+    if (finalMembers.length > 0) {
+      setMembers(finalMembers);
+      return;
+    }
+
+    const initialUser = userDetails as User;
+    setMembers([
+      {
+        id: initialUser.id,
+        email: initialUser.email,
+        avatar: initialUser.avatar,
+        first_name: initialUser.first_name,
+        last_name: initialUser.last_name
+      } as Member
+    ]);
+  };
 
   const fetchUsers = async () => {
     try {
@@ -112,18 +109,22 @@ export default function MembersSelection({
       );
       const removedMembers = prev.filter(
         (member) =>
-          !selected.includes(member.id) && member.id !== user.details?.id
+          !selected.includes(member.id) && member.id !== userDetails?.id
       );
       return [
-        ...prev.filter((member) => !removedMembers.includes(member)),
-        ...newMembers
+        ...newMembers,
+        ...prev.filter((member) => !removedMembers.includes(member))
       ];
     });
   };
 
+  const handleRemoveMember = (id: string) => {
+    setMembers((prev) => prev.filter((member) => member.id !== id));
+  };
+
   const handleRemoveAllMembers = () => {
     setMembers((prev) =>
-      prev.filter((member) => member.id === user.details?.id)
+      prev.filter((member) => member.id === userDetails?.id)
     );
   };
 
@@ -146,20 +147,26 @@ export default function MembersSelection({
 
   return (
     <Fragment>
-      {members.length > 0 &&
-        members.map((member, index) => (
-          <SelectedMemberItem
-            key={member.id}
-            item={member}
+      <FlatList
+        data={finalMembers}
+        scrollEnabled={false}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <FinalSelectedMemberItem
+            key={item.id}
+            item={item}
             onRemove={() => {
-              setMembers((prev) => prev.filter((m) => m.id !== member.id));
-              onSaveMembers(members.filter((m) => m.id !== member.id));
+              handleRemoveMember(item.id);
+              onSaveMembers(members.filter((m) => m.id !== item.id));
             }}
-            isCreator={member.id === user.details?.id}
-            isYou={member.id === user.details?.id}
-            isLast={index === members.length - 1}
           />
-        ))}
+        )}
+        ItemSeparatorComponent={() => (
+          <Box className="mx-4">
+            <Divider className="border-secondary-100" />
+          </Box>
+        )}
+      />
       <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[94]}>
         <ActionsheetBackdrop />
         <ActionsheetContent className="p-0">
@@ -167,90 +174,50 @@ export default function MembersSelection({
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
           <VStack className="w-full gap-y-4 py-4 bg-typography-0">
+            <VStack>
+              <HStack className="px-4">
+                <Text className="text-secondary-950 flex-1">
+                  {members.length} member
+                  {members.length > 1 ? "s" : ""} selected
+                </Text>
+                <Pressable
+                  onPress={handleRemoveAllMembers}
+                  disabled={
+                    members.includes(
+                      members.find((m) => m.id === user.details?.id)!
+                    ) && members.length === 1
+                  }
+                >
+                  <Text className="text-primary-400">Remove All</Text>
+                </Pressable>
+              </HStack>
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="w-full px-4"
+                data={members}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => {
+                  const isCreator = item.id === userDetails?.id;
+                  return (
+                    <SelectedMemberItem
+                      key={item.id}
+                      member={item}
+                      disabled={isCreator}
+                      onRemoveMember={() => handleRemoveMember(item.id)}
+                    />
+                  );
+                }}
+              />
+            </VStack>
             <Box className="px-4">
               <SearchInput
-                placeholder="Search members"
+                placeholder="Search users to add or remove"
                 value={searchInput}
                 onChangeText={(val) => setSearchInput(val)}
                 onSetSearching={setSearching}
               />
             </Box>
-            {members.length > 0 ? (
-              <VStack className="gap-y-2">
-                <HStack className="px-4">
-                  <Text className="text-secondary-950 flex-1">
-                    {members.length} member
-                    {members.length > 1 ? "s" : ""} selected
-                  </Text>
-                  <Pressable
-                    onPress={handleRemoveAllMembers}
-                    disabled={
-                      members.includes(
-                        members.find((m) => m.id === user.details?.id)!
-                      ) && members.length === 1
-                    }
-                  >
-                    <Text className="text-primary-400">Remove All</Text>
-                  </Pressable>
-                </HStack>
-                <ScrollView
-                  className="px-4"
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                >
-                  <HStack className="gap-x-4 py-2">
-                    {members.map((member) => {
-                      const isCreator = member.id === user.details?.id;
-
-                      return (
-                        <Pressable
-                          key={member.id}
-                          onPress={() =>
-                            !isCreator &&
-                            handleChangeMembers(
-                              members
-                                .filter((m) => m.id !== member.id)
-                                .map((m) => m.id)
-                            )
-                          }
-                        >
-                          <VStack className="relative justify-center items-center gap-y-2">
-                            <VStack>
-                              {!isCreator && (
-                                <Box className="absolute right-0 bottom-0 z-10 bg-primary-500 rounded-full p-1">
-                                  <Icon
-                                    as="clear"
-                                    size={12}
-                                    className="text-background-0"
-                                  />
-                                </Box>
-                              )}
-                              <Avatar
-                                name={member.first_name || ""}
-                                uri={member.avatar!}
-                                className="rounded-full p-1 bg-primary-400"
-                              />
-                            </VStack>
-                            <VStack className="items-center gap-y-0">
-                              <Text className="text-center break-words">
-                                {member.first_name} {member.last_name}
-                              </Text>
-                              {isCreator && (
-                                <AppBadge text="Creator" action="success" />
-                              )}
-                            </VStack>
-                          </VStack>
-                        </Pressable>
-                      );
-                    })}
-                  </HStack>
-                </ScrollView>
-              </VStack>
-            ) : (
-              <Text className="text-secondary-950">
-                No members selected yet.
-              </Text>
-            )}
             <HStack className="gap-x-2 px-4">
               <FormButton
                 size="md"
@@ -268,7 +235,7 @@ export default function MembersSelection({
               />
             </HStack>
           </VStack>
-          <ScrollView className="flex-1 w-full">
+          <ScrollView className="flex-1 w-full" bounces={false}>
             {users.length === 0 && searching && (
               <VStack className="p-4 justify-center items-center">
                 <Text className="text-secondary-950">
@@ -281,16 +248,29 @@ export default function MembersSelection({
               value={members.map((member) => member.id)}
               onChange={handleChangeMembers}
             >
-              {users.map((item) => {
-                return (
-                  <UserItem
-                    key={item.id}
-                    item={item}
-                    isCreator={item.id === user.details?.id}
-                    isLast={item.id === users[users.length - 1].id}
-                  />
-                );
-              })}
+              <FlatList
+                scrollEnabled={false}
+                bounces={false}
+                className="flex-1"
+                data={users}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => {
+                  const isCreator = item.id === userDetails?.id;
+
+                  return (
+                    <UserCheckboxItem
+                      key={item.id}
+                      item={item}
+                      disabled={isCreator}
+                    />
+                  );
+                }}
+                ItemSeparatorComponent={() => (
+                  <Box className="mx-4">
+                    <Divider className="border-secondary-100" />
+                  </Box>
+                )}
+              />
             </CheckboxGroup>
           </ScrollView>
           <Box className="items-center justify-start sticky bottom-0 px-4">
@@ -316,35 +296,30 @@ export default function MembersSelection({
   );
 }
 
-function SelectedMemberItem({
+function FinalSelectedMemberItem({
   item,
-  onRemove,
-  isCreator,
-  isYou,
-  isLast
+  onRemove
 }: {
   item: Member;
   onRemove: () => void;
-  isCreator: boolean;
-  isYou: boolean;
-  isLast: boolean;
 }) {
+  const user = states.user.getState();
+  const { details: userDetails } = user;
+
+  const isCreator = item.id === userDetails?.id;
+  const isMe = item.id === userDetails?.id;
+
   return (
-    <HStack
-      key={item.id}
-      className={`py-4 items-center justify-between ${
-        !isLast && "border-b border-background-200"
-      }`}
-    >
+    <HStack key={item.id} className="py-4 items-center justify-between">
       <HStack className="gap-x-2 items-center flex-1">
         <AppAvatar name={item.first_name} uri={item.avatar!} size="md" />
         <VStack>
           <HStack className="gap-x-1 items-center">
             <Text className="text-lg">
               {item?.first_name} {item?.last_name}
+              {isMe && " (You)"}
+              {isCreator && " (Creator)"}
             </Text>
-            {isYou && <AppBadge text="You" />}
-            {isCreator && <AppBadge text="Creator" />}
           </HStack>
           <Text className="text-secondary-950 text-sm">{item?.email}</Text>
         </VStack>
@@ -355,44 +330,5 @@ function SelectedMemberItem({
         </Button>
       )}
     </HStack>
-  );
-}
-
-function UserItem({
-  item,
-  isCreator,
-  isLast
-}: {
-  item: User;
-  isCreator: boolean;
-  isLast: boolean;
-}) {
-  return (
-    <Checkbox
-      size="lg"
-      key={item.id}
-      value={item.id.toString()}
-      isDisabled={isCreator}
-      className="px-4 justify-between"
-    >
-      <VStack
-        className={`flex-1 gap-y-4 py-4 ${!isLast && "border-b border-background-200"}`}
-      >
-        <HStack className="items-center">
-          <HStack className="gap-x-2 items-center flex-1">
-            <AppAvatar name={item.first_name} uri={item.avatar!} size="md" />
-            <VStack>
-              <Text className="text-lg">
-                {item?.first_name} {item?.last_name} {isCreator && "(Creator)"}
-              </Text>
-              <Text className="text-secondary-950 text-sm">{item?.email}</Text>
-            </VStack>
-          </HStack>
-          <CheckboxIndicator>
-            <CheckboxIcon as={CheckIcon} />
-          </CheckboxIndicator>
-        </HStack>
-      </VStack>
-    </Checkbox>
   );
 }

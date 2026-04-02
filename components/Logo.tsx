@@ -34,7 +34,7 @@ export default function Logo({ type = "splash" }: LogoProps) {
         </Box>
         <Text bold className="text-center" size="2xl">
           Ambagan{" "}
-          <Text bold className="text-primary-500" size="2xl">
+          <Text bold className="text-primary-400" size="2xl">
             PH
           </Text>
         </Text>

@@ -1,9 +1,11 @@
-import { GroupState } from '@/types/groups';
-import { create } from 'zustand';
+import { GroupState } from "@/types/groups";
+import { create } from "zustand";
 
 const initialState: GroupState = {
-  groups: [],
-  details: null
+  preview: [],
+  list: [],
+  details: null,
+  refetch: false
 };
 
 const GROUP_STATE = create<

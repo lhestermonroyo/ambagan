@@ -1,7 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
-import AppBadge from "@/components/AppBadge";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import PressableListItem from "@/components/PressableListItem";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -10,6 +10,8 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
+import { Divider } from "@/components/ui/divider";
+import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import {
   Radio,
@@ -23,7 +25,6 @@ import states from "@/states";
 import { Member } from "@/types/groups";
 import { CircleIcon } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
-import { Pressable } from "react-native";
 
 export default function PayerSelection({
   payer,
@@ -39,8 +40,8 @@ export default function PayerSelection({
 
   return (
     <Fragment>
-      <Pressable
-        className="p-4 bg-background-0 border border-background-200 rounded-2xl"
+      <PressableListItem
+        className="p-4 border border-background-200 rounded-2xl"
         onPress={() => setOpenActionsheet(true)}
       >
         <HStack className="gap-x-4 justify-center items-center">
@@ -51,8 +52,8 @@ export default function PayerSelection({
                 <HStack className="gap-x-1 items-center">
                   <Text className="text-lg">
                     {payer?.first_name} {payer?.last_name}
+                    {user.details?.id === payer.id && " (You)"}
                   </Text>
-                  {user.details?.id === payer.id && <AppBadge text="You" />}
                 </HStack>
                 <Text className="text-secondary-950 text-sm">
                   {payer?.email}
@@ -62,7 +63,7 @@ export default function PayerSelection({
           </VStack>
           <Icon as="unfold-more" className="text-secondary-950" />
         </HStack>
-      </Pressable>
+      </PressableListItem>
       <PayerSelectionActionSheet
         isOpen={openActionsheet}
         onClose={() => setOpenActionsheet(false)}
@@ -114,44 +115,23 @@ function PayerSelectionActionSheet({
               Select Who Paid for this Expense
             </Text>
             <RadioGroup
+              className="flex-1"
               value={selectedPayer.toString()}
               onChange={(value) => {
                 setSelectedPayer(value);
               }}
             >
-              {sortedMembers.map((item, index) => (
-                <Radio
-                  key={item.id}
-                  value={item.id.toString()}
-                  size="lg"
-                  className={`justify-between ${index !== members.length - 1 && "border-b border-background-200"}`}
-                >
-                  <HStack className="flex-1 gap-x-2 items-center">
-                    <AppAvatar
-                      name={item?.first_name}
-                      uri={item.avatar || ""}
-                    />
-                    <VStack className="gap-y-4 py-4">
-                      <VStack>
-                        <HStack className="gap-x-1 items-center">
-                          <Text className="text-lg">
-                            {item?.first_name} {item?.last_name}
-                          </Text>
-                          {user.details?.id === item.id && (
-                            <AppBadge text="You" />
-                          )}
-                        </HStack>
-                        <Text className="text-secondary-950 text-sm">
-                          {item?.email}
-                        </Text>
-                      </VStack>
-                    </VStack>
-                  </HStack>
-                  <RadioIndicator>
-                    <RadioIcon as={CircleIcon} />
-                  </RadioIndicator>
-                </Radio>
-              ))}
+              <FlatList
+                className="flex-1"
+                data={sortedMembers}
+                renderItem={({ item }) => <MemberItem member={item} />}
+                keyExtractor={(item) => item.id.toString()}
+                ItemSeparatorComponent={() => (
+                  <Box className="mx-4">
+                    <Divider className="border-secondary-100" />
+                  </Box>
+                )}
+              />
             </RadioGroup>
           </VStack>
           <Box className="sticky bottom-0 w-full px-4 pt-4">
@@ -179,5 +159,37 @@ function PayerSelectionActionSheet({
         </ActionsheetContent>
       </Actionsheet>
     </>
+  );
+}
+
+function MemberItem({ member }: { member: Member }) {
+  const user = states.user.getState();
+  const isMe = user.details?.id === member.id;
+
+  return (
+    <Radio
+      key={member.id}
+      value={member.id.toString()}
+      size="lg"
+      className="justify-between"
+    >
+      <HStack className="flex-1 gap-x-2 items-center">
+        <AppAvatar name={member?.first_name} uri={member.avatar || ""} />
+        <VStack className="gap-y-4 py-4">
+          <VStack>
+            <HStack className="gap-x-1 items-center">
+              <Text className="text-lg">
+                {member?.first_name} {member?.last_name}
+                {isMe && " (You)"}
+              </Text>
+            </HStack>
+            <Text className="text-secondary-950 text-sm">{member?.email}</Text>
+          </VStack>
+        </VStack>
+      </HStack>
+      <RadioIndicator>
+        <RadioIcon as={CircleIcon} />
+      </RadioIndicator>
+    </Radio>
   );
 }

@@ -38,10 +38,16 @@ const FormButton: FC<IFormButtonProps> = ({
       onPress={onPress}
       {...props}
     >
-      {icon && <Box className="ml-[-8px] mr-[-4px]">{icon}</Box>}
+      {icon && <Box className="ml-[-8px] mr-[-2px]">{icon}</Box>}
       <ButtonText>{text}</ButtonText>
-      {iconEnd && <Box className="ml-[-4px] mr-[-8px]">{iconEnd}</Box>}
-      {loading && <ButtonSpinner className="text-background-0" />}
+      {iconEnd && <Box className="ml-[-2px] mr-[-8px]">{iconEnd}</Box>}
+      {loading && (
+        <ButtonSpinner
+          className={
+            variant === "outline" ? "text-primary-400" : "text-background-0"
+          }
+        />
+      )}
     </Button>
   );
 };

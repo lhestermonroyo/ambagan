@@ -183,7 +183,7 @@ export default function SignUpScreen() {
         <HStack className="gap-x-1">
           <Text className="text-secondary-950">Already have an account?</Text>
           <Link onPress={() => router.push("/login")}>
-            <Text className="text-primary-500">Login</Text>
+            <Text className="text-primary-400">Login</Text>
           </Link>
         </HStack>
       </Center>

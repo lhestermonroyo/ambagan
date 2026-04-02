@@ -1,6 +1,5 @@
-import AppAvatar, { default as Avatar } from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
-import Icon from "@/components/Icon";
+import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
 import {
   Actionsheet,
@@ -10,22 +9,21 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
-import {
-  Checkbox,
-  CheckboxGroup,
-  CheckboxIcon,
-  CheckboxIndicator
-} from "@/components/ui/checkbox";
+import { CheckboxGroup } from "@/components/ui/checkbox";
+import { Divider } from "@/components/ui/divider";
+import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
 import { Member } from "@/types/groups";
 import { User } from "@/types/user";
-import { CheckIcon } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import SelectedMemberItem from "./SelectedMemberItem";
+import { UserCheckboxItem } from "./UserCheckboxItem";
 
 export default function EditMembersSheet({
   isOpen,
@@ -34,24 +32,66 @@ export default function EditMembersSheet({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  const [lockedMembers, setLockedMembers] = useState<Member[]>([]);
   const [tab, setTab] = useState<"recent" | "favorites">("recent");
 
   const group = states.group.getState();
   const user = states.user.getState();
+  const { details: userDetails } = user;
+  const { details: groupDetails } = group;
+
+  const showToast = useAppToast();
 
   useEffect(() => {
     if (isOpen) {
-      setMembers(group?.details?.members || []);
+      init();
     }
   }, [isOpen]);
 
   useEffect(() => {
     fetchUsers();
   }, [searchInput]);
+
+  const init = async () => {
+    setLoading(true);
+
+    const locked: Member[] = [];
+    const unlocked: Member[] = [];
+    try {
+      if (!groupDetails?.members) {
+        setMembers([]);
+        return;
+      }
+
+      await Promise.all(
+        groupDetails.members.map(async (member) => {
+          const hasUnpaid = await services.expense.getUnpaidExpenses(
+            groupDetails.id,
+            member.id
+          );
+
+          if (hasUnpaid || member.id === userDetails?.id) {
+            locked.push(member);
+          } else {
+            unlocked.push(member);
+          }
+        })
+      );
+
+      setLockedMembers(locked);
+      setMembers(unlocked);
+    } catch (error) {
+      console.log("Error fetching unpaid expenses:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -66,10 +106,13 @@ export default function EditMembersSheet({
     }
   };
 
-  // Allow removing members who are not in group.details.members
   const handleChangeMembers = (selected: (string | number)[]) => {
+    const selectedUnlocked = selected.filter(
+      (id) => !lockedMembers.some((member) => member.id === id)
+    );
+
     const selectedUsers = users
-      .filter((user) => selected.includes(user.id))
+      .filter((user) => selectedUnlocked.includes(user.id))
       .map(
         (user) =>
           ({
@@ -81,19 +124,21 @@ export default function EditMembersSheet({
           }) as Member
       );
     setMembers((prev) => {
-      const originalMembers = group?.details?.members || [];
-      // Add new members
       const newMembers = selectedUsers.filter(
         (user) => !prev.some((member) => member.id === user.id)
       );
-      // Remove only those not in original group
-      const keepMembers = prev.filter(
-        (member) =>
-          originalMembers.some((orig) => orig.id === member.id) ||
-          selected.includes(member.id)
+      const removedMembers = prev.filter(
+        (member) => !selected.includes(member.id)
       );
-      return [...keepMembers, ...newMembers];
+      return [
+        ...newMembers,
+        ...prev.filter((member) => !removedMembers.includes(member))
+      ];
     });
+  };
+
+  const handleRemoveMember = (id: string) => {
+    setMembers((prev) => prev.filter((member) => member.id !== id));
   };
 
   const handleClearStates = () => {
@@ -107,9 +152,49 @@ export default function EditMembersSheet({
     onClose();
   };
 
-  const handleUpdateMembers = () => {
-    // TODO: implement update members functionality
+  const handleUpdateMembers = async () => {
+    try {
+      setSubmitting(true);
+
+      if (!groupDetails?.id) return;
+
+      const allMembers = lockedMembers.concat(members);
+
+      const membersToAdd = allMembers
+        .filter(
+          (member) => !groupDetails.members?.some((m) => m.id === member.id)
+        )
+        .map((member) => member.id);
+      const membersToRemove = groupDetails.members
+        ?.filter((member) => !allMembers.some((m) => m.id === member.id))
+        .map((member) => member.id);
+
+      await services.member.updateGroupMembers(
+        groupDetails.id,
+        membersToAdd,
+        membersToRemove
+      );
+
+      states.group.setState((prev) => ({
+        ...prev,
+        details: prev.details
+          ? { ...prev.details, members: allMembers }
+          : prev.details
+      }));
+
+      showToast("Success", "Group members updated successfully", "success");
+      handleClose();
+    } catch (error) {
+      console.error("Error updating group members:", error);
+      showToast("Error", "Failed to update group members", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const formattedMembers = useMemo(() => {
+    return lockedMembers.concat(members);
+  }, [members, lockedMembers]);
 
   return (
     <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[94]}>
@@ -118,120 +203,114 @@ export default function EditMembersSheet({
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full gap-y-4 py-4 bg-typography-0">
-          <Box className="px-4">
-            <SearchInput
-              placeholder="Search members"
-              value={searchInput}
-              onChangeText={(val) => setSearchInput(val)}
-              onSetSearching={setSearching}
-            />
-          </Box>
-          {members.length > 0 ? (
-            <VStack className="gap-y-2">
-              <HStack className="px-4">
-                <Text className="text-secondary-950 flex-1">
-                  {members.length} member
-                  {members.length > 1 ? "s" : ""} selected
-                </Text>
-              </HStack>
-              <ScrollView
-                className="px-4"
-                horizontal
-                showsHorizontalScrollIndicator={false}
-              >
-                <HStack className="gap-x-4 py-2 items-start">
-                  {members.map((member) => {
-                    const isCreator = member.id === user.details?.id;
-                    const originalMembers = group?.details?.members || [];
-                    const isOriginal = originalMembers.some(
-                      (orig) => orig.id === member.id
-                    );
-                    return (
-                      <VStack
-                        className="relative justify-center items-center gap-y-2 max-w-[120px]"
-                        key={member.id}
-                      >
-                        <VStack>
-                          {!isOriginal && !isCreator && (
-                            <Box className="absolute right-0 bottom-0 z-10 bg-primary-500 rounded-full p-1">
-                              <Icon
-                                as="clear"
-                                size={12}
-                                className="text-background-0"
-                              />
-                            </Box>
-                          )}
-                          <Avatar
-                            name={member.first_name || ""}
-                            uri={member.avatar!}
-                            className="rounded-full p-1 bg-primary-400"
-                          />
-                        </VStack>
-                        <VStack className="items-center gap-y-0">
-                          <Text className="text-center break-words">
-                            {member.first_name} {member.last_name}
-                          </Text>
-                          {isCreator && (
-                            <Text className="text-secondary-950">Creator</Text>
-                          )}
-                        </VStack>
-                      </VStack>
-                    );
-                  })}
+        <Box className="w-full flex-1">
+          <LoadingWrapper text="Loading selected members" isLoading={loading}>
+            <VStack className="w-full gap-y-4 py-4 bg-typography-0">
+              <VStack>
+                <HStack className="px-4">
+                  <Text className="text-secondary-950 flex-1">
+                    {members.length} member
+                    {members.length > 1 ? "s" : ""} selected
+                  </Text>
                 </HStack>
-              </ScrollView>
-              <Text className="text-secondary-950 px-4">
-                Some members cannot be removed due to pending transactions or
-                because they are the creator of the group.
-              </Text>
-            </VStack>
-          ) : (
-            <Text className="text-secondary-950">No members selected yet.</Text>
-          )}
+                <FlatList
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  className="w-full px-4"
+                  data={formattedMembers}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => {
+                    const isCreator = item.id === userDetails?.id;
+                    const isLocked = lockedMembers.some(
+                      (member) => member.id === item.id
+                    );
 
-          <HStack className="gap-x-2 px-4">
-            <FormButton
-              size="md"
-              variant={tab === "recent" ? "solid" : "outline"}
-              className="flex-1 h-10"
-              text="Recent"
-              onPress={() => setTab("recent")}
-            />
-            <FormButton
-              size="md"
-              variant={tab === "favorites" ? "solid" : "outline"}
-              className="flex-1 h-10"
-              text="Favorites"
-              onPress={() => setTab("favorites")}
-            />
-          </HStack>
-        </VStack>
-        <ScrollView className="flex-1 w-full">
-          {users.length === 0 && searching && (
-            <VStack className="p-4 justify-center items-center">
-              <Text className="text-secondary-950">
-                No results found on your search.
-              </Text>
-            </VStack>
-          )}
-          <CheckboxGroup
-            className="w-full"
-            value={members.map((member) => member.id)}
-            onChange={handleChangeMembers}
-          >
-            {users.map((item) => {
-              return (
-                <UserItem
-                  key={item.id}
-                  item={item}
-                  isCreator={item.id === user.details?.id}
-                  isLast={item.id === users[users.length - 1].id}
+                    return (
+                      <SelectedMemberItem
+                        key={item.id}
+                        member={item}
+                        disabled={isCreator || isLocked}
+                        onRemoveMember={() => handleRemoveMember(item.id)}
+                      />
+                    );
+                  }}
                 />
-              );
-            })}
-          </CheckboxGroup>
-        </ScrollView>
+                <VStack className="w-full px-4">
+                  <Text className="text-sm text-secondary-950">
+                    Creator and members with unpaid expenses are locked and
+                    cannot be removed from the group until their expenses are
+                    settled.
+                  </Text>
+                </VStack>
+              </VStack>
+              <Box className="px-4">
+                <SearchInput
+                  placeholder="Search users to add or remove"
+                  value={searchInput}
+                  onChangeText={(val) => setSearchInput(val)}
+                  onSetSearching={setSearching}
+                />
+              </Box>
+              <HStack className="gap-x-2 px-4">
+                <FormButton
+                  size="md"
+                  variant={tab === "recent" ? "solid" : "outline"}
+                  className="flex-1 h-10"
+                  text="Recent"
+                  onPress={() => setTab("recent")}
+                />
+                <FormButton
+                  size="md"
+                  variant={tab === "favorites" ? "solid" : "outline"}
+                  className="flex-1 h-10"
+                  text="Favorites"
+                  onPress={() => setTab("favorites")}
+                />
+              </HStack>
+            </VStack>
+            <ScrollView className="flex-1 w-full" bounces={false}>
+              {users.length === 0 && searching && (
+                <VStack className="p-4 justify-center items-center">
+                  <Text className="text-secondary-950">
+                    No results found on your search.
+                  </Text>
+                </VStack>
+              )}
+              <CheckboxGroup
+                className="w-full"
+                value={formattedMembers.map((member) => member.id)}
+                onChange={handleChangeMembers}
+              >
+                <FlatList
+                  scrollEnabled={false}
+                  bounces={false}
+                  className="flex-1"
+                  data={users}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => {
+                    const isLocked = lockedMembers.some(
+                      (member) => member.id === item.id
+                    );
+                    const isCreator = item.id === userDetails?.id;
+
+                    return (
+                      <UserCheckboxItem
+                        key={item.id}
+                        item={item}
+                        disabled={isCreator || isLocked}
+                      />
+                    );
+                  }}
+                  ItemSeparatorComponent={() => (
+                    <Box className="mx-4">
+                      <Divider className="border-secondary-100" />
+                    </Box>
+                  )}
+                />
+              </CheckboxGroup>
+            </ScrollView>
+          </LoadingWrapper>
+        </Box>
         <Box className="items-center justify-start sticky bottom-0 px-4">
           <Box className="h-4" />
           <HStack className="gap-x-2 pt-4">
@@ -239,56 +318,19 @@ export default function EditMembersSheet({
               className="flex-1"
               variant="outline"
               text="Cancel"
+              disabled={submitting}
               onPress={handleClose}
             />
             <FormButton
               className="flex-1"
               text="Update Members"
-              disabled={members.length === 0}
+              disabled={formattedMembers.length === 0 || submitting}
+              loading={submitting}
               onPress={handleUpdateMembers}
             />
           </HStack>
         </Box>
       </ActionsheetContent>
     </Actionsheet>
-  );
-}
-
-function UserItem({
-  item,
-  isCreator,
-  isLast
-}: {
-  item: User;
-  isCreator: boolean;
-  isLast: boolean;
-}) {
-  return (
-    <Checkbox
-      size="lg"
-      key={item.id}
-      value={item.id.toString()}
-      isDisabled={isCreator}
-      className="px-4 justify-between"
-    >
-      <VStack
-        className={`flex-1 gap-y-4 py-4 ${!isLast && "border-b border-background-200"}`}
-      >
-        <HStack className="items-center">
-          <HStack className="gap-x-2 items-center flex-1">
-            <AppAvatar name={item.first_name} uri={item.avatar!} size="md" />
-            <VStack>
-              <Text className="text-lg">
-                {item?.first_name} {item?.last_name} {isCreator && "(Creator)"}
-              </Text>
-              <Text className="text-secondary-950">{item?.email}</Text>
-            </VStack>
-          </HStack>
-          <CheckboxIndicator>
-            <CheckboxIcon as={CheckIcon} />
-          </CheckboxIndicator>
-        </HStack>
-      </VStack>
-    </Checkbox>
   );
 }

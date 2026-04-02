@@ -1,8 +1,8 @@
-import React from 'react';
+import React from "react";
 
-import type { VariantProps } from '@gluestack-ui/utils/nativewind-utils';
-import { Text as RNText } from 'react-native';
-import { textStyle } from './styles';
+import type { VariantProps } from "@gluestack-ui/utils/nativewind-utils";
+import { Text as RNText } from "react-native";
+import { textStyle } from "./styles";
 
 type ITextProps = React.ComponentProps<typeof RNText> &
   VariantProps<typeof textStyle>;
@@ -15,7 +15,7 @@ const Text = React.forwardRef<React.ComponentRef<typeof RNText>, ITextProps>(
       bold,
       underline,
       strikeThrough,
-      size = 'md',
+      size = "md",
       sub,
       italic,
       highlight,
@@ -23,10 +23,17 @@ const Text = React.forwardRef<React.ComponentRef<typeof RNText>, ITextProps>(
     },
     ref
   ) {
-    let fontFamily = 'GoogleSans-Regular';
-    if (bold && italic) fontFamily = 'GoogleSans-BoldItalic';
-    else if (bold) fontFamily = 'GoogleSans-Bold';
-    else if (italic) fontFamily = 'GoogleSans-Italic';
+    let fontFamily = "GoogleSans-Regular";
+    if (bold && italic) fontFamily = "GoogleSans-BoldItalic";
+    else if (bold) fontFamily = "GoogleSans-Bold";
+    else if (italic) fontFamily = "GoogleSans-Italic";
+
+    if (className?.includes("font-semibold"))
+      fontFamily = "GoogleSans-SemiBold";
+    else if (className?.includes("font-medium"))
+      fontFamily = "GoogleSans-Medium";
+    else if (className?.includes("font-light")) fontFamily = "GoogleSans-Light";
+    else if (className?.includes("font-thin")) fontFamily = "GoogleSans-Thin";
 
     return (
       <RNText
@@ -49,6 +56,6 @@ const Text = React.forwardRef<React.ComponentRef<typeof RNText>, ITextProps>(
   }
 );
 
-Text.displayName = 'Text';
+Text.displayName = "Text";
 
 export { Text };

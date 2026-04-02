@@ -17,7 +17,7 @@ export default function AuthLayout({
 }) {
   return (
     <KeyboardAvoidingView className="flex-1 bg-background-0" behavior="padding">
-      <ScrollView>
+      <ScrollView className="flex-1" bounces={false}>
         <SafeAreaView>
           <VStack className="px-4 gap-y-10">
             <Box className="h-20 items-center justify-center">

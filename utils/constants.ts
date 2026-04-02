@@ -4,8 +4,8 @@ export const tables = {
   USERS_TBL: "users_tbl",
   GROUPS_TBL: "groups_tbl",
   GROUP_MEMBERS_TBL: "group_members_tbl",
-  TRANSACTIONS_TBL: "transactions_tbl",
-  TRANSACTION_SPLITS_TBL: "transaction_splits_tbl"
+  EXPENSES_TBL: "expenses_tbl",
+  EXPENSE_SPLITS_TBL: "expense_splits_tbl"
 };
 
 export const categories = [
@@ -27,11 +27,11 @@ export const categories = [
   },
   {
     label: "👪 Family",
-    value: GroupCategory.FAMILY,
+    value: GroupCategory.FAMILY
   },
   {
     label: "📁 Other",
-    value: GroupCategory.OTHER,
+    value: GroupCategory.OTHER
   }
 ];
 

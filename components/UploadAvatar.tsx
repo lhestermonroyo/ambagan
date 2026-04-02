@@ -50,7 +50,7 @@ const UploadAvatar = ({
     <VStack>
       <Pressable onPress={pickImage} className="items-center">
         {image ? (
-          <Box className="border-primary-500 border-2 rounded-full">
+          <Box className="border-primary-400 border-2 rounded-full">
             <AppAvatar name="A" className="h-[64] w-[64]" uri={image} />
           </Box>
         ) : (

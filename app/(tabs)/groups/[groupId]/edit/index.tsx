@@ -35,19 +35,22 @@ export default function EditGroupScreen() {
 
   const params = useLocalSearchParams();
   const router = useRouter();
+  const groupId = params.groupId as string | undefined;
+  const isGroup = params.isGroup === "true";
+
   const showToast = useAppToast();
 
   useFocusEffect(
     useMemo(
       () => () => {
-        if (!params.id) {
+        if (!groupId) {
           router.push("/groups");
           return;
         }
 
-        fetchGroupDetails(params.id as string);
+        fetchGroupDetails(groupId as string);
       },
-      [params.id]
+      [groupId]
     )
   );
 
@@ -101,7 +104,7 @@ export default function EditGroupScreen() {
     setSubmitting(true);
 
     try {
-      const response = await services.group.updateGroup(params.id as string, {
+      const response = await services.group.updateGroup(groupId as string, {
         name: values.name,
         category: values.category,
         avatar: values.avatar
@@ -131,7 +134,12 @@ export default function EditGroupScreen() {
 
   const handleBack = () => {
     handleReset();
-    router.push(`/groups/${params.id}`);
+
+    if (isGroup) {
+      router.push("/groups");
+    } else {
+      router.push(`/groups/${groupId}`);
+    }
   };
 
   return (
@@ -149,7 +157,7 @@ export default function EditGroupScreen() {
           />
         ]}
       >
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <ScrollView className="flex-1" bounces={false}>
           <LoadingWrapper
             isLoading={loading}
             text="Loading group details, please wait..."
@@ -187,7 +195,7 @@ export default function EditGroupScreen() {
                       }
                       className={`items-center px-4 rounded-full ${
                         values.category === category.value
-                          ? "border-primary-500"
+                          ? "border-primary-400"
                           : "border-background-200 bg-background-50 dark:bg-background-100"
                       }`}
                     >

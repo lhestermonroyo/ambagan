@@ -71,7 +71,7 @@ const AmountInput: React.FC<IFormInputProps> = ({
         {rightIcon && (
           <InputSlot>
             <Button onPress={onPressRightIcon} variant="link" className="mr-4">
-              <InputIcon as={rightIcon} className="text-primary-500" />
+              <InputIcon as={rightIcon} className="text-primary-400" />
             </Button>
           </InputSlot>
         )}

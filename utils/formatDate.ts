@@ -1,6 +1,13 @@
-import { differenceInDays, format, formatDistanceToNow } from "date-fns";
+import {
+  differenceInDays,
+  format,
+  formatDistanceToNow,
+  isToday,
+  isYesterday,
+  parseISO
+} from "date-fns";
 
-const formatDate = (date: string) => {
+export const formatDate = (date: string) => {
   if (!date) return "";
 
   const parsedDate = new Date(date);
@@ -18,4 +25,14 @@ const formatDate = (date: string) => {
   return formatDistanceToNow(parsedDate, { addSuffix: true });
 };
 
-export default formatDate;
+export const getDateGroupTitle = (dateString: string) => {
+  const date = parseISO(dateString);
+
+  if (isToday(date)) {
+    return "Today";
+  } else if (isYesterday(date)) {
+    return "Yesterday";
+  } else {
+    return format(date, "EEEE, MMM dd, yyyy");
+  }
+};

@@ -13,27 +13,68 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadImage from "@/components/UploadImage";
-import states from "@/states";
-import { MemberSplit } from "@/types/transactions";
+import useAppToast from "@/hooks/use-app-toast";
+import services from "@/services";
+import { ExpenseSplit } from "@/types/expenses";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
+import { formatAmount } from "../utils/formatAmount";
 
 export default function RequestPaidSheet({
   isOpen,
   onClose,
-  splitMember
+  expenseSplit,
+  onRefetch
 }: {
   isOpen: boolean;
   onClose: () => void;
-  splitMember: MemberSplit;
+  expenseSplit: ExpenseSplit;
+  onRefetch: () => void;
 }) {
+  if (!expenseSplit) {
+    return null;
+  }
+
+  const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
     note: "Paid with thanks! 😊",
     receipt: null as ImagePickerSuccessResult | null
   });
 
-  const group = states.group.getState();
-  const user = states.user.getState();
+  const showToast = useAppToast();
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+
+    try {
+      const response = await services.expense.createPaidRequest({
+        note: values.note,
+        receipt: values.receipt,
+        expenseSplitId: expenseSplit.id
+      });
+
+      if (!response) {
+        throw new Error("Failed to create paid request");
+      }
+
+      onRefetch();
+      showToast(
+        "Request Sent",
+        "Your request to mark this expense as paid has been sent.",
+        "success"
+      );
+    } catch (error) {
+      console.error("Error creating paid request:", error);
+      showToast(
+        "Error",
+        "There was an issue sending your request. Please try again.",
+        "error"
+      );
+    } finally {
+      setSubmitting(false);
+      onClose();
+    }
+  };
 
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[80]}>
@@ -46,8 +87,15 @@ export default function RequestPaidSheet({
           <Text bold className="text-xl">
             Request as Paid
           </Text>
-          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <ScrollView className="flex-1" bounces={false}>
             <VStack className="gap-y-6">
+              <VStack className="flex-1">
+                <Text className="text-2xl" bold>
+                  {formatAmount(expenseSplit.amount || 0)}
+                </Text>
+                <Text className="text-secondary-950 text-sm">Amount paid</Text>
+              </VStack>
+
               <FormTextarea
                 label="Note (optional)"
                 placeholder="Enter note (e.g., Paid with thanks! 😊)"
@@ -78,9 +126,15 @@ export default function RequestPaidSheet({
               className="flex-1"
               variant="outline"
               text="Cancel"
+              disabled={submitting}
               onPress={onClose}
             />
-            <FormButton className="flex-1" text="Confirm Request" />
+            <FormButton
+              className="flex-1"
+              text="Confirm Request"
+              loading={submitting}
+              onPress={handleSubmit}
+            />
           </HStack>
         </Box>
       </ActionsheetContent>

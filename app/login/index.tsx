@@ -24,7 +24,7 @@ import { useState } from "react";
 
 export default function LoginScreen() {
   const [values, setValues] = useState({
-    email: "monica@mailinator.com",
+    email: "joey@mailinator.com",
     password: "Password1"
   });
   const [formErrors, setFormErrors] = useState({
@@ -172,7 +172,7 @@ export default function LoginScreen() {
         />
 
         <Link onPress={() => router.push("/forgot-password")}>
-          <Text className="text-primary-500 text-center">Forgot Password?</Text>
+          <Text className="text-primary-400 text-center">Forgot Password?</Text>
         </Link>
 
         <FormButton text="Login" loading={submitting} onPress={handleSubmit} />
@@ -182,7 +182,7 @@ export default function LoginScreen() {
         <HStack className="gap-x-1">
           <Text className="text-secondary-950">No account yet?</Text>
           <Link onPress={() => router.push("/sign-up")}>
-            <Text className="text-primary-500">Sign up</Text>
+            <Text className="text-primary-400">Sign up</Text>
           </Link>
         </HStack>
       </Center>

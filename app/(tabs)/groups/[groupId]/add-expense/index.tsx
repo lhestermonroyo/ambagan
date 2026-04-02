@@ -2,8 +2,8 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import AddExpenseStep from "@/features/transaction/components/AddExpenseStep";
-import SplitExpenseStep from "@/features/transaction/components/SplitExpenseStep";
+import AddExpenseStep from "@/features/expense/components/AddExpenseStep";
+import SplitExpenseStep from "@/features/expense/components/SplitExpenseStep";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 export default function AddExpenseScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const groupId = params.id as string | undefined;
+  const groupId = params.groupId as string | undefined;
   const isQuick = groupId === "[id]";
 
   const [step, setStep] = useState(1);
@@ -41,7 +41,7 @@ export default function AddExpenseScreen() {
     };
   }>({});
 
-  const group = states.group.getState();
+  const { list: groupList } = states.group.getState();
   const user = states.user.getState();
 
   const showToast = useAppToast();
@@ -49,11 +49,11 @@ export default function AddExpenseScreen() {
   useFocusEffect(
     useMemo(
       () => () => {
-        if (group.groups.length) {
-          let selectedGroup = group.groups[0];
+        if (groupList.length) {
+          let selectedGroup = groupList[0];
 
           if (groupId) {
-            const found = group.groups.find((g) => g.id === groupId);
+            const found = groupList.find((g) => g.id === groupId);
             if (found) selectedGroup = found;
           }
           setValues((prevValues) => ({
@@ -63,7 +63,7 @@ export default function AddExpenseScreen() {
           fetchGroupMembers(selectedGroup.id);
         }
       },
-      [group.groups.length, groupId]
+      [groupList.length, groupId]
     )
   );
 
@@ -158,13 +158,20 @@ export default function AddExpenseScreen() {
         groupId: values.group!.id,
         payerId: values.payer!.id
       };
-      const mappedSplits = Object.keys(splits).map((userId) => ({
-        userId,
-        amount: parseFloat(splits[userId].amount),
-        percentage: parseFloat(splits[userId].percentage)
-      }));
+      const mappedSplits = Object.keys(splits)
+        .filter(
+          (userId) =>
+            splits[userId].isIncluded &&
+            parseFloat(splits[userId].amount) > 0 &&
+            parseFloat(splits[userId].percentage) > 0
+        )
+        .map((userId) => ({
+          userId,
+          amount: parseFloat(splits[userId].amount),
+          percentage: parseFloat(splits[userId].percentage)
+        }));
 
-      const response = await services.transaction.createExpense(
+      const response = await services.expense.createExpense(
         expensePayload,
         mappedSplits
       );
@@ -230,11 +237,11 @@ export default function AddExpenseScreen() {
             <Icon
               as="sentiment-dissatisfied"
               size={64}
-              className="text-primary-500"
+              className="text-primary-400"
             />
-            <Text className="text-xl text-center">
+            <Text className="text-center">
               You are not part of any group yet. Please join or create a group
-              to add an expense.
+              to first to add an expense.
             </Text>
             <FormButton
               text="Create Group"

@@ -1,54 +1,136 @@
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
-import {
-  Avatar,
-  AvatarFallbackText,
-  AvatarImage
-} from "@/components/ui/avatar";
-import { Badge, BadgeText } from "@/components/ui/badge";
+import LoadingWrapper from "@/components/LoadingWrapper";
+import PressableCard from "@/components/PressableCard";
 import { Box } from "@/components/ui/box";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Divider } from "@/components/ui/divider";
+import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
-import { Link } from "@/components/ui/link";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import ExpenseSplitItem from "@/features/expense/components/ExpenseSplitItem";
+import { formatAmount } from "@/features/expense/utils/formatAmount";
+import GroupItem from "@/features/group/components/GroupItem";
 import services from "@/services";
 import states from "@/states";
-import { TransactionPreview } from "@/types/transactions";
-import { useRouter } from "expo-router";
-import { useEffect } from "react";
-import { useColorScheme } from "react-native";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
+import { useFocusEffect, useRouter } from "expo-router";
+import {
+  ArrowBigDownDash,
+  ArrowBigUpDash,
+  UserCheck,
+  UserMinus
+} from "lucide-react-native";
+import { useMemo, useState } from "react";
 
 export default function HomeScreen() {
-  const user = states.user.getState();
-  const transaction = states.transaction.getState();
-  const group = states.group.getState();
+  const [loading, setLoading] = useState({
+    activities: false,
+    groups: false
+  });
+  const [stats, setStats] = useState({
+    totalReceive: 0,
+    totalPay: 0
+  });
+  const [initialized, setInitialized] = useState(false);
+
+  const { details: userDetails } = states.user();
+  const { preview: groupPreview } = states.group();
+  const { preview: expensePreview } = states.expense();
 
   const router = useRouter();
 
-  useEffect(() => {
-    if (user.details) {
-      fetchGroup();
-    }
-  }, [user.details]);
+  useFocusEffect(
+    useMemo(
+      () => () => {
+        if (!userDetails?.id) return;
 
-  const fetchGroup = async () => {
+        init(initialized);
+      },
+      [userDetails?.id, initialized]
+    )
+  );
+
+  const init = async (isInitialized = false) => {
+    await Promise.all([
+      fetchExpenseStatistics(),
+      fetchGroups(isInitialized),
+      fetchRecentExpenses(isInitialized)
+    ]).then(() => {
+      console.log("home initialized");
+      setInitialized(true);
+    });
+  };
+
+  const fetchExpenseStatistics = async () => {
     try {
-      const groups = await services.group.getGroupsByUserId(
-        user.details?.id || ""
+      const response = await services.expense.getExpenseStatsByUserId(
+        userDetails?.id || ""
       );
 
-      if (!groups) return;
+      if (!response) return;
+
+      setStats({
+        totalReceive: response.totalReceive,
+        totalPay: response.totalPay
+      });
+    } catch (error) {
+      console.error("Failed to fetch expense statistics:", error);
+    }
+  };
+
+  const fetchRecentExpenses = async (isInitialized = false) => {
+    if (!isInitialized) {
+      setLoading((prev) => ({ ...prev, activities: true }));
+    }
+
+    try {
+      const response = await services.expense.getActivitiesByUserId(
+        userDetails?.id || "",
+        0,
+        20,
+        false
+      );
+
+      if (!response) return;
+
+      states.expense.setState((prev) => ({
+        ...prev,
+        preview: response.slice(0, 3),
+        list: response
+      }));
+    } catch (error) {
+      console.error("Failed to fetch recent expenses:", error);
+    } finally {
+      setLoading((prev) => ({ ...prev, activities: false }));
+    }
+  };
+
+  const fetchGroups = async (isInitialized = false) => {
+    if (!isInitialized) {
+      setLoading((prev) => ({ ...prev, groups: true }));
+    }
+
+    try {
+      const response = await services.group.getGroupsByUserId(
+        userDetails?.id || ""
+      );
+
+      if (!response) return;
 
       states.group.setState((prev) => ({
         ...prev,
-        groups
+        list: response,
+        preview: response.slice(0, 3)
       }));
     } catch (error) {
       console.error("Failed to fetch groups:", error);
+    } finally {
+      setLoading((prev) => ({ ...prev, groups: false }));
     }
   };
 
@@ -62,83 +144,178 @@ export default function HomeScreen() {
   };
 
   return (
-    <KeyboardAvoidingView className="bg-typography-0 flex-1" behavior="padding">
-      <Box className="sticky top-0 bg-primary-400 px-4 pb-2 pt-20">
-        <HStack className="gap-x-2 items-center">
+    <KeyboardAvoidingView className="flex-1 bg-white" behavior="padding">
+      <Box className="sticky top-0 pb-4 px-4 pt-20 bg-primary-400">
+        <HStack className="items-center">
           <VStack className="flex-1">
-            <Text className="text-background-0 opacity-80">Hello,</Text>
+            <Text className="text-background-0 opacity-80 text-lg">Hello,</Text>
             <Text bold className="text-2xl text-background-0">
-              {user.details?.first_name} {user.details?.last_name}
+              {userDetails?.first_name} {userDetails?.last_name}
             </Text>
           </VStack>
           <Button variant="link" className="rounded-full">
-            <Icon as="notifications" className="text-background-0" size={28} />
+            <Icon as="notifications" size={28} className="text-background-0" />
           </Button>
         </HStack>
       </Box>
-      <ScrollView
-        stickyHeaderIndices={[0]}
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-      >
-        <Box className="bg-primary-400 px-4 pb-4">
-          <VStack className="gap-y-4">
-            <HStack className="gap-x-4 items-center">
-              <VStack className="gap-y-2 flex-1">
-                <StatItem type="RECEIVE" amount={0} />
-                <StatItem type="PAY" amount={0} />
+      <ScrollView className="flex-1" bounces={false}>
+        <VStack className="gap-y-4 bg-background-0 flex-1">
+          <Box className="bg-primary-400 max-h-40">
+            <Card
+              className="m-4 rounded-2xl shadow-lg shadow-primary-400/20"
+              variant="elevated"
+            >
+              <VStack className="gap-4 items-center">
+                <Text className="text-secondary-950 font-semibold uppercase">
+                  Current Total
+                </Text>
+                <HStack className="gap-x-4 items-center">
+                  <StatItem type="RECEIVE" amount={stats.totalReceive} />
+                  <Divider orientation="vertical" />
+                  <StatItem type="PAY" amount={stats.totalPay} />
+                </HStack>
+                <HStack className="gap-x-2">
+                  <FormButton
+                    className="flex-1"
+                    icon={<Icon as="bolt" className="text-background-0" />}
+                    text="Quick Expense"
+                    onPress={() => router.push("/groups/[id]/add-expense")}
+                  />
+                  <FormButton
+                    className="flex-1"
+                    text="Create Group"
+                    icon={<Icon as="group-add" className="text-background-0" />}
+                    onPress={() => router.push("/groups/create")}
+                  />
+                </HStack>
               </VStack>
-              <Box className="opacity-20 absolute right-[-20]">
-                <Icon
-                  as="wallet-giftcard"
-                  size={150}
-                  className="text-background-0"
-                />
-              </Box>
-            </HStack>
-            <HStack className="gap-x-2">
-              <HeroButton
-                icon="bolt"
-                text="Quick Expense"
-                onPress={() => router.push("/groups/[id]/add-expense")}
-              />
-              <HeroButton
-                text="Create Group"
-                icon="group-add"
-                onPress={() => router.push("/groups/create")}
-              />
-            </HStack>
+            </Card>
+          </Box>
+          <VStack className="mt-20">
+            <VStack className="gap-y-2 py-2">
+              <HStack className="px-4 gap-x-2">
+                <PressableCard
+                  className="rounded-lg flex-1"
+                  variant="outline"
+                  onPress={() => {}}
+                >
+                  <ArrowBigUpDash className="text-secondary-950" size={20} />
+                  <Text className="text-lg">Payables</Text>
+                  <Text className="text-secondary-950">0 new</Text>
+                </PressableCard>
+                <PressableCard
+                  className="rounded-lg flex-1"
+                  variant="outline"
+                  onPress={() => {}}
+                >
+                  <ArrowBigDownDash className="text-secondary-950" size={20} />
+                  <Text className="text-lg">Receivables</Text>
+                  <Text className="text-secondary-950">0 new</Text>
+                </PressableCard>
+              </HStack>
+              <HStack className="px-4 gap-x-2">
+                <PressableCard
+                  className="rounded-lg flex-1"
+                  variant="outline"
+                  onPress={() => {}}
+                >
+                  <UserCheck className="text-secondary-950" size={20} />
+                  <Text className="text-lg">Requests</Text>
+                  <Text className="text-secondary-950">0 new</Text>
+                </PressableCard>
+                <PressableCard
+                  className="rounded-lg flex-1"
+                  variant="outline"
+                  onPress={() => {}}
+                >
+                  <UserMinus className="text-secondary-950" size={20} />
+                  <Text className="text-lg">Pending</Text>
+                  <Text className="text-secondary-950">0 new</Text>
+                </PressableCard>
+              </HStack>
+            </VStack>
           </VStack>
-        </Box>
-        <VStack className="p-4 gap-y-4">
-          <HStack className="items-center justify-between">
-            <Text bold className="text-xl flex-1">
-              Recent Activities
-            </Text>
-            <Link onPress={() => router.push("/activity")}>
-              <Text className="text-primary-500">View All</Text>
-            </Link>
-          </HStack>
-          <Card className="p-0 bg-typography-0 rounded-xl">
-            {transaction.preview.map((item, index) => (
-              <ActivityItem
-                key={item.id}
-                data={item}
-                isLast={index === transaction.preview.length - 1}
+          <VStack>
+            <HStack className="items-center justify-between px-4">
+              <Text bold className="text-2xl">
+                Activities
+              </Text>
+              <Button variant="link" onPress={() => router.push("/activities")}>
+                <Text className="text-primary-400">View All</Text>
+              </Button>
+            </HStack>
+            <LoadingWrapper
+              text="Loading activities"
+              isLoading={loading.activities}
+            >
+              <FlatList
+                data={expensePreview}
+                scrollEnabled={false}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <ExpenseSplitItem
+                    item={item}
+                    onOpen={() =>
+                      router.push(
+                        `/groups/${item.expense.group_id}/${item.expense_id}`
+                      )
+                    }
+                  />
+                )}
+                ItemSeparatorComponent={() => (
+                  <Box className="mx-4">
+                    <Divider className="border-secondary-100" />
+                  </Box>
+                )}
+                ListEmptyComponent={() => (
+                  <VStack className="flex-1 justify-center items-center p-4">
+                    <Text className="text-secondary-950">
+                      No activities recorded yet.
+                    </Text>
+                  </VStack>
+                )}
               />
-            ))}
-          </Card>
+            </LoadingWrapper>
+          </VStack>
+          <VStack>
+            <HStack className="items-center justify-between px-4">
+              <Text bold className="text-2xl">
+                Groups
+              </Text>
+              <Button variant="link" onPress={() => router.push("/groups")}>
+                <Text className="text-primary-400">View All</Text>
+              </Button>
+            </HStack>
+            <LoadingWrapper
+              text="Loading previous groups"
+              isLoading={loading.groups}
+            >
+              <FlatList
+                data={groupPreview}
+                scrollEnabled={false}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <GroupItem
+                    details={item}
+                    onOpen={() => router.push(`/groups/${item.id}`)}
+                  />
+                )}
+                ItemSeparatorComponent={() => (
+                  <Box className="mx-4">
+                    <Divider className="border-secondary-100" />
+                  </Box>
+                )}
+                ListEmptyComponent={() => (
+                  <VStack className="flex-1 justify-center items-center p-4">
+                    <Text className="text-secondary-950">
+                      No groups joined or created yet.
+                    </Text>
+                  </VStack>
+                )}
+              />
+            </LoadingWrapper>
+          </VStack>
         </VStack>
-
-        <HStack className="items-center justify-between">
-          <Text bold className="text-2xl flex-1">
-            Active Groups
-          </Text>
-          <Link>
-            <Text className="text-primary-400">View All</Text>
-          </Link>
-        </HStack>
-        <FormButton text="Logout" onPress={handleLogout} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -152,91 +329,21 @@ function StatItem({
   amount: number;
 }) {
   return (
-    <VStack className="py-4 flex-1">
-      <HStack className="gap-x-4 items-center">
-        <VStack className="gap-y-4 flex-1">
-          <Text className="text-background-0">
-            {type === "RECEIVE" ? "They Owe You" : "You Owe"}
-          </Text>
-          <Text bold className="text-5xl text-background-0">
-            ₱{amount.toFixed(2)}
-          </Text>
-        </VStack>
-      </HStack>
-    </VStack>
-  );
-}
-
-function ActivityItem({
-  data,
-  isLast
-}: {
-  data: TransactionPreview;
-  isLast: boolean;
-}) {
-  return (
-    <HStack className="px-4">
-      <VStack
-        className={`w-full py-6 ${isLast ? "" : "border-b border-typography-50"}`}
-      >
-        <HStack className="gap-2 items-center">
-          <HStack className="gap-x-2 items-center flex-1">
-            <Avatar size="sm">
-              <AvatarFallbackText>
-                {data.created_by.first_name}
-              </AvatarFallbackText>
-              <AvatarImage
-                source={{
-                  uri: data.created_by?.avatar || undefined
-                }}
-              />
-            </Avatar>
-            <Text>
-              {data.created_by.first_name} {data.created_by.last_name}
-            </Text>
-          </HStack>
-          <Badge
-            size="lg"
-            className="rounded-full"
-            variant="solid"
-            action={data.type === "expense" ? "error" : "success"}
-          >
-            <BadgeText>
-              {data.type === "expense" ? `You owe` : `You are owed`} ₱
-              {data.amount.toFixed(2)}
-            </BadgeText>
-          </Badge>
-        </HStack>
+    <HStack className="gap-x-4 items-center flex-1 h-24">
+      <VStack className="gap-y-2 items-center flex-1">
+        <Text className="text-secondary-950">
+          {type === "RECEIVE" ? "They Owe You" : "You Owe"}
+        </Text>
+        <Text
+          bold
+          className={cn(
+            "text-3xl",
+            type === "RECEIVE" ? "text-primary-400" : "text-error-400"
+          )}
+        >
+          {formatAmount(amount)}
+        </Text>
       </VStack>
     </HStack>
-  );
-}
-
-function HeroButton({
-  text,
-  icon,
-  className,
-  onPress
-}: {
-  text: string;
-  icon: React.ComponentProps<typeof Icon>["as"];
-  className?: string;
-  onPress: () => void;
-}) {
-  const theme = useColorScheme();
-  const bgColor = theme === "dark" ? "bg-primary-300" : "bg-primary-500";
-
-  return (
-    <Button
-      className={`disabled:opacity-70 rounded-full flex-1 ${bgColor}`}
-      size="lg"
-      variant="solid"
-      onPress={onPress}
-    >
-      <Box className="ml-[-8px]">
-        <Icon as={icon} className="text-background-0" />
-      </Box>
-      <ButtonText className="text-background-0">{text}</ButtonText>
-    </Button>
   );
 }

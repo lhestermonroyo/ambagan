@@ -1,5 +1,6 @@
 import AmountInput from "@/components/AmountInput";
 import FormTextarea from "@/components/FormTextarea";
+import { Card } from "@/components/ui/card";
 import {
   FormControl,
   FormControlHelper,
@@ -39,6 +40,7 @@ type AddExpenseStepProps = {
     description?: string;
   };
   isLockedGroup?: boolean;
+  isEditExpense?: boolean;
 };
 
 export default function AddExpenseStep({
@@ -46,10 +48,19 @@ export default function AddExpenseStep({
   values,
   setValues,
   formErrors,
-  isLockedGroup = false
+  isLockedGroup = false,
+  isEditExpense = false
 }: AddExpenseStepProps) {
   return (
-    <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+    <ScrollView className="flex-1" bounces={false}>
+      {isEditExpense && (
+        <Card className="bg-warning-100 mx-4 rounded-lg">
+          <Text className="text-warning-800 text-sm">
+            You're editing an existing expense. Changes will reset the statuses
+            of all participants. Inform them to avoid confusion.
+          </Text>
+        </Card>
+      )}
       <VStack className="gap-y-6 p-4">
         <AmountInput
           label="Amount to Split"

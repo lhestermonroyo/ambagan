@@ -129,6 +129,7 @@ export const getGroupsByUserId = async (userId: string) => {
       `${tables.GROUPS_TBL} (
         id,
         created_at,
+        creator: ${tables.USERS_TBL} (id, email, first_name, last_name, avatar),
         category,
         name,
         avatar

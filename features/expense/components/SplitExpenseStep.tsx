@@ -9,11 +9,11 @@ import { Input, InputField, InputSlot } from "@/components/ui/input";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
-import { useToast } from "@/components/ui/toast";
 import { VStack } from "@/components/ui/vstack";
 import { Member } from "@/types/groups";
 import { splitTypes } from "@/utils/constants";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { formatAmount } from "../utils/formatAmount";
 import {
   getAmountPerPerson,
   getPercentagePerPerson
@@ -197,7 +197,7 @@ export default function SplitSelection({
       <VStack className="gap-y-4 pb-4">
         <VStack className="px-4 items-center">
           <Text bold className="text-2xl">
-            ₱{amount.toFixed(2)}
+            {formatAmount(amount)}
           </Text>
           <Text className="text-secondary-950 text-sm">Amount to Split</Text>
         </VStack>
@@ -250,7 +250,7 @@ export default function SplitSelection({
         {tab === "equal" && (
           <VStack className="items-center">
             <Text className="text-lg">
-              ₱{equalSplits[0]?.toFixed(2) || "0"} per person
+              {formatAmount(equalSplits[0] || 0)} per person
             </Text>
             <Text className="text-secondary-950 text-sm">
               ({includedCount} {includedCount === 1 ? "person" : "people"})
@@ -270,12 +270,9 @@ export default function SplitSelection({
             </Text>
             <Text className="text-secondary-950 text-sm">
               {Math.max(0, 100 - totalPercentage).toFixed(0)}% left to allocate
-              (₱
-              {Math.max(
-                0,
-                totalAmount - totalAmount * (totalPercentage / 100)
-              ).toFixed(2)}
-              )
+              {formatAmount(
+                Math.max(0, totalAmount - totalAmount * (totalPercentage / 100))
+              )}
             </Text>
           </VStack>
         )}
@@ -288,11 +285,11 @@ export default function SplitSelection({
                 color: totalSplitAmount > totalAmount ? "#ef4444" : undefined
               }}
             >
-              ₱{totalSplitAmount.toFixed(2)} of ₱{totalAmount.toFixed(2)}
+              {formatAmount(totalSplitAmount)} of {formatAmount(totalAmount)}
             </Text>
             <Text className="text-secondary-950 text-sm">
-              ₱{Math.max(0, totalAmount - totalSplitAmount).toFixed(2)} left to
-              allocate
+              {formatAmount(Math.max(0, totalAmount - totalSplitAmount))} left
+              to allocate
             </Text>
           </VStack>
         )}
@@ -322,8 +319,6 @@ function MemberItem({
   onAmountChange: (amount: string) => void;
   onPercentageChange: (percentage: string) => void;
 }) {
-  const toast = useToast();
-
   const handleManualPercentageChange = (input: string) => {
     onPercentageChange(input);
   };
@@ -337,7 +332,7 @@ function MemberItem({
       <HStack className="gap-x-4 items-center">
         <Pressable onPress={onToggle}>
           <Box
-            className={`w-6 h-6 rounded border-2 ${split.isIncluded ? "bg-primary-500 border-primary-500" : "border-background-300"} items-center justify-center`}
+            className={`w-6 h-6 rounded border-2 ${split.isIncluded ? "bg-primary-400 border-primary-400" : "border-background-300"} items-center justify-center`}
           >
             {split.isIncluded && (
               <Icon as="check" size={16} className="text-background-0" />
@@ -356,7 +351,9 @@ function MemberItem({
           <VStack className="items-end">
             {splitType === "equal" && (
               <VStack className="items-end gap-y-2">
-                <Text className="text-lg">₱{split.amount}</Text>
+                <Text className="text-lg">
+                  {formatAmount(Number(split.amount) || 0)}
+                </Text>
                 <Text className="text-secondary-950 text-sm">
                   {split.percentage}%
                 </Text>
@@ -381,7 +378,7 @@ function MemberItem({
                   </Input>
                 </HStack>
                 <Text className="text-secondary-950 text-sm">
-                  ₱{split.amount || 0}
+                  {formatAmount(Number(split.amount) || 0)}
                 </Text>
               </VStack>
             )}

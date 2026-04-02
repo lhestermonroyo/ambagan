@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
+import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadAvatar from "@/components/UploadAvatar";
 import MembersSelection from "@/features/group/components/MembersSelection";
@@ -33,7 +34,7 @@ export default function CreateGroupScreen() {
     category: ""
   }) as any;
   const [openSelectMembers, setOpenSelectMembers] = useState(false);
-  const [members, setMembers] = useState<Member[]>([]);
+  const [finalMembers, setFinalMembers] = useState<Member[]>([]);
 
   const user = states.user.getState();
 
@@ -45,7 +46,7 @@ export default function CreateGroupScreen() {
 
   useEffect(() => {
     if (user.session && user.details) {
-      setMembers([
+      setFinalMembers([
         {
           id: user.details.id,
           first_name: user.details.first_name,
@@ -57,7 +58,7 @@ export default function CreateGroupScreen() {
     }
 
     return () => {
-      setMembers([]);
+      setFinalMembers([]);
     };
   }, []);
 
@@ -67,7 +68,7 @@ export default function CreateGroupScreen() {
       avatar: null,
       category: ""
     });
-    setMembers(
+    setFinalMembers(
       user.details
         ? [
             {
@@ -83,7 +84,7 @@ export default function CreateGroupScreen() {
   };
 
   const handleSaveMembers = (selectedMembers: Member[]) => {
-    setMembers(selectedMembers);
+    setFinalMembers(selectedMembers);
   };
 
   const handleSubmit = async () => {
@@ -99,7 +100,7 @@ export default function CreateGroupScreen() {
       return;
     }
 
-    if (members.length === 0) {
+    if (finalMembers.length === 0) {
       showToast(
         "No Members Selected",
         "Please select at least one member to create a group.",
@@ -115,7 +116,7 @@ export default function CreateGroupScreen() {
         name: values.name,
         avatar: values.avatar,
         category: values.category,
-        members: members.map((member) => member.id)
+        members: finalMembers.map((member) => member.id)
       });
 
       if (!response) {
@@ -144,7 +145,7 @@ export default function CreateGroupScreen() {
     handleReset();
 
     if (isGroup) {
-      router.push("/groups?refetch=true");
+      router.push("/groups");
     } else {
       router.push("/home");
     }
@@ -160,12 +161,14 @@ export default function CreateGroupScreen() {
             className="flex-1"
             text="Create"
             loading={submitting}
-            disabled={!values.name || !values.category || members.length === 0}
+            disabled={
+              !values.name || !values.category || finalMembers.length === 0
+            }
             onPress={handleSubmit}
           />
         ]}
       >
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <ScrollView className="flex-1" bounces={false}>
           <VStack className="gap-y-6 p-4">
             <UploadAvatar
               onSelect={(result) => setValues({ ...values, avatar: result })}
@@ -198,7 +201,7 @@ export default function CreateGroupScreen() {
                     }
                     className={`items-center px-4 rounded-full ${
                       values.category === category.value
-                        ? "border-primary-500"
+                        ? "border-primary-400"
                         : "border-background-200 bg-background-50 dark:bg-background-100"
                     }`}
                   >
@@ -220,17 +223,18 @@ export default function CreateGroupScreen() {
                 <FormControlLabel className="flex-1">
                   <FormControlLabelText>Members</FormControlLabelText>
                 </FormControlLabel>
-                <FormButton
-                  size="md"
-                  text="Add Members"
+                <Button
                   variant="link"
                   onPress={() => setOpenSelectMembers(true)}
-                />
+                >
+                  <Text className="text-primary-400">Add Member</Text>
+                </Button>
               </HStack>
               <MembersSelection
-                onSaveMembers={handleSaveMembers}
                 isOpen={openSelectMembers}
                 onClose={() => setOpenSelectMembers(false)}
+                finalMembers={finalMembers}
+                onSaveMembers={handleSaveMembers}
               />
             </FormControl>
           </VStack>

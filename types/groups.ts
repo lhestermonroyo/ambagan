@@ -1,8 +1,9 @@
-import { Transaction } from "./transactions";
+import { Expense } from "./expenses";
 import { UserPreview } from "./user";
 
 export type GroupState = {
-  groups: Group[];
+  preview: Group[];
+  list: Group[];
   details: GroupDetails | null;
 };
 
@@ -17,7 +18,7 @@ export type Group = {
 };
 
 export type GroupDetails = Group & { members: Member[] } & {
-  expenses: Transaction[];
+  expenses: Expense[];
 };
 
 export type Member = UserPreview & { joined_at: string };

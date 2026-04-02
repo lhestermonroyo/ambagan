@@ -1,11 +1,11 @@
 import { Session } from "@supabase/supabase-js";
 import { v4 as uuid } from "uuid";
-import { Group, GroupPreview, GroupState } from "../types/groups";
 import {
   Transaction,
   TransactionPreview,
   TransactionState
-} from "../types/transactions";
+} from "../types/expenses";
+import { Group, GroupPreview, GroupState } from "../types/groups";
 import { AuthState, User, UserPreview } from "../types/user";
 
 // Mock Users

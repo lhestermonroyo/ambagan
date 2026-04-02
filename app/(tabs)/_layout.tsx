@@ -40,11 +40,11 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="activity/index"
+          name="activities/index"
           options={{
-            title: "Activity",
+            title: "Activities",
             tabBarButton: (props) => (
-              <TabButton {...props} label="Activity" icon="checklist" />
+              <TabButton {...props} label="Activities" icon="checklist" />
             )
           }}
         />
@@ -66,7 +66,7 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="groups/[id]/index"
+          name="groups/[groupId]/index"
           options={{
             href: null,
             title: "Group Details",
@@ -74,7 +74,7 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="groups/[id]/edit/index"
+          name="groups/[groupId]/edit/index"
           options={{
             href: null,
             title: "Edit Group",
@@ -82,7 +82,7 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="groups/[id]/members/index"
+          name="groups/[groupId]/members/index"
           options={{
             href: null,
             title: "Edit Group",
@@ -90,7 +90,7 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="groups/[id]/add-expense/index"
+          name="groups/[groupId]/add-expense/index"
           options={{
             href: null,
             title: "Add Expense",
@@ -98,7 +98,7 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="groups/[id]/expense-details/index"
+          name="groups/[groupId]/[expenseId]/index"
           options={{
             href: null,
             title: "Expense Details",
