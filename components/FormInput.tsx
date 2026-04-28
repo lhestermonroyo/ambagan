@@ -12,6 +12,7 @@ import { Input, InputField, InputIcon, InputSlot } from "@/components/ui/input";
 import { LucideIcon } from "lucide-react-native";
 import React, { FC } from "react";
 import { TextInputProps } from "react-native";
+import { Text } from "./ui/text";
 
 interface IFormInputProps extends TextInputProps {
   type?: "text" | "password" | undefined;
@@ -20,6 +21,7 @@ interface IFormInputProps extends TextInputProps {
   value: string;
   onChangeText: (text: string) => void;
   onPressRightIcon?: () => void;
+  leftAddon?: string;
   leftIcon?: LucideIcon | string;
   rightIcon?:
     | React.ElementType<any, keyof React.JSX.IntrinsicElements>
@@ -39,6 +41,7 @@ const FormInput: FC<IFormInputProps> = ({
   value,
   onChangeText,
   onPressRightIcon,
+  leftAddon,
   leftIcon,
   rightIcon,
   helperText,
@@ -61,7 +64,12 @@ const FormInput: FC<IFormInputProps> = ({
           <FormControlLabelText>{label}</FormControlLabelText>
         </FormControlLabel>
       )}
-      <Input variant="rounded" className="bg-background-50" size="lg">
+      <Input className="rounded-lg" size="lg">
+        {leftAddon && (
+          <InputSlot>
+            <Text className="font-medium ml-2">{leftAddon}</Text>
+          </InputSlot>
+        )}
         <InputField
           autoCapitalize="none"
           type={type}

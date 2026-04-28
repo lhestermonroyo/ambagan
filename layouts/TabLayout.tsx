@@ -1,35 +1,38 @@
 import { Box } from "@/components/ui/box";
+import { Button } from "@/components/ui/button";
 import { HStack } from "@/components/ui/hstack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
+import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { Text } from "@/components/ui/text";
-import { Fragment } from "react";
+import { getSecondaryHex } from "@/utils/getColorHex";
+import { Bell } from "lucide-react-native";
 
 export default function TabLayout({
   children,
-  title,
-  actions
+  title
 }: {
   children: React.ReactNode;
   title: string;
-  actions?: React.ReactNode[];
 }) {
   return (
-    <KeyboardAvoidingView className="bg-background-0 flex-1" behavior="padding">
-      <Box className="sticky top-0 pb-4 px-4 pt-20">
-        <HStack className="items-center">
-          <Text bold className="flex-1 text-3xl">
-            {title}
-          </Text>
-          {actions && (
-            <HStack className="gap-x-4 items-center">
-              {actions.map((item, index) => (
-                <Fragment key={index}>{item}</Fragment>
-              ))}
-            </HStack>
-          )}
-        </HStack>
-      </Box>
-      {children}
-    </KeyboardAvoidingView>
+    <SafeAreaView className="flex-1 bg-background-0">
+      <KeyboardAvoidingView className="flex-1" behavior="padding">
+        <Box className="p-4">
+          <HStack className="items-center">
+            <Text bold className="flex-1 text-3xl">
+              {title}
+            </Text>
+            <Button
+              variant="link"
+              className="rounded-full"
+              // onPress={() => setNotificationsOpen(true)}
+            >
+              <Bell size={24} color={getSecondaryHex("text-secondary-950")} />
+            </Button>
+          </HStack>
+        </Box>
+        {children}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

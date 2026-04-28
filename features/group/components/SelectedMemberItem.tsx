@@ -4,7 +4,7 @@ import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
-import { Member } from "@/types/groups";
+import { UserPreview } from "@/types/user";
 import { Pressable } from "react-native";
 
 export default function SelectedMemberItem({
@@ -12,14 +12,13 @@ export default function SelectedMemberItem({
   disabled,
   onRemoveMember
 }: {
-  member: Member;
+  member: UserPreview;
   disabled?: boolean;
   onRemoveMember: () => void;
 }) {
   const user = states.user();
   const { details: userDetails } = user;
 
-  const isCreator = member.id === userDetails?.id;
   const isMe = member.id === userDetails?.id;
 
   return (
@@ -44,13 +43,14 @@ export default function SelectedMemberItem({
           <Avatar
             name={member.first_name || ""}
             uri={member.avatar!}
+            size="lg"
             className="rounded-full p-1 bg-primary-400"
           />
         </Box>
         <VStack className="items-center gap-y-0">
           <Text className="text-center break-words">
             {member.first_name} {member.last_name}
-            {isCreator && " (Creator)"}
+            {isMe && " (You)"}
           </Text>
         </VStack>
       </VStack>

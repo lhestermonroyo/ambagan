@@ -1,9 +1,14 @@
-import { Avatar, AvatarFallbackText, AvatarGroup } from "./ui/avatar";
+import {
+  Avatar,
+  AvatarFallbackText,
+  AvatarGroup,
+  AvatarImage
+} from "./ui/avatar";
 
 type AppAvatarGroupProps = {
   items: {
     id: string;
-    avatar: string | null;
+    uri: string | undefined;
     name: string;
   }[];
   maxDisplay?: number;
@@ -24,9 +29,17 @@ const AppAvatarGroup = ({
             size={size}
             className={`border-2 border-outline-0 ${items.length === 1 ? "" : "mr-[-10]"} z-[${index + 1}]`}
           >
-            <AvatarFallbackText className="text-background-0">
-              {avatar.name}
-            </AvatarFallbackText>
+            {avatar.uri && (
+              <AvatarImage
+                source={{ uri: avatar.uri }}
+                alt={avatar.name || "Avatar"}
+              />
+            )}
+            {!avatar.uri && (
+              <AvatarFallbackText className="text-background-0">
+                {avatar.name}
+              </AvatarFallbackText>
+            )}
           </Avatar>
         );
       })}

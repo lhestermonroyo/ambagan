@@ -23,86 +23,27 @@ export default function TabLayout() {
         }}
       >
         <Tabs.Screen
-          name="home/index"
+          name="index"
           options={{
-            tabBarButton: (props) => (
-              <TabButton {...props} label="Home" icon="home" />
-            )
-          }}
-        />
-
-        <Tabs.Screen
-          name="groups/index"
-          options={{
-            tabBarButton: (props) => (
-              <TabButton {...props} label="Groups" icon="groups" />
-            )
+            tabBarButton: (props) => <TabButton {...props} label="Overview" />
           }}
         />
         <Tabs.Screen
-          name="activities/index"
+          name="groups"
           options={{
-            title: "Activities",
-            tabBarButton: (props) => (
-              <TabButton {...props} label="Activities" icon="checklist" />
-            )
+            tabBarButton: (props) => <TabButton {...props} label="Groups" />
+          }}
+        />
+        <Tabs.Screen
+          name="payments"
+          options={{
+            tabBarButton: (props) => <TabButton {...props} label="Payments" />
           }}
         />
         <Tabs.Screen
           name="profile/index"
           options={{
-            title: "Profile",
-            tabBarButton: (props) => (
-              <TabButton {...props} label="Profile" icon="account-circle" />
-            )
-          }}
-        />
-        <Tabs.Screen
-          name="groups/create/index"
-          options={{
-            href: null,
-            title: "Create Group",
-            tabBarStyle: { display: "none" }
-          }}
-        />
-        <Tabs.Screen
-          name="groups/[groupId]/index"
-          options={{
-            href: null,
-            title: "Group Details",
-            tabBarStyle: { display: "none" }
-          }}
-        />
-        <Tabs.Screen
-          name="groups/[groupId]/edit/index"
-          options={{
-            href: null,
-            title: "Edit Group",
-            tabBarStyle: { display: "none" }
-          }}
-        />
-        <Tabs.Screen
-          name="groups/[groupId]/members/index"
-          options={{
-            href: null,
-            title: "Edit Group",
-            tabBarStyle: { display: "none" }
-          }}
-        />
-        <Tabs.Screen
-          name="groups/[groupId]/add-expense/index"
-          options={{
-            href: null,
-            title: "Add Expense",
-            tabBarStyle: { display: "none" }
-          }}
-        />
-        <Tabs.Screen
-          name="groups/[groupId]/[expenseId]/index"
-          options={{
-            href: null,
-            title: "Expense Details",
-            tabBarStyle: { display: "none" }
+            tabBarButton: (props) => <TabButton {...props} label="Profile" />
           }}
         />
       </Tabs>

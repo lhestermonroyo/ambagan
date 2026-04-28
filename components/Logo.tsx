@@ -28,7 +28,7 @@ export default function Logo({ type = "splash" }: LogoProps) {
 
   if (type === "auth") {
     return (
-      <HStack className="gap-x-2 justify-center items-center">
+      <HStack className="gap-x-2 items-center">
         <Box className="justify-center items-center bg-primary-50 rounded-2xl w-12 h-12">
           <HandCoins size={28} color={color} />
         </Box>

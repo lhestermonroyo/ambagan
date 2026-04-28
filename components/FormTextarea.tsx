@@ -8,6 +8,7 @@ import {
   FormControlLabelText
 } from "@/components/ui/form-control";
 import { Textarea, TextareaInput } from "@/components/ui/textarea";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import React, { FC } from "react";
 import { TextInputProps } from "react-native";
 
@@ -21,6 +22,7 @@ interface IFormTextareaProps extends TextInputProps {
   isReadOnly?: boolean;
   isDisabled?: boolean;
   errorMessage?: string;
+  size?: "sm" | "md" | "lg";
 }
 
 const FormTextarea: FC<IFormTextareaProps> = ({
@@ -33,8 +35,15 @@ const FormTextarea: FC<IFormTextareaProps> = ({
   isReadOnly = false,
   isDisabled = false,
   errorMessage,
+  size = "md",
   ...props
 }) => {
+  const sizeClasses = {
+    sm: "h-[80]",
+    md: "h-[100]",
+    lg: "h-[150]"
+  };
+
   return (
     <FormControl
       size="md"
@@ -48,7 +57,7 @@ const FormTextarea: FC<IFormTextareaProps> = ({
       </FormControlLabel>
 
       <Textarea
-        className="bg-background-50 rounded-2xl px-2 py-1 h-[100]"
+        className={cn("rounded-lg px-2 py-1", sizeClasses[size])}
         size="lg"
       >
         <TextareaInput

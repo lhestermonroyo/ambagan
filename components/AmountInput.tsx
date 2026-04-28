@@ -1,10 +1,6 @@
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { TextInputProps } from "react-native";
 import { Button } from "./ui/button";
-import {
-  FormControl,
-  FormControlLabel,
-  FormControlLabelText
-} from "./ui/form-control";
 import { Input, InputField, InputIcon, InputSlot } from "./ui/input";
 import { Text } from "./ui/text";
 
@@ -14,6 +10,11 @@ interface IFormInputProps extends TextInputProps {
   value: string;
   onChangeText: (text: string) => void;
   onPressRightIcon?: () => void;
+  className?: string;
+  leftAddon?: string;
+  leftIcon?:
+    | React.ElementType<any, keyof React.JSX.IntrinsicElements>
+    | undefined;
   rightIcon?:
     | React.ElementType<any, keyof React.JSX.IntrinsicElements>
     | undefined;
@@ -31,6 +32,9 @@ const AmountInput: React.FC<IFormInputProps> = ({
   value,
   onChangeText,
   onPressRightIcon,
+  className,
+  leftAddon,
+  leftIcon,
   rightIcon,
   helperText,
   isRequired = false,
@@ -40,43 +44,29 @@ const AmountInput: React.FC<IFormInputProps> = ({
   ...props
 }) => {
   return (
-    <FormControl
-      size="md"
-      isDisabled={isDisabled}
-      isReadOnly={isReadOnly}
-      isRequired={isRequired}
-      isInvalid={!!errorMessage}
-    >
-      {label && (
-        <FormControlLabel>
-          <FormControlLabelText>{label}</FormControlLabelText>
-        </FormControlLabel>
-      )}
-      <Input variant="underlined" className="h-[64]">
-        <InputSlot className="mx-4 place-self-center">
-          <Text bold className="text-4xl mt-1">
-            ₱
-          </Text>
+    <Input className={cn("rounded-lg", className)} size="lg">
+      {leftAddon && (
+        <InputSlot>
+          <Text className="font-medium ml-2">{leftAddon}</Text>
         </InputSlot>
-
-        <InputField
-          className="text-4xl font-bold place-self-center"
-          autoCapitalize="none"
-          keyboardType="numeric"
-          placeholder={placeholder}
-          value={value}
-          onChangeText={onChangeText}
-          {...props}
-        />
-        {rightIcon && (
-          <InputSlot>
-            <Button onPress={onPressRightIcon} variant="link" className="mr-4">
-              <InputIcon as={rightIcon} className="text-primary-400" />
-            </Button>
-          </InputSlot>
-        )}
-      </Input>
-    </FormControl>
+      )}
+      <InputField
+        keyboardType="numeric"
+        autoCapitalize="none"
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChangeText={onChangeText}
+        {...props}
+      />
+      {rightIcon && (
+        <InputSlot>
+          <Button onPress={onPressRightIcon} variant="link" className="mr-4">
+            <InputIcon as={rightIcon} className="text-primary-400" />
+          </Button>
+        </InputSlot>
+      )}
+    </Input>
   );
 };
 

@@ -35,7 +35,7 @@ export default function PayerSelection({
   members: Member[];
   onChangePayer: (payer: Member) => void;
 }) {
-  const user = states.user();
+  const { details: userDetails } = states.user.getState();
   const [openActionsheet, setOpenActionsheet] = useState(false);
 
   return (
@@ -52,7 +52,7 @@ export default function PayerSelection({
                 <HStack className="gap-x-1 items-center">
                   <Text className="text-lg">
                     {payer?.first_name} {payer?.last_name}
-                    {user.details?.id === payer.id && " (You)"}
+                    {userDetails?.id === payer.id && " (You)"}
                   </Text>
                 </HStack>
                 <Text className="text-secondary-950 text-sm">
@@ -88,18 +88,18 @@ function PayerSelectionActionSheet({
   onChangePayer: (payer: Member) => void;
   members: Member[];
 }) {
-  const user = states.user();
+  const { details: userDetails } = states.user.getState();
   const [selectedPayer, setSelectedPayer] = useState(currentPayer.id);
 
   const sortedMembers = useMemo(
     () =>
       members
         ? [
-            ...members.filter((m) => m.id === user.details?.id),
-            ...members.filter((m) => m.id !== user.details?.id)
+            ...members.filter((m) => m.id === userDetails?.id),
+            ...members.filter((m) => m.id !== userDetails?.id)
           ]
         : [],
-    [members, user.details?.id]
+    [members, userDetails?.id]
   );
 
   return (
@@ -163,8 +163,8 @@ function PayerSelectionActionSheet({
 }
 
 function MemberItem({ member }: { member: Member }) {
-  const user = states.user();
-  const isMe = user.details?.id === member.id;
+  const { details: userDetails } = states.user.getState();
+  const isMe = userDetails?.id === member.id;
 
   return (
     <Radio

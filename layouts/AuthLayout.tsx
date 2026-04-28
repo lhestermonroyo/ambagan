@@ -9,36 +9,39 @@ import { VStack } from "@/components/ui/vstack";
 export default function AuthLayout({
   title,
   subtitle,
-  children
+  children,
+  footer
 }: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
 }) {
   return (
-    <KeyboardAvoidingView className="flex-1 bg-background-0" behavior="padding">
-      <ScrollView className="flex-1" bounces={false}>
-        <SafeAreaView>
-          <VStack className="px-4 gap-y-10">
-            <Box className="h-20 items-center justify-center">
+    <SafeAreaView className="flex-1 bg-background-0">
+      <KeyboardAvoidingView className="flex-1" behavior="padding">
+        <ScrollView className="flex-1" bounces={false}>
+          <VStack className="px-4 py-10 gap-y-10">
+            <Box className="justify-center">
               <Logo type="auth" />
             </Box>
 
             <VStack>
-              <Text size="3xl" bold className="text-center">
+              <Text size="3xl" bold>
                 {title}
               </Text>
               {subtitle && (
-                <Text className="text-center text-lg text-secondary-950">
-                  {subtitle}
-                </Text>
+                <Text className="text-xl text-secondary-950">{subtitle}</Text>
               )}
             </VStack>
 
             {children}
           </VStack>
-        </SafeAreaView>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+      {footer && (
+        <Box className="w-full justify-center items-center px-4">{footer}</Box>
+      )}
+    </SafeAreaView>
   );
 }

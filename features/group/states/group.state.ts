@@ -2,10 +2,11 @@ import { GroupState } from "@/types/groups";
 import { create } from "zustand";
 
 const initialState: GroupState = {
-  preview: [],
   list: [],
   details: null,
-  refetch: false
+  memberList: [],
+  expenseList: [],
+  memberTotalsList: []
 };
 
 const GROUP_STATE = create<

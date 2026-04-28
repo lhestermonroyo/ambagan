@@ -1,3 +1,4 @@
+import { Member } from "@/types/groups";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 
@@ -39,7 +40,7 @@ export const getMembersByGroupId = async (groupId: string) => {
   const { data, error } = await supabase
     .from(tables.GROUP_MEMBERS_TBL)
     .select(
-      `joined_at, ${tables.USERS_TBL} (id, email, first_name, last_name, avatar)`
+      `id, group_id, joined_at, member:member_id (id, email, phone, first_name, last_name, avatar)`
     )
     .eq("group_id", groupId);
 
@@ -47,10 +48,32 @@ export const getMembersByGroupId = async (groupId: string) => {
     throw error;
   }
 
-  return (
-    (data as any[]).map((item) => ({
-      ...item[tables.USERS_TBL],
-      joined_at: item.joined_at
-    })) || []
-  );
+  return (data as any[]).map((item) => ({
+    ...item["member"],
+    joined_at: item.joined_at,
+    group_id: item.group_id
+  })) as Member[];
+};
+
+export const getMembersByGroupIds = async (groupIds: string[]) => {
+  if (groupIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from(tables.GROUP_MEMBERS_TBL)
+    .select(
+      `id, group_id, joined_at, member:member_id (id, first_name, last_name, avatar)`
+    )
+    .in("group_id", groupIds);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as any[]).map((item) => ({
+    ...item["member"],
+    joined_at: item.joined_at,
+    group_id: item.group_id
+  })) as Member[];
 };

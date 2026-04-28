@@ -11,7 +11,7 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadAvatar from "@/components/UploadAvatar";
-import MembersSelection from "@/features/group/components/MembersSelection";
+import MembersSelection from "@/features/group/components/MembersSelectionSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";

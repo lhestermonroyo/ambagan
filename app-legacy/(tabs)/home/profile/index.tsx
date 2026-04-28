@@ -3,16 +3,19 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import TabLayout from "@/layouts/TabLayout";
+import InnerLayout from "@/layouts/InnerLayout";
+import services from "@/services";
 import states from "@/states";
 import { formatDate } from "@/utils/formatDate";
-import { Fragment } from "react";
+import { router } from "expo-router";
 
 type SettingsOption = {
   title: string;
@@ -22,23 +25,13 @@ type SettingsOption = {
 
 const settingsOptions: SettingsOption[] = [
   {
-    title: "Currency",
-    description: "Set preferred currency for expense tracking",
-    icon: "price-change"
-  },
-  {
-    title: "Favorites",
-    description: "Manage favorite users for quick access",
-    icon: "star"
-  },
-  {
-    title: "Theme Mode",
-    description: "Choose between light and dark mode for the app",
+    title: "Appearance",
+    description: "Customize the look and feel of the app",
     icon: "display-settings"
   },
   {
     title: "Notifications",
-    description: "Manage your notification settings",
+    description: "Receive updates about your groups and expenses",
     icon: "notifications"
   }
 ];
@@ -47,55 +40,68 @@ export default function ProfileScreen() {
   const user = states.user();
   const { details: userDetails } = user;
 
+  const handleLogout = async () => {
+    try {
+      await services.auth.logout();
+
+      states.user.getState().reset();
+      states.group.getState().reset();
+      states.expense.getState().reset();
+
+      router.replace("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
   return (
-    <TabLayout title="Profile">
+    <InnerLayout
+      onBack={() => router.back()}
+      title="Profile"
+      actions={[
+        <Button variant="link" className="rounded-full" onPress={() => {}}>
+          <Icon as="edit" size={28} className="text-secondary-950" />
+        </Button>
+      ]}
+    >
       <ScrollView className="flex-1" bounces={false}>
-        <VStack className="gap-y-6">
+        <VStack className="items-center gap-y-4">
           <AppAvatar
             className="self-center"
             uri={userDetails?.avatar || ""}
             name={userDetails?.first_name || ""}
-            size="xl"
+            size="lg"
           />
-
-          <VStack className="items-center gap-y-4">
-            <VStack className="items-center">
-              <Text bold className="text-xl">
-                {userDetails?.first_name} {userDetails?.last_name}
-              </Text>
-              <HStack className="gap-x-1">
-                <Text className="text-primary-400">{userDetails?.email}</Text>
-                {userDetails?.phone && (
-                  <Fragment>
-                    <Text>•</Text>
-                    <Text className="text-primary-400">
-                      {userDetails.phone}
-                    </Text>
-                  </Fragment>
-                )}
-              </HStack>
-            </VStack>
-
-            <Text className="text-secondary-950">
-              Active since {formatDate(userDetails?.created_at || "")}
-            </Text>
-          </VStack>
-
           <VStack className="items-center">
-            <FormButton
-              variant="outline"
-              text="Edit Profile"
-              icon={<Icon as="edit" className="text-primary-400" />}
-              size="md"
-            />
+            <Text bold className="text-xl">
+              {userDetails?.first_name} {userDetails?.last_name}
+            </Text>
+            <HStack className="gap-x-1">
+              <Text className="text-secondary-950">{userDetails?.email}</Text>
+            </HStack>
           </VStack>
 
-          <VStack className="gap-y-4">
-            <HStack className="px-4">
-              <Text bold className="text-xl">
+          <VStack className="w-full p-4 gap-y-2">
+            <Text className="text-secondary-950 font-semibold uppercase">
+              Profile Details
+            </Text>
+            <Card className="w-full border border-secondary-200 p-0 rounded-xl overflow-hidden">
+              <DetailItem
+                label="Member Since"
+                value={formatDate(userDetails?.created_at || "")}
+              />
+              <DetailItem label="Phone" value={userDetails?.phone || "-"} />
+            </Card>
+          </VStack>
+        </VStack>
+
+        <VStack className="gap-y-12">
+          <VStack className="gap-y-2">
+            <VStack className="px-4">
+              <Text className="text-secondary-950 font-semibold uppercase">
                 Preferences
               </Text>
-            </HStack>
+            </VStack>
             <FlatList
               scrollEnabled={false}
               data={settingsOptions}
@@ -104,7 +110,7 @@ export default function ProfileScreen() {
                 <ListItem
                   title={item.title}
                   description={item.description}
-                  icon={<Icon as={item.icon} className="text-primary-400" />}
+                  icon={<Icon as={item.icon} />}
                   onPress={() => {}}
                 />
               )}
@@ -120,14 +126,31 @@ export default function ProfileScreen() {
               text="Logout"
               action="negative"
               icon={<Icon as="logout" className="text-background-0" />}
-              onPress={() => {}}
+              onPress={handleLogout}
             />
           </VStack>
         </VStack>
       </ScrollView>
-    </TabLayout>
+    </InnerLayout>
   );
 }
+
+const DetailItem = ({
+  label,
+  value
+}: {
+  label: string;
+  value: string | number | undefined;
+}) => {
+  return (
+    <PressableListItem onPress={() => {}}>
+      <HStack className="justify-between items-center p-4">
+        <Text className="text-secondary-950 flex-1">{label}</Text>
+        <Text className="flex-1 text-left">{value || "-"}</Text>
+      </HStack>
+    </PressableListItem>
+  );
+};
 
 const ListItem = ({
   title,

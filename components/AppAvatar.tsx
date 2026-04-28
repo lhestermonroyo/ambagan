@@ -4,6 +4,8 @@ import {
   AvatarFallbackText,
   AvatarImage
 } from "@/components/ui/avatar";
+import { avatarColors } from "@/utils/constants";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import React, { ComponentPropsWithRef, useState } from "react";
 
 type AppAvatarProps = {
@@ -19,7 +21,15 @@ const AppAvatar = ({ name, uri, unread = false, ...props }: AppAvatarProps) => {
   const showFallback = !uri || imageError;
 
   return (
-    <Avatar {...props}>
+    <Avatar
+      {...props}
+      className={cn(
+        avatarColors[
+          (name[0]?.toLowerCase() as keyof typeof avatarColors) || "a"
+        ],
+        props.className
+      )}
+    >
       {uri && (
         <AvatarImage
           source={{ uri: uri }}

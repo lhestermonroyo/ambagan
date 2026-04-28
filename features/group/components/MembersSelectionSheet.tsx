@@ -1,6 +1,4 @@
-import { default as AppAvatar } from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
-import Icon from "@/components/Icon";
 import SearchInput from "@/components/SearchInput";
 import {
   Actionsheet,
@@ -10,7 +8,6 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
-import { Button } from "@/components/ui/button";
 import { CheckboxGroup } from "@/components/ui/checkbox";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
@@ -21,61 +18,38 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import services from "@/services";
 import states from "@/states";
-import { Member } from "@/types/groups";
-import { User } from "@/types/user";
+import { UserPreview } from "@/types/user";
 import { Fragment, useEffect, useState } from "react";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
 
-export default function MembersSelection({
+export default function MembersSelectionSheet({
   isOpen,
   onClose,
-  finalMembers,
+  members,
   onSaveMembers
 }: {
   isOpen: boolean;
   onClose: () => void;
-  finalMembers: Member[];
-  onSaveMembers: (members: Member[]) => void;
+  members: UserPreview[];
+  onSaveMembers: (members: UserPreview[]) => void;
 }) {
-  const [tab, setTab] = useState<"recent" | "favorites">("recent");
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
-  const [users, setUsers] = useState<User[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
+  const [tab, setTab] = useState<"recent" | "favorites">("recent");
+  const [selected, setSelected] = useState<UserPreview[]>([]);
+  const [users, setUsers] = useState<UserPreview[]>([]);
 
   const user = states.user();
   const { details: userDetails } = user;
 
   useEffect(() => {
-    init();
-
-    return () => {
-      setMembers([]);
-    };
-  }, [isOpen]);
+    setSelected(members);
+  }, [members]);
 
   useEffect(() => {
     fetchUsers();
   }, [searchInput]);
-
-  const init = () => {
-    if (finalMembers.length > 0) {
-      setMembers(finalMembers);
-      return;
-    }
-
-    const initialUser = userDetails as User;
-    setMembers([
-      {
-        id: initialUser.id,
-        email: initialUser.email,
-        avatar: initialUser.avatar,
-        first_name: initialUser.first_name,
-        last_name: initialUser.last_name
-      } as Member
-    ]);
-  };
 
   const fetchUsers = async () => {
     try {
@@ -84,26 +58,18 @@ export default function MembersSelection({
         return;
       }
       const data = await services.user.searchUsers(searchInput);
-      setUsers(data);
+      const filteredUsers = data.filter((u) => u.id !== userDetails?.id);
+
+      setUsers(filteredUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
     }
   };
 
   const handleChangeMembers = (selected: (string | number)[]) => {
-    const selectedUsers = users
-      .filter((user) => selected.includes(user.id))
-      .map(
-        (user) =>
-          ({
-            id: user.id,
-            email: user.email,
-            avatar: user.avatar,
-            first_name: user.first_name,
-            last_name: user.last_name
-          }) as Member
-      );
-    setMembers((prev) => {
+    const selectedUsers = users.filter((user) => selected.includes(user.id));
+
+    setSelected((prev) => {
       const newMembers = selectedUsers.filter(
         (user) => !prev.some((member) => member.id === user.id)
       );
@@ -111,19 +77,25 @@ export default function MembersSelection({
         (member) =>
           !selected.includes(member.id) && member.id !== userDetails?.id
       );
+
+      console.log(newMembers);
+      console.log(removedMembers);
+
       return [
         ...newMembers,
-        ...prev.filter((member) => !removedMembers.includes(member))
+        ...prev.filter(
+          (member) => !removedMembers.some((m) => m.id === member.id)
+        )
       ];
     });
   };
 
   const handleRemoveMember = (id: string) => {
-    setMembers((prev) => prev.filter((member) => member.id !== id));
+    setSelected((prev) => prev.filter((member) => member.id !== id));
   };
 
   const handleRemoveAllMembers = () => {
-    setMembers((prev) =>
+    setSelected((prev) =>
       prev.filter((member) => member.id === userDetails?.id)
     );
   };
@@ -135,7 +107,7 @@ export default function MembersSelection({
   };
 
   const handleSaveMembers = () => {
-    onSaveMembers(members);
+    onSaveMembers(selected);
     handleClearStates();
     onClose();
   };
@@ -147,26 +119,6 @@ export default function MembersSelection({
 
   return (
     <Fragment>
-      <FlatList
-        data={finalMembers}
-        scrollEnabled={false}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <FinalSelectedMemberItem
-            key={item.id}
-            item={item}
-            onRemove={() => {
-              handleRemoveMember(item.id);
-              onSaveMembers(members.filter((m) => m.id !== item.id));
-            }}
-          />
-        )}
-        ItemSeparatorComponent={() => (
-          <Box className="mx-4">
-            <Divider className="border-secondary-100" />
-          </Box>
-        )}
-      />
       <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[94]}>
         <ActionsheetBackdrop />
         <ActionsheetContent className="p-0">
@@ -177,15 +129,15 @@ export default function MembersSelection({
             <VStack>
               <HStack className="px-4">
                 <Text className="text-secondary-950 flex-1">
-                  {members.length} member
-                  {members.length > 1 ? "s" : ""} selected
+                  {selected.length} member
+                  {selected.length > 1 ? "s" : ""} selected
                 </Text>
                 <Pressable
                   onPress={handleRemoveAllMembers}
                   disabled={
-                    members.includes(
-                      members.find((m) => m.id === user.details?.id)!
-                    ) && members.length === 1
+                    selected.includes(
+                      selected.find((m) => m.id === user.details?.id)!
+                    ) && selected.length === 1
                   }
                 >
                   <Text className="text-primary-400">Remove All</Text>
@@ -195,10 +147,11 @@ export default function MembersSelection({
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 className="w-full px-4"
-                data={members}
+                data={selected}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => {
                   const isCreator = item.id === userDetails?.id;
+
                   return (
                     <SelectedMemberItem
                       key={item.id}
@@ -245,7 +198,7 @@ export default function MembersSelection({
             )}
             <CheckboxGroup
               className="w-full"
-              value={members.map((member) => member.id)}
+              value={selected.map((member) => member.id)}
               onChange={handleChangeMembers}
             >
               <FlatList
@@ -273,9 +226,8 @@ export default function MembersSelection({
               />
             </CheckboxGroup>
           </ScrollView>
-          <Box className="items-center justify-start sticky bottom-0 px-4">
-            <Box className="h-4" />
-            <HStack className="gap-x-2 pt-4">
+          <Box className="items-center justify-center p-4">
+            <HStack className="gap-x-2">
               <FormButton
                 className="flex-1"
                 variant="outline"
@@ -285,7 +237,7 @@ export default function MembersSelection({
               <FormButton
                 className="flex-1"
                 text="Save Members"
-                disabled={members.length === 0}
+                disabled={selected.length === 0}
                 onPress={handleSaveMembers}
               />
             </HStack>
@@ -293,42 +245,5 @@ export default function MembersSelection({
         </ActionsheetContent>
       </Actionsheet>
     </Fragment>
-  );
-}
-
-function FinalSelectedMemberItem({
-  item,
-  onRemove
-}: {
-  item: Member;
-  onRemove: () => void;
-}) {
-  const user = states.user();
-  const { details: userDetails } = user;
-
-  const isCreator = item.id === userDetails?.id;
-  const isMe = item.id === userDetails?.id;
-
-  return (
-    <HStack key={item.id} className="py-4 items-center justify-between">
-      <HStack className="gap-x-2 items-center flex-1">
-        <AppAvatar name={item.first_name} uri={item.avatar!} size="md" />
-        <VStack>
-          <HStack className="gap-x-1 items-center">
-            <Text className="text-lg">
-              {item?.first_name} {item?.last_name}
-              {isMe && " (You)"}
-              {isCreator && " (Creator)"}
-            </Text>
-          </HStack>
-          <Text className="text-secondary-950 text-sm">{item?.email}</Text>
-        </VStack>
-      </HStack>
-      {!isCreator && (
-        <Button variant="link" className="rounded-full" onPress={onRemove}>
-          <Icon as="clear" className="text-secondary-950" />
-        </Button>
-      )}
-    </HStack>
   );
 }

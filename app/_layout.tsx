@@ -1,9 +1,13 @@
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
+import { ToastProvider } from "@/hooks/use-app-toast";
+import { useColorScheme } from "@/hooks/use-color-scheme.web";
+import services from "@/services";
+import states from "@/states";
+import { supabase } from "@/utils/supabase";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
+import { SplashScreen, Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
@@ -11,10 +15,6 @@ import {
   configureReanimatedLogger,
   ReanimatedLogLevel
 } from "react-native-reanimated";
-
-export const unstable_settings = {
-  anchor: "(tabs)"
-};
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -25,29 +25,82 @@ export default function RootLayout() {
     "GoogleSans-Bold": require("@/assets/fonts/GoogleSans-Bold.ttf"),
     "GoogleSans-BoldItalic": require("@/assets/fonts/GoogleSans-BoldItalic.ttf")
   });
+  const colorScheme = useColorScheme();
+  const router = useRouter();
+  const { loading } = states.user();
 
   useEffect(() => {
-    if (loaded) {
+    if (loaded && !loading) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, loading]);
 
-  if (!loaded) {
+  useEffect(() => {
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        if (!session) return;
+
+        states.user.setState((prev) => ({
+          ...prev,
+          session
+        }));
+
+        await fetchDetails(session.user.id);
+      })
+      .finally(() => {
+        states.user.setState((prev) => ({
+          ...prev,
+          loading: false
+        }));
+      });
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session) return;
+
+      states.user.setState((prev) => ({
+        ...prev,
+        session
+      }));
+
+      fetchDetails(session.user.id);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchDetails = async (id: string) => {
+    try {
+      const response = await services.user.getUserById(id);
+
+      if (response.message === "User not found" && !response.data) {
+        router.replace("/(auth)/onboarding");
+        return;
+      }
+
+      states.user.setState((prev) => ({
+        ...prev,
+        details: response.data
+      }));
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    }
+  };
+
+  if (!loaded || loading) {
     return null;
   }
 
   return (
     <GluestackUIProvider mode="light">
-      <ThemeProvider value={DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="login/index" />
-          <Stack.Screen name="sign-up/index" />
-          <Stack.Screen name="forgot-password/index" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <ToastProvider>
+        <ThemeProvider value={DefaultTheme}>
+          <Stack screenOptions={{ headerShown: false }} />
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </ToastProvider>
     </GluestackUIProvider>
   );
 }

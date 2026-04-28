@@ -41,10 +41,8 @@ export default function EditMembersSheet({
   const [lockedMembers, setLockedMembers] = useState<Member[]>([]);
   const [tab, setTab] = useState<"recent" | "favorites">("recent");
 
-  const group = states.group();
-  const user = states.user();
-  const { details: userDetails } = user;
-  const { details: groupDetails } = group;
+  const { details: groupDetails } = states.group.getState();
+  const { details: userDetails } = states.user.getState();
 
   const showToast = useAppToast();
 
@@ -209,8 +207,8 @@ export default function EditMembersSheet({
               <VStack>
                 <HStack className="px-4">
                   <Text className="text-secondary-950 flex-1">
-                    {members.length} member
-                    {members.length > 1 ? "s" : ""} selected
+                    {formattedMembers.length} member
+                    {formattedMembers.length > 1 ? "s" : ""} selected
                   </Text>
                 </HStack>
                 <FlatList

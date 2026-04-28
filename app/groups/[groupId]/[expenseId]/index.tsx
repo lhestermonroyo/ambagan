@@ -53,6 +53,8 @@ export default function ExpenseDetailsScreen() {
   const expenseId = params.expenseId as string;
   const groupId = params.groupId as string;
 
+  const isCurrentUserPayer = expense?.paid_by.id === userDetails?.id;
+
   const showToast = useAppToast();
 
   useFocusEffect(
@@ -77,6 +79,25 @@ export default function ExpenseDetailsScreen() {
       [expenseId, groupId, groupDetails?.expenses, router]
     )
   );
+
+  useEffect(() => {
+    if (expenseId && splits) {
+      if (isCurrentUserPayer) {
+        const unreadSplitIds = splits
+          .filter(
+            (split) =>
+              split.paid_by === userDetails?.id &&
+              (split.status === "pending" || split.status === "requested") &&
+              !split.user_read
+          )
+          .map((split) => split.id);
+
+        if (unreadSplitIds.length) {
+          handleMarkAsRead(unreadSplitIds);
+        }
+      }
+    }
+  }, [expenseId, splits]);
 
   useEffect(() => {
     if (splits.length) {
@@ -150,14 +171,6 @@ export default function ExpenseDetailsScreen() {
     }
   };
 
-  const handleOpenReviewRequestPaidSheet = (split: ExpenseSplit) => {
-    setReviewRequestPaidSheet({ open: true, split });
-  };
-
-  const handleOpenMarkAsPaidSheet = (split: ExpenseSplit) => {
-    setMarkAsPaidSheet({ open: true, split });
-  };
-
   const handleDeleteExpense = async (expenseId: string) => {
     try {
       const deleteResponse = await services.expense.deleteExpense(expenseId);
@@ -176,7 +189,23 @@ export default function ExpenseDetailsScreen() {
     }
   };
 
-  const isCurrentUserPayer = expense?.paid_by.id === userDetails?.id;
+  const handleMarkAsRead = (unreadSplits: string[]) => {
+    try {
+      Promise.all(
+        unreadSplits.map((splitId) => services.expense.markAsRead(splitId))
+      );
+    } catch (error) {
+      console.log("Error marking split as read:", error);
+    }
+  };
+
+  const handleOpenReviewRequestPaidSheet = (split: ExpenseSplit) => {
+    setReviewRequestPaidSheet({ open: true, split });
+  };
+
+  const handleOpenMarkAsPaidSheet = (split: ExpenseSplit) => {
+    setMarkAsPaidSheet({ open: true, split });
+  };
 
   const formattedSplits = useMemo(() => {
     const payerIndex = splits.findIndex(

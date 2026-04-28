@@ -1,20 +1,24 @@
+import { Group, Member } from "@/types/groups";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
+import { getMembersByGroupIds } from "./member.service";
 
 export const saveGroup = async ({
   name,
-  category,
   avatar,
-  members
+  category,
+  admin_id,
+  member_ids
 }: {
   name: string;
   category: string;
   avatar: ImagePickerSuccessResult | null;
-  members: string[];
+  admin_id: string;
+  member_ids: string[];
 }) => {
   const user = await supabase.auth.getUser();
 
@@ -22,8 +26,11 @@ export const saveGroup = async ({
     throw new Error("User not authenticated");
   }
 
+  if (admin_id !== user.data.user.id) {
+    throw new Error("Admin ID must be the same as the authenticated user");
+  }
+
   const groupId = uuid();
-  const creator = user.data.user.id;
   let avatarUrl: string | null = null;
 
   if (avatar) {
@@ -37,10 +44,10 @@ export const saveGroup = async ({
   const groupResponse = await supabase.from(tables.GROUPS_TBL).insert([
     {
       id: groupId,
-      creator,
       name,
       category,
-      avatar: avatarUrl
+      avatar: avatarUrl,
+      admin_id
     }
   ]);
 
@@ -49,11 +56,11 @@ export const saveGroup = async ({
   }
 
   const responses = await Promise.all([
-    ...members.map((userId) => {
+    ...member_ids.map((id) => {
       return supabase.from(tables.GROUP_MEMBERS_TBL).insert([
         {
           group_id: groupId,
-          user_id: userId
+          member_id: id
         }
       ]);
     })
@@ -89,7 +96,7 @@ export const updateGroup = async (
 
   const { data: groupData, error: groupError } = await supabase
     .from(tables.GROUPS_TBL)
-    .select("creator")
+    .select("admin_id")
     .eq("id", groupId)
     .single();
 
@@ -97,8 +104,8 @@ export const updateGroup = async (
     throw groupError;
   }
 
-  if (groupData.creator !== user.data.user.id) {
-    throw new Error("Only the group creator can update the group");
+  if (groupData.admin_id !== user.data.user.id) {
+    throw new Error("Only the group admin can update the group");
   }
 
   const { name, category, avatar } = payload;
@@ -122,13 +129,13 @@ export const updateGroup = async (
     updateData.avatar = avatarUrl;
   }
 
-  const groupResponse = await supabase
+  const { error } = await supabase
     .from(tables.GROUPS_TBL)
     .update(updateData)
     .eq("id", groupId);
 
-  if (groupResponse.error) {
-    throw groupResponse.error;
+  if (error) {
+    throw error;
   }
 
   return {
@@ -145,7 +152,7 @@ export const deleteGroup = async (groupId: string) => {
 
   const { data: groupData, error: groupError } = await supabase
     .from(tables.GROUPS_TBL)
-    .select("creator")
+    .select("admin_id")
     .eq("id", groupId)
     .single();
 
@@ -153,8 +160,8 @@ export const deleteGroup = async (groupId: string) => {
     throw groupError;
   }
 
-  if (groupData.creator !== user.data.user.id) {
-    throw new Error("Only the group creator can delete the group");
+  if (groupData.admin_id !== user.data.user.id) {
+    throw new Error("Only the group admin can delete the group");
   }
 
   const { data: expenses, error: expensesError } = await supabase
@@ -179,7 +186,7 @@ export const deleteGroup = async (groupId: string) => {
     }
 
     const { error: deleteSplitsError } = await supabase
-      .from(tables.EXPENSE_SPLITS_TBL)
+      .from(tables.MEMBER_SPLITS_TBL)
       .delete()
       .in("expense_id", expenseIds);
 
@@ -213,19 +220,26 @@ export const deleteGroup = async (groupId: string) => {
 };
 
 export const getGroupsByUserId = async (userId: string) => {
+  const user = await supabase.auth.getUser();
+
+  if (!user.data.user) {
+    throw new Error("User not authenticated");
+  }
+
   const { data, error } = await supabase
     .from(tables.GROUP_MEMBERS_TBL)
     .select(
       `${tables.GROUPS_TBL} (
         id,
         created_at,
-        creator: ${tables.USERS_TBL} (id, email, first_name, last_name, avatar),
-        category,
         name,
-        avatar
+        category,
+        avatar,
+        admin:admin_id (id, email, phone, first_name, last_name, avatar),
+        archived
       )`
     )
-    .eq("user_id", userId);
+    .eq("member_id", userId);
 
   if (error) {
     throw error;
@@ -233,66 +247,100 @@ export const getGroupsByUserId = async (userId: string) => {
 
   const groups = (data as any[])
     .map((item) => item[tables.GROUPS_TBL])
+    .filter((group) => group.archived === false)
     .sort(
       (a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  const groupIds = groups.map((g: any) => g.id);
+    ) as Group[];
+  const groupIds = groups.map((g) => g.id);
 
-  let membersCount: Record<string, number> = {};
-  if (groupIds.length > 0) {
-    const { data: membersData, error: membersError } = await supabase
-      .from(tables.GROUP_MEMBERS_TBL)
-      .select("group_id, user_id");
+  const members = await getMembersByGroupIds(groupIds);
 
-    if (membersError) {
-      throw membersError;
-    }
-
-    membersCount = groupIds.reduce(
-      (acc: Record<string, number>, groupId: string) => {
-        acc[groupId] = membersData.filter(
-          (m: any) => m.group_id === groupId
-        ).length;
-        return acc;
-      },
-      {}
-    );
-  }
-
-  return groups.map((group: any) => ({
+  return groups.map((group) => ({
     ...group,
-    members_count: membersCount[group.id] || 0
-  }));
+    members: members.filter((m) => m.group_id === group.id)
+  })) as (Group & { members: Member[] })[];
 };
 
 export const getGroupById = async (groupId: string) => {
-  const [{ data, error: groupError }, { count, error: memberCountError }] =
-    await Promise.all([
-      supabase
-        .from(tables.GROUPS_TBL)
-        .select(
-          `*, ${tables.USERS_TBL} (id, email, first_name, last_name, avatar)`
+  const user = await supabase.auth.getUser();
+
+  if (!user.data.user) {
+    throw new Error("User not authenticated");
+  }
+
+  const { data, error } = await supabase
+    .from(tables.GROUPS_TBL)
+    .select(`*, admin:admin_id (id, email, first_name, last_name, avatar)`)
+    .eq("id", groupId)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as Group;
+};
+
+export const getStatsByGroupId = async (groupId: string) => {
+  const user = await supabase.auth.getUser();
+
+  if (!user.data.user) {
+    throw new Error("User not authenticated");
+  }
+
+  // total expenses amount, total paid amount, total owed amount, total members
+  // get the total paid from expenses_split_tbl where expense_id in (select id from expenses_tbl where group_id = groupId and status = 'paid') and user_id = currentUserId
+  // total expenses from expenses_tbl where group_id = groupId
+  const { data, error } = await supabase
+    .from(tables.GROUPS_TBL)
+    .select(
+      `
+      id,
+      total_expenses: ${tables.EXPENSES_TBL} (
+        amount
+      ),
+      total_paid: ${tables.MEMBER_SPLITS_TBL} (
+        amount,
+        expense: ${tables.EXPENSES_TBL} (
+          status
         )
-        .eq("id", groupId)
-        .single(),
-      supabase
-        .from(tables.GROUP_MEMBERS_TBL)
-        .select("user_id", { count: "exact" })
-        .eq("group_id", groupId)
-    ]);
+      ),
+      members: ${tables.GROUP_MEMBERS_TBL} (
+        user_id
+      )
+    `
+    )
+    .eq("id", groupId)
+    .single();
 
-  if (groupError) {
-    throw groupError;
+  console.log("data", JSON.stringify(data, null, 2));
+
+  if (error) {
+    throw error;
   }
 
-  if (memberCountError) {
-    throw memberCountError;
-  }
+  const totalExpenses = (data as any).total_expenses.reduce(
+    (acc: number, expense: any) => acc + expense.amount,
+    0
+  );
+
+  const totalPaid = (data as any).total_paid.reduce(
+    (acc: number, split: any) => {
+      if (split.expense.status === "paid") {
+        return acc + split.amount;
+      }
+      return acc;
+    },
+    0
+  );
+
+  const membersCount = (data as any).members.length;
 
   return {
-    ...(data as any),
-    creator: data[tables.USERS_TBL as any],
-    members_count: count || 0
+    totalExpenses,
+    totalPaid,
+    totalOwed: totalExpenses - totalPaid,
+    membersCount
   };
 };

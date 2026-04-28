@@ -1,19 +1,16 @@
 import { UserState } from "@/types/user";
+import { supabase } from "@/utils/supabase";
 import { create } from "zustand";
 
-const initialState: UserState = {
-  loggingOut: false,
+const USER_STATE = create<UserState>((set) => ({
+  loading: true,
   session: null,
-  details: null
-};
+  details: null,
 
-const USER_STATE = create<
-  UserState & {
-    reset: () => void;
+  signOut: async () => {
+    await supabase.auth.signOut();
+    set({ session: null, details: null });
   }
->((set) => ({
-  ...initialState,
-  reset: () => set(initialState)
 }));
 
 export default USER_STATE;

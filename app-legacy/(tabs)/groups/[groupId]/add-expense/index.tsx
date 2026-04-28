@@ -25,6 +25,7 @@ export default function AddExpenseScreen() {
     amount: "",
     description: "",
     receipt: null as ImagePickerSuccessResult | null,
+    expenseDate: new Date(),
     group: null as Group | null,
     payer: null as Member | null
   });

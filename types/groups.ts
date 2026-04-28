@@ -1,32 +1,41 @@
-import { Expense } from "./expenses";
+import { ExpensePreview } from "./expenses";
 import { UserPreview } from "./user";
 
 export type GroupState = {
-  preview: Group[];
-  list: Group[];
-  details: GroupDetails | null;
+  list: (Group & { members: Member[] })[];
+  details: Group | null;
+  memberList: Member[];
+  expenseList: ExpensePreview[];
+  memberTotalsList: MemberTotalsExpense[];
 };
 
 export type Group = {
   id: string;
   created_at: string;
-  creator: UserPreview;
+  admin: UserPreview;
   name: string;
   category: string;
   avatar: string | null;
-  members_count: number;
+  archived: boolean;
 };
 
-export type GroupDetails = Group & { members: Member[] } & {
-  expenses: Expense[];
+export type Member = UserPreview & {
+  id: string;
+  group_id: string;
+  joined_at: string;
 };
 
-export type Member = UserPreview & { joined_at: string };
+export type MemberTotalsExpense = {
+  member: UserPreview;
+  total_paid: number;
+  total_owed: number;
+};
 
 export enum GroupCategory {
   TRIP = "trip",
   EVENT = "event",
   HOUSEHOLD = "household",
+  WORK = "work",
   COUPLE = "couple",
   FAMILY = "family",
   OTHER = "other"

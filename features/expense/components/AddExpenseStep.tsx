@@ -1,6 +1,7 @@
 import AmountInput from "@/components/AmountInput";
+import CurrencySelection from "@/components/CurrencySelection";
 import FormTextarea from "@/components/FormTextarea";
-import { Card } from "@/components/ui/card";
+import StepperProgress from "@/components/StepperProgress";
 import {
   FormControl,
   FormControlHelper,
@@ -8,31 +9,36 @@ import {
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
+import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadImage from "@/components/UploadImage";
-import { Group, Member } from "@/types/groups";
+import { Group } from "@/types/groups";
+import { getPrimaryHex } from "@/utils/getColorHex";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import GroupSelection from "./GroupSelection";
-import PayerSelection from "./PayerSelection";
 
 type AddExpenseStepProps = {
   values: {
+    currency: string;
     amount: string;
     description: string;
-    receipt: ImagePickerSuccessResult | null;
+    expense_date: Date;
+    proof_of_payment: ImagePickerSuccessResult | null;
     group: Group | null;
-    payer: Member | null;
+    split_type: string;
   };
-  members: Member[];
   setValues: React.Dispatch<
     React.SetStateAction<{
+      currency: string;
       amount: string;
       description: string;
-      receipt: ImagePickerSuccessResult | null;
+      expense_date: Date;
+      proof_of_payment: ImagePickerSuccessResult | null;
       group: Group | null;
-      payer: Member | null;
+      split_type: string;
     }>
   >;
   formErrors: {
@@ -40,37 +46,52 @@ type AddExpenseStepProps = {
     description?: string;
   };
   isLockedGroup?: boolean;
-  isEditExpense?: boolean;
+  step: number;
 };
 
 export default function AddExpenseStep({
-  members,
   values,
   setValues,
   formErrors,
   isLockedGroup = false,
-  isEditExpense = false
+  step = 1
 }: AddExpenseStepProps) {
   return (
     <ScrollView className="flex-1" bounces={false}>
-      {isEditExpense && (
-        <Card className="bg-warning-100 mx-4 rounded-lg">
-          <Text className="text-warning-800 text-sm">
-            You're editing an existing expense. Changes will reset the statuses
-            of all participants. Inform them to avoid confusion.
+      <VStack className="px-4 gap-y-4">
+        <StepperProgress currentStep={step} steps={3} />
+        <VStack>
+          <Text className="text-2xl" bold>
+            Expense Details
           </Text>
-        </Card>
-      )}
+          <Text className="text-secondary-950">
+            Fill-in your expense details.
+          </Text>
+        </VStack>
+      </VStack>
       <VStack className="gap-y-6 p-4">
-        <AmountInput
-          label="Amount to Split"
-          placeholder="0.00"
-          value={values.amount}
-          onChangeText={(text) => setValues({ ...values, amount: text })}
-          autoCapitalize="none"
-          keyboardType="numeric"
-          errorMessage={formErrors.amount}
-        />
+        <FormControl size="md">
+          <FormControlLabel>
+            <FormControlLabelText>Amount</FormControlLabelText>
+          </FormControlLabel>
+          <HStack className="gap-x-2 items-end h-12">
+            <CurrencySelection
+              currency={values.currency}
+              onCurrencyChange={(currency) =>
+                setValues((prevValues) => ({ ...prevValues, currency }))
+              }
+            />
+            <VStack className="flex-1">
+              <AmountInput
+                className="h-full"
+                placeholder="0.00"
+                value={values.amount}
+                onChangeText={(text) => setValues({ ...values, amount: text })}
+                errorMessage={formErrors.amount}
+              />
+            </VStack>
+          </HStack>
+        </FormControl>
 
         <FormTextarea
           label="Description"
@@ -79,7 +100,28 @@ export default function AddExpenseStep({
           onChangeText={(text) => setValues({ ...values, description: text })}
           autoCapitalize="none"
           errorMessage={formErrors.description}
+          size="sm"
         />
+
+        <FormControl size="md">
+          <HStack className="items-center justify-between">
+            <FormControlLabel className="flex-1">
+              <FormControlLabelText>Expense Date</FormControlLabelText>
+            </FormControlLabel>
+            <DateTimePicker
+              accentColor={getPrimaryHex("text-primary-400")}
+              value={values.expense_date}
+              onChange={(_, date) => {
+                if (date) {
+                  setValues((prevValues) => ({
+                    ...prevValues,
+                    expense_date: date
+                  }));
+                }
+              }}
+            />
+          </HStack>
+        </FormControl>
 
         <FormControl size="md">
           <FormControlLabel>
@@ -102,28 +144,12 @@ export default function AddExpenseStep({
           )}
         </FormControl>
 
-        {values.payer && (
-          <FormControl size="md">
-            <FormControlLabel>
-              <FormControlLabelText>
-                Payer (Who paid for this expense?)
-              </FormControlLabelText>
-            </FormControlLabel>
-
-            <PayerSelection
-              payer={values.payer}
-              members={members}
-              onChangePayer={(payer) =>
-                setValues((prevValues) => ({ ...prevValues, payer }))
-              }
-            />
-          </FormControl>
-        )}
-
         <VStack className="gap-y-1">
           <UploadImage
-            title="Upload Proof of Expense"
-            onSelect={(result) => setValues({ ...values, receipt: result })}
+            title="Upload Proof of Payment"
+            onSelect={(result) =>
+              setValues({ ...values, proof_of_payment: result })
+            }
           />
           <Text className="text-secondary-950 text-sm">
             Proof could be a photo of receipt, screenshot of online payment, or

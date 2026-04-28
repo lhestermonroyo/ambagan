@@ -1,15 +1,14 @@
 import AppAvatar from "@/components/AppAvatar";
-import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { Expense, ExpenseSplit } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment, useState } from "react";
 import RequestPaidSheet from "./RequestPaidSheet";
 import ReviewRequestPaidSheet from "./ReviewRequestPaidSheet";
-import StatusBadge from "./StatusBadge";
 
 export default function PayerTransactionHeader({
   expense,
@@ -33,9 +32,9 @@ export default function PayerTransactionHeader({
       <VStack className="gap-y-6 pb-2">
         <VStack className="w-full gap-y-6 px-4">
           <VStack className="items-center">
-            <Box className="mb-2">
+            {/* <Box className="mb-2">
               <StatusBadge status="payer" size="lg" />
-            </Box>
+            </Box> */}
             <Text className="text-xl" bold>
               {expense?.description}
             </Text>
@@ -71,7 +70,15 @@ export default function PayerTransactionHeader({
             </VStack>
 
             <VStack className="flex-1 items-center">
-              <Text className="text-2xl" bold>
+              <Text
+                className={cn(
+                  "text-2xl",
+                  theyOweYouAmount <= totalPaid
+                    ? "text-green-500"
+                    : "text-error-400"
+                )}
+                bold
+              >
                 {formatAmount(totalPaid || 0)}
               </Text>
               <Text className="text-secondary-950 text-sm">Total Paid</Text>

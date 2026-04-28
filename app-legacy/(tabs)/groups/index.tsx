@@ -120,7 +120,7 @@ export default function GroupsScreen() {
         onPress={() => router.push("/groups/create?isGroup=true")}
       >
         <Icon as="group-add" className="text-background-0" />
-        <FabLabel>Add Group</FabLabel>
+        <FabLabel className="text-lg font-medium">Add Group</FabLabel>
       </Fab>
       <LoadingWrapper isLoading={loading} text="Loading groups, please wait...">
         <SwipeListView

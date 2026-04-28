@@ -1,7 +1,8 @@
+import { getSecondaryHex } from "@/utils/getColorHex";
 import * as ImagePicker from "expo-image-picker";
+import { Edit, Upload } from "lucide-react-native";
 import { useState } from "react";
 import { Alert } from "react-native";
-import Icon from "./Icon";
 import { Box } from "./ui/box";
 import { Button } from "./ui/button";
 import { Image } from "./ui/image";
@@ -51,7 +52,7 @@ const UploadImage = ({
         className="border-dashed border-2 border-background-200 rounded-3xl h-32 w-full justify-center items-center flex"
       >
         <VStack className="items-center gap-y-2">
-          <Icon as="upload" size={36} />
+          <Upload size={36} color={getSecondaryHex("text-secondary-950")} />
           <Text className="text-secondary-950">{title}</Text>
           {subtitle && (
             <Text className="text-secondary-950 text-sm">{subtitle}</Text>
@@ -73,7 +74,7 @@ const UploadImage = ({
         className="rounded-full p-0 h-[40] w-[40] absolute bottom-4 right-4"
         onPress={pickImage}
       >
-        <Icon as="edit" className="text-background-0" />
+        <Edit size={18} color={getSecondaryHex("text-secondary-0")} />{" "}
       </Button>
     </Box>
   );

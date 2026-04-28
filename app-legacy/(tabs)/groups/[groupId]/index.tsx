@@ -1,5 +1,4 @@
 import AppAvatar from "@/components/AppAvatar";
-import AppAvatarGroup from "@/components/AppAvatarGroup";
 import ConfirmIconButton from "@/components/ConfirmIconButton";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
@@ -14,21 +13,25 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
+import GroupTotals from "@/features/group/components/GroupTotals";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { Expense } from "@/types/expenses";
-import { categories } from "@/utils/constants";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
 import { format, parseISO } from "date-fns";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { SwipeListView } from "react-native-swipe-list-view";
 
+const tabs = ["Expenses", "Totals", "Group Details"] as const;
+
 export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [tab, setTab] = useState<(typeof tabs)[number]>("Expenses");
 
   const { details: groupDetails } = states.group();
   const { details: userDetails } = states.user();
@@ -50,7 +53,7 @@ export default function GroupDetailsScreen() {
         const initialized = groupDetails?.id === groupId;
         init(groupId, initialized);
       },
-      [groupId, groupDetails]
+      [groupId, groupDetails?.id]
     )
   );
 
@@ -60,17 +63,24 @@ export default function GroupDetailsScreen() {
     }
 
     try {
-      const [groupDetailsResponse, membersResponse, expensesResponse] =
-        await Promise.all([
-          services.group.getGroupById(groupId),
-          services.member.getMembersByGroupId(groupId),
-          services.expense.getExpensesByGroup(groupId)
-        ]);
+      const [
+        groupDetailsResponse,
+        statsResponse,
+        membersResponse,
+        expensesResponse
+      ] = await Promise.all([
+        services.group.getGroupById(groupId),
+        services.group.getStatsByGroupId(groupId),
+        services.member.getMembersByGroupId(groupId),
+        services.expense.getExpensesByGroup(groupId)
+      ]);
 
       if (!groupDetailsResponse || !membersResponse || !expensesResponse) {
         router.push("/groups");
         return;
       }
+
+      console.log(statsResponse);
 
       states.group.setState((prev) => ({
         ...prev,
@@ -131,16 +141,6 @@ export default function GroupDetailsScreen() {
     router.push("/groups");
   };
 
-  const avatarGroupItems = useMemo(
-    () =>
-      (groupDetails?.members ?? []).map((member) => ({
-        id: member.id,
-        avatar: member.avatar ?? null,
-        name: member.first_name || "Member"
-      })),
-    [groupDetails?.members]
-  );
-
   const formattedExpenseList = useMemo(() => {
     const expenseList = groupDetails?.expenses ?? [];
 
@@ -169,6 +169,9 @@ export default function GroupDetailsScreen() {
     return sections;
   }, [groupDetails?.expenses]);
 
+  const isCreator = groupDetails?.creator.id === userDetails?.id;
+  const isYou = userDetails?.id === groupDetails?.creator.id;
+
   return (
     <InnerLayout
       title="Group Details"
@@ -195,160 +198,116 @@ export default function GroupDetailsScreen() {
         />
       ]}
     >
-      <Fab
-        placement="bottom right"
-        className="px-6 mb-2"
-        isHovered={false}
-        isDisabled={false}
-        isPressed={false}
-        onPress={() => router.push(`/groups/${groupId}/add-expense`)}
-      >
-        <Icon as="post-add" className="text-background-0" />
-        <FabLabel>Add Expense</FabLabel>
-      </Fab>
+      {tab === "Expenses" && (
+        <Fab
+          placement="bottom right"
+          className="px-6 mb-2"
+          isHovered={false}
+          isDisabled={false}
+          isPressed={false}
+          onPress={() => router.push(`/groups/${groupId}/add-expense`)}
+        >
+          <Icon as="post-add" className="text-background-0" />
+          <FabLabel className="text-lg font-medium">Add Expense</FabLabel>
+        </Fab>
+      )}
       <LoadingWrapper
         isLoading={loading}
         text="Loading group details, please wait..."
       >
         <ScrollView className="flex-1" bounces={false}>
-          <VStack className="px-4 pb-2 gap-y-6">
-            <AppAvatar
-              className="self-center"
-              uri={groupDetails?.avatar || ""}
-              name={groupDetails?.name || "Group Avatar"}
-              size="xl"
-            />
-
-            <VStack className="items-center">
-              <Text bold className="text-xl" numberOfLines={3}>
-                {groupDetails?.name}
-              </Text>
-              <HStack className="gap-x-1">
-                <Text className="text-secondary-950">
-                  Joined {formatDate(groupDetails?.created_at || "")}
-                </Text>
-                <Text>&bull;</Text>
-                <Text className="text-sm self-start py-1 px-2 bg-primary-100 text-primary-800 rounded-full">
-                  {
-                    categories.find(
-                      (cat) => cat.value === groupDetails?.category
-                    )?.label
-                  }
-                </Text>
-              </HStack>
-            </VStack>
-
-            <VStack className="items-center gap-y-4">
-              <AppAvatarGroup
-                items={avatarGroupItems}
-                size="sm"
-                maxDisplay={4}
-              />
-              <FormButton
-                variant="outline"
-                text="View Members"
-                iconEnd={
-                  <Icon as="chevron-right" className="text-primary-400" />
-                }
-                size="md"
-                onPress={() => router.push(`/groups/${groupId}/members`)}
-              />
-            </VStack>
-
-            <HStack className="items-center">
-              <Text bold className="text-xl flex-1">
-                Expenses
-              </Text>
-              <Button variant="link" className="rounded-full">
-                <Icon
-                  size={28}
-                  as="filter-list"
-                  className="text-secondary-950"
+          <VStack className="pb-4 gap-y-6">
+            <HStack className="px-4 gap-x-4 items-center">
+              <VStack className="w-[20vw]">
+                <AppAvatar
+                  className="self-center"
+                  uri={groupDetails?.avatar || ""}
+                  name={groupDetails?.name || "Group Avatar"}
+                  size="lg"
                 />
-              </Button>
+              </VStack>
+              <VStack>
+                <Text bold className="text-xl" numberOfLines={3}>
+                  {groupDetails?.name}
+                </Text>
+                <Text className="text-secondary-950">
+                  {isCreator ? "Created" : "Joined"}{" "}
+                  {formatDate(groupDetails?.created_at || "")}
+                </Text>
+              </VStack>
             </HStack>
-          </VStack>
-          <SwipeListView
-            className="flex-1"
-            bounces={false}
-            scrollEnabled={false}
-            useSectionList
-            sections={formattedExpenseList}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }: { item: Expense }) => (
-              <ExpenseItem
-                key={item.id}
-                expense={item}
-                onOpen={() => router.push(`/groups/${groupId}/${item.id}`)}
-              />
-            )}
-            renderHiddenItem={({ item }) => (
-              <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
-                {item.paid_by.id === userDetails?.id && (
-                  <ConfirmIconButton
-                    icon="delete"
-                    iconClassName="text-background-0"
-                    variant="solid"
-                    action="negative"
-                    className="rounded-full h-[40] w-[40] p-0"
-                    confirmTitle="Delete Expense"
-                    confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
-                    onConfirm={() => handleDeleteExpense(item.id)}
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <HStack className="gap-x-2 px-4">
+                {tabs.map((type) => (
+                  <FormButton
+                    size="md"
+                    key={type}
+                    variant={type === tab ? "solid" : "outline"}
+                    className="flex-1 h-10"
+                    text={type}
+                    onPress={() => setTab(type)}
                   />
-                )}
+                ))}
               </HStack>
-            )}
-            rightOpenValue={-70}
-            renderSectionHeader={({ section: { title } }) => (
-              <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
-                <Text className="text-sm text-secondary-950">{title}</Text>
-              </Box>
-            )}
-            ItemSeparatorComponent={() => (
-              <Box className="mx-4">
-                <Divider className="border-secondary-100" />
-              </Box>
-            )}
-            stickySectionHeadersEnabled={true}
-            ListEmptyComponent={() => (
-              <VStack className="flex-1 justify-center items-center py-4">
-                <Text className="text-secondary-950">
-                  No expenses recorded yet.
-                </Text>
-              </VStack>
-            )}
-          />
-          {/* <SectionList
-            bounces={false}
-            scrollEnabled={false}
-            sections={formatExpenseList}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }: { item: Expense }) => (
-              <ExpenseItem
-                key={item.id}
-                expense={item}
-                onOpen={() => router.push(`/groups/${groupId}/${item.id}`)}
-              />
-            )}
-            renderSectionHeader={({ section: { title } }) => (
-              <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
-                <Text className="text-sm text-secondary-950">{title}</Text>
-              </Box>
-            )}
-            ItemSeparatorComponent={() => (
-              <Box className="mx-4">
-                <Divider className="border-secondary-100" />
-              </Box>
-            )}
-            stickySectionHeadersEnabled={true}
-            ListEmptyComponent={() => (
-              <VStack className="flex-1 justify-center items-center py-4">
-                <Text className="text-secondary-950">
-                  No expenses recorded yet.
-                </Text>
-              </VStack>
-            )}
-          /> */}
+            </ScrollView>
+          </VStack>
+          {tab === "Expenses" && (
+            <SwipeListView
+              className="flex-1"
+              bounces={false}
+              scrollEnabled={false}
+              useSectionList
+              sections={formattedExpenseList}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }: { item: Expense }) => (
+                <ExpenseItem
+                  key={item.id}
+                  expense={item}
+                  onOpen={() => router.push(`/groups/${groupId}/${item.id}`)}
+                />
+              )}
+              renderHiddenItem={({ item }) => (
+                <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
+                  {item.paid_by.id === userDetails?.id && (
+                    <ConfirmIconButton
+                      icon="delete"
+                      iconClassName="text-background-0"
+                      variant="solid"
+                      action="negative"
+                      className="rounded-full h-[40] w-[40] p-0"
+                      confirmTitle="Delete Expense"
+                      confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
+                      onConfirm={() => handleDeleteExpense(item.id)}
+                    />
+                  )}
+                </HStack>
+              )}
+              rightOpenValue={-70}
+              renderSectionHeader={({ section: { title } }) => (
+                <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
+                  <Text className="text-sm text-secondary-950">{title}</Text>
+                </Box>
+              )}
+              ItemSeparatorComponent={() => (
+                <Box className="mx-4">
+                  <Divider className="border-secondary-100" />
+                </Box>
+              )}
+              stickySectionHeadersEnabled={true}
+              ListEmptyComponent={() => (
+                <VStack className="flex-1 justify-center items-center py-4">
+                  <Text className="text-secondary-950">
+                    No expenses recorded yet.
+                  </Text>
+                </VStack>
+              )}
+            />
+          )}
+          {tab === "Totals" && <GroupTotals details={groupDetails} />}
+          {tab === "Group Details" && (
+            <GroupDetailsTab details={groupDetails} />
+          )}
         </ScrollView>
       </LoadingWrapper>
     </InnerLayout>
