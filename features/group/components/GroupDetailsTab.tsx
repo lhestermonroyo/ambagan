@@ -1,24 +1,23 @@
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
-import Icon from "@/components/Icon";
 import { Box } from "@/components/ui/box";
+import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
-import { GroupDetails, Member } from "@/types/groups";
+import { Member } from "@/types/groups";
 import { categories } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
-import React, { Fragment, useState } from "react";
+import { differenceInDays, parseISO } from "date-fns";
+import React, { Fragment, useMemo, useState } from "react";
 import EditMembersSheet from "./EditMemberSheet";
 
-export default function GroupDetailsTab({
-  details
-}: {
-  details: GroupDetails | null;
-}) {
+export default function GroupDetailsTab() {
+  const { details, memberList, expenseList } = states.group.getState();
+
   if (!details) {
     return (
       <Box className="p-4">
@@ -30,83 +29,121 @@ export default function GroupDetailsTab({
   }
 
   const [isEditMembersOpen, setIsEditMembersOpen] = useState(false);
+  const [tab, setTab] = useState<"members" | "admin">("members");
 
   const { details: userDetails } = states.user.getState();
 
+  const daysInactive = useMemo(() => {
+    if (!expenseList || expenseList.length === 0) return 0;
+    const latest = expenseList.reduce((a, b) =>
+      new Date(a.created_at) > new Date(b.created_at) ? a : b
+    );
+    return differenceInDays(new Date(), parseISO(latest.created_at));
+  }, [expenseList]);
+
+  const categoryLabel = useMemo(() => {
+    const category = categories.find((c) => c.value === details.category);
+    return category ? category.label : null;
+  }, [details.category]);
+
+  const filteredMemberList = useMemo(() => {
+    if (!details) return [];
+
+    if (tab === "members") {
+      return memberList.filter((m) => m.id !== details.admin.id);
+    } else {
+      return memberList.filter((m) => m.id === details.admin.id);
+    }
+  }, [memberList, tab]);
+
   return (
     <Fragment>
-      <VStack className="gap-y-4">
-        <VStack className="gap-y-4 px-4">
-          <DetailItem
-            label="Group Name"
+      <VStack className="gap-y-4 px-4">
+        <Box className="bg-secondary-100 rounded-xl overflow-hidden">
+          <DetailRow
+            label="Admin"
             value={
-              <Text className="flex-1 text-lg font-medium">
-                {details?.name || "-"}
+              <HStack className="gap-x-1 items-center">
+                <AppAvatar
+                  name={details?.admin.first_name}
+                  uri={details?.admin.avatar!}
+                  size="sm"
+                />
+                <Text>
+                  {`${details?.admin.first_name} ${details?.admin.last_name}`}
+                  {details.admin.id === userDetails?.id && " (You)"}
+                </Text>
+              </HStack>
+            }
+          />
+          <DetailRow
+            label="Created at"
+            value={<Text>{formatDate(details?.created_at || "")}</Text>}
+          />
+          <DetailRow
+            label="Days Inactive"
+            value={
+              <Text>
+                {daysInactive} {daysInactive === 1 ? "day" : "days"}
               </Text>
             }
           />
-          <DetailItem
-            label="Created"
+          <DetailRow
+            label="Members"
             value={
-              <Text className="flex-1 text-lg font-medium">
-                {formatDate(details?.created_at || "")}
+              <Text>
+                {memberList.length}{" "}
+                {memberList.length === 1 ? "member" : "members"}
               </Text>
             }
           />
-          <DetailItem
-            label="Creator"
-            value={
-              <Text className="flex-1 text-lg font-medium">
-                {`${details?.creator.first_name} ${details?.creator.last_name}`}
-              </Text>
-            }
-          />
-          <DetailItem
+          <DetailRow
             label="Category"
             value={
-              <Text className="text-sm self-start py-1 px-2 bg-primary-100 text-primary-800 rounded-full">
-                {
-                  categories.find((cat) => cat.value === details?.category)
-                    ?.label
-                }
-              </Text>
+              <Box className="bg-secondary-500 rounded-lg px-3 py-2">
+                <Text className="text-sm">{categoryLabel || "-"}</Text>
+              </Box>
             }
           />
-        </VStack>
-
-        <Box className="mx-4">
-          <Divider className="border-secondary-100" />
         </Box>
 
+        <Divider className="border-secondary-100" />
+
         <VStack className="gap-y-2">
-          <HStack className="items-center gap-x-2 px-4">
-            <Text bold className="text-2xl flex-1">
-              Members ({details?.members.length || 0})
+          <HStack className="items-center gap-x-2">
+            <Text bold className="text-xl flex-1">
+              Members
             </Text>
+            <Button variant="link" onPress={() => setIsEditMembersOpen(true)}>
+              <Text className="text-primary-400 font-medium">Edit Members</Text>
+            </Button>
+          </HStack>
+
+          <HStack className="gap-x-2">
             <FormButton
-              text="Add"
+              text="Members"
               size="md"
-              icon={<Icon as="person-add" className="text-background-0" />}
-              onPress={() => setIsEditMembersOpen(true)}
+              variant={tab === "members" ? "solid" : "outline"}
+              className="flex-1"
+              onPress={() => setTab("members")}
+            />
+            <FormButton
+              text="Admin"
+              size="md"
+              variant={tab === "admin" ? "solid" : "outline"}
+              className="flex-1"
+              onPress={() => setTab("admin")}
             />
           </HStack>
 
           <FlatList
             bounces={false}
             scrollEnabled={false}
-            data={details?.members || []}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <MemberItem
-                item={item}
-                isCreator={item.id === details?.creator?.id}
-                isYou={item.id === userDetails?.id}
-              />
-            )}
+            data={filteredMemberList}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => <MemberItem item={item} />}
             ItemSeparatorComponent={() => (
-              <Box className="mx-4">
-                <Divider className="border-secondary-100" />
-              </Box>
+              <Divider className="border-secondary-100" />
             )}
           />
         </VStack>
@@ -119,7 +156,7 @@ export default function GroupDetailsTab({
   );
 }
 
-const DetailItem = ({
+const DetailRow = ({
   label,
   value
 }: {
@@ -127,24 +164,18 @@ const DetailItem = ({
   value: React.ReactNode;
 }) => {
   return (
-    <VStack className="gap-y-1 w-full">
-      <Text className="text-secondary-950 text-sm">{label}</Text>
+    <HStack className="items-center justify-between p-4">
+      <Text className="text-secondary-950">{label}</Text>
       {value}
-    </VStack>
+    </HStack>
   );
 };
 
-function MemberItem({
-  item,
-  isCreator,
-  isYou
-}: {
-  item: Member;
-  isCreator: boolean;
-  isYou: boolean;
-}) {
+function MemberItem({ item }: { item: Member }) {
+  const { details: userDetails } = states.user.getState();
+  const isYou = item.id === userDetails?.id;
   return (
-    <HStack className="items-center p-4 gap-y-4">
+    <HStack className="items-center py-4 gap-y-4">
       <HStack className="gap-x-2 items-center flex-1">
         <AppAvatar name={item?.first_name} uri={item?.avatar!} size="md" />
         <VStack>
@@ -152,10 +183,9 @@ function MemberItem({
             <Text className="text-lg">
               {item?.first_name} {item?.last_name}
               {isYou && " (You)"}
-              {isCreator && " (Creator)"}
             </Text>
           </HStack>
-          <Text className="text-secondary-950 text-sm">{item?.email}</Text>
+          <Text className="text-secondary-950">{item?.email}</Text>
         </VStack>
       </HStack>
     </HStack>

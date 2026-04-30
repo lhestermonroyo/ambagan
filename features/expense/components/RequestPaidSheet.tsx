@@ -15,7 +15,7 @@ import { VStack } from "@/components/ui/vstack";
 import UploadImage from "@/components/UploadImage";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
-import { ExpenseSplit } from "@/types/expenses";
+import { Payment } from "@/types/expenses";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
@@ -23,15 +23,15 @@ import { formatAmount } from "../utils/formatAmount";
 export default function RequestPaidSheet({
   isOpen,
   onClose,
-  expenseSplit,
+  payment,
   onRefetch
 }: {
   isOpen: boolean;
   onClose: () => void;
-  expenseSplit: ExpenseSplit;
+  payment: Payment;
   onRefetch: () => void;
 }) {
-  if (!expenseSplit) {
+  if (!payment) {
     return null;
   }
 
@@ -50,7 +50,7 @@ export default function RequestPaidSheet({
       const response = await services.expense.createPaidRequest({
         note: values.note,
         receipt: values.receipt,
-        expenseSplitId: expenseSplit.id
+        expenseSplitId: payment.id
       });
 
       if (!response) {
@@ -58,18 +58,18 @@ export default function RequestPaidSheet({
       }
 
       onRefetch();
-      showToast(
-        "Request Sent",
-        "Your request to mark this expense as paid has been sent.",
-        "success"
-      );
+      showToast({
+        title: "Request Sent",
+        description: "Your request to mark this payment as paid has been sent.",
+        type: "success"
+      });
     } catch (error) {
       console.error("Error creating paid request:", error);
-      showToast(
-        "Error",
-        "There was an issue sending your request. Please try again.",
-        "error"
-      );
+      showToast({
+        title: "Error",
+        description: "There was an issue sending your request. Please try again.",
+        type: "error"
+      });
     } finally {
       setSubmitting(false);
       onClose();
@@ -91,7 +91,7 @@ export default function RequestPaidSheet({
             <VStack className="gap-y-6">
               <VStack className="flex-1">
                 <Text className="text-2xl" bold>
-                  {formatAmount(expenseSplit.amount || 0)}
+                  {formatAmount(payment.amount || 0)}
                 </Text>
                 <Text className="text-secondary-950 text-sm">Amount paid</Text>
               </VStack>

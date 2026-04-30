@@ -12,9 +12,16 @@ type AppAvatarProps = {
   name: string;
   uri?: string;
   unread?: boolean;
+  indicator?: React.ReactNode;
 } & ComponentPropsWithRef<typeof Avatar>;
 
-const AppAvatar = ({ name, uri, unread = false, ...props }: AppAvatarProps) => {
+const AppAvatar = ({
+  name,
+  uri,
+  unread = false,
+  indicator,
+  ...props
+}: AppAvatarProps) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -48,6 +55,11 @@ const AppAvatar = ({ name, uri, unread = false, ...props }: AppAvatarProps) => {
         </AvatarFallbackText>
       )}
       {unread && <AvatarBadge className="bg-red-500" />}
+      {indicator && (
+        <AvatarBadge className="p-0 justify-center items-center" size="xl">
+          {indicator}
+        </AvatarBadge>
+      )}
     </Avatar>
   );
 };

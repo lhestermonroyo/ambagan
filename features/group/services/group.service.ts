@@ -176,23 +176,31 @@ export const deleteGroup = async (groupId: string) => {
   const expenseIds = expenses.map((e) => e.id);
 
   if (expenseIds.length > 0) {
+    const [paymentsRes, payersRes, splitsRes] = await Promise.all([
+      supabase
+        .from(tables.PAYMENT_SPLITS_TBL)
+        .delete()
+        .in("expense_id", expenseIds),
+      supabase
+        .from(tables.EXPENSE_PAYERS_TBL)
+        .delete()
+        .in("expense_id", expenseIds),
+      supabase
+        .from(tables.MEMBER_SPLITS_TBL)
+        .delete()
+        .in("expense_id", expenseIds)
+    ]);
+
+    if (paymentsRes.error) throw paymentsRes.error;
+    if (payersRes.error) throw payersRes.error;
+    if (splitsRes.error) throw splitsRes.error;
+
     const { error: deleteExpensesError } = await supabase
       .from(tables.EXPENSES_TBL)
       .delete()
       .in("id", expenseIds);
 
-    if (deleteExpensesError) {
-      throw deleteExpensesError;
-    }
-
-    const { error: deleteSplitsError } = await supabase
-      .from(tables.MEMBER_SPLITS_TBL)
-      .delete()
-      .in("expense_id", expenseIds);
-
-    if (deleteSplitsError) {
-      throw deleteSplitsError;
-    }
+    if (deleteExpensesError) throw deleteExpensesError;
   }
 
   const { error: membersError } = await supabase
@@ -200,18 +208,14 @@ export const deleteGroup = async (groupId: string) => {
     .delete()
     .eq("group_id", groupId);
 
-  if (membersError) {
-    throw membersError;
-  }
+  if (membersError) throw membersError;
 
   const groupResponse = await supabase
     .from(tables.GROUPS_TBL)
     .delete()
     .eq("id", groupId);
 
-  if (groupResponse.error) {
-    throw groupResponse.error;
-  }
+  if (groupResponse.error) throw groupResponse.error;
 
   return {
     success: true,

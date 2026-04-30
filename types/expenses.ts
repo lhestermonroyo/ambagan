@@ -56,6 +56,7 @@ export type Payment = {
   member_note: string | null;
   payer_note: string | null;
   status: PaymentStatus;
+  status_updated_at: string;
 };
 
 export type PaymentPreview = Pick<
@@ -80,5 +81,6 @@ export enum PaymentStatus {
   PENDING = "pending",
   REQUESTED = "requested",
   SETTLED = "settled",
-  REJECTED = "rejected"
+  ONGING = "ongoing",
+  COMPLETED = "completed"
 }

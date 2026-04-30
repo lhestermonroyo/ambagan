@@ -78,9 +78,6 @@ export default function MembersSelectionSheet({
           !selected.includes(member.id) && member.id !== userDetails?.id
       );
 
-      console.log(newMembers);
-      console.log(removedMembers);
-
       return [
         ...newMembers,
         ...prev.filter(

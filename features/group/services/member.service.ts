@@ -8,20 +8,20 @@ export const updateGroupMembers = async (
   membersToRemove: string[]
 ) => {
   const responses = await Promise.all([
-    ...membersToAdd.map((userId) => {
+    ...membersToAdd.map((memberId) => {
       return supabase.from(tables.GROUP_MEMBERS_TBL).insert([
         {
           group_id: groupId,
-          user_id: userId
+          member_id: memberId
         }
       ]);
     }),
-    ...membersToRemove.map((userId) => {
+    ...membersToRemove.map((memberId) => {
       return supabase
         .from(tables.GROUP_MEMBERS_TBL)
         .delete()
         .eq("group_id", groupId)
-        .eq("user_id", userId);
+        .eq("member_id", memberId);
     })
   ]);
 
@@ -31,8 +31,11 @@ export const updateGroupMembers = async (
     }
   }
 
+  const allMembers = await getMembersByGroupId(groupId);
+
   return {
-    message: "Group members updated successfully"
+    message: "Group members updated successfully",
+    data: allMembers
   };
 };
 

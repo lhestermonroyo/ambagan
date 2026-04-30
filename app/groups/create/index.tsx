@@ -217,12 +217,14 @@ export default function CreateGroupScreen() {
                 <HStack className="gap-x-2">
                   <FormButton
                     text="Members"
+                    size="md"
                     variant={tab === "members" ? "solid" : "outline"}
                     className="flex-1"
                     onPress={() => setTab("members")}
                   />
                   <FormButton
                     text="Admin"
+                    size="md"
                     variant={tab === "admin" ? "solid" : "outline"}
                     className="flex-1"
                     onPress={() => setTab("admin")}

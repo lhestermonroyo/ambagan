@@ -1,6 +1,5 @@
 import { Badge, BadgeText } from "@/components/ui/badge";
-import { MaterialIcons } from "@expo/vector-icons";
-import Icon from "./Icon";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 
 export default function AppBadge({
   text,
@@ -11,7 +10,7 @@ export default function AppBadge({
   ...rest
 }: {
   text: string;
-  icon?: React.ComponentProps<typeof MaterialIcons>["name"];
+  icon?: React.ReactNode;
 } & React.ComponentProps<typeof Badge>) {
   return (
     <Badge
@@ -21,8 +20,8 @@ export default function AppBadge({
       className="rounded-full"
       {...rest}
     >
-      <BadgeText>{text}</BadgeText>
-      {icon && <Icon as={icon} size={14} className="text-secondary-950 ml-1" />}
+      {icon}
+      <BadgeText className={cn(icon ? "ml-1" : "")}>{text}</BadgeText>
     </Badge>
   );
 }

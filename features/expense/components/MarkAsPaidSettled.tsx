@@ -1,3 +1,4 @@
+import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import {
@@ -8,6 +9,11 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
+import {
+  FormControl,
+  FormControlLabel,
+  FormControlLabelText
+} from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -15,7 +21,8 @@ import { VStack } from "@/components/ui/vstack";
 import UploadImage from "@/components/UploadImage";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
-import { ExpenseSplit } from "@/types/expenses";
+import states from "@/states";
+import { Payment } from "@/types/expenses";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
@@ -23,15 +30,15 @@ import { formatAmount } from "../utils/formatAmount";
 export default function MarkAsPaidSheet({
   isOpen,
   onClose,
-  expenseSplit,
+  payment,
   onRefetch
 }: {
   isOpen: boolean;
   onClose: () => void;
-  expenseSplit: ExpenseSplit;
+  payment: Payment;
   onRefetch: () => void;
 }) {
-  if (!expenseSplit) {
+  if (!payment) {
     return null;
   }
 
@@ -41,7 +48,10 @@ export default function MarkAsPaidSheet({
     receipt: null as ImagePickerSuccessResult | null
   });
 
-  const showToast = useAppToast();
+  const { details: userDetails } = states.user.getState();
+  const isMe = payment.member.id === userDetails?.id;
+
+  const toast = useAppToast();
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -50,7 +60,7 @@ export default function MarkAsPaidSheet({
       const response = await services.expense.markAsPaid({
         note: values.note,
         receipt: values.receipt,
-        expenseSplitId: expenseSplit.id
+        expenseSplitId: payment.id
       });
 
       if (!response) {
@@ -58,18 +68,19 @@ export default function MarkAsPaidSheet({
       }
 
       onRefetch();
-      showToast(
-        "Marked as Paid",
-        "This expense has been successfully marked as paid.",
-        "success"
-      );
+      toast({
+        title: "Marked as Settled",
+        description: "This payment has been successfully marked as settled.",
+        type: "success"
+      });
     } catch (error) {
-      console.error("Error marking as paid:", error);
-      showToast(
-        "Error",
-        "There was an issue marking this expense as paid. Please try again.",
-        "error"
-      );
+      console.error("Error marking as settled:", error);
+      toast({
+        title: "Error",
+        description:
+          "There was an issue marking this payment as settled. Please try again.",
+        type: "error"
+      });
     } finally {
       setSubmitting(false);
       onClose();
@@ -83,18 +94,42 @@ export default function MarkAsPaidSheet({
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full p-4 flex-1 gap-6">
-          <Text bold className="text-xl">
-            Mark as Paid
+        <VStack className="w-full flex-1 gap-y-4">
+          <Text bold className="text-xl p-4">
+            Mark as Settled
           </Text>
-          <ScrollView className="flex-1" bounces={false}>
+          <ScrollView className="flex-1 px-4" bounces={false}>
             <VStack className="gap-y-6">
               <VStack className="flex-1">
-                <Text className="text-2xl" bold>
-                  {formatAmount(expenseSplit.amount || 0)}
+                <Text className="text-3xl" bold>
+                  {formatAmount(payment.amount || 0)}
                 </Text>
-                <Text className="text-secondary-950 text-sm">Amount paid</Text>
+                <Text className="text-secondary-950">Amount paid</Text>
               </VStack>
+
+              <FormControl size="md">
+                <FormControlLabel className="flex-1">
+                  <FormControlLabelText>Paid by</FormControlLabelText>
+                </FormControlLabel>
+                <HStack className="gap-x-2 items-center flex-1 p-4 border border-background-200 rounded-lg">
+                  <AppAvatar
+                    name={payment.member.first_name}
+                    uri={payment.member.avatar!}
+                    size="md"
+                  />
+                  <VStack>
+                    <HStack className="gap-x-1 items-center">
+                      <Text className="text-lg">
+                        {payment.member.first_name} {payment.member.last_name}
+                        {isMe && " (You)"}
+                      </Text>
+                    </HStack>
+                    <Text className="text-secondary-950">
+                      {payment.member.email}
+                    </Text>
+                  </VStack>
+                </HStack>
+              </FormControl>
 
               <FormTextarea
                 label="Note (optional)"
@@ -119,8 +154,7 @@ export default function MarkAsPaidSheet({
             </VStack>
           </ScrollView>
         </VStack>
-        <Box className="items-center justify-start sticky bottom-0 px-4">
-          <Box className="h-4" />
+        <Box className="items-center justify-start p-4">
           <HStack className="gap-x-2 pt-4">
             <FormButton
               className="flex-1"
@@ -131,7 +165,7 @@ export default function MarkAsPaidSheet({
             />
             <FormButton
               className="flex-1"
-              text="Confirm Paid"
+              text="Confirm Payment"
               loading={submitting}
               onPress={handleSubmit}
             />

@@ -48,7 +48,7 @@ export default function GroupItem({
           <AppAvatarGroup
             size="sm"
             items={appAvatarGroupItems}
-            maxDisplay={3}
+            maxDisplay={2}
           />
           <Icon as="chevron-right" className="text-secondary-950" />
         </HStack>

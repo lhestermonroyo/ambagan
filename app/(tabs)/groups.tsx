@@ -149,19 +149,19 @@ export default function GroupsScreen() {
               />
             )}
             bounces={false}
-            renderHiddenItem={({ item }, rowMap) => (
-              <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
-                <Button
-                  variant="solid"
-                  className="rounded-full h-[40] w-[40] p-0"
-                  onPress={() => {
-                    router.push(`/groups/${item.id}/edit?isGroup=true`);
-                    rowMap[item.id]?.closeRow();
-                  }}
-                >
-                  <Icon as="edit" className="text-background-0" />
-                </Button>
-                {item.admin.id === userDetails?.id && (
+            renderHiddenItem={({ item }, rowMap) =>
+              item.admin.id === userDetails?.id && (
+                <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
+                  <Button
+                    variant="solid"
+                    className="rounded-full h-[40] w-[40] p-0"
+                    onPress={() => {
+                      router.push(`/groups/${item.id}/edit?isGroup=true`);
+                      rowMap[item.id]?.closeRow();
+                    }}
+                  >
+                    <Icon as="edit" className="text-background-0" />
+                  </Button>
                   <ConfirmIconButton
                     icon="delete"
                     iconClassName="text-background-0"
@@ -169,14 +169,18 @@ export default function GroupsScreen() {
                     action="negative"
                     className="rounded-full h-[40] w-[40] p-0"
                     confirmTitle="Delete Group"
-                    confirmDescription="Deleting this group will remove all associated expenses and members. Are you sure you want to proceed?"
+                    confirmDescription=" Deleting this group will remove all associated expenses and
+            payments. Are you sure you want to proceed?"
                     isLoading={deleting}
                     isDelete
-                    onConfirm={() => handleDeleteGroup(item.id)}
+                    onConfirm={() => {
+                      rowMap[item.id]?.closeRow();
+                      handleDeleteGroup(item.id);
+                    }}
                   />
-                )}
-              </HStack>
-            )}
+                </HStack>
+              )
+            }
             rightOpenValue={-116}
             disableRightSwipe
             ItemSeparatorComponent={() => (

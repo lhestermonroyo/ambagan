@@ -20,7 +20,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
 import { Member } from "@/types/groups";
-import { User } from "@/types/user";
+import { UserPreview } from "@/types/user";
 import { useEffect, useMemo, useState } from "react";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
@@ -36,12 +36,12 @@ export default function EditMembersSheet({
   const [submitting, setSubmitting] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserPreview[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [lockedMembers, setLockedMembers] = useState<Member[]>([]);
   const [tab, setTab] = useState<"recent" | "favorites">("recent");
 
-  const { details: groupDetails } = states.group.getState();
+  const { details: groupDetails, memberList } = states.group.getState();
   const { details: userDetails } = states.user.getState();
 
   const showToast = useAppToast();
@@ -62,24 +62,23 @@ export default function EditMembersSheet({
     const locked: Member[] = [];
     const unlocked: Member[] = [];
     try {
-      if (!groupDetails?.members) {
-        setMembers([]);
-        return;
-      }
+      if (!groupDetails) return;
 
       await Promise.all(
-        groupDetails.members.map(async (member) => {
-          const hasUnpaid = await services.expense.getUnpaidExpenses(
-            groupDetails.id,
-            member.id
-          );
+        memberList
+          .filter((member) => member.id !== groupDetails.admin.id)
+          .map(async (member) => {
+            const hasUnpaid = await services.expense.getUnpaidPayments(
+              groupDetails.id,
+              member.id
+            );
 
-          if (hasUnpaid || member.id === userDetails?.id) {
-            locked.push(member);
-          } else {
-            unlocked.push(member);
-          }
-        })
+            if (hasUnpaid) {
+              locked.push(member);
+            } else {
+              unlocked.push(member);
+            }
+          })
       );
 
       setLockedMembers(locked);
@@ -98,7 +97,9 @@ export default function EditMembersSheet({
         return;
       }
       const data = await services.user.searchUsers(searchInput);
-      setUsers(data);
+      const filteredUsers = data.filter((u) => u.id !== groupDetails?.admin.id);
+
+      setUsers(filteredUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
     }
@@ -159,15 +160,17 @@ export default function EditMembersSheet({
       const allMembers = lockedMembers.concat(members);
 
       const membersToAdd = allMembers
+        .filter((member) => !memberList.some((m) => m.id === member.id))
+        .map((member) => member.id);
+      const membersToRemove = memberList
         .filter(
-          (member) => !groupDetails.members?.some((m) => m.id === member.id)
+          (member) =>
+            member.id !== groupDetails.admin.id &&
+            !allMembers.some((m) => m.id === member.id)
         )
         .map((member) => member.id);
-      const membersToRemove = groupDetails.members
-        ?.filter((member) => !allMembers.some((m) => m.id === member.id))
-        .map((member) => member.id);
 
-      await services.member.updateGroupMembers(
+      const response = await services.member.updateGroupMembers(
         groupDetails.id,
         membersToAdd,
         membersToRemove
@@ -175,16 +178,22 @@ export default function EditMembersSheet({
 
       states.group.setState((prev) => ({
         ...prev,
-        details: prev.details
-          ? { ...prev.details, members: allMembers }
-          : prev.details
+        memberList: response.data
       }));
 
-      showToast("Success", "Group members updated successfully", "success");
+      showToast({
+        title: "Success",
+        description: "Group members updated successfully",
+        type: "success"
+      });
       handleClose();
     } catch (error) {
       console.error("Error updating group members:", error);
-      showToast("Error", "Failed to update group members", "error");
+      showToast({
+        title: "Error",
+        description: "Failed to update group members",
+        type: "error"
+      });
     } finally {
       setSubmitting(false);
     }
@@ -235,9 +244,8 @@ export default function EditMembersSheet({
                 />
                 <VStack className="w-full px-4">
                   <Text className="text-sm text-secondary-950">
-                    Creator and members with unpaid expenses are locked and
-                    cannot be removed from the group until their expenses are
-                    settled.
+                    Members with a lock icon have pending expenses and must
+                    settle all payments before they can be removed.
                   </Text>
                 </VStack>
               </VStack>

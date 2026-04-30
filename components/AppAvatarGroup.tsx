@@ -46,7 +46,7 @@ const AppAvatarGroup = ({
       {items.length > maxDisplay && (
         <Avatar
           size={size}
-          className={`border-primary-400 border-1 bg-slate-700`}
+          className={`border-2 border-outline-0 bg-slate-700`}
         >
           <AvatarFallbackText>
             {"+ " + (items.length - maxDisplay)}

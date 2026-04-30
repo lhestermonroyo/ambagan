@@ -1,3 +1,4 @@
+import AppAvatar from "@/components/AppAvatar";
 import ConfirmButton from "@/components/ConfirmButton";
 import FormButton from "@/components/FormButton";
 import {
@@ -15,30 +16,36 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
-import { ExpenseSplit } from "@/types/expenses";
-import { Fragment, useState } from "react";
+import states from "@/states";
+import { Payment } from "@/types/expenses";
+import { formatDate } from "@/utils/formatDate";
+import { Fragment, ReactNode, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
+import StatusBadge from "./StatusBadge";
 
 export default function ReviewRequestPaidSheet({
   isOpen,
   onClose,
   onRefetch,
-  expenseSplit,
-  isPayer = false
+  payment,
+  isPayer = false,
+  readOnly = false
 }: {
   isOpen: boolean;
   onClose: () => void;
   onRefetch: () => void;
-  expenseSplit: ExpenseSplit;
+  payment: Payment;
   isPayer?: boolean;
+  readOnly?: boolean;
 }) {
-  if (!expenseSplit) {
+  if (!payment) {
     return null;
   }
 
   const [submitting, setSubmitting] = useState(false);
 
-  const showToast = useAppToast();
+  const { details: userDetails } = states.user.getState();
+  const toast = useAppToast();
 
   const handleMarkAsPaid = async () => {
     setSubmitting(true);
@@ -46,7 +53,7 @@ export default function ReviewRequestPaidSheet({
       const response = await services.expense.markAsPaid({
         note: "",
         receipt: null,
-        expenseSplitId: expenseSplit.id
+        expenseSplitId: payment.id
       });
 
       if (!response) {
@@ -55,14 +62,18 @@ export default function ReviewRequestPaidSheet({
 
       onRefetch();
       onClose();
-      showToast("Success", "The request has been marked as paid.", "success");
+      toast({
+        description: "The payment request has been settled.",
+        type: "success"
+      });
     } catch (error) {
       console.error("Error marking as paid:", error);
-      showToast(
-        "Error",
-        "There was an issue marking the request as paid. Please try again.",
-        "error"
-      );
+      toast({
+        title: "Error",
+        description:
+          "There was an issue settling this request. Please try again.",
+        type: "error"
+      });
     } finally {
       setSubmitting(false);
     }
@@ -71,7 +82,7 @@ export default function ReviewRequestPaidSheet({
   const handleUndoRequest = async () => {
     setSubmitting(true);
     try {
-      const response = await services.expense.undoPaidRequest(expenseSplit.id);
+      const response = await services.expense.undoPaidRequest(payment.id);
 
       if (!response) {
         throw new Error("Failed to undo paid request");
@@ -79,18 +90,25 @@ export default function ReviewRequestPaidSheet({
 
       onRefetch();
       onClose();
-      showToast("Success", "Your paid request has been undone.", "success");
+      toast({
+        description: "Your payment request has been undone.",
+        type: "success"
+      });
     } catch (error) {
       console.error("Error undoing paid request:", error);
-      showToast(
-        "Error",
-        "There was an issue undoing your request. Please try again.",
-        "error"
-      );
+      toast({
+        title: "Error",
+        description:
+          "There was an issue undoing your request. Please try again.",
+        type: "error"
+      });
     } finally {
       setSubmitting(false);
     }
   };
+
+  const isMemberMe = payment.member.id === userDetails?.id;
+  const isPayerMe = payment.payer.id === userDetails?.id;
 
   return (
     <Fragment>
@@ -100,53 +118,96 @@ export default function ReviewRequestPaidSheet({
           <ActionsheetDragIndicatorWrapper>
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full p-4 flex-1 gap-6">
-            <Text bold className="text-xl">
-              {isPayer ? "Paid Request Details" : "Review Paid Request"}
+          <VStack className="w-full flex-1 gap-y-4">
+            <Text bold className="text-xl p-4">
+              {isPayer ? "Settlement Details" : "Review Paid Request"}
             </Text>
-            <ScrollView className="flex-1" bounces={false}>
+            <ScrollView className="flex-1 px-4" bounces={false}>
               <VStack className="gap-y-6">
                 <VStack className="flex-1">
-                  <Text className="text-2xl" bold>
-                    {formatAmount(expenseSplit.amount || 0)}
+                  <Text className="text-3xl" bold>
+                    {formatAmount(payment.amount || 0)}
                   </Text>
-                  <Text className="text-secondary-950 text-sm">
-                    {isPayer ? "Amount paid" : "You paid"}
-                  </Text>
+                  <Text className="text-secondary-950">Amount paid</Text>
                 </VStack>
 
-                {expenseSplit.note && (
-                  <VStack>
-                    <Text className="text-lg">
-                      {expenseSplit.note || "No additional notes provided."}
-                    </Text>
-                    <Text className="text-secondary-950 text-sm">Note</Text>
-                  </VStack>
-                )}
+                <Box className="bg-secondary-100 rounded-xl">
+                  <DetailRow
+                    label="Updated"
+                    value={
+                      <Text>
+                        {formatDate(payment.status_updated_at) || "N/A"}
+                      </Text>
+                    }
+                  />
+                  <DetailRow
+                    label="Status"
+                    value={
+                      <Box className="self-end">
+                        <StatusBadge size="lg" status={payment.status} />
+                      </Box>
+                    }
+                  />
+                </Box>
 
-                {expenseSplit.payer_note && (
-                  <VStack>
-                    <Text className="text-lg">
-                      {expenseSplit.payer_note ||
-                        "No additional notes provided."}
-                    </Text>
-                    <Text className="text-secondary-950 text-sm">
-                      Payer's Note
-                    </Text>
-                  </VStack>
-                )}
+                <Box className="bg-secondary-100 rounded-xl">
+                  <DetailRow
+                    label="Paid By"
+                    value={
+                      <HStack className="gap-x-2 items-center">
+                        <AppAvatar
+                          name={payment.member.first_name}
+                          uri={payment.member.avatar!}
+                          size="sm"
+                        />
+                        <Text>
+                          {payment.member.first_name} {payment.member.last_name}
+                          {isMemberMe && " (You)"}
+                        </Text>
+                      </HStack>
+                    }
+                  />
+                  <DetailRow
+                    label="Note"
+                    value={<Text>{payment.member_note || "N/A"}</Text>}
+                  />
+                </Box>
 
-                {expenseSplit.receipt ? (
-                  <Box className="relative w-full bg-background-100 rounded-3xl">
+                <Box className="bg-secondary-100 rounded-xl">
+                  <DetailRow
+                    label="Paid To"
+                    value={
+                      <HStack className="gap-x-2 items-center">
+                        <AppAvatar
+                          name={payment.payer.first_name}
+                          uri={payment.payer.avatar!}
+                          size="sm"
+                        />
+                        <Text>
+                          {payment.payer.first_name} {payment.payer.last_name}
+                          {isPayerMe && " (You)"}
+                        </Text>
+                      </HStack>
+                    }
+                  />
+
+                  <DetailRow
+                    label="Note"
+                    value={<Text>{payment.payer_note || "N/A"}</Text>}
+                  />
+                </Box>
+
+                {payment.proof_of_payment ? (
+                  <Box className="relative w-full bg-background-100 rounded-xl">
                     <Image
-                      source={{ uri: expenseSplit.receipt }}
+                      source={{ uri: payment.proof_of_payment }}
                       alt="Receipt"
                       resizeMode="contain"
-                      className="aspect-square h-auto w-full rounded-3xl"
+                      className="aspect-square h-auto w-full rounded-xl"
                     />
                   </Box>
                 ) : (
-                  <Box className="w-full aspect-square rounded border border-secondary-300 items-center justify-center">
+                  <Box className="w-full aspect-square rounded-xl border border-secondary-300 items-center justify-center">
                     <Text className="text-secondary-950">
                       No receipt provided
                     </Text>
@@ -165,7 +226,7 @@ export default function ReviewRequestPaidSheet({
                 disabled={submitting}
                 onPress={onClose}
               />
-              {expenseSplit.status !== "paid" && (
+              {!readOnly && payment.status !== "settled" && (
                 <Fragment>
                   {isPayer ? (
                     <ConfirmButton
@@ -194,5 +255,18 @@ export default function ReviewRequestPaidSheet({
         </ActionsheetContent>
       </Actionsheet>
     </Fragment>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <HStack className="items-start gap-x-4 justify-between p-4">
+      <Box className="flex-1">
+        <Text className="text-secondary-950">{label}</Text>
+      </Box>
+      <Box style={{ flex: 2 }} className="w-full items-end">
+        {value}
+      </Box>
+    </HStack>
   );
 }

@@ -1,4 +1,11 @@
-import { ExpensePayer, ExpensePreview, PaymentPreview } from "@/types/expenses";
+import {
+  Expense,
+  ExpensePayer,
+  ExpensePreview,
+  MemberSplit,
+  Payment,
+  PaymentPreview
+} from "@/types/expenses";
 import { splitTypes, tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
@@ -213,6 +220,32 @@ export const getPaymentsByUserId = async (
   };
 };
 
+export const getPaymentsByExpenseId = async (expenseId: string) => {
+  const user = await supabase.auth.getUser();
+
+  if (!user.data.user) {
+    throw new Error("User not authenticated");
+  }
+
+  const paymentListResponse = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(
+      `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar)`
+    )
+    .eq("expense_id", expenseId)
+    .order("created_at", { ascending: false });
+
+  if (paymentListResponse.error) {
+    throw paymentListResponse.error;
+  }
+
+  return paymentListResponse.data.map((item) => ({
+    ...item,
+    member: Array.isArray(item.member) ? item.member[0] : item.member,
+    payer: Array.isArray(item.payer) ? item.payer[0] : item.payer
+  })) as Payment[];
+};
+
 export const getStatsByUserId = async (userId: string) => {
   const user = await supabase.auth.getUser();
 
@@ -282,8 +315,6 @@ export const getExpensesByGroupId = async (groupId: string) => {
     })
   );
 
-  console.log(JSON.stringify(expenseList, null, 2));
-
   return expenseList as ExpensePreview[];
 };
 
@@ -291,7 +322,7 @@ export const getExpenseById = async (id: string) => {
   const { data, error } = await supabase
     .from(tables.EXPENSES_TBL)
     .select(
-      `*, created_by:created_by!inner(id, email, first_name, last_name, avatar), paid_by:paid_by!inner(id, email, first_name, last_name, avatar)`
+      `*, creator:creator_id!inner(id, email, phone, first_name, last_name, avatar)`
     )
     .eq("id", id)
     .single();
@@ -300,7 +331,7 @@ export const getExpenseById = async (id: string) => {
     throw error;
   }
 
-  return data;
+  return data as Expense;
 };
 
 export const getPayersByExpenseId = async (expenseId: string) => {
@@ -316,6 +347,24 @@ export const getPayersByExpenseId = async (expenseId: string) => {
   }
 
   return data as ExpensePayer[];
+};
+
+export const getMemberSplitsByExpenseId = async (expenseId: string) => {
+  const { data, error } = await supabase
+    .from(tables.MEMBER_SPLITS_TBL)
+    .select(
+      `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar)`
+    )
+    .eq("expense_id", expenseId);
+
+  if (error) {
+    throw error;
+  }
+
+  return data.map((item) => ({
+    ...item,
+    member: Array.isArray(item.member) ? item.member[0] : item.member
+  })) as MemberSplit[];
 };
 
 export const getSplitsByExpense = async (expenseId: string) => {
@@ -353,11 +402,11 @@ export const createPaidRequest = async (expensePayload: {
   }
 
   const splitResponse = await supabase
-    .from(tables.MEMBER_SPLITS_TBL)
+    .from(tables.PAYMENT_SPLITS_TBL)
     .update({
       status: "requested",
-      note,
-      receipt: receiptUrl
+      member_note: note,
+      proof_of_payment: receiptUrl
     })
     .eq("id", expenseSplitId);
 
@@ -376,11 +425,11 @@ export const undoPaidRequest = async (expenseSplitId: string) => {
   }
 
   const splitResponse = await supabase
-    .from(tables.MEMBER_SPLITS_TBL)
+    .from(tables.PAYMENT_SPLITS_TBL)
     .update({
       status: "pending",
-      note: null,
-      receipt: null
+      member_note: null,
+      proof_of_payment: null
     })
     .eq("id", expenseSplitId);
 
@@ -413,11 +462,12 @@ export const markAsPaid = async (expensePayload: {
   }
 
   const splitResponse = await supabase
-    .from(tables.MEMBER_SPLITS_TBL)
+    .from(tables.PAYMENT_SPLITS_TBL)
     .update({
-      status: "paid",
+      status: "settled",
       payer_note: note,
-      receipt: receiptUrl
+      proof_of_payment: receiptUrl,
+      status_updated_at: new Date().toISOString()
     })
     .eq("id", expenseSplitId);
 
@@ -495,7 +545,7 @@ export const getUnreadActivitiesByUserId = async (userId: string) => {
   };
 };
 
-export const getUnpaidExpenses = async (groupId: string, userId: string) => {
+export const getUnpaidPayments = async (groupId: string, userId: string) => {
   const user = await supabase.auth.getUser();
 
   if (!user.data.user) {
@@ -503,11 +553,11 @@ export const getUnpaidExpenses = async (groupId: string, userId: string) => {
   }
 
   const response = await supabase
-    .from(tables.MEMBER_SPLITS_TBL)
-    .select(`id, ${tables.EXPENSES_TBL} (group_id)`)
-    .eq("user_id", userId)
-    .eq(`${tables.EXPENSES_TBL}.group_id`, groupId)
-    .or(`paid_by.eq.${userId},status.eq.pending,status.eq.requested`);
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(`id`)
+    .eq("group_id", groupId)
+    .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
+    .or(`status.eq.pending,status.eq.requested`);
 
   if (response.error) {
     throw response.error;
