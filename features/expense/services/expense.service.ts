@@ -380,7 +380,7 @@ export const getSplitsByExpense = async (expenseId: string) => {
   return data;
 };
 
-export const createPaidRequest = async (expensePayload: {
+export const createSettledRequest = async (expensePayload: {
   note: string;
   receipt: ImagePickerSuccessResult | null;
   expenseSplitId: string;
@@ -417,7 +417,7 @@ export const createPaidRequest = async (expensePayload: {
   return { success: true, message: "Request created successfully" };
 };
 
-export const undoPaidRequest = async (expenseSplitId: string) => {
+export const undoSettledRequest = async (expenseSplitId: string) => {
   const user = await supabase.auth.getUser();
 
   if (!user.data.user) {
@@ -437,10 +437,10 @@ export const undoPaidRequest = async (expenseSplitId: string) => {
     throw splitResponse.error;
   }
 
-  return { success: true, message: "Paid request undone successfully" };
+  return { success: true, message: "Settled request undone successfully" };
 };
 
-export const markAsPaid = async (expensePayload: {
+export const markAsSettled = async (expensePayload: {
   note: string;
   receipt: ImagePickerSuccessResult | null;
   expenseSplitId: string;
@@ -475,28 +475,7 @@ export const markAsPaid = async (expensePayload: {
     throw splitResponse.error;
   }
 
-  return { success: true, message: "Marked as paid successfully" };
-};
-
-export const markAsRead = async (expenseSplitId: string) => {
-  const user = await supabase.auth.getUser();
-
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
-  }
-
-  const splitResponse = await supabase
-    .from(tables.MEMBER_SPLITS_TBL)
-    .update({
-      user_read: true
-    })
-    .eq("id", expenseSplitId);
-
-  if (splitResponse.error) {
-    throw splitResponse.error;
-  }
-
-  return { success: true, message: "Marked as read successfully" };
+  return { success: true, message: "Marked as settled successfully" };
 };
 
 export const getUnreadActivitiesByUserId = async (userId: string) => {
@@ -543,6 +522,36 @@ export const getUnreadActivitiesByUserId = async (userId: string) => {
     payableCount,
     receivableCount
   };
+};
+
+export const getPaymentsByGroupAndUserId = async (
+  groupId: string,
+  userId: string
+) => {
+  const user = await supabase.auth.getUser();
+
+  if (!user.data.user) {
+    throw new Error("User not authenticated");
+  }
+
+  const { data, error } = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(
+      `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar)`
+    )
+    .eq("group_id", groupId)
+    .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data.map((item) => ({
+    ...item,
+    member: Array.isArray(item.member) ? item.member[0] : item.member,
+    payer: Array.isArray(item.payer) ? item.payer[0] : item.payer
+  })) as Payment[];
 };
 
 export const getUnpaidPayments = async (groupId: string, userId: string) => {

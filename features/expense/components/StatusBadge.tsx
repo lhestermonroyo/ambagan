@@ -30,9 +30,9 @@ export default function StatusBadge({
     text = "Pending";
     icon = <Hourglass size={12} color="#D76C1F" />;
   } else if (status === "ongoing") {
-    action = "muted";
+    action = "warning";
     text = "Ongoing";
-    icon = <RefreshCcw size={16} color="#414040" />;
+    icon = <RefreshCcw size={16} color="#D76C1F" />;
   } else if (status === "completed") {
     action = "success";
     text = "Completed";
@@ -43,7 +43,7 @@ export default function StatusBadge({
 
   return (
     <AppBadge
-      className="self-start"
+      className="self-start rounded-md"
       text={text}
       action={action}
       size={size}

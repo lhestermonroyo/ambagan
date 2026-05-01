@@ -25,7 +25,8 @@ import {
 } from "lucide-react-native";
 import { Fragment, ReactNode, useMemo, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
-import RequestPaidSheet from "./RequestPaidSheet";
+import { sortPaymentsByStatus } from "../utils/payment.util";
+import RequestPaidSheet from "./RequestSettledSheet";
 import ReviewRequestPaidSheet from "./ReviewRequestPaidSheet";
 import StatusBadge from "./StatusBadge";
 
@@ -53,12 +54,12 @@ export default function MemberExpenseDetails({
 
   const filteredPayments = useMemo(() => {
     if (!paymentSplitList || !userDetails) return [];
-    if (!showMembers) {
-      return paymentSplitList.filter(
-        (p) => p.member.id === userDetails.id || p.payer.id === userDetails.id
-      );
-    }
-    return paymentSplitList;
+    const list = showMembers
+      ? paymentSplitList
+      : paymentSplitList.filter(
+          (p) => p.member.id === userDetails.id || p.payer.id === userDetails.id
+        );
+    return sortPaymentsByStatus(list);
   }, [paymentSplitList, userDetails, showMembers]);
 
   const splitShareAmount = useMemo(() => {
@@ -110,14 +111,14 @@ export default function MemberExpenseDetails({
           </VStack>
 
           <HStack className="gap-x-2">
-            <Card className="flex-1 border rounded-lg border-secondary-400">
+            <Card className="flex-1 bg-secondary-100 rounded-lg">
               <Text className="text-2xl" bold>
                 {formatAmount(splitShareAmount)}
               </Text>
               <Text className="text-secondary-950">Your Share</Text>
             </Card>
 
-            <Card className="flex-1 border rounded-lg border-secondary-400 justify-center">
+            <Card className="flex-1 bg-secondary-100 rounded-lg justify-center">
               <StatusBadge
                 status={isCompleted ? "completed" : "ongoing"}
                 size="lg"
@@ -127,162 +128,166 @@ export default function MemberExpenseDetails({
           </HStack>
         </VStack>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <HStack className="gap-x-2 px-4">
-            {tabs.map((type) => (
-              <FormButton
-                size="md"
-                key={type}
-                variant={type === tab ? "solid" : "outline"}
-                text={type}
-                onPress={() => setTab(type)}
-              />
-            ))}
-          </HStack>
-        </ScrollView>
-
-        {tab === "Settlements" && (
-          <VStack className="gap-y-2">
-            <HStack className="items-center justify-end gap-x-2 px-4 py-2 bg-secondary-100">
-              <Text className="text-secondary-950">Show all members</Text>
-              <Switch
-                size="md"
-                value={showMembers}
-                onValueChange={setShowMembers}
-              />
-            </HStack>
-            <FlatList
-              className="flex-1"
-              scrollEnabled={false}
-              data={filteredPayments}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <ExpenseSplitItem
-                  key={item.member.id}
-                  payment={item}
-                  onOpenRequest={handleOpenRequest}
-                  onOpenReview={handleOpenReview}
-                  onOpenReadOnlyReview={handleOpenReadOnlyReview}
+        <VStack className="gap-y-2">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <HStack className="gap-x-2 px-4">
+              {tabs.map((type) => (
+                <FormButton
+                  size="md"
+                  key={type}
+                  variant={type === tab ? "solid" : "outline"}
+                  text={type}
+                  onPress={() => setTab(type)}
                 />
-              )}
-              ItemSeparatorComponent={() => (
-                <Box className="mx-4">
-                  <Divider className="border-secondary-100" />
-                </Box>
-              )}
-              ListEmptyComponent={() => (
-                <Box className="px-4 py-8 items-center">
-                  <Text className="text-secondary-950">No payments found</Text>
-                </Box>
-              )}
-              ListFooterComponent={() => <Box className="h-12" />}
-            />
-          </VStack>
-        )}
+              ))}
+            </HStack>
+          </ScrollView>
 
-        {tab === "Split Breakdown" && (
-          <VStack className="gap-y-4">
+          {tab === "Settlements" && (
             <VStack className="gap-y-2">
-              <Text className="text-xl px-4" bold>
-                Members Split
-              </Text>
+              <HStack className="items-center justify-end gap-x-2 px-4 py-2 bg-secondary-100">
+                <Text className="text-secondary-950">Show all members</Text>
+                <Switch
+                  size="md"
+                  value={showMembers}
+                  onValueChange={setShowMembers}
+                />
+              </HStack>
               <FlatList
                 className="flex-1"
                 scrollEnabled={false}
-                data={memberSplitList}
+                data={filteredPayments}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => (
-                  <MemberSplitItem key={item.member.id} memberSplit={item} />
+                  <ExpenseSplitItem
+                    key={item.member.id}
+                    payment={item}
+                    onOpenRequest={handleOpenRequest}
+                    onOpenReview={handleOpenReview}
+                    onOpenReadOnlyReview={handleOpenReadOnlyReview}
+                  />
                 )}
                 ItemSeparatorComponent={() => (
                   <Box className="mx-4">
                     <Divider className="border-secondary-100" />
                   </Box>
                 )}
-              />
-            </VStack>
-
-            <VStack className="gap-y-2">
-              <Text className="text-xl px-4" bold>
-                Payers' Contribution
-              </Text>
-              <FlatList
-                className="flex-1"
-                scrollEnabled={false}
-                data={payerList}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <PayerItem key={item.id} payer={item} />
-                )}
-                ItemSeparatorComponent={() => (
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-100" />
-                  </Box>
-                )}
-              />
-            </VStack>
-          </VStack>
-        )}
-
-        {tab === "Expense Details" && (
-          <VStack className="gap-y-4 px-4">
-            <Box className="bg-secondary-100 rounded-xl overflow-hidden">
-              <DetailRow
-                label="Expense Date"
-                value={
-                  <Text>{formatDate(expenseDetails?.created_at || "")}</Text>
-                }
-              />
-              <DetailRow
-                label="Expense Creator"
-                value={
-                  <HStack className="gap-x-1 items-center">
-                    <AppAvatar
-                      name={`${expenseDetails?.creator.first_name} ${expenseDetails?.creator.last_name}`}
-                      uri={expenseDetails?.creator.avatar!}
-                      size="sm"
-                    />
-                    <Text>
-                      {expenseDetails?.creator.first_name}{" "}
-                      {expenseDetails?.creator.last_name}
-                      {expenseDetails?.creator.id === userDetails?.id &&
-                        " (You)"}
+                ListEmptyComponent={() => (
+                  <Box className="px-4 py-8 items-center">
+                    <Text className="text-secondary-950">
+                      No payments found
                     </Text>
-                  </HStack>
-                }
+                  </Box>
+                )}
+                ListFooterComponent={() => <Box className="h-12" />}
               />
-              <DetailRow
-                label="Split Type"
-                value={
-                  <Text className="capitalize">
-                    {expenseDetails?.split_type}
-                  </Text>
-                }
-              />
-              <DetailRow
-                label="Proof of Payment"
-                value={
-                  expenseDetails?.proof_of_payment ? (
-                    <FormButton
-                      size="md"
-                      variant="outline"
-                      text="View Image"
-                      icon={
-                        <FileImage
-                          size={18}
-                          color={getPrimaryHex("text-primary-500")}
-                        />
-                      }
-                      onPress={() => {}}
-                    />
-                  ) : (
-                    <Text>N/A</Text>
-                  )
-                }
-              />
-            </Box>
-          </VStack>
-        )}
+            </VStack>
+          )}
+
+          {tab === "Split Breakdown" && (
+            <VStack className="gap-y-4">
+              <VStack className="gap-y-2">
+                <Text className="text-xl px-4" bold>
+                  Members Split
+                </Text>
+                <FlatList
+                  className="flex-1"
+                  scrollEnabled={false}
+                  data={memberSplitList}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <MemberSplitItem key={item.member.id} memberSplit={item} />
+                  )}
+                  ItemSeparatorComponent={() => (
+                    <Box className="mx-4">
+                      <Divider className="border-secondary-100" />
+                    </Box>
+                  )}
+                />
+              </VStack>
+
+              <VStack className="gap-y-2">
+                <Text className="text-xl px-4" bold>
+                  Payers' Contribution
+                </Text>
+                <FlatList
+                  className="flex-1"
+                  scrollEnabled={false}
+                  data={payerList}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <PayerItem key={item.id} payer={item} />
+                  )}
+                  ItemSeparatorComponent={() => (
+                    <Box className="mx-4">
+                      <Divider className="border-secondary-100" />
+                    </Box>
+                  )}
+                />
+              </VStack>
+            </VStack>
+          )}
+
+          {tab === "Expense Details" && (
+            <VStack className="gap-y-4 px-4">
+              <Box className="bg-secondary-100 rounded-xl overflow-hidden">
+                <DetailRow
+                  label="Expense Date"
+                  value={
+                    <Text>{formatDate(expenseDetails?.created_at || "")}</Text>
+                  }
+                />
+                <DetailRow
+                  label="Expense Creator"
+                  value={
+                    <HStack className="gap-x-1 items-center">
+                      <AppAvatar
+                        name={`${expenseDetails?.creator.first_name} ${expenseDetails?.creator.last_name}`}
+                        uri={expenseDetails?.creator.avatar!}
+                        size="sm"
+                      />
+                      <Text>
+                        {expenseDetails?.creator.first_name}{" "}
+                        {expenseDetails?.creator.last_name}
+                        {expenseDetails?.creator.id === userDetails?.id &&
+                          " (You)"}
+                      </Text>
+                    </HStack>
+                  }
+                />
+                <DetailRow
+                  label="Split Type"
+                  value={
+                    <Text className="capitalize">
+                      {expenseDetails?.split_type}
+                    </Text>
+                  }
+                />
+                <DetailRow
+                  label="Proof of Payment"
+                  value={
+                    expenseDetails?.proof_of_payment ? (
+                      <FormButton
+                        size="md"
+                        variant="outline"
+                        text="View Image"
+                        icon={
+                          <FileImage
+                            size={18}
+                            color={getPrimaryHex("text-primary-500")}
+                          />
+                        }
+                        onPress={() => {}}
+                      />
+                    ) : (
+                      <Text>N/A</Text>
+                    )
+                  }
+                />
+              </Box>
+            </VStack>
+          )}
+        </VStack>
       </VStack>
 
       {selectedPayment && (
@@ -328,14 +333,6 @@ function ExpenseSplitItem({
   const { details: userDetails } = states.user();
   const isUserMember = payment?.member.id === userDetails?.id;
   const isUserPayer = payment?.payer.id === userDetails?.id;
-
-  const actionHint = (() => {
-    if (payment.status === "settled") return "View details";
-    if (!isUserMember && !isUserPayer) return "View details";
-    if (isUserMember && payment.status === "pending") return "Tap to send proof";
-    if (isUserMember && payment.status === "requested") return "Waiting for approval";
-    return null;
-  })();
 
   const handlePress = () => {
     if (!isUserMember && !isUserPayer) {
@@ -389,9 +386,6 @@ function ExpenseSplitItem({
           <VStack className="items-end">
             <Text className="text-lg">{formatAmount(payment.amount)}</Text>
             <StatusBadge status={payment.status} size="lg" />
-            {actionHint && (
-              <Text className="text-xs text-secondary-950">{actionHint}</Text>
-            )}
           </VStack>
           <Icon as="chevron-right" className="text-secondary-950" />
         </HStack>

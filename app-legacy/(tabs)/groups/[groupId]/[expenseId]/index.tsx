@@ -10,7 +10,7 @@ import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import MarkAsPaidSheet from "@/features/expense/components/MarkAsPaidSettled";
+import MarkAsPaidSheet from "@/features/expense/components/MarkAsSettledSheet";
 import OwerTransactionHeader from "@/features/expense/components/OwerTransactionHeader";
 import PayerTransactionHeader from "@/features/expense/components/PayerTransactionHeader";
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";

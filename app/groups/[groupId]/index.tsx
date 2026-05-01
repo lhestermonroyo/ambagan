@@ -24,7 +24,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
-import GroupTotals from "@/features/group/components/GroupTotals";
+import GroupMySummary from "@/features/group/components/GroupMySummary";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
@@ -44,7 +44,7 @@ import {
 import { Fragment, useMemo, useState } from "react";
 import { SwipeListView } from "react-native-swipe-list-view";
 
-const tabs = ["Expenses", "Totals", "Group Details"] as const;
+const tabs = ["Expenses", "My Summary", "Group Details"] as const;
 
 export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);
@@ -383,7 +383,7 @@ export default function GroupDetailsScreen() {
                 )}
               />
             )}
-            {tab === "Totals" && <GroupTotals />}
+            {tab === "My Summary" && <GroupMySummary />}
             {tab === "Group Details" && <GroupDetailsTab />}
           </ScrollView>
         </LoadingWrapper>

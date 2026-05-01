@@ -1,3 +1,4 @@
+import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import {
@@ -8,6 +9,11 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
+import {
+  FormControl,
+  FormControlLabel,
+  FormControlLabelText
+} from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -20,7 +26,7 @@ import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
 
-export default function RequestPaidSheet({
+export default function RequestSettledSheet({
   isOpen,
   onClose,
   payment,
@@ -41,13 +47,13 @@ export default function RequestPaidSheet({
     receipt: null as ImagePickerSuccessResult | null
   });
 
-  const showToast = useAppToast();
+  const toast = useAppToast();
 
   const handleSubmit = async () => {
     setSubmitting(true);
 
     try {
-      const response = await services.expense.createPaidRequest({
+      const response = await services.expense.createSettledRequest({
         note: values.note,
         receipt: values.receipt,
         expenseSplitId: payment.id
@@ -58,16 +64,17 @@ export default function RequestPaidSheet({
       }
 
       onRefetch();
-      showToast({
+      toast({
         title: "Request Sent",
         description: "Your request to mark this payment as paid has been sent.",
         type: "success"
       });
     } catch (error) {
       console.error("Error creating paid request:", error);
-      showToast({
+      toast({
         title: "Error",
-        description: "There was an issue sending your request. Please try again.",
+        description:
+          "There was an issue sending your request. Please try again.",
         type: "error"
       });
     } finally {
@@ -83,18 +90,45 @@ export default function RequestPaidSheet({
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full p-4 flex-1 gap-6">
-          <Text bold className="text-xl">
-            Request as Paid
-          </Text>
-          <ScrollView className="flex-1" bounces={false}>
+        <VStack className="w-full flex-1">
+          <VStack className="p-4">
+            <Text bold className="text-xl">
+              Request as Settled
+            </Text>
+          </VStack>
+          <ScrollView className="flex-1 px-4" bounces={false}>
             <VStack className="gap-y-6">
               <VStack className="flex-1">
-                <Text className="text-2xl" bold>
+                <Text className="text-3xl" bold>
                   {formatAmount(payment.amount || 0)}
                 </Text>
-                <Text className="text-secondary-950 text-sm">Amount paid</Text>
+                <Text className="text-secondary-950">Amount settled</Text>
               </VStack>
+
+              <FormControl size="md">
+                <VStack className="gap-y-1">
+                  <FormControlLabel>
+                    <FormControlLabelText>Paid to</FormControlLabelText>
+                  </FormControlLabel>
+                  <HStack className="gap-x-2 items-center flex-1">
+                    <AppAvatar
+                      name={payment.payer.first_name}
+                      uri={payment.payer.avatar!}
+                      size="md"
+                    />
+                    <VStack>
+                      <HStack className="gap-x-1 items-center">
+                        <Text className="text-lg">
+                          {payment.payer.first_name} {payment.payer.last_name}
+                        </Text>
+                      </HStack>
+                      <Text className="text-secondary-950">
+                        {payment.payer.email}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                </VStack>
+              </FormControl>
 
               <FormTextarea
                 label="Note (optional)"
@@ -119,9 +153,8 @@ export default function RequestPaidSheet({
             </VStack>
           </ScrollView>
         </VStack>
-        <Box className="items-center justify-start sticky bottom-0 px-4">
-          <Box className="h-4" />
-          <HStack className="gap-x-2 pt-4">
+        <Box className="items-center justify-center p-4">
+          <HStack className="gap-x-2">
             <FormButton
               className="flex-1"
               variant="outline"

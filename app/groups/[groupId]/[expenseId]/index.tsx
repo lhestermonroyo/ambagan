@@ -192,24 +192,6 @@ export default function ExpenseDetailsScreen() {
     }
   };
 
-  const handleMarkAsRead = (unreadSplits: string[]) => {
-    try {
-      Promise.all(
-        unreadSplits.map((splitId) => services.expense.markAsRead(splitId))
-      );
-    } catch (error) {
-      console.log("Error marking split as read:", error);
-    }
-  };
-
-  // const handleOpenReviewRequestPaidSheet = (payment: Payment) => {
-  //   setReviewRequestPaidSheet({ open: true });
-  // };
-
-  // const handleOpenMarkAsPaidSheet = (split: ExpenseSplit) => {
-  //   setMarkAsPaidSheet({ open: true, split });
-  // };
-
   const handleBack = () => {
     states.expense.setState((prev) => ({
       ...prev,
@@ -224,53 +206,6 @@ export default function ExpenseDetailsScreen() {
   const isPayer = useMemo(() => {
     return payerList.some((payer) => payer.payer.id === userDetails?.id);
   }, [payerList, userDetails]);
-
-  // const formattedSplits = useMemo(() => {
-  //   const payerIndex = splits.findIndex(
-  //     (split) => split.member.id === expense?.paid_by.id
-  //   );
-  //   const currentUserIndex = splits.findIndex(
-  //     (split) => split.member.id === userDetails?.id
-  //   );
-
-  //   if (payerIndex === -1 && currentUserIndex === -1) return splits;
-
-  //   const payerSplit = payerIndex !== -1 ? splits[payerIndex] : null;
-  //   const currentUserSplit =
-  //     currentUserIndex !== -1 ? splits[currentUserIndex] : null;
-  //   const otherSplits = splits.filter(
-  //     (_, index) => index !== payerIndex && index !== currentUserIndex
-  //   );
-
-  //   const result: ExpenseSplit[] = [];
-  //   if (payerSplit) result.push(payerSplit);
-  //   if (currentUserSplit && currentUserIndex !== payerIndex)
-  //     result.push(currentUserSplit);
-  //   return [...result, ...otherSplits];
-  // }, [expenseId, splits, userDetails, expense, isCurrentUserPayer]);
-
-  // const payerStats =
-  //   useMemo(() => {
-  //     if (!isCurrentUserPayer || !expense) return null;
-
-  //     const totalPaid = splits.reduce((total, split) => {
-  //       if (split.member.id !== expense.paid_by.id && split.status === "paid") {
-  //         return total + split.amount;
-  //       }
-  //       return total;
-  //     }, 0);
-  //     const theyOweYouAmount = splits.reduce((total, split) => {
-  //       if (split.member.id !== expense.paid_by.id && split.status !== "paid") {
-  //         return total + split.amount;
-  //       }
-  //       return total;
-  //     }, 0);
-
-  //     return {
-  //       totalPaid,
-  //       theyOweYouAmount
-  //     };
-  //   }, [splits, expense, isCurrentUserPayer]) || null;
 
   return (
     <Fragment>
@@ -312,92 +247,3 @@ export default function ExpenseDetailsScreen() {
     </Fragment>
   );
 }
-
-// function ExpenseSplitItem({
-//   expense,
-//   split,
-//   onReviewRequestPaid,
-//   onMarkAsPaid
-// }: {
-//   expense: Expense | null;
-//   split: ExpenseSplit;
-//   onReviewRequestPaid?: (split: ExpenseSplit) => void;
-//   onMarkAsPaid?: (split: ExpenseSplit) => void;
-// }) {
-//   const { details: userDetails } = states.user();
-
-//   const isPayer = split.member.id === expense?.paid_by.id;
-//   const isCurrentUserPayer = expense?.paid_by.id === userDetails?.id;
-//   const isCurrentUserSplit = split.member.id === userDetails?.id;
-
-//   const handlePress = () => {
-//     if (split.status === "pending") {
-//       if (!isPayer && isCurrentUserPayer && onMarkAsPaid) {
-//         onMarkAsPaid(split);
-//       }
-//     } else {
-//       if (!isPayer && isCurrentUserPayer && onReviewRequestPaid) {
-//         onReviewRequestPaid(split);
-//       }
-//     }
-//   };
-
-//   if (!isCurrentUserPayer) {
-//     return (
-//       <HStack className="p-4 items-center gap-x-2 flex-1">
-//         <AppAvatar
-//           uri={split.member.avatar || undefined}
-//           name={split.member.first_name}
-//           size="md"
-//         />
-//         <VStack className="flex-1">
-//           <HStack className="gap-x-1 items-center">
-//             <Text className="text-lg">
-//               {split.member.first_name} {split.member.last_name}
-//               {isCurrentUserSplit && " (You)"}
-//             </Text>
-//           </HStack>
-//           <Text className="text-sm text-secondary-950">
-//             {split.member.email}
-//           </Text>
-//         </VStack>
-//         <HStack className="gap-x-2 items-center">
-//           <VStack className="items-end">
-//             <Text className="text-lg">{formatAmount(split.amount)}</Text>
-//             {!isPayer && <StatusBadge status={split.status} size="lg" />}
-//           </VStack>
-//         </HStack>
-//       </HStack>
-//     );
-//   }
-
-//   return (
-//     <PressableListItem className="p-4" onPress={handlePress}>
-//       <HStack className="items-center gap-x-2 flex-1">
-//         <AppAvatar
-//           uri={split.member.avatar || undefined}
-//           name={split.member.first_name}
-//           size="md"
-//         />
-//         <VStack className="flex-1">
-//           <HStack className="gap-x-1 items-center">
-//             <Text className="text-lg">
-//               {split.member.first_name} {split.member.last_name}
-//               {isCurrentUserSplit && " (You)"}
-//             </Text>
-//           </HStack>
-//           <Text className="text-sm text-secondary-950">
-//             {split.member.email}
-//           </Text>
-//         </VStack>
-//         <HStack className="gap-x-2 items-center">
-//           <VStack className="items-end">
-//             <Text className="text-lg">{formatAmount(split.amount)}</Text>
-//             {!isPayer && <StatusBadge status={split.status} size="lg" />}
-//           </VStack>
-//           <Icon as="chevron-right" className="text-secondary-950" />
-//         </HStack>
-//       </HStack>
-//     </PressableListItem>
-//   );
-// }

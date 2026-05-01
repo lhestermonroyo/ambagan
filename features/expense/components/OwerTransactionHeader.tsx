@@ -8,7 +8,7 @@ import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { Expense, Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { Fragment, useState } from "react";
-import RequestPaidSheet from "./RequestPaidSheet";
+import RequestPaidSheet from "./RequestSettledSheet";
 import ReviewRequestPaidSheet from "./ReviewRequestPaidSheet";
 import StatusBadge from "./StatusBadge";
 

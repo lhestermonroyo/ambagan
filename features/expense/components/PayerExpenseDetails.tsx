@@ -25,7 +25,8 @@ import {
 } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
-import MarkAsPaidSheet from "./MarkAsPaidSettled";
+import { sortPaymentsByStatus } from "../utils/payment.util";
+import MarkAsSettledSheet from "./MarkAsSettledSheet";
 import ReviewRequestPaidSheet from "./ReviewRequestPaidSheet";
 import StatusBadge from "./StatusBadge";
 
@@ -39,7 +40,7 @@ export default function PayerExpenseDetails({
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
   const [showMembers, setShowMembers] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [markAsPaidSheetOpen, setMarkAsPaidSheetOpen] = useState(false);
+  const [markAsSettledSheetOpen, setMarkAsSettledSheetOpen] = useState(false);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
   const [reviewSheetReadOnly, setReviewSheetReadOnly] = useState(false);
 
@@ -53,12 +54,12 @@ export default function PayerExpenseDetails({
 
   const filteredPayments = useMemo(() => {
     if (!paymentSplitList || !userDetails) return [];
-    if (!showMembers) {
-      return paymentSplitList.filter(
-        (p) => p.member.id === userDetails.id || p.payer.id === userDetails.id
-      );
-    }
-    return paymentSplitList;
+    const list = showMembers
+      ? paymentSplitList
+      : paymentSplitList.filter(
+          (p) => p.member.id === userDetails.id || p.payer.id === userDetails.id
+        );
+    return sortPaymentsByStatus(list);
   }, [paymentSplitList, userDetails, showMembers]);
 
   const payerContributionAmount = useMemo(() => {
@@ -93,9 +94,9 @@ export default function PayerExpenseDetails({
     );
   }, [paymentSplitList, userDetails]);
 
-  const handleOpenMarkAsPaid = (payment: Payment) => {
+  const handleOpenMarkAsSettled = (payment: Payment) => {
     setSelectedPayment(payment);
-    setMarkAsPaidSheetOpen(true);
+    setMarkAsSettledSheetOpen(true);
   };
 
   const handleOpenReview = (payment: Payment) => {
@@ -125,14 +126,14 @@ export default function PayerExpenseDetails({
 
           <VStack className="gap-y-2">
             <HStack className="gap-x-2">
-              <Card className="flex-1 border rounded-lg border-secondary-400">
+              <Card className="flex-1 bg-secondary-100 rounded-lg">
                 <Text className="text-2xl" bold>
                   {formatAmount(payerContributionAmount)}
                 </Text>
                 <Text className="text-secondary-950">You Paid</Text>
               </Card>
 
-              <Card className="flex-1 border rounded-lg border-secondary-400">
+              <Card className="flex-1 bg-secondary-100 rounded-lg">
                 <Text className="text-2xl" bold>
                   {formatAmount(splitShareAmount)}
                 </Text>
@@ -141,14 +142,14 @@ export default function PayerExpenseDetails({
             </HStack>
 
             <HStack className="gap-x-2">
-              <Card className="flex-1 border rounded-lg border-secondary-400">
+              <Card className="flex-1 bg-secondary-100 rounded-lg">
                 <Text className="text-2xl" bold>
                   {formatAmount(remainingReceivable)}
                 </Text>
                 <Text className="text-secondary-950">To Collect</Text>
               </Card>
 
-              <Card className="flex-1 border rounded-lg border-secondary-400 justify-center">
+              <Card className="flex-1 bg-secondary-100 rounded-lg justify-center">
                 <StatusBadge
                   status={isCompleted ? "completed" : "ongoing"}
                   size="lg"
@@ -191,7 +192,7 @@ export default function PayerExpenseDetails({
                 <ExpenseSplitItem
                   key={item.member.id}
                   payment={item}
-                  onOpenMarkAsPaid={handleOpenMarkAsPaid}
+                  onOpenMarkAsSettled={handleOpenMarkAsSettled}
                   onOpenReview={handleOpenReview}
                   onOpenReadOnlyReview={handleOpenReadOnlyReview}
                 />
@@ -315,10 +316,10 @@ export default function PayerExpenseDetails({
       </VStack>
 
       {selectedPayment && (
-        <MarkAsPaidSheet
-          isOpen={markAsPaidSheetOpen}
+        <MarkAsSettledSheet
+          isOpen={markAsSettledSheetOpen}
           onClose={() => {
-            setMarkAsPaidSheetOpen(false);
+            setMarkAsSettledSheetOpen(false);
             setSelectedPayment(null);
           }}
           payment={selectedPayment}
@@ -345,26 +346,18 @@ export default function PayerExpenseDetails({
 
 function ExpenseSplitItem({
   payment,
-  onOpenMarkAsPaid,
+  onOpenMarkAsSettled,
   onOpenReview,
   onOpenReadOnlyReview
 }: {
   payment: Payment;
-  onOpenMarkAsPaid: (payment: Payment) => void;
+  onOpenMarkAsSettled: (payment: Payment) => void;
   onOpenReview: (payment: Payment) => void;
   onOpenReadOnlyReview: (payment: Payment) => void;
 }) {
   const { details: userDetails } = states.user();
   const isUserMember = payment?.member.id === userDetails?.id;
   const isUserPayer = payment?.payer.id === userDetails?.id;
-
-  const actionHint = (() => {
-    if (payment.status === "settled") return "View details";
-    if (!isUserMember && !isUserPayer) return "View details";
-    if (isUserPayer && payment.status === "pending") return "Tap to confirm";
-    if (isUserPayer && payment.status === "requested") return "Review their receipt";
-    return null;
-  })();
 
   const handlePress = () => {
     if (!isUserMember && !isUserPayer) {
@@ -375,7 +368,7 @@ function ExpenseSplitItem({
     if (payment.status === "requested") {
       onOpenReview(payment);
     } else if (payment.status === "pending") {
-      onOpenMarkAsPaid(payment);
+      onOpenMarkAsSettled(payment);
     } else if (payment.status === "settled") {
       onOpenReview(payment);
     }
@@ -420,9 +413,6 @@ function ExpenseSplitItem({
           <VStack className="items-end">
             <Text className="text-lg">{formatAmount(payment.amount)}</Text>
             <StatusBadge status={payment.status} size="lg" />
-            {actionHint && (
-              <Text className="text-xs text-secondary-950">{actionHint}</Text>
-            )}
           </VStack>
           <Icon as="chevron-right" className="text-secondary-950" />
         </HStack>

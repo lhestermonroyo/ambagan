@@ -27,7 +27,7 @@ import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
 
-export default function MarkAsPaidSheet({
+export default function MarkAsSettledSheet({
   isOpen,
   onClose,
   payment,
@@ -57,14 +57,14 @@ export default function MarkAsPaidSheet({
     setSubmitting(true);
 
     try {
-      const response = await services.expense.markAsPaid({
+      const response = await services.expense.markAsSettled({
         note: values.note,
         receipt: values.receipt,
         expenseSplitId: payment.id
       });
 
       if (!response) {
-        throw new Error("Failed to mark as paid");
+        throw new Error("Failed to mark as settled");
       }
 
       onRefetch();
@@ -95,9 +95,11 @@ export default function MarkAsPaidSheet({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full flex-1 gap-y-4">
-          <Text bold className="text-xl p-4">
-            Mark as Settled
-          </Text>
+          <VStack className="p-4">
+            <Text bold className="text-xl">
+              Mark as Settled
+            </Text>
+          </VStack>
           <ScrollView className="flex-1 px-4" bounces={false}>
             <VStack className="gap-y-6">
               <VStack className="flex-1">
@@ -108,27 +110,29 @@ export default function MarkAsPaidSheet({
               </VStack>
 
               <FormControl size="md">
-                <FormControlLabel className="flex-1">
-                  <FormControlLabelText>Paid by</FormControlLabelText>
-                </FormControlLabel>
-                <HStack className="gap-x-2 items-center flex-1 p-4 border border-background-200 rounded-lg">
-                  <AppAvatar
-                    name={payment.member.first_name}
-                    uri={payment.member.avatar!}
-                    size="md"
-                  />
-                  <VStack>
-                    <HStack className="gap-x-1 items-center">
-                      <Text className="text-lg">
-                        {payment.member.first_name} {payment.member.last_name}
-                        {isMe && " (You)"}
+                <VStack className="gap-y-1">
+                  <FormControlLabel className="flex-1">
+                    <FormControlLabelText>Paid by</FormControlLabelText>
+                  </FormControlLabel>
+                  <HStack className="gap-x-2 items-center flex-1">
+                    <AppAvatar
+                      name={payment.member.first_name}
+                      uri={payment.member.avatar!}
+                      size="md"
+                    />
+                    <VStack>
+                      <HStack className="gap-x-1 items-center">
+                        <Text className="text-lg">
+                          {payment.member.first_name} {payment.member.last_name}
+                          {isMe && " (You)"}
+                        </Text>
+                      </HStack>
+                      <Text className="text-secondary-950">
+                        {payment.member.email}
                       </Text>
-                    </HStack>
-                    <Text className="text-secondary-950">
-                      {payment.member.email}
-                    </Text>
-                  </VStack>
-                </HStack>
+                    </VStack>
+                  </HStack>
+                </VStack>
               </FormControl>
 
               <FormTextarea
@@ -154,8 +158,8 @@ export default function MarkAsPaidSheet({
             </VStack>
           </ScrollView>
         </VStack>
-        <Box className="items-center justify-start p-4">
-          <HStack className="gap-x-2 pt-4">
+        <Box className="items-center justify-center p-4">
+          <HStack className="gap-x-2">
             <FormButton
               className="flex-1"
               variant="outline"
@@ -165,7 +169,7 @@ export default function MarkAsPaidSheet({
             />
             <FormButton
               className="flex-1"
-              text="Confirm Payment"
+              text="Complete Settlement"
               loading={submitting}
               onPress={handleSubmit}
             />

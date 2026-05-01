@@ -19,6 +19,8 @@ import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
+import { getSecondaryHex } from "@/utils/getColorHex";
+import { Info, ReceiptText } from "lucide-react-native";
 import { Fragment, ReactNode, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
 import StatusBadge from "./StatusBadge";
@@ -47,10 +49,10 @@ export default function ReviewRequestPaidSheet({
   const { details: userDetails } = states.user.getState();
   const toast = useAppToast();
 
-  const handleMarkAsPaid = async () => {
+  const handleMarkAsSettled = async () => {
     setSubmitting(true);
     try {
-      const response = await services.expense.markAsPaid({
+      const response = await services.expense.markAsSettled({
         note: "",
         receipt: null,
         expenseSplitId: payment.id
@@ -82,7 +84,7 @@ export default function ReviewRequestPaidSheet({
   const handleUndoRequest = async () => {
     setSubmitting(true);
     try {
-      const response = await services.expense.undoPaidRequest(payment.id);
+      const response = await services.expense.undoSettledRequest(payment.id);
 
       if (!response) {
         throw new Error("Failed to undo paid request");
@@ -118,12 +120,34 @@ export default function ReviewRequestPaidSheet({
           <ActionsheetDragIndicatorWrapper>
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full flex-1 gap-y-4">
-            <Text bold className="text-xl p-4">
-              {isPayer ? "Settlement Details" : "Review Paid Request"}
-            </Text>
+          <VStack className="w-full flex-1">
+            <VStack className="p-4">
+              <Text bold className="text-xl">
+                {isPayer ? "Settlement Details" : "Review Settlement"}
+              </Text>
+            </VStack>
+
             <ScrollView className="flex-1 px-4" bounces={false}>
               <VStack className="gap-y-6">
+                {readOnly && (
+                  <HStack className="w-full bg-primary-400 rounded-xl gap-x-2 p-4">
+                    <Info
+                      size={24}
+                      color={getSecondaryHex("text-secondary-0")}
+                    />
+                    <Text className="text-secondary-0 flex-1">
+                      You're viewing a settlement between{" "}
+                      <Text bold className="text-secondary-100">
+                        {payment.member.first_name} {payment.member.last_name}
+                      </Text>{" "}
+                      and{" "}
+                      <Text bold className="text-secondary-100">
+                        {payment.payer.first_name} {payment.payer.last_name}
+                      </Text>
+                      . No actions are available.
+                    </Text>
+                  </HStack>
+                )}
                 <VStack className="flex-1">
                   <Text className="text-3xl" bold>
                     {formatAmount(payment.amount || 0)}
@@ -208,21 +232,26 @@ export default function ReviewRequestPaidSheet({
                   </Box>
                 ) : (
                   <Box className="w-full aspect-square rounded-xl border border-secondary-300 items-center justify-center">
-                    <Text className="text-secondary-950">
-                      No receipt provided
-                    </Text>
+                    <VStack className="gap-y-2 items-center">
+                      <ReceiptText
+                        size={36}
+                        color={getSecondaryHex("text-secondary-950")}
+                      />
+                      <Text className="text-secondary-950">
+                        No proof of payment provided
+                      </Text>
+                    </VStack>
                   </Box>
                 )}
               </VStack>
             </ScrollView>
           </VStack>
-          <Box className="items-center justify-start sticky bottom-0 px-4">
-            <Box className="h-4" />
-            <HStack className="gap-x-2 pt-4">
+          <Box className="items-center justify-center p-4">
+            <HStack className="gap-x-2">
               <FormButton
                 className="flex-1"
                 variant="outline"
-                text="Cancel"
+                text={readOnly ? "Close" : "Cancel"}
                 disabled={submitting}
                 onPress={onClose}
               />
@@ -231,11 +260,11 @@ export default function ReviewRequestPaidSheet({
                   {isPayer ? (
                     <ConfirmButton
                       className="flex-1"
-                      text="Mark as Paid"
+                      text="Mark as Settled"
                       loading={submitting}
-                      onConfirm={handleMarkAsPaid}
-                      confirmTitle="Mark as Paid"
-                      confirmDescription="Are you sure you want to mark this request as paid? This will notify the requester that you have paid and update the status of this split."
+                      onConfirm={handleMarkAsSettled}
+                      confirmTitle="Mark as Settled"
+                      confirmDescription="Are you sure you want to mark this request as settled? This will notify the requester that you have settled the payment and update the status of this split."
                     />
                   ) : (
                     <ConfirmButton
@@ -244,8 +273,8 @@ export default function ReviewRequestPaidSheet({
                       text="Undo Request"
                       loading={submitting}
                       onConfirm={handleUndoRequest}
-                      confirmTitle="Undo Request"
-                      confirmDescription="Are you sure you want to undo your request? This will change the status back to pending and remove any notes or receipt you added."
+                      confirmTitle="Undo Settled Request"
+                      confirmDescription="Are you sure you want to undo your settled request? This will change the status back to pending and remove any notes or receipt you added."
                     />
                   )}
                 </Fragment>
