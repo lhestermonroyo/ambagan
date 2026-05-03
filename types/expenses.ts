@@ -18,6 +18,8 @@ export type Expense = {
   expense_date: string;
   proof_of_payment: string | null;
   split_type: SplitType;
+  currency: string;
+  status: PaymentStatus;
 };
 
 export type ExpensePayer = {
@@ -30,7 +32,14 @@ export type ExpensePayer = {
 
 export type ExpensePreview = Pick<
   Expense,
-  "id" | "created_at" | "group_id" | "amount" | "description" | "creator"
+  | "id"
+  | "created_at"
+  | "group_id"
+  | "amount"
+  | "description"
+  | "creator"
+  | "currency"
+  | "status"
 > & {
   payer_list: ExpensePayer[];
 };
@@ -49,6 +58,7 @@ export type Payment = {
   created_at: string;
   group_id: string;
   expense_id: string;
+  expense_description: string | null;
   member: UserPreview;
   payer: UserPreview;
   amount: number;
@@ -69,7 +79,9 @@ export type PaymentPreview = Pick<
   | "payer"
   | "amount"
   | "status"
->;
+> & {
+  expense_description?: string | null;
+};
 
 export enum SplitType {
   EQUAL = "equal",

@@ -31,7 +31,7 @@ export default function TabButton(
     case "Groups":
       icon = <HouseHeart size={24} color={color} />;
       break;
-    case "Payments":
+    case "Activities":
       icon = <ArrowLeftRight size={24} color={color} />;
       break;
     case "Profile":

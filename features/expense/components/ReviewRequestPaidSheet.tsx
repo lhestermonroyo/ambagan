@@ -20,7 +20,7 @@ import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
-import { Info, ReceiptText } from "lucide-react-native";
+import { ReceiptText } from "lucide-react-native";
 import { Fragment, ReactNode, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
 import StatusBadge from "./StatusBadge";
@@ -123,31 +123,12 @@ export default function ReviewRequestPaidSheet({
           <VStack className="w-full flex-1">
             <VStack className="p-4">
               <Text bold className="text-xl">
-                {isPayer ? "Settlement Details" : "Review Settlement"}
+                Review Settlement
               </Text>
             </VStack>
 
             <ScrollView className="flex-1 px-4" bounces={false}>
               <VStack className="gap-y-6">
-                {readOnly && (
-                  <HStack className="w-full bg-primary-400 rounded-xl gap-x-2 p-4">
-                    <Info
-                      size={24}
-                      color={getSecondaryHex("text-secondary-0")}
-                    />
-                    <Text className="text-secondary-0 flex-1">
-                      You're viewing a settlement between{" "}
-                      <Text bold className="text-secondary-100">
-                        {payment.member.first_name} {payment.member.last_name}
-                      </Text>{" "}
-                      and{" "}
-                      <Text bold className="text-secondary-100">
-                        {payment.payer.first_name} {payment.payer.last_name}
-                      </Text>
-                      . No actions are available.
-                    </Text>
-                  </HStack>
-                )}
                 <VStack className="flex-1">
                   <Text className="text-3xl" bold>
                     {formatAmount(payment.amount || 0)}

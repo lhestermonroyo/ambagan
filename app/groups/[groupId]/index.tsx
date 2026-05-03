@@ -11,7 +11,12 @@ import { Divider } from "@/components/ui/divider";
 import { Fab, FabLabel } from "@/components/ui/fab";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import { Menu, MenuItem, MenuItemLabel } from "@/components/ui/menu";
+import {
+  Menu,
+  MenuItem,
+  MenuItemLabel,
+  MenuSeparator
+} from "@/components/ui/menu";
 import {
   Modal,
   ModalBody,
@@ -22,9 +27,11 @@ import {
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import StatusBadge from "@/features/expense/components/StatusBadge";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
-import GroupMySummary from "@/features/group/components/GroupMySummary";
+import GroupSettlements from "@/features/group/components/GroupSettlements";
+import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
@@ -39,17 +46,19 @@ import {
   Edit2,
   EllipsisVertical,
   Info,
+  LogOut,
   Trash2
 } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { SwipeListView } from "react-native-swipe-list-view";
 
-const tabs = ["Expenses", "My Summary", "Group Details"] as const;
+const tabs = ["Expenses", "Settlements", "Group Info"] as const;
 
 export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [openConfirmDeleteModal, setOpenConfirmDeleteModal] = useState(false);
+  const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Expenses");
 
   const { details: groupDetails, expenseList } = states.group();
@@ -82,21 +91,12 @@ export default function GroupDetailsScreen() {
     }
 
     try {
-      const [
-        groupDetailsResponse,
-        expensesResponse,
-        membersResponse
-        // statsResponse,
-        // membersResponse,
-        // expensesResponse
-      ] = await Promise.all([
-        services.group.getGroupById(groupId),
-        services.expense.getExpensesByGroupId(groupId),
-        services.member.getMembersByGroupId(groupId)
-        // services.group.getStatsByGroupId(groupId),
-        // services.member.getMembersByGroupId(groupId),
-        // services.expense.getExpensesByGroup(groupId)
-      ]);
+      const [groupDetailsResponse, expensesResponse, membersResponse] =
+        await Promise.all([
+          services.group.getGroupById(groupId),
+          services.expense.getExpensesByGroupId(groupId),
+          services.member.getMembersByGroupId(groupId)
+        ]);
 
       if (!groupDetailsResponse || !expensesResponse || !membersResponse) {
         router.push("/groups");
@@ -217,59 +217,65 @@ export default function GroupDetailsScreen() {
           <Button variant="link" className="rounded-full">
             <Info size={20} color={getSecondaryHex("text-secondary-950")} />
           </Button>,
-          ...(isAdmin
-            ? [
-                <Menu
-                  placement="left top"
-                  closeOnSelect
-                  selectionMode="single"
-                  onSelectionChange={(selected) => {
-                    const key = Array.from(selected)[0];
-
-                    if (key === "edit") {
-                      router.push(`/groups/${groupId}/edit`);
-                    } else if (key === "delete") {
-                      setOpenConfirmDeleteModal(true);
-                    }
-                  }}
-                  trigger={({ ...triggerProps }) => {
-                    return (
-                      <Button
-                        variant="link"
-                        className="rounded-full"
-                        {...triggerProps}
-                      >
-                        <EllipsisVertical
-                          size={20}
-                          color={getSecondaryHex("text-secondary-950")}
-                        />
-                      </Button>
-                    );
-                  }}
-                >
-                  <MenuItem
-                    className="p-4 justify-between"
-                    key="edit"
-                    textValue="Edit"
-                  >
-                    <HStack className="gap-x-2">
-                      <Edit2 size={20} />
-                      <MenuItemLabel>Edit</MenuItemLabel>
-                    </HStack>
-                  </MenuItem>
-                  <MenuItem
-                    className="p-4 justify-between"
-                    key="delete"
-                    textValue="Delete"
-                  >
-                    <HStack className="gap-x-2">
-                      <Trash2 size={20} />
-                      <MenuItemLabel>Delete</MenuItemLabel>
-                    </HStack>
-                  </MenuItem>
-                </Menu>
-              ]
-            : [])
+          <Menu
+            placement="left top"
+            closeOnSelect
+            selectionMode="single"
+            onSelectionChange={(selected) => {
+              const key = Array.from(selected)[0];
+              if (key === "edit") {
+                router.push(`/groups/${groupId}/edit`);
+              } else if (key === "delete") {
+                setOpenConfirmDeleteModal(true);
+              } else if (key === "leave") {
+                setLeaveSheetOpen(true);
+              }
+            }}
+            trigger={({ ...triggerProps }) => (
+              <Button variant="link" className="rounded-full" {...triggerProps}>
+                <EllipsisVertical
+                  size={20}
+                  color={getSecondaryHex("text-secondary-950")}
+                />
+              </Button>
+            )}
+          >
+            {isAdmin && (
+              <MenuItem
+                className="p-4 justify-between"
+                key="edit"
+                textValue="Edit"
+              >
+                <HStack className="gap-x-2">
+                  <Edit2 size={20} />
+                  <MenuItemLabel>Edit</MenuItemLabel>
+                </HStack>
+              </MenuItem>
+            )}
+            <MenuItem
+              className="p-4 justify-between"
+              key="leave"
+              textValue="Leave Group"
+            >
+              <HStack className="gap-x-2">
+                <LogOut size={20} />
+                <MenuItemLabel>Leave Group</MenuItemLabel>
+              </HStack>
+            </MenuItem>
+            {isAdmin && <MenuSeparator key="separator" />}
+            {isAdmin && (
+              <MenuItem
+                className="p-4 justify-between"
+                key="delete"
+                textValue="Delete"
+              >
+                <HStack className="gap-x-2">
+                  <Trash2 size={20} />
+                  <MenuItemLabel>Delete</MenuItemLabel>
+                </HStack>
+              </MenuItem>
+            )}
+          </Menu>
         ]}
       >
         {tab === "Expenses" && (
@@ -297,7 +303,7 @@ export default function GroupDetailsScreen() {
                     className="self-center"
                     uri={groupDetails?.avatar || ""}
                     name={groupDetails?.name || "Group Avatar"}
-                    size="xl"
+                    size="lg"
                   />
                 </VStack>
                 <VStack>
@@ -383,8 +389,8 @@ export default function GroupDetailsScreen() {
                 )}
               />
             )}
-            {tab === "My Summary" && <GroupMySummary />}
-            {tab === "Group Details" && <GroupDetailsTab />}
+            {tab === "Settlements" && <GroupSettlements />}
+            {tab === "Group Info" && <GroupDetailsTab />}
           </ScrollView>
         </LoadingWrapper>
       </InnerLayout>
@@ -393,6 +399,24 @@ export default function GroupDetailsScreen() {
         onClose={() => setOpenConfirmDeleteModal(false)}
         onConfirm={handleDeleteGroup}
         loading={deleting}
+      />
+      <LeaveGroupSheet
+        isOpen={leaveSheetOpen}
+        onClose={() => setLeaveSheetOpen(false)}
+        onLeave={(groupDeleted) => {
+          setLeaveSheetOpen(false);
+          states.group.setState((prev) => ({
+            ...prev,
+            list: groupDeleted
+              ? prev.list.filter((g) => g.id !== groupId)
+              : prev.list,
+            details: null,
+            memberList: [],
+            expenseList: [],
+            memberTotalsList: []
+          }));
+          router.push("/groups");
+        }}
       />
     </Fragment>
   );
@@ -438,14 +462,14 @@ function ExpenseItem({
           </Text>
           <HStack className="gap-x-1 items-center">
             <Text className="text-secondary-950">Paid by</Text>
-
             <AppAvatarGroup items={formattedPayers} size="xs" />
           </HStack>
         </VStack>
-        <VStack>
+        <VStack className="items-end gap-y-1">
           <Text className="text-lg text-right">
             {formatAmount(expense.amount)}
           </Text>
+          {expense.status && <StatusBadge status={expense.status} size="sm" />}
         </VStack>
         <Icon as="chevron-right" className="text-secondary-950" />
       </HStack>

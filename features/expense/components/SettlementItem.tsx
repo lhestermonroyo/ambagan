@@ -7,26 +7,25 @@ import { VStack } from "@/components/ui/vstack";
 import StatusBadge from "@/features/expense/components/StatusBadge";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import states from "@/states";
-import { PaymentPreview } from "@/types/expenses";
+import { Payment, PaymentPreview } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { BanknoteArrowDown, BanknoteArrowUp } from "lucide-react-native";
 
-export default function ExpenseSplitItem({
+export default function SettlementItem({
   item,
-  onOpen
+  onPress
 }: {
-  item: PaymentPreview;
-  onOpen: () => void;
+  item: PaymentPreview | Payment;
+  onPress: (payment: PaymentPreview | Payment) => void;
 }) {
-  const user = states.user();
-  const { details: userDetails } = user;
+  const { details: userDetails } = states.user();
 
   const isUserPayer = item.payer.id === userDetails?.id;
   const isUserMember = item.member.id === userDetails?.id;
 
   return (
-    <PressableListItem className="p-4" onPress={onOpen}>
+    <PressableListItem className="p-4" onPress={() => onPress(item)}>
       <HStack className="gap-x-2 items-start">
         <Avatar
           size="sm"
@@ -40,7 +39,7 @@ export default function ExpenseSplitItem({
         </Avatar>
         <VStack className="gap-y-2 flex-1">
           {item.expense_description && (
-            <HStack className="gap-x-2 items-center flex-1">
+            <HStack className="gap-x-4 items-center flex-1">
               <Text className="text-secondary-950 flex-1" numberOfLines={1}>
                 {item.expense_description}
               </Text>
@@ -49,8 +48,7 @@ export default function ExpenseSplitItem({
               </Text>
             </HStack>
           )}
-
-          <HStack>
+          <HStack className="gap-x-4">
             <VStack className="flex-1">
               <Text className="text-lg">
                 {item.member.first_name} {item.member.last_name}
@@ -62,7 +60,6 @@ export default function ExpenseSplitItem({
                 {isUserPayer && " (You)"}
               </Text>
             </VStack>
-
             <HStack className="gap-x-2 items-center">
               <VStack className="items-end">
                 <Text className="text-lg">{formatAmount(item.amount)}</Text>

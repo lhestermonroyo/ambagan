@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { Fab, FabLabel } from "@/components/ui/fab";
 import { HStack } from "@/components/ui/hstack";
+import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import GroupItem from "@/features/group/components/GroupItem";
@@ -133,96 +134,94 @@ export default function GroupsScreen() {
         <FabLabel className="text-lg font-medium">Add Group</FabLabel>
       </Fab>
       <TabLayout title="Groups">
-        <LoadingWrapper
-          isLoading={loading}
-          text="Loading groups, please wait..."
-        >
-          <SwipeListView
-            className="flex-1"
-            data={filteredGroups}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <GroupItem
-                details={item}
-                onOpen={() => router.push(`/groups/${item.id}`)}
-                key={item.id}
-              />
-            )}
-            bounces={false}
-            renderHiddenItem={({ item }, rowMap) =>
-              item.admin.id === userDetails?.id && (
-                <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
-                  <Button
-                    variant="solid"
-                    className="rounded-full h-[40] w-[40] p-0"
-                    onPress={() => {
-                      router.push(`/groups/${item.id}/edit?isGroup=true`);
-                      rowMap[item.id]?.closeRow();
-                    }}
-                  >
-                    <Icon as="edit" className="text-background-0" />
-                  </Button>
-                  <ConfirmIconButton
-                    icon="delete"
-                    iconClassName="text-background-0"
-                    variant="solid"
-                    action="negative"
-                    className="rounded-full h-[40] w-[40] p-0"
-                    confirmTitle="Delete Group"
-                    confirmDescription=" Deleting this group will remove all associated expenses and
+        <ScrollView className="flex-1" bounces={false}>
+          <Box className="px-4 pb-4 bg-background-0">
+            <SearchInput
+              onChangeText={setSearchInput}
+              value={searchInput}
+              placeholder="Search group"
+            />
+          </Box>
+          <LoadingWrapper
+            isLoading={loading}
+            text="Loading groups, please wait..."
+          >
+            <SwipeListView
+              className="flex-1"
+              scrollEnabled={false}
+              data={filteredGroups}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <GroupItem
+                  details={item}
+                  onOpen={() => router.push(`/groups/${item.id}`)}
+                  key={item.id}
+                />
+              )}
+              bounces={false}
+              renderHiddenItem={({ item }, rowMap) =>
+                item.admin.id === userDetails?.id && (
+                  <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
+                    <Button
+                      variant="solid"
+                      className="rounded-full h-[40] w-[40] p-0"
+                      onPress={() => {
+                        router.push(`/groups/${item.id}/edit?isGroup=true`);
+                        rowMap[item.id]?.closeRow();
+                      }}
+                    >
+                      <Icon as="edit" className="text-background-0" />
+                    </Button>
+                    <ConfirmIconButton
+                      icon="delete"
+                      iconClassName="text-background-0"
+                      variant="solid"
+                      action="negative"
+                      className="rounded-full h-[40] w-[40] p-0"
+                      confirmTitle="Delete Group"
+                      confirmDescription=" Deleting this group will remove all associated expenses and
             payments. Are you sure you want to proceed?"
-                    isLoading={deleting}
-                    isDelete
-                    onConfirm={() => {
-                      rowMap[item.id]?.closeRow();
-                      handleDeleteGroup(item.id);
-                    }}
-                  />
-                </HStack>
-              )
-            }
-            rightOpenValue={-116}
-            disableRightSwipe
-            ItemSeparatorComponent={() => (
-              <Box className="mx-4">
-                <Divider className="border-secondary-100" />
-              </Box>
-            )}
-            ListHeaderComponent={useMemo(
-              () => (
-                <Box className="px-4 pb-4 bg-background-0">
-                  <SearchInput
-                    onChangeText={setSearchInput}
-                    value={searchInput}
-                    placeholder="Search group"
-                  />
+                      isLoading={deleting}
+                      isDelete
+                      onConfirm={() => {
+                        rowMap[item.id]?.closeRow();
+                        handleDeleteGroup(item.id);
+                      }}
+                    />
+                  </HStack>
+                )
+              }
+              rightOpenValue={-116}
+              disableRightSwipe
+              ItemSeparatorComponent={() => (
+                <Box className="mx-4">
+                  <Divider className="border-secondary-100" />
                 </Box>
-              ),
-              [searchInput]
-            )}
-            ListEmptyComponent={() => {
-              if (searching) {
+              )}
+              ListEmptyComponent={() => {
+                if (searching) {
+                  return (
+                    <VStack className="flex-1 justify-center items-center p-4">
+                      <Text className="text-secondary-950 text-center">
+                        No results found on your search.
+                      </Text>
+                    </VStack>
+                  );
+                }
+
                 return (
                   <VStack className="flex-1 justify-center items-center p-4">
                     <Text className="text-secondary-950 text-center">
-                      No results found on your search.
+                      No groups joined or created yet. Create a group by
+                      clicking the button below.
                     </Text>
                   </VStack>
                 );
-              }
-
-              return (
-                <VStack className="flex-1 justify-center items-center p-4">
-                  <Text className="text-secondary-950 text-center">
-                    No groups joined or created yet. Create a group by clicking
-                    the button below.
-                  </Text>
-                </VStack>
-              );
-            }}
-            stickyHeaderIndices={[0]}
-          />
-        </LoadingWrapper>
+              }}
+              stickyHeaderIndices={[0]}
+            />
+          </LoadingWrapper>
+        </ScrollView>
       </TabLayout>
     </Fragment>
   );

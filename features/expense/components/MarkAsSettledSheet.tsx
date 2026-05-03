@@ -60,7 +60,8 @@ export default function MarkAsSettledSheet({
       const response = await services.expense.markAsSettled({
         note: values.note,
         receipt: values.receipt,
-        expenseSplitId: payment.id
+        expenseSplitId: payment.id,
+        expenseId: payment.expense_id
       });
 
       if (!response) {
@@ -169,7 +170,7 @@ export default function MarkAsSettledSheet({
             />
             <FormButton
               className="flex-1"
-              text="Complete Settlement"
+              text="Mark as Settled"
               loading={submitting}
               onPress={handleSubmit}
             />

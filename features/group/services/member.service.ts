@@ -2,6 +2,69 @@ import { Member } from "@/types/groups";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 
+export const leaveGroup = async (
+  groupId: string,
+  userId: string,
+  newAdminId?: string
+) => {
+  const user = await supabase.auth.getUser();
+
+  if (!user.data.user) {
+    throw new Error("User not authenticated");
+  }
+
+  const { data: groupData, error: groupError } = await supabase
+    .from(tables.GROUPS_TBL)
+    .select("admin_id")
+    .eq("id", groupId)
+    .single();
+
+  if (groupError) throw groupError;
+
+  const isAdmin = groupData.admin_id === userId;
+
+  if (isAdmin) {
+    if (!newAdminId) {
+      const { data: otherMembers, error: membersError } = await supabase
+        .from(tables.GROUP_MEMBERS_TBL)
+        .select("member_id")
+        .eq("group_id", groupId)
+        .neq("member_id", userId)
+        .limit(1);
+
+      if (membersError) throw membersError;
+
+      if (otherMembers.length === 0) {
+        const { error: deleteGroupError } = await supabase
+          .from(tables.GROUPS_TBL)
+          .delete()
+          .eq("id", groupId);
+
+        if (deleteGroupError) throw deleteGroupError;
+
+        return { success: true, groupDeleted: true };
+      }
+    }
+
+    const { error: transferError } = await supabase
+      .from(tables.GROUPS_TBL)
+      .update({ admin_id: newAdminId })
+      .eq("id", groupId);
+
+    if (transferError) throw transferError;
+  }
+
+  const { error } = await supabase
+    .from(tables.GROUP_MEMBERS_TBL)
+    .delete()
+    .eq("group_id", groupId)
+    .eq("member_id", userId);
+
+  if (error) throw error;
+
+  return { success: true, groupDeleted: false };
+};
+
 export const updateGroupMembers = async (
   groupId: string,
   membersToAdd: string[],

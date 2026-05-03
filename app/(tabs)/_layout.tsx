@@ -35,13 +35,13 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="payments"
+          name="activities"
           options={{
-            tabBarButton: (props) => <TabButton {...props} label="Payments" />
+            tabBarButton: (props) => <TabButton {...props} label="Activities" />
           }}
         />
         <Tabs.Screen
-          name="profile/index"
+          name="profile"
           options={{
             tabBarButton: (props) => <TabButton {...props} label="Profile" />
           }}

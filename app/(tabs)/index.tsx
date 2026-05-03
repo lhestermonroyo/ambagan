@@ -12,11 +12,13 @@ import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import ExpenseSplitItem from "@/features/expense/components/ExpenseSplitItem";
+import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
+import SettlementItem from "@/features/expense/components/SettlementItem";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
 import services from "@/services";
 import states from "@/states";
+import { PaymentPreview } from "@/types/expenses";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -42,6 +44,8 @@ export default function HomeScreen() {
 
   const [initialized, setInitialized] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentPreview | null>(null);
+  const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
   const { details: userDetails, signOut } = states.user();
   const { list: groupList } = states.group();
@@ -66,7 +70,6 @@ export default function HomeScreen() {
       fetchGroups(isInitialized),
       fetchPayments(isInitialized)
     ]).then(() => {
-      console.log("home initialized");
       setInitialized(true);
     });
   };
@@ -139,9 +142,13 @@ export default function HomeScreen() {
     }
   };
 
-  const groupPreview = useMemo(() => {
-    return groupList.slice(0, 3);
+  const groupsPreview = useMemo(() => {
+    return groupList.slice(0, 5);
   }, [groupList]);
+
+  const activitiesPreview = useMemo(() => {
+    return paymentList.slice(0, 5);
+  }, [paymentList]);
 
   return (
     <Fragment>
@@ -231,12 +238,12 @@ export default function HomeScreen() {
             <VStack className="mt-20">
               <HStack className="items-center justify-between px-4">
                 <Text bold className="text-2xl">
-                  Payments
+                  Recent Activities
                 </Text>
                 <FormButton
                   text="View All"
                   variant="link"
-                  onPress={() => router.push("/payments")}
+                  onPress={() => router.push("/activities")}
                 />
               </HStack>
               <LoadingWrapper
@@ -244,17 +251,16 @@ export default function HomeScreen() {
                 isLoading={loading.activities}
               >
                 <FlatList
-                  data={paymentList}
+                  data={activitiesPreview}
                   scrollEnabled={false}
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={({ item }) => (
-                    <ExpenseSplitItem
+                    <SettlementItem
                       item={item}
-                      onOpen={() =>
-                        router.push(
-                          `/groups/${item.group_id}/${item.expense_id}`
-                        )
-                      }
+                      onPress={() => {
+                        setSelectedPayment(item);
+                        setActionSheetOpen(true);
+                      }}
                     />
                   )}
                   ItemSeparatorComponent={() => (
@@ -289,7 +295,7 @@ export default function HomeScreen() {
                 isLoading={loading.groups}
               >
                 <FlatList
-                  data={groupPreview}
+                  data={groupsPreview}
                   scrollEnabled={false}
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={({ item }) => (
@@ -327,6 +333,12 @@ export default function HomeScreen() {
       <NotificationSheet
         isOpen={notificationsOpen}
         onClose={() => setNotificationsOpen(false)}
+      />
+      <SettlementActionSheet
+        isOpen={actionSheetOpen}
+        onClose={() => setActionSheetOpen(false)}
+        item={selectedPayment}
+        onRefetch={() => init(true)}
       />
     </Fragment>
   );

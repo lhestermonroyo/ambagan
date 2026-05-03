@@ -1,15 +1,10 @@
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
-import Icon from "@/components/Icon";
-import PressableListItem from "@/components/PressableListItem";
-import { Avatar } from "@/components/ui/avatar";
 import { Box } from "@/components/ui/box";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
-import { ScrollView } from "@/components/ui/scroll-view";
-import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
@@ -17,28 +12,18 @@ import { ExpensePayer, MemberSplit, Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import {
-  ArrowLeftRight,
-  BanknoteArrowDown,
-  BanknoteArrowUp,
-  FileImage
-} from "lucide-react-native";
-import { Fragment, useMemo, useState } from "react";
+import { FileImage } from "lucide-react-native";
+import { Fragment, ReactNode, useMemo, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
-import { sortPaymentsByStatus } from "../utils/payment.util";
 import MarkAsSettledSheet from "./MarkAsSettledSheet";
 import ReviewRequestPaidSheet from "./ReviewRequestPaidSheet";
 import StatusBadge from "./StatusBadge";
-
-const tabs = ["Settlements", "Split Breakdown", "Expense Details"] as const;
 
 export default function PayerExpenseDetails({
   onRefetch
 }: {
   onRefetch: () => void;
 }) {
-  const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
-  const [showMembers, setShowMembers] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [markAsSettledSheetOpen, setMarkAsSettledSheetOpen] = useState(false);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
@@ -52,15 +37,18 @@ export default function PayerExpenseDetails({
     memberSplitList
   } = states.expense.getState();
 
-  const filteredPayments = useMemo(() => {
-    if (!paymentSplitList || !userDetails) return [];
-    const list = showMembers
-      ? paymentSplitList
-      : paymentSplitList.filter(
-          (p) => p.member.id === userDetails.id || p.payer.id === userDetails.id
-        );
-    return sortPaymentsByStatus(list);
-  }, [paymentSplitList, userDetails, showMembers]);
+  const memberPaymentMap = useMemo(() => {
+    const map: Record<string, Payment> = {};
+    paymentSplitList
+      .filter((p) => p.payer.id === userDetails?.id)
+      .forEach((p) => {
+        const existing = map[p.member.id];
+        if (!existing || p.status !== "settled") {
+          map[p.member.id] = p;
+        }
+      });
+    return map;
+  }, [paymentSplitList, userDetails]);
 
   const payerContributionAmount = useMemo(() => {
     if (!payerList || !userDetails) return 0;
@@ -84,31 +72,22 @@ export default function PayerExpenseDetails({
       .reduce((sum, p) => sum + p.amount, 0);
   }, [paymentSplitList, userDetails]);
 
-  const isCompleted = useMemo(() => {
-    if (!paymentSplitList || !userDetails) return false;
-    const myPayments = paymentSplitList.filter(
-      (p) => p.payer.id === userDetails.id
-    );
-    return (
-      myPayments.length > 0 && myPayments.every((p) => p.status === "settled")
-    );
-  }, [paymentSplitList, userDetails]);
+  const handleMemberPress = (memberSplit: MemberSplit) => {
+    const payment = memberPaymentMap[memberSplit.member.id];
+    if (!payment) return;
 
-  const handleOpenMarkAsSettled = (payment: Payment) => {
-    setSelectedPayment(payment);
-    setMarkAsSettledSheetOpen(true);
-  };
-
-  const handleOpenReview = (payment: Payment) => {
-    setReviewSheetReadOnly(false);
-    setSelectedPayment(payment);
-    setReviewSheetOpen(true);
-  };
-
-  const handleOpenReadOnlyReview = (payment: Payment) => {
-    setReviewSheetReadOnly(true);
-    setSelectedPayment(payment);
-    setReviewSheetOpen(true);
+    if (payment.status === "requested") {
+      setReviewSheetReadOnly(false);
+      setSelectedPayment(payment);
+      setReviewSheetOpen(true);
+    } else if (payment.status === "pending") {
+      setSelectedPayment(payment);
+      setMarkAsSettledSheetOpen(true);
+    } else {
+      setReviewSheetReadOnly(true);
+      setSelectedPayment(payment);
+      setReviewSheetOpen(true);
+    }
   };
 
   return (
@@ -122,6 +101,10 @@ export default function PayerExpenseDetails({
             <Text className="text-lg text-secondary-950">
               {expenseDetails?.description}
             </Text>
+            <StatusBadge
+              status={expenseDetails?.status || "ongoing"}
+              size="lg"
+            />
           </VStack>
 
           <VStack className="gap-y-2">
@@ -141,178 +124,146 @@ export default function PayerExpenseDetails({
               </Card>
             </HStack>
 
-            <HStack className="gap-x-2">
-              <Card className="flex-1 bg-secondary-100 rounded-lg">
-                <Text className="text-2xl" bold>
-                  {formatAmount(remainingReceivable)}
-                </Text>
-                <Text className="text-secondary-950">To Collect</Text>
-              </Card>
-
-              <Card className="flex-1 bg-secondary-100 rounded-lg justify-center">
-                <StatusBadge
-                  status={isCompleted ? "completed" : "ongoing"}
-                  size="lg"
-                />
-                <Text className="text-secondary-950">Settlement Status</Text>
-              </Card>
-            </HStack>
+            <Card
+              className={cn(
+                "rounded-lg",
+                remainingReceivable > 0
+                  ? "bg-success-50 border border-success-100"
+                  : "bg-secondary-100"
+              )}
+            >
+              <Text
+                bold
+                className={cn(
+                  "text-2xl",
+                  remainingReceivable > 0
+                    ? "text-success-500"
+                    : "text-secondary-950"
+                )}
+              >
+                {remainingReceivable === 0
+                  ? "—"
+                  : formatAmount(remainingReceivable)}
+              </Text>
+              <Text
+                className={cn(
+                  remainingReceivable > 0
+                    ? "text-success-500"
+                    : "text-secondary-950"
+                )}
+              >
+                {remainingReceivable > 0 ? "To Receive" : "All Settled Up"}
+              </Text>
+            </Card>
           </VStack>
         </VStack>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <HStack className="gap-x-2 px-4">
-            {tabs.map((type) => (
-              <FormButton
-                size="md"
-                key={type}
-                variant={type === tab ? "solid" : "outline"}
-                text={type}
-                onPress={() => setTab(type)}
-              />
-            ))}
-          </HStack>
-        </ScrollView>
 
-        {tab === "Settlements" && (
-          <VStack>
-            <HStack className="items-center justify-end gap-x-2 px-4 py-2 bg-secondary-100">
-              <Text className="text-secondary-950">Show all members</Text>
-              <Switch
-                size="md"
-                value={showMembers}
-                onValueChange={setShowMembers}
-              />
-            </HStack>
+        <VStack className="gap-y-2 px-4">
+          <Text className="text-xl" bold>
+            Expense Details
+          </Text>
+          <Box className="bg-secondary-100 rounded-xl overflow-hidden">
+            <DetailRow
+              label="Expense Date"
+              value={
+                <Text>{formatDate(expenseDetails?.created_at || "")}</Text>
+              }
+            />
+            <DetailRow
+              label="Expense Creator"
+              value={
+                <HStack className="gap-x-1 items-center">
+                  <AppAvatar
+                    name={`${expenseDetails?.creator.first_name} ${expenseDetails?.creator.last_name}`}
+                    uri={expenseDetails?.creator.avatar!}
+                    size="sm"
+                  />
+                  <Text>
+                    {expenseDetails?.creator.first_name}{" "}
+                    {expenseDetails?.creator.last_name}
+                    {expenseDetails?.creator.id === userDetails?.id && " (You)"}
+                  </Text>
+                </HStack>
+              }
+            />
+            <DetailRow
+              label="Split Type"
+              value={
+                <Text className="capitalize">{expenseDetails?.split_type}</Text>
+              }
+            />
+            <DetailRow
+              label="Proof of Payment"
+              value={
+                expenseDetails?.proof_of_payment ? (
+                  <FormButton
+                    size="md"
+                    variant="outline"
+                    text="View Image"
+                    icon={
+                      <FileImage
+                        size={18}
+                        color={getPrimaryHex("text-primary-500")}
+                      />
+                    }
+                    onPress={() => {}}
+                  />
+                ) : (
+                  <Text>N/A</Text>
+                )
+              }
+            />
+          </Box>
+        </VStack>
+
+        <VStack className="gap-y-4">
+          <VStack className="gap-y-2">
+            <Text className="text-xl px-4" bold>
+              Members Split
+            </Text>
             <FlatList
               className="flex-1"
               scrollEnabled={false}
-              data={filteredPayments}
+              data={memberSplitList}
               keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <ExpenseSplitItem
-                  key={item.member.id}
-                  payment={item}
-                  onOpenMarkAsSettled={handleOpenMarkAsSettled}
-                  onOpenReview={handleOpenReview}
-                  onOpenReadOnlyReview={handleOpenReadOnlyReview}
-                />
-              )}
+              renderItem={({ item }) => {
+                const payment = memberPaymentMap[item.member.id];
+                return (
+                  <MemberSplitItem
+                    memberSplit={item}
+                    payment={payment}
+                    onPress={
+                      payment ? () => handleMemberPress(item) : undefined
+                    }
+                  />
+                );
+              }}
               ItemSeparatorComponent={() => (
                 <Box className="mx-4">
                   <Divider className="border-secondary-100" />
                 </Box>
               )}
-              ListEmptyComponent={() => (
-                <Box className="px-4 py-8 items-center">
-                  <Text className="text-secondary-950">No payments found</Text>
-                </Box>
-              )}
-              ListFooterComponent={() => <Box className="h-12" />}
             />
           </VStack>
-        )}
-        {tab === "Split Breakdown" && (
-          <VStack className="gap-y-4">
-            <VStack className="gap-y-2">
-              <Text className="text-xl px-4" bold>
-                Members Split
-              </Text>
-              <FlatList
-                className="flex-1"
-                scrollEnabled={false}
-                data={memberSplitList}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <MemberSplitItem key={item.member.id} memberSplit={item} />
-                )}
-                ItemSeparatorComponent={() => (
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-100" />
-                  </Box>
-                )}
-              />
-            </VStack>
 
-            <VStack className="gap-y-2">
-              <Text className="text-xl px-4" bold>
-                Payers' Contribution
-              </Text>
-              <FlatList
-                className="flex-1"
-                scrollEnabled={false}
-                data={payerList}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <PayerItem key={item.id} payer={item} />
-                )}
-                ItemSeparatorComponent={() => (
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-100" />
-                  </Box>
-                )}
-              />
-            </VStack>
+          <VStack className="gap-y-2">
+            <Text className="text-xl px-4" bold>
+              Payers' Contribution
+            </Text>
+            <FlatList
+              className="flex-1"
+              scrollEnabled={false}
+              data={payerList}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => <PayerItem payer={item} />}
+              ItemSeparatorComponent={() => (
+                <Box className="mx-4">
+                  <Divider className="border-secondary-100" />
+                </Box>
+              )}
+            />
           </VStack>
-        )}
-        {tab === "Expense Details" && (
-          <VStack className="gap-y-4 px-4">
-            <Box className="bg-secondary-100 rounded-xl overflow-hidden">
-              <DetailRow
-                label="Expense Date"
-                value={
-                  <Text>{formatDate(expenseDetails?.created_at || "")}</Text>
-                }
-              />
-              <DetailRow
-                label="Expense Creator"
-                value={
-                  <HStack className="gap-x-1 items-center">
-                    <AppAvatar
-                      name={`${expenseDetails?.creator.first_name} ${expenseDetails?.creator.last_name}`}
-                      uri={expenseDetails?.creator.avatar!}
-                      size="sm"
-                    />
-                    <Text>
-                      {expenseDetails?.creator.first_name}{" "}
-                      {expenseDetails?.creator.last_name}
-                      {expenseDetails?.creator.id === userDetails?.id &&
-                        " (You)"}
-                    </Text>
-                  </HStack>
-                }
-              />
-              <DetailRow
-                label="Split Type"
-                value={
-                  <Text className="capitalize">
-                    {expenseDetails?.split_type}
-                  </Text>
-                }
-              />
-              <DetailRow
-                label="Proof of Payment"
-                value={
-                  expenseDetails?.proof_of_payment ? (
-                    <FormButton
-                      size="md"
-                      variant="outline"
-                      text="View Image"
-                      icon={
-                        <FileImage
-                          size={18}
-                          color={getPrimaryHex("text-primary-500")}
-                        />
-                      }
-                      onPress={() => {}}
-                    />
-                  ) : (
-                    <Text>N/A</Text>
-                  )
-                }
-              />
-            </Box>
-          </VStack>
-        )}
+        </VStack>
       </VStack>
 
       {selectedPayment && (
@@ -344,108 +295,37 @@ export default function PayerExpenseDetails({
   );
 }
 
-function ExpenseSplitItem({
+function MemberSplitItem({
+  memberSplit,
   payment,
-  onOpenMarkAsSettled,
-  onOpenReview,
-  onOpenReadOnlyReview
+  onPress
 }: {
-  payment: Payment;
-  onOpenMarkAsSettled: (payment: Payment) => void;
-  onOpenReview: (payment: Payment) => void;
-  onOpenReadOnlyReview: (payment: Payment) => void;
+  memberSplit: MemberSplit;
+  payment?: Payment;
+  onPress?: () => void;
 }) {
-  const { details: userDetails } = states.user();
-  const isUserMember = payment?.member.id === userDetails?.id;
-  const isUserPayer = payment?.payer.id === userDetails?.id;
-
-  const handlePress = () => {
-    if (!isUserMember && !isUserPayer) {
-      onOpenReadOnlyReview(payment);
-      return;
-    }
-
-    if (payment.status === "requested") {
-      onOpenReview(payment);
-    } else if (payment.status === "pending") {
-      onOpenMarkAsSettled(payment);
-    } else if (payment.status === "settled") {
-      onOpenReview(payment);
-    }
-  };
-
-  return (
-    <PressableListItem className="p-4" onPress={handlePress}>
-      <HStack className="gap-x-2">
-        {!isUserMember && !isUserPayer ? (
-          <Avatar size="sm" className="bg-warning-400">
-            <ArrowLeftRight size={16} color="#FFFFFF" />
-          </Avatar>
-        ) : (
-          <Avatar
-            size="sm"
-            className={cn(isUserPayer ? "bg-success-400" : "bg-error-400")}
-          >
-            {isUserPayer ? (
-              <BanknoteArrowDown size={16} color="#FFFFFF" />
-            ) : (
-              <BanknoteArrowUp size={16} color="#FFFFFF" />
-            )}
-          </Avatar>
-        )}
-
-        <VStack className="flex-1">
-          <HStack className="gap-x-1 items-center">
-            <Text className="text-lg">
-              {payment.member.first_name} {payment.member.last_name}
-              {isUserMember && " (You)"}
-            </Text>
-          </HStack>
-          <Text className="text-sm text-secondary-950">pays</Text>
-          <HStack className="gap-x-1 items-center">
-            <Text className="text-lg">
-              {payment.payer.first_name} {payment.payer.last_name}
-              {isUserPayer && " (You)"}
-            </Text>
-          </HStack>
-        </VStack>
-        <HStack className="gap-x-2 items-center">
-          <VStack className="items-end">
-            <Text className="text-lg">{formatAmount(payment.amount)}</Text>
-            <StatusBadge status={payment.status} size="lg" />
-          </VStack>
-          <Icon as="chevron-right" className="text-secondary-950" />
-        </HStack>
-      </HStack>
-    </PressableListItem>
-  );
-}
-
-function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
   const { details: userDetails } = states.user();
   const isMe = memberSplit.member.id === userDetails?.id;
 
   return (
-    <HStack key={memberSplit.id} className="p-4 items-center justify-between">
-      <HStack className="gap-x-2 items-center flex-1">
-        <AppAvatar
-          name={memberSplit.member.first_name}
-          uri={memberSplit.member.avatar!}
-          size="md"
-        />
-        <VStack>
-          <HStack className="gap-x-1 items-center">
-            <Text className="text-lg">
-              {memberSplit.member.first_name} {memberSplit.member.last_name}
-              {isMe && " (You)"}
-            </Text>
-          </HStack>
-          <Text className="text-secondary-950">{memberSplit.member.email}</Text>
-        </VStack>
-      </HStack>
-      <VStack className="items-end">
+    <HStack className="p-4 gap-x-2 items-center">
+      <AppAvatar
+        name={memberSplit.member.first_name}
+        uri={memberSplit.member.avatar!}
+        size="md"
+      />
+      <VStack className="flex-1">
+        <Text className="text-lg">
+          {memberSplit.member.first_name} {memberSplit.member.last_name}
+          {isMe && " (You)"}
+        </Text>
+        <Text className="text-secondary-950">{memberSplit.member.email}</Text>
+      </VStack>
+      <VStack className="items-end gap-y-1">
         <Text className="text-lg">{formatAmount(memberSplit.amount)}</Text>
-        <Text className="text-secondary-950">{memberSplit.percentage}%</Text>
+        {memberSplit.percentage && (
+          <Text className="text-secondary-950">{memberSplit.percentage}%</Text>
+        )}
       </VStack>
     </HStack>
   );
@@ -464,29 +344,19 @@ function PayerItem({ payer }: { payer: ExpensePayer }) {
           size="md"
         />
         <VStack>
-          <HStack className="gap-x-1 items-center">
-            <Text className="text-lg">
-              {payer.payer.first_name} {payer.payer.last_name}
-              {isMe && " (You)"}
-            </Text>
-          </HStack>
+          <Text className="text-lg">
+            {payer.payer.first_name} {payer.payer.last_name}
+            {isMe && " (You)"}
+          </Text>
           <Text className="text-secondary-950">{payer.payer.email}</Text>
         </VStack>
       </HStack>
-      <VStack className="items-end">
-        <Text className="text-lg">{formatAmount(payer.amount)}</Text>
-      </VStack>
+      <Text className="text-lg">{formatAmount(payer.amount)}</Text>
     </HStack>
   );
 }
 
-function DetailRow({
-  label,
-  value
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <HStack className="items-center justify-between p-4">
       <Text className="text-secondary-950">{label}</Text>
