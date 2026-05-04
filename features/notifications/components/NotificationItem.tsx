@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
@@ -20,7 +21,7 @@ function getNotificationSuffix(type: NotificationType): string {
     case NotificationType.EXPENSE_INCLUSION:
       return "added you to an expense.";
     case NotificationType.GROUP_JOIN:
-      return "joined the group.";
+      return "joined you to a group.";
     case NotificationType.GROUP_LEAVE:
       return "left the group.";
     default:
@@ -40,7 +41,7 @@ export default function NotificationItem({
 
   return (
     <PressableListItem className="p-4" onPress={() => onPress(item)}>
-      <HStack className="gap-x-3 items-start">
+      <HStack className="gap-x-3 items-center">
         <AppAvatar
           name={fromName}
           uri={item.from_user.avatar ?? undefined}
@@ -54,9 +55,12 @@ export default function NotificationItem({
             {formatDate(item.created_at)}
           </Text>
         </VStack>
-        {!item.is_read && (
-          <Box className="w-2 h-2 rounded-full bg-primary-400 mt-1" />
-        )}
+        <HStack className="items-center justify-center">
+          {item.is_read && (
+            <Box className="w-4 h-4 rounded-full bg-primary-400" />
+          )}
+          <Icon as="chevron-right" className="text-secondary-950" />
+        </HStack>
       </HStack>
     </PressableListItem>
   );

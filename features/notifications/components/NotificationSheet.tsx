@@ -30,7 +30,10 @@ export default function NotificationSheet({
   onClose: () => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [loadMoreLoading, setLoadMoreLoading] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
 
   const { list, unreadCount } = states.notification();
   const { details: userDetails } = states.user();
@@ -39,26 +42,50 @@ export default function NotificationSheet({
 
   useEffect(() => {
     if (isOpen && userDetails?.id) {
-      fetchNotifications();
+      fetchNotifications(0, true);
     }
   }, [isOpen, userDetails?.id]);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (
+    pageNum: number = 0,
+    showLoading = false
+  ) => {
     if (!userDetails?.id) return;
-    setLoading(true);
+
+    if (showLoading) setLoading(true);
+
     try {
-      const data = await services.notification.getNotificationsByUserId(
-        userDetails.id
+      const response = await services.notification.getNotificationsByUserId(
+        userDetails.id,
+        pageNum,
+        12
       );
+
+      if (!response?.data) return;
+
       states.notification.setState((prev) => ({
         ...prev,
-        list: data,
-        unreadCount: data.filter((n) => !n.is_read).length
+        list:
+          pageNum === 0
+            ? response.data
+            : [...prev.list, ...response.data]
       }));
+
+      setPage(pageNum);
+      setHasNextPage(response.pagination?.hasNext || false);
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLoadMore = async () => {
+    setLoadMoreLoading(true);
+    try {
+      await fetchNotifications(page + 1);
+    } finally {
+      setLoadMoreLoading(false);
     }
   };
 
@@ -163,6 +190,26 @@ export default function NotificationSheet({
                   </Text>
                 </VStack>
               )}
+              ListFooterComponent={
+                list.length > 0 ? (
+                  hasNextPage ? (
+                    <FormButton
+                      size="md"
+                      variant="outline"
+                      className="mx-4 my-2"
+                      text="Load More"
+                      loading={loadMoreLoading}
+                      onPress={handleLoadMore}
+                    />
+                  ) : (
+                    <VStack className="justify-center items-center p-4">
+                      <Text className="text-secondary-950 text-center">
+                        You've reached the end.
+                      </Text>
+                    </VStack>
+                  )
+                ) : null
+              }
             />
           </LoadingWrapper>
         </VStack>

@@ -1,3 +1,5 @@
+import { createNotification } from "@/features/notifications/services/notification.service";
+import { NotificationType } from "@/types/notifications";
 import { Member } from "@/types/groups";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
@@ -61,6 +63,24 @@ export const leaveGroup = async (
     .eq("member_id", userId);
 
   if (error) throw error;
+
+  const { data: remainingMembers, error: membersError } = await supabase
+    .from(tables.GROUP_MEMBERS_TBL)
+    .select("member_id")
+    .eq("group_id", groupId);
+
+  if (!membersError && remainingMembers && remainingMembers.length > 0) {
+    await Promise.allSettled(
+      remainingMembers.map((member) =>
+        createNotification({
+          fromUserId: userId,
+          toUserId: member.member_id,
+          type: NotificationType.GROUP_LEAVE,
+          referenceId: groupId
+        })
+      )
+    );
+  }
 
   return { success: true, groupDeleted: false };
 };

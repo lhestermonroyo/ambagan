@@ -1,3 +1,5 @@
+import { createNotification } from "@/features/notifications/services/notification.service";
+import { NotificationType } from "@/types/notifications";
 import { Group, Member } from "@/types/groups";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
@@ -71,6 +73,19 @@ export const saveGroup = async ({
       throw response.error;
     }
   }
+
+  const membersToNotify = member_ids.filter((id) => id !== admin_id);
+
+  await Promise.allSettled(
+    membersToNotify.map((memberId) =>
+      createNotification({
+        fromUserId: admin_id,
+        toUserId: memberId,
+        type: NotificationType.GROUP_JOIN,
+        referenceId: groupId
+      })
+    )
+  );
 
   return {
     message: "Group created successfully",

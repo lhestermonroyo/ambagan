@@ -4,26 +4,42 @@ import { supabase } from "@/utils/supabase";
 
 const USER_FIELDS = "id, email, phone, first_name, last_name, avatar";
 
-export const getNotificationsByUserId = async (userId: string) => {
+export const getNotificationsByUserId = async (
+  userId: string,
+  page: number = 0,
+  limit: number = 12
+) => {
   const user = await supabase.auth.getUser();
 
   if (!user.data.user) {
     throw new Error("User not authenticated");
   }
 
-  const { data, error } = await supabase
+  const from = page * limit;
+  const to = from + limit - 1;
+
+  const { data, error, count } = await supabase
     .from(tables.NOTIFICATIONS_TBL)
     .select(
       `id, created_at, type, reference_id, is_read,
       from_user:from_user_id(${USER_FIELDS}),
-      to_user:to_user_id(${USER_FIELDS})`
+      to_user:to_user_id(${USER_FIELDS})`,
+      { count: "exact" }
     )
     .eq("to_user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   if (error) throw error;
 
-  return data as unknown as Notification[];
+  const totalCount = count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+  const hasNext = page < totalPages - 1;
+
+  return {
+    data: data as unknown as Notification[],
+    pagination: { page, limit, totalCount, hasNext }
+  };
 };
 
 export const getUnreadCount = async (userId: string) => {
