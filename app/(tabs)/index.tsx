@@ -1,7 +1,6 @@
 import CurrencySelection from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import NotificationSheet from "@/components/NotificationSheet";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,6 +15,7 @@ import SettlementActionSheet from "@/features/expense/components/SettlementActio
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
+import NotificationSheet from "@/features/notifications/components/NotificationSheet";
 import services from "@/services";
 import states from "@/states";
 import { PaymentPreview } from "@/types/expenses";
@@ -44,12 +44,15 @@ export default function HomeScreen() {
 
   const [initialized, setInitialized] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentPreview | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentPreview | null>(
+    null
+  );
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
   const { details: userDetails, signOut } = states.user();
   const { list: groupList } = states.group();
   const { paymentList } = states.expense();
+  const { unreadCount } = states.notification();
 
   const router = useRouter();
 
@@ -68,10 +71,21 @@ export default function HomeScreen() {
     await Promise.all([
       fetchStats(),
       fetchGroups(isInitialized),
-      fetchPayments(isInitialized)
+      fetchPayments(isInitialized),
+      fetchUnreadCount()
     ]).then(() => {
       setInitialized(true);
     });
+  };
+
+  const fetchUnreadCount = async () => {
+    if (!userDetails?.id) return;
+    try {
+      const count = await services.notification.getUnreadCount(userDetails.id);
+      states.notification.setState((prev) => ({ ...prev, unreadCount: count }));
+    } catch (error) {
+      console.error("Failed to fetch unread count:", error);
+    }
   };
 
   const fetchStats = async () => {
@@ -171,7 +185,16 @@ export default function HomeScreen() {
               className="rounded-full"
               onPress={() => setNotificationsOpen(true)}
             >
-              <Bell size={24} color={getSecondaryHex("text-secondary-0")} />
+              <Box className="relative">
+                <Bell size={24} color={getSecondaryHex("text-secondary-0")} />
+                {unreadCount > 0 && (
+                  <Box className="absolute -top-1 -right-1 bg-error-400 rounded-full flex w-4 h-4 items-center justify-center">
+                    <Text className="text-background-0 text-2xs font-semibold">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Text>
+                  </Box>
+                )}
+              </Box>
             </Button>
           </HStack>
         </Box>
@@ -282,7 +305,7 @@ export default function HomeScreen() {
             <VStack>
               <HStack className="items-center justify-between px-4">
                 <Text bold className="text-2xl">
-                  Groups
+                  Recent Groups
                 </Text>
                 <FormButton
                   text="View All"
@@ -320,14 +343,6 @@ export default function HomeScreen() {
               </LoadingWrapper>
             </VStack>
           </VStack>
-          <FormButton
-            text="Logout"
-            onPress={() => {
-              router.replace("/login");
-              signOut();
-            }}
-            className="m-4"
-          />
         </ScrollView>
       </KeyboardAvoidingView>
       <NotificationSheet

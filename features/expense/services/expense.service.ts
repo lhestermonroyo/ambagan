@@ -1,3 +1,4 @@
+import { createNotification } from "@/features/notifications/services/notification.service";
 import {
   Expense,
   ExpensePayer,
@@ -6,6 +7,7 @@ import {
   Payment,
   PaymentPreview
 } from "@/types/expenses";
+import { NotificationType } from "@/types/notifications";
 import { splitTypes, tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
@@ -102,6 +104,21 @@ export const saveExpense = async (
   if (paymentsResponse.error) {
     throw paymentsResponse.error;
   }
+
+  const membersToNotify = paymentSplits
+    .map((s) => s.memberSplitId)
+    .filter((id, idx, arr) => id !== user.data.user!.id && arr.indexOf(id) === idx);
+
+  await Promise.allSettled(
+    membersToNotify.map((memberId) =>
+      createNotification({
+        fromUserId: user.data.user!.id,
+        toUserId: memberId,
+        type: NotificationType.EXPENSE_INCLUSION,
+        referenceId: expenseId
+      })
+    )
+  );
 
   return { success: true, message: "Expense created successfully" };
 };
@@ -427,10 +444,23 @@ export const createSettledRequest = async (expensePayload: {
       member_note: note,
       proof_of_payment: receiptUrl
     })
-    .eq("id", expenseSplitId);
+    .eq("id", expenseSplitId)
+    .select("payer_id")
+    .single();
 
   if (splitResponse.error) {
     throw splitResponse.error;
+  }
+
+  try {
+    await createNotification({
+      fromUserId: user.data.user.id,
+      toUserId: splitResponse.data.payer_id,
+      type: NotificationType.SETTLEMENT_REQUEST,
+      referenceId: expenseSplitId
+    });
+  } catch (err) {
+    console.error("Failed to send payment request notification:", err);
   }
 
   return { success: true, message: "Request created successfully" };
@@ -457,6 +487,43 @@ export const undoSettledRequest = async (expenseSplitId: string) => {
   }
 
   return { success: true, message: "Settled request undone successfully" };
+};
+
+export const rejectSettledRequest = async (expenseSplitId: string) => {
+  const user = await supabase.auth.getUser();
+
+  if (!user.data.user) {
+    throw new Error("User not authenticated");
+  }
+
+  const splitResponse = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .update({
+      status: "pending",
+      member_note: null,
+      proof_of_payment: null,
+      status_updated_at: new Date().toISOString()
+    })
+    .eq("id", expenseSplitId)
+    .select("member_id")
+    .single();
+
+  if (splitResponse.error) {
+    throw splitResponse.error;
+  }
+
+  try {
+    await createNotification({
+      fromUserId: user.data.user.id,
+      toUserId: splitResponse.data.member_id,
+      type: NotificationType.SETTLEMENT_REJECTED,
+      referenceId: expenseSplitId
+    });
+  } catch (err) {
+    console.error("Failed to send payment rejected notification:", err);
+  }
+
+  return { success: true, message: "Settled request rejected successfully" };
 };
 
 export const markAsSettled = async (expensePayload: {
@@ -489,10 +556,23 @@ export const markAsSettled = async (expensePayload: {
       proof_of_payment: receiptUrl,
       status_updated_at: new Date().toISOString()
     })
-    .eq("id", expenseSplitId);
+    .eq("id", expenseSplitId)
+    .select("member_id")
+    .single();
 
   if (splitResponse.error) {
     throw splitResponse.error;
+  }
+
+  try {
+    await createNotification({
+      fromUserId: user.data.user.id,
+      toUserId: splitResponse.data.member_id,
+      type: NotificationType.SETTLEMENT_APPROVED,
+      referenceId: expenseSplitId
+    });
+  } catch (err) {
+    console.error("Failed to send payment approved notification:", err);
   }
 
   const { data: allSplits, error: splitsError } = await supabase

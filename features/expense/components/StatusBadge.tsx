@@ -16,27 +16,28 @@ export default function StatusBadge({
   let action: "success" | "info" | "muted" | "warning" = "warning";
   let text;
   let icon;
+  let iconSize = size === "sm" || size === "md" ? 12 : 16;
 
   if (status === "settled") {
     action = "success";
     text = "Settled";
-    icon = <CheckCheck size={12} color="#2A7948" />;
+    icon = <CheckCheck size={iconSize} color="#2A7948" />;
   } else if (status === "requested") {
     action = "info";
     text = "Requested";
-    icon = <CheckLine size={12} color="#0B8DCD" />;
+    icon = <CheckLine size={iconSize} color="#0B8DCD" />;
   } else if (status === "pending") {
     action = "warning";
     text = "Pending";
-    icon = <Hourglass size={12} color="#D76C1F" />;
+    icon = <Hourglass size={iconSize} color="#D76C1F" />;
   } else if (status === "ongoing") {
     action = "warning";
     text = "Ongoing";
-    icon = <RefreshCcw size={16} color="#D76C1F" />;
+    icon = <RefreshCcw size={iconSize} color="#D76C1F" />;
   } else if (status === "completed") {
     action = "success";
     text = "Completed";
-    icon = <CheckCheck size={16} color="#2A7948" />;
+    icon = <CheckCheck size={iconSize} color="#2A7948" />;
   }
 
   if (!text) return null;

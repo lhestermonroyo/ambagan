@@ -13,6 +13,7 @@ import TabLayout from "@/layouts/TabLayout";
 import states from "@/states";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
+import { useRouter } from "expo-router";
 import {
   Bell,
   Eye,
@@ -21,48 +22,61 @@ import {
   UserLock,
   UsersRound
 } from "lucide-react-native";
+import { useMemo } from "react";
 
 export default function ProfileScreen() {
   const { details: userDetails, signOut } = states.user();
+  const { reset: resetExpenseState } = states.expense();
+  const { reset: resetGroupState } = states.group();
+  const { reset: resetNotificationState } = states.notification();
 
-  const menuItems = [
-    {
-      icon: (
-        <UserCircle size={24} color={getSecondaryHex("text-secondary-950")} />
-      ),
-      label: "Personal Info",
-      description: "View and edit your personal information",
-      onPress: () => {}
-    },
-    {
-      icon: (
-        <UsersRound size={24} color={getSecondaryHex("text-secondary-950")} />
-      ),
-      label: "Friends & Connections",
-      description: "Manage your friends and social connections",
-      onPress: () => {}
-    },
-    {
-      icon: (
-        <UserLock size={24} color={getSecondaryHex("text-secondary-950")} />
-      ),
-      label: "Account & Privacy",
-      description: "Manage your account settings and privacy preferences",
-      onPress: () => {}
-    },
-    {
-      icon: <Eye size={24} color={getSecondaryHex("text-secondary-950")} />,
-      label: "App Appearance",
-      description: "Customize the look and feel of the app",
-      onPress: () => {}
-    },
-    {
-      icon: <Bell size={24} color={getSecondaryHex("text-secondary-950")} />,
-      label: "Notifications",
-      description: "Manage your notification preferences",
-      onPress: () => {}
-    }
-  ];
+  const router = useRouter();
+
+  const menuItems = useMemo(
+    () => [
+      {
+        icon: <UserCircle color={getSecondaryHex("text-secondary-950")} />,
+        label: "Personal Info",
+        description: "View and edit your personal information",
+        onPress: () => {}
+      },
+      {
+        icon: <UsersRound color={getSecondaryHex("text-secondary-950")} />,
+        label: "Friends & Connections",
+        description: "Manage your friends and social connections",
+        onPress: () => {}
+      },
+      {
+        icon: <UserLock color={getSecondaryHex("text-secondary-950")} />,
+        label: "Account & Privacy",
+        description: "Manage your account settings and privacy preferences",
+        onPress: () => {}
+      },
+      {
+        icon: <Eye color={getSecondaryHex("text-secondary-950")} />,
+        label: "App Appearance",
+        description: "Customize the look and feel of the app",
+        onPress: () => {}
+      },
+      {
+        icon: <Bell color={getSecondaryHex("text-secondary-950")} />,
+        label: "Notifications",
+        description: "Manage your notification preferences",
+        onPress: () => {}
+      }
+    ],
+    []
+  );
+
+  const handleSignOut = () => {
+    signOut();
+
+    resetExpenseState();
+    resetGroupState();
+    resetNotificationState();
+
+    router.replace("/login");
+  };
 
   return (
     <TabLayout title="Profile">
@@ -101,7 +115,7 @@ export default function ProfileScreen() {
             <FormButton
               text="Sign Out"
               action="negative"
-              onPress={signOut}
+              onPress={handleSignOut}
               icon={
                 <LogOut size={18} color={getSecondaryHex("text-secondary-0")} />
               }
@@ -127,7 +141,7 @@ function MenuItem({
 
   return (
     <PressableListItem onPress={onPress}>
-      <HStack className="p-4 gap-x-4 items-start">
+      <HStack className="p-4 gap-x-4 items-center">
         {icon}
         <VStack className="flex-1">
           <Text

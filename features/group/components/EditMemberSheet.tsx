@@ -42,7 +42,7 @@ export default function EditMembersSheet({
   const [tab, setTab] = useState<"recent" | "favorites">("recent");
 
   const { details: groupDetails, memberList } = states.group.getState();
-  const { details: userDetails } = states.user.getState();
+  const { details: userDetails } = states.user();
 
   const showToast = useAppToast();
 

@@ -469,7 +469,7 @@ function ExpenseItem({
           <Text className="text-lg text-right">
             {formatAmount(expense.amount)}
           </Text>
-          {expense.status && <StatusBadge status={expense.status} size="sm" />}
+          {expense.status && <StatusBadge status={expense.status} size="md" />}
         </VStack>
         <Icon as="chevron-right" className="text-secondary-950" />
       </HStack>

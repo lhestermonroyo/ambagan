@@ -9,6 +9,7 @@ import { formatAmount } from "@/features/expense/utils/formatAmount";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
+import { getErrorHex, getSuccessHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { BanknoteArrowDown, BanknoteArrowUp } from "lucide-react-native";
 
@@ -29,12 +30,19 @@ export default function SettlementItem({
       <HStack className="gap-x-2 items-start">
         <Avatar
           size="sm"
-          className={cn(isUserPayer ? "bg-success-400" : "bg-error-400")}
+          className={cn(
+            isUserPayer
+              ? "bg-success-100 border border-success-200"
+              : "bg-error-100 border border-error-200"
+          )}
         >
           {isUserPayer ? (
-            <BanknoteArrowDown size={16} color="#FFFFFF" />
+            <BanknoteArrowDown
+              size={16}
+              color={getSuccessHex("text-success-600")}
+            />
           ) : (
-            <BanknoteArrowUp size={16} color="#FFFFFF" />
+            <BanknoteArrowUp size={16} color={getErrorHex("text-error-600")} />
           )}
         </Avatar>
         <VStack className="gap-y-2 flex-1">
@@ -63,7 +71,7 @@ export default function SettlementItem({
             <HStack className="gap-x-2 items-center">
               <VStack className="items-end">
                 <Text className="text-lg">{formatAmount(item.amount)}</Text>
-                <StatusBadge status={item.status} size="lg" />
+                <StatusBadge status={item.status} size="md" />
               </VStack>
               <Icon as="chevron-right" className="text-secondary-950" />
             </HStack>

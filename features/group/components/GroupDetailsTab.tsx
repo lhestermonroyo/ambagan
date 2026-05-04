@@ -16,22 +16,12 @@ import React, { Fragment, useMemo, useState } from "react";
 import EditMembersSheet from "./EditMemberSheet";
 
 export default function GroupDetailsTab() {
-  const { details, memberList, expenseList } = states.group.getState();
-
-  if (!details) {
-    return (
-      <Box className="p-4">
-        <Text className="text-center text-secondary-950">
-          No group details available.
-        </Text>
-      </Box>
-    );
-  }
+  const { details, memberList, expenseList } = states.group();
 
   const [isEditMembersOpen, setIsEditMembersOpen] = useState(false);
   const [tab, setTab] = useState<"members" | "admin">("members");
 
-  const { details: userDetails } = states.user.getState();
+  const { details: userDetails } = states.user();
 
   const daysInactive = useMemo(() => {
     if (!expenseList || expenseList.length === 0) return 0;
@@ -42,9 +32,10 @@ export default function GroupDetailsTab() {
   }, [expenseList]);
 
   const categoryLabel = useMemo(() => {
+    if (!details) return null;
     const category = categories.find((c) => c.value === details.category);
     return category ? category.label : null;
-  }, [details.category]);
+  }, [details?.category]);
 
   const filteredMemberList = useMemo(() => {
     if (!details) return [];
@@ -54,7 +45,17 @@ export default function GroupDetailsTab() {
     } else {
       return memberList.filter((m) => m.id === details.admin.id);
     }
-  }, [memberList, tab]);
+  }, [memberList, tab, details]);
+
+  if (!details) {
+    return (
+      <Box className="p-4">
+        <Text className="text-center text-secondary-950">
+          No group details available.
+        </Text>
+      </Box>
+    );
+  }
 
   return (
     <Fragment>
@@ -172,7 +173,7 @@ const DetailRow = ({
 };
 
 function MemberItem({ item }: { item: Member }) {
-  const { details: userDetails } = states.user.getState();
+  const { details: userDetails } = states.user();
   const isYou = item.id === userDetails?.id;
   return (
     <HStack className="items-center py-4 gap-y-4">

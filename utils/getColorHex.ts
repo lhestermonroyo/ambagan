@@ -30,32 +30,32 @@ export const getSecondaryHex = (
 
 const primaryColorMap = {
   light: {
-    "text-primary-0": "#EFF6FF",
-    "text-primary-50": "#DBEAFE",
-    "text-primary-100": "#BFDBFE",
-    "text-primary-200": "#93C5FD",
-    "text-primary-300": "#60A5FA",
-    "text-primary-400": "#3B82F6",
-    "text-primary-500": "#2563EB",
-    "text-primary-600": "#1D4ED8",
-    "text-primary-700": "#1E40AF",
-    "text-primary-800": "#1E3A8A",
-    "text-primary-900": "#172554",
-    "text-primary-950": "#0F172A"
+    "text-primary-0": "#F5F3FF",
+    "text-primary-50": "#EDE9FE",
+    "text-primary-100": "#DDD6FE",
+    "text-primary-200": "#C4B5FD",
+    "text-primary-300": "#A78BFA",
+    "text-primary-400": "#8B5CF6",
+    "text-primary-500": "#7C3AED",
+    "text-primary-600": "#6D28D9",
+    "text-primary-700": "#5B21B6",
+    "text-primary-800": "#4C1D95",
+    "text-primary-900": "#2E1065",
+    "text-primary-950": "#14052E"
   },
   dark: {
-    "text-primary-0": "#0F172A",
-    "text-primary-50": "#172554",
-    "text-primary-100": "#1E3A8A",
-    "text-primary-200": "#1E40AF",
-    "text-primary-300": "#1D4ED8",
-    "text-primary-400": "#2563EB",
-    "text-primary-500": "#3B82F6",
-    "text-primary-600": "#60A5FA",
-    "text-primary-700": "#93C5FD",
-    "text-primary-800": "#BFDBFE",
-    "text-primary-900": "#DBEAFE",
-    "text-primary-950": "#EFF6FF"
+    "text-primary-0": "#14052E",
+    "text-primary-50": "#2E1065",
+    "text-primary-100": "#4C1D95",
+    "text-primary-200": "#5B21B6",
+    "text-primary-300": "#6D28D9",
+    "text-primary-400": "#7C3AED",
+    "text-primary-500": "#8B5CF6",
+    "text-primary-600": "#A78BFA",
+    "text-primary-700": "#C4B5FD",
+    "text-primary-800": "#DDD6FE",
+    "text-primary-900": "#EDE9FE",
+    "text-primary-950": "#F5F3FF"
   }
 };
 

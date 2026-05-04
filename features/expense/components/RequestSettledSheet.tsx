@@ -37,10 +37,6 @@ export default function RequestSettledSheet({
   payment: Payment;
   onRefetch: () => void;
 }) {
-  if (!payment) {
-    return null;
-  }
-
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
     note: "Paid with thanks! 😊",
@@ -48,6 +44,10 @@ export default function RequestSettledSheet({
   });
 
   const toast = useAppToast();
+
+  if (!payment) {
+    return null;
+  }
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -164,7 +164,7 @@ export default function RequestSettledSheet({
             />
             <FormButton
               className="flex-1"
-              text="Confirm Request"
+              text="Request"
               loading={submitting}
               onPress={handleSubmit}
             />

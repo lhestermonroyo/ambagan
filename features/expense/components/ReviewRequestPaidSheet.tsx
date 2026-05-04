@@ -40,14 +40,14 @@ export default function ReviewRequestPaidSheet({
   isPayer?: boolean;
   readOnly?: boolean;
 }) {
+  const [submitting, setSubmitting] = useState(false);
+
+  const { details: userDetails } = states.user();
+  const toast = useAppToast();
+
   if (!payment) {
     return null;
   }
-
-  const [submitting, setSubmitting] = useState(false);
-
-  const { details: userDetails } = states.user.getState();
-  const toast = useAppToast();
 
   const handleMarkAsSettled = async () => {
     setSubmitting(true);
@@ -55,7 +55,8 @@ export default function ReviewRequestPaidSheet({
       const response = await services.expense.markAsSettled({
         note: "",
         receipt: null,
-        expenseSplitId: payment.id
+        expenseSplitId: payment.id,
+        expenseId: payment.expense_id
       });
 
       if (!response) {
@@ -74,6 +75,34 @@ export default function ReviewRequestPaidSheet({
         title: "Error",
         description:
           "There was an issue settling this request. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    setSubmitting(true);
+    try {
+      const response = await services.expense.rejectSettledRequest(payment.id);
+
+      if (!response) {
+        throw new Error("Failed to reject payment request");
+      }
+
+      onRefetch();
+      onClose();
+      toast({
+        description: "The payment request has been rejected.",
+        type: "success"
+      });
+    } catch (error) {
+      console.error("Error rejecting payment request:", error);
+      toast({
+        title: "Error",
+        description:
+          "There was an issue rejecting this request. Please try again.",
         type: "error"
       });
     } finally {
@@ -239,14 +268,25 @@ export default function ReviewRequestPaidSheet({
               {!readOnly && payment.status !== "settled" && (
                 <Fragment>
                   {isPayer ? (
-                    <ConfirmButton
-                      className="flex-1"
-                      text="Mark as Settled"
-                      loading={submitting}
-                      onConfirm={handleMarkAsSettled}
-                      confirmTitle="Mark as Settled"
-                      confirmDescription="Are you sure you want to mark this request as settled? This will notify the requester that you have settled the payment and update the status of this split."
-                    />
+                    <Fragment>
+                      <ConfirmButton
+                        className="flex-1"
+                        action="negative"
+                        text="Reject"
+                        loading={submitting}
+                        onConfirm={handleRejectRequest}
+                        confirmTitle="Reject Settlement Request"
+                        confirmDescription="Are you sure you want to reject this settlement request? This will send it back to pending and remove the submitted proof of payment."
+                      />
+                      <ConfirmButton
+                        className="flex-1"
+                        text="Approve"
+                        loading={submitting}
+                        onConfirm={handleMarkAsSettled}
+                        confirmTitle="Approve Settlement Request"
+                        confirmDescription="Are you sure you want to approve this settlement request? This will notify the requester that you have settled the payment and update the status of this split."
+                      />
+                    </Fragment>
                   ) : (
                     <ConfirmButton
                       className="flex-1"
@@ -254,8 +294,8 @@ export default function ReviewRequestPaidSheet({
                       text="Undo Request"
                       loading={submitting}
                       onConfirm={handleUndoRequest}
-                      confirmTitle="Undo Settled Request"
-                      confirmDescription="Are you sure you want to undo your settled request? This will change the status back to pending and remove any notes or receipt you added."
+                      confirmTitle="Undo Settlement Request"
+                      confirmDescription="Are you sure you want to undo your settlement request? This will change the status back to pending and remove any notes or receipt you added."
                     />
                   )}
                 </Fragment>

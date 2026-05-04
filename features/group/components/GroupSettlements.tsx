@@ -1,3 +1,4 @@
+import BalanceCard from "@/features/expense/components/BalanceCard";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { Box } from "@/components/ui/box";
@@ -23,7 +24,6 @@ import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { getDateGroupTitle } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { format, parseISO } from "date-fns";
 import { useFocusEffect } from "expo-router";
 import { ListFilter, ReceiptText } from "lucide-react-native";
@@ -33,7 +33,7 @@ const settlementTabs = ["All", "Pending", "Requested", "Settled"] as const;
 
 export default function GroupSettlements() {
   const { details, expenseList } = states.group.getState();
-  const { details: userDetails } = states.user.getState();
+  const { details: userDetails } = states.user();
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -233,45 +233,7 @@ export default function GroupSettlements() {
             <Text className="text-secondary-950">Total Group Spendings</Text>
           </Card>
 
-          <Card
-            className={cn(
-              "flex-1 rounded-lg",
-              netBalance > 0
-                ? "bg-success-50 border border-success-100"
-                : netBalance < 0
-                  ? "bg-error-50 border border-error-200"
-                  : "bg-secondary-100"
-            )}
-          >
-            <Text
-              bold
-              className={cn(
-                "text-2xl",
-                netBalance > 0
-                  ? "text-success-500"
-                  : netBalance < 0
-                    ? "text-error-700"
-                    : "text-secondary-950"
-              )}
-            >
-              {netBalance === 0 ? "—" : formatAmount(Math.abs(netBalance))}
-            </Text>
-            <Text
-              className={cn(
-                netBalance > 0
-                  ? "text-success-500"
-                  : netBalance < 0
-                    ? "text-error-700"
-                    : "text-secondary-950"
-              )}
-            >
-              {netBalance > 0
-                ? "To Receive"
-                : netBalance < 0
-                  ? "To Pay"
-                  : "All Settled Up"}
-            </Text>
-          </Card>
+          <BalanceCard balance={netBalance} className="flex-1" />
         </HStack>
 
         <HStack className="px-4 items-center justify-between">

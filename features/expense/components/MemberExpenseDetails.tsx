@@ -1,5 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
+import Icon from "@/components/Icon";
+import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
@@ -9,12 +11,10 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { ExpensePayer, MemberSplit, Payment } from "@/types/expenses";
-import { formatDate } from "@/utils/formatDate";
-import { getPrimaryHex } from "@/utils/getColorHex";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import { FileImage } from "lucide-react-native";
-import { Fragment, ReactNode, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
+import BalanceCard from "./BalanceCard";
+import ExpenseDetailsSheet from "./ExpenseDetailsSheet";
 import RequestPaidSheet from "./RequestSettledSheet";
 import ReviewRequestPaidSheet from "./ReviewRequestPaidSheet";
 import StatusBadge from "./StatusBadge";
@@ -25,6 +25,7 @@ export default function MemberExpenseDetails({
   onRefetch: () => void;
 }) {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [expenseInfoSheetOpen, setExpenseInfoSheetOpen] = useState(false);
   const [requestSheetOpen, setRequestSheetOpen] = useState(false);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
   const [reviewSheetReadOnly, setReviewSheetReadOnly] = useState(false);
@@ -63,6 +64,15 @@ export default function MemberExpenseDetails({
       .reduce((sum, p) => sum + p.amount, 0);
   }, [paymentSplitList, userDetails]);
 
+  const sortedMemberSplitList = useMemo(() => {
+    return [...memberSplitList].sort((a, b) => {
+      const aHasPayment = !!memberPaymentMap[a.member.id];
+      const bHasPayment = !!memberPaymentMap[b.member.id];
+      if (aHasPayment === bHasPayment) return 0;
+      return aHasPayment ? -1 : 1;
+    });
+  }, [memberSplitList, memberPaymentMap]);
+
   const handleMemberPress = (memberSplit: MemberSplit) => {
     const payment = memberPaymentMap[memberSplit.member.id];
     if (!payment) return;
@@ -89,7 +99,7 @@ export default function MemberExpenseDetails({
   return (
     <Fragment>
       <VStack className="gap-y-6 pb-2">
-        <VStack className="w-full gap-y-6 px-4">
+        <VStack className="w-full gap-y-4 px-4">
           <VStack>
             <Text className="text-3xl" bold>
               {formatAmount(expenseDetails?.amount || 0)}
@@ -103,6 +113,12 @@ export default function MemberExpenseDetails({
             />
           </VStack>
 
+          <FormButton
+            variant="outline"
+            text="Expense Info"
+            onPress={() => setExpenseInfoSheetOpen(true)}
+          />
+
           <HStack className="gap-x-2">
             <Card className="flex-1 bg-secondary-100 rounded-lg">
               <Text className="text-2xl" bold>
@@ -111,90 +127,8 @@ export default function MemberExpenseDetails({
               <Text className="text-secondary-950">Your Share</Text>
             </Card>
 
-            <Card
-              className={cn(
-                "flex-1 rounded-lg",
-                remainingOwed > 0
-                  ? "bg-error-50 border border-error-200"
-                  : "bg-secondary-100"
-              )}
-            >
-              <Text
-                bold
-                className={cn(
-                  "text-2xl",
-                  remainingOwed > 0 ? "text-error-700" : "text-secondary-950"
-                )}
-              >
-                {remainingOwed === 0 ? "—" : formatAmount(remainingOwed)}
-              </Text>
-              <Text
-                className={cn(
-                  remainingOwed > 0 ? "text-error-700" : "text-secondary-950"
-                )}
-              >
-                {remainingOwed > 0 ? "To Pay" : "All Settled Up"}
-              </Text>
-            </Card>
+            <BalanceCard balance={-remainingOwed} className="flex-1" />
           </HStack>
-        </VStack>
-
-        <VStack className="gap-y-2 px-4">
-          <Text className="text-xl" bold>
-            Expense Details
-          </Text>
-          <Box className="bg-secondary-100 rounded-xl overflow-hidden">
-            <DetailRow
-              label="Expense Date"
-              value={
-                <Text>{formatDate(expenseDetails?.created_at || "")}</Text>
-              }
-            />
-            <DetailRow
-              label="Expense Creator"
-              value={
-                <HStack className="gap-x-1 items-center">
-                  <AppAvatar
-                    name={`${expenseDetails?.creator.first_name} ${expenseDetails?.creator.last_name}`}
-                    uri={expenseDetails?.creator.avatar!}
-                    size="sm"
-                  />
-                  <Text>
-                    {expenseDetails?.creator.first_name}{" "}
-                    {expenseDetails?.creator.last_name}
-                    {expenseDetails?.creator.id === userDetails?.id && " (You)"}
-                  </Text>
-                </HStack>
-              }
-            />
-            <DetailRow
-              label="Split Type"
-              value={
-                <Text className="capitalize">{expenseDetails?.split_type}</Text>
-              }
-            />
-            <DetailRow
-              label="Proof of Payment"
-              value={
-                expenseDetails?.proof_of_payment ? (
-                  <FormButton
-                    size="md"
-                    variant="outline"
-                    text="View Image"
-                    icon={
-                      <FileImage
-                        size={18}
-                        color={getPrimaryHex("text-primary-500")}
-                      />
-                    }
-                    onPress={() => {}}
-                  />
-                ) : (
-                  <Text>N/A</Text>
-                )
-              }
-            />
-          </Box>
         </VStack>
 
         <VStack className="gap-y-4">
@@ -205,7 +139,7 @@ export default function MemberExpenseDetails({
             <FlatList
               className="flex-1"
               scrollEnabled={false}
-              data={memberSplitList}
+              data={sortedMemberSplitList}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
                 <MemberSplitItem
@@ -242,6 +176,10 @@ export default function MemberExpenseDetails({
         </VStack>
       </VStack>
 
+      <ExpenseDetailsSheet
+        isOpen={expenseInfoSheetOpen}
+        onClose={() => setExpenseInfoSheetOpen(false)}
+      />
       {selectedPayment && (
         <RequestPaidSheet
           isOpen={requestSheetOpen}
@@ -283,27 +221,55 @@ function MemberSplitItem({
   const { details: userDetails } = states.user();
   const isMe = memberSplit.member.id === userDetails?.id;
 
+  if (!payment || !onPress) {
+    return (
+      <HStack className="p-4 gap-x-2 items-center">
+        <AppAvatar
+          name={memberSplit.member.first_name}
+          uri={memberSplit.member.avatar!}
+          size="md"
+        />
+        <VStack className="flex-1">
+          <Text className="text-lg">
+            {memberSplit.member.first_name} {memberSplit.member.last_name}
+            {isMe && " (You)"}
+          </Text>
+          <Text className="text-secondary-950">{memberSplit.member.email}</Text>
+        </VStack>
+        <HStack className="gap-x-1 items-center">
+          <VStack className="items-end gap-y-1">
+            <Text className="text-lg">{formatAmount(memberSplit.amount)}</Text>
+          </VStack>
+          <Icon as="chevron-right" className="text-secondary-500" />
+        </HStack>
+      </HStack>
+    );
+  }
+
   return (
-    <HStack className="gap-x-2 items-center p-4">
-      <AppAvatar
-        name={memberSplit.member.first_name}
-        uri={memberSplit.member.avatar!}
-        size="md"
-      />
-      <VStack className="flex-1">
-        <Text className="text-lg">
-          {memberSplit.member.first_name} {memberSplit.member.last_name}
-          {isMe && " (You)"}
-        </Text>
-        <Text className="text-secondary-950">{memberSplit.member.email}</Text>
-      </VStack>
-      <VStack className="items-end gap-y-1">
-        <Text className="text-lg">{formatAmount(memberSplit.amount)}</Text>
-        <Text className="text-secondary-950 text-sm">
-          {memberSplit.percentage}%
-        </Text>
-      </VStack>
-    </HStack>
+    <PressableListItem onPress={onPress}>
+      <HStack className="p-4 gap-x-2 items-center">
+        <AppAvatar
+          name={memberSplit.member.first_name}
+          uri={memberSplit.member.avatar!}
+          size="md"
+        />
+        <VStack className="flex-1">
+          <Text className="text-lg">
+            {memberSplit.member.first_name} {memberSplit.member.last_name}
+            {isMe && " (You)"}
+          </Text>
+          <Text className="text-secondary-950">{memberSplit.member.email}</Text>
+        </VStack>
+        <HStack className="gap-x-1 items-center">
+          <VStack className="items-end gap-y-1">
+            <Text className="text-lg">{formatAmount(memberSplit.amount)}</Text>
+            <StatusBadge status={payment?.status || "pending"} size="md" />
+          </VStack>
+          <Icon as="chevron-right" className="text-secondary-950" />
+        </HStack>
+      </HStack>
+    </PressableListItem>
   );
 }
 
@@ -332,11 +298,3 @@ function PayerItem({ payer }: { payer: ExpensePayer }) {
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <HStack className="items-center justify-between p-4">
-      <Text className="text-secondary-950">{label}</Text>
-      {value}
-    </HStack>
-  );
-}

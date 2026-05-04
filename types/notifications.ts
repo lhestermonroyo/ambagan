@@ -1,5 +1,10 @@
 import { UserPreview } from "./user";
 
+export type NotificationState = {
+  list: Notification[];
+  unreadCount: number;
+};
+
 export type Notification = {
   id: string;
   created_at: string;
@@ -11,13 +16,11 @@ export type Notification = {
 };
 
 export enum NotificationType {
-  PAYMENT_REQUEST = "payment_request",
-  PAYMENT_APPROVED = "payment_approved", // when the payer approves the payment request of the member
-  PAYMENT_COMPLETED = "payment_completed", // when the payer approves the payment without request from the member
-  PAYMENT_REJECTED = "payment_rejected",
+  SETTLEMENT_REQUEST = "settlement_request",
+  SETTLEMENT_APPROVED = "settlement_approved", // when the payer approves the settlement request of the member
+  SETTLEMENT_REJECTED = "settlement_rejected", // when the payer rejects the settlement request of the member
+  SETTLEMENT_COMPLETED = "settlement_completed", // when the payer approves the settlement without request from the member
   EXPENSE_INCLUSION = "expense_inclusion",
   GROUP_JOIN = "group_join",
-  GROUP_LEAVE = "group_leave",
-  GROUP_ARCHIVE = "group_archive",
-  GROUP_UNARCHIVE = "group_unarchive"
+  GROUP_LEAVE = "group_leave"
 }

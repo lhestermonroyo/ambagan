@@ -38,20 +38,20 @@ export default function MarkAsSettledSheet({
   payment: Payment;
   onRefetch: () => void;
 }) {
-  if (!payment) {
-    return null;
-  }
-
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
     note: "Payment acknowledged! 😊",
     receipt: null as ImagePickerSuccessResult | null
   });
 
-  const { details: userDetails } = states.user.getState();
-  const isMe = payment.member.id === userDetails?.id;
-
+  const { details: userDetails } = states.user();
   const toast = useAppToast();
+
+  if (!payment) {
+    return null;
+  }
+
+  const isMe = payment.member.id === userDetails?.id;
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -170,7 +170,7 @@ export default function MarkAsSettledSheet({
             />
             <FormButton
               className="flex-1"
-              text="Mark as Settled"
+              text="Approve"
               loading={submitting}
               onPress={handleSubmit}
             />

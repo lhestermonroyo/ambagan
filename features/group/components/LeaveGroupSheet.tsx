@@ -40,7 +40,7 @@ export default function LeaveGroupSheet({
   onLeave: (groupDeleted: boolean) => void;
 }) {
   const { details: groupDetails, memberList } = states.group.getState();
-  const { details: userDetails } = states.user.getState();
+  const { details: userDetails } = states.user();
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
