@@ -18,7 +18,7 @@ import { format, parseISO } from "date-fns";
 import { useFocusEffect } from "expo-router";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
-const roleOptions = ["All", "Receives", "Pays"] as const;
+const roleOptions = ["All", "Collects", "Pays"] as const;
 const statusOptions = ["All", "Pending", "Requested", "Settled"] as const;
 type RoleOption = (typeof roleOptions)[number];
 type StatusOption = (typeof statusOptions)[number];
@@ -39,14 +39,14 @@ export default function ActivitiesScreen() {
   );
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
-  const { paymentList } = states.expense.getState();
+  const { activityList } = states.expense.getState();
   const { details: userDetails } = states.user.getState();
 
   useFocusEffect(
     useMemo(
       () => () => {
         if (!userDetails?.id) return;
-        fetchPayments(0, role, status, !initialized.current);
+        fetchActivities(0, role, status, !initialized.current);
         initialized.current = true;
       },
       [userDetails?.id]
@@ -59,10 +59,10 @@ export default function ActivitiesScreen() {
       return;
     }
     if (!userDetails?.id) return;
-    fetchPayments(0, role, status, true);
+    fetchActivities(0, role, status, true);
   }, [role, status]);
 
-  const fetchPayments = async (
+  const fetchActivities = async (
     pageNum: number,
     currentRole: RoleOption,
     currentStatus: StatusOption,
@@ -79,7 +79,7 @@ export default function ActivitiesScreen() {
           role:
             currentRole === "All"
               ? undefined
-              : (currentRole.toLowerCase() as "receives" | "pays"),
+              : (currentRole.toLowerCase() as "collects" | "pays"),
           status:
             currentStatus === "All"
               ? undefined
@@ -94,15 +94,15 @@ export default function ActivitiesScreen() {
 
       states.expense.setState((prev) => ({
         ...prev,
-        paymentList:
+        activityList:
           pageNum === 0
             ? response.data || []
-            : [...prev.paymentList, ...(response.data || [])]
+            : [...prev.activityList, ...(response.data || [])]
       }));
       setPage(pageNum);
       setHasNextPage(response.pagination?.hasNext || false);
     } catch (error) {
-      console.log("Error fetching payments", error);
+      console.log("Error fetching activities", error);
     } finally {
       setLoading(false);
     }
@@ -111,16 +111,16 @@ export default function ActivitiesScreen() {
   const handleLoadMore = async () => {
     setLoadMoreLoading(true);
     try {
-      await fetchPayments(page + 1, role, status);
+      await fetchActivities(page + 1, role, status);
     } finally {
       setLoadMoreLoading(false);
     }
   };
 
-  const formattedPaymentList = useMemo(() => {
-    const groupedByDate: Record<string, typeof paymentList> = {};
+  const formattedActivityList = useMemo(() => {
+    const groupedByDate: Record<string, typeof activityList> = {};
 
-    paymentList.forEach((item) => {
+    activityList.forEach((item) => {
       const dateKey = format(
         parseISO(item.created_at || new Date().toISOString()),
         "yyyy-MM-dd"
@@ -135,7 +135,7 @@ export default function ActivitiesScreen() {
         title: getDateGroupTitle(dateKey + "T00:00:00"),
         data: groupedByDate[dateKey]
       }));
-  }, [paymentList]);
+  }, [activityList]);
 
   return (
     <Fragment>
@@ -176,7 +176,7 @@ export default function ActivitiesScreen() {
             <SectionList
               bounces={false}
               scrollEnabled={false}
-              sections={formattedPaymentList}
+              sections={formattedActivityList}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
                 <SettlementItem
@@ -231,7 +231,7 @@ export default function ActivitiesScreen() {
         isOpen={actionSheetOpen}
         onClose={() => setActionSheetOpen(false)}
         item={selectedPayment}
-        onRefetch={() => fetchPayments(0, role, status, true)}
+        onRefetch={() => fetchActivities(0, role, status, true)}
       />
     </Fragment>
   );

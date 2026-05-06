@@ -105,7 +105,7 @@ export default function MarkAsSettledSheet({
             <VStack className="gap-y-6">
               <VStack className="flex-1">
                 <Text className="text-3xl" bold>
-                  {formatAmount(payment.amount || 0)}
+                  {formatAmount(payment.amount || 0, payment.currency)}
                 </Text>
                 <Text className="text-secondary-950">Amount paid</Text>
               </VStack>

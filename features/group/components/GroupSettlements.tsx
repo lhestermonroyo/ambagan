@@ -1,6 +1,6 @@
-import BalanceCard from "@/features/expense/components/BalanceCard";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import { Avatar } from "@/components/ui/avatar";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,11 +10,11 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import MarkAsSettledSheet from "@/features/expense/components/MarkAsSettledSheet";
 import RequestSettledSheet from "@/features/expense/components/RequestSettledSheet";
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
 import SettlementItem from "@/features/expense/components/SettlementItem";
-import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { sortPaymentsByStatus } from "@/features/expense/utils/payment.util";
 import ViewBySheet, {
   ViewOption
@@ -23,19 +23,28 @@ import services from "@/services";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { getDateGroupTitle } from "@/utils/formatDate";
-import { getSecondaryHex } from "@/utils/getColorHex";
+import {
+  getErrorHex,
+  getPrimaryHex,
+  getSecondaryHex,
+  getSuccessHex
+} from "@/utils/getColorHex";
 import { format, parseISO } from "date-fns";
 import { useFocusEffect } from "expo-router";
-import { ListFilter, ReceiptText } from "lucide-react-native";
+import {
+  BanknoteArrowDown,
+  BanknoteArrowUp,
+  HouseHeart,
+  LayoutList
+} from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 
 const settlementTabs = ["All", "Pending", "Requested", "Settled"] as const;
 
 export default function GroupSettlements() {
-  const { details, expenseList } = states.group.getState();
+  const { details, expenseList, settlementList } = states.group();
   const { details: userDetails } = states.user();
 
-  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [requestSheetOpen, setRequestSheetOpen] = useState(false);
@@ -67,7 +76,10 @@ export default function GroupSettlements() {
         details.id,
         userDetails.id
       );
-      setPayments(sortPaymentsByStatus(data));
+      states.group.setState((prev) => ({
+        ...prev,
+        settlementList: sortPaymentsByStatus(data)
+      }));
     } catch (error) {
       console.error("Error fetching group payments:", error);
     } finally {
@@ -75,49 +87,60 @@ export default function GroupSettlements() {
     }
   };
 
-  const totalGroupSpendings = useMemo(
-    () => expenseList.reduce((sum, e) => sum + e.amount, 0),
+  const groupByCurrency = (items: { amount: number; currency: string }[]) => {
+    const map: Record<string, number> = {};
+    items.forEach(({ amount, currency }) => {
+      map[currency] = (map[currency] ?? 0) + amount;
+    });
+    return Object.entries(map).map(([currency, amount]) => ({
+      currency,
+      amount
+    }));
+  };
+
+  const totalGroupSpendingsByCurrency = useMemo(
+    () => groupByCurrency(expenseList),
     [expenseList]
   );
 
-  const yourTotalUnpaid = useMemo(() => {
-    if (!userDetails) return 0;
-    return payments
-      .filter(
+  const yourTotalUnpaidByCurrency = useMemo(() => {
+    if (!userDetails) return [];
+    return groupByCurrency(
+      settlementList.filter(
         (p) =>
           p.member.id === userDetails.id &&
           (p.status === "pending" || p.status === "requested")
       )
-      .reduce((sum, p) => sum + p.amount, 0);
-  }, [payments, userDetails]);
+    );
+  }, [settlementList, userDetails]);
 
-  const yourToCollectTotal = useMemo(() => {
-    if (!userDetails) return 0;
-    return payments
-      .filter(
+  const yourToCollectTotalByCurrency = useMemo(() => {
+    if (!userDetails) return [];
+    return groupByCurrency(
+      settlementList.filter(
         (p) =>
           p.payer.id === userDetails.id &&
           (p.status === "pending" || p.status === "requested")
       )
-      .reduce((sum, p) => sum + p.amount, 0);
-  }, [payments, userDetails]);
-
-  const netBalance = yourToCollectTotal - yourTotalUnpaid;
+    );
+  }, [settlementList, userDetails]);
 
   const tabCounts = useMemo(() => {
     return {
-      All: payments.length,
-      Pending: payments.filter((p) => p.status === "pending").length,
-      Requested: payments.filter((p) => p.status === "requested").length,
-      Settled: payments.filter((p) => p.status === "settled").length
+      All: settlementList.length,
+      Pending: settlementList.filter((p) => p.status === "pending").length,
+      Requested: settlementList.filter((p) => p.status === "requested").length,
+      Settled: settlementList.filter((p) => p.status === "settled").length
     };
-  }, [payments]);
+  }, [settlementList]);
 
   const settlementSections = useMemo(() => {
     const filtered =
       settlementTab === "All"
-        ? payments
-        : payments.filter((p) => p.status === settlementTab.toLowerCase());
+        ? settlementList
+        : settlementList.filter(
+            (p) => p.status === settlementTab.toLowerCase()
+          );
 
     if (viewBy === "By Expense") {
       const grouped: Record<string, Payment[]> = {};
@@ -163,7 +186,7 @@ export default function GroupSettlements() {
         title: getDateGroupTitle(dateKey + "T00:00:00"),
         data: groupedByDate[dateKey]
       }));
-  }, [payments, settlementTab, viewBy, userDetails]);
+  }, [settlementList, settlementTab, viewBy, userDetails]);
 
   const handleSettlementItemPress = (payment: PaymentPreview | Payment) => {
     const p = payment as Payment;
@@ -204,36 +227,79 @@ export default function GroupSettlements() {
     setReviewSheetOpen(true);
   };
 
-  if (expenseList.length === 0) {
-    return (
-      <Box className="flex-1 items-center justify-center px-8 py-16">
-        <ReceiptText
-          size={48}
-          className="text-secondary-300 mb-4"
-          color="#CBD5E0"
-        />
-        <Text bold className="text-xl text-center mb-2">
-          No expenses yet
-        </Text>
-        <Text className="text-secondary-950 text-center">
-          Add an expense from the Expenses tab to start tracking who owes what.
-        </Text>
-      </Box>
-    );
-  }
-
   return (
     <Fragment>
       <VStack className="gap-y-4">
         <HStack className="gap-x-2 px-4">
           <Card className="flex-1 rounded-lg bg-secondary-100">
-            <Text className="text-2xl" bold>
-              {formatAmount(totalGroupSpendings)}
-            </Text>
-            <Text className="text-secondary-950">Total Group Spendings</Text>
+            <VStack className="gap-y-2">
+              <Avatar
+                size="sm"
+                className="bg-primary-100 border border-primary-200"
+              >
+                <HouseHeart
+                  size={16}
+                  color={getPrimaryHex("text-primary-600")}
+                />
+              </Avatar>
+              <VStack className="gap-y-1">
+                <CurrencyAmountDisplay
+                  items={totalGroupSpendingsByCurrency}
+                  label="Total Group Spendings"
+                  type="neutral"
+                />
+                <Text className="text-secondary-950">
+                  Total Group Spendings
+                </Text>
+              </VStack>
+            </VStack>
+          </Card>
+        </HStack>
+
+        <HStack className="gap-x-2 px-4">
+          <Card className="flex-1 rounded-lg bg-secondary-100">
+            <VStack className="gap-y-2 flex-1">
+              <Avatar
+                size="sm"
+                className="bg-success-100 border border-success-200"
+              >
+                <BanknoteArrowUp
+                  size={16}
+                  color={getSuccessHex("text-success-600")}
+                />
+              </Avatar>
+              <VStack className="flex-1 justify-between">
+                <CurrencyAmountDisplay
+                  items={yourToCollectTotalByCurrency}
+                  label="To Collect"
+                  type="receive"
+                />
+                <Text className="text-secondary-950">To Collect</Text>
+              </VStack>
+            </VStack>
           </Card>
 
-          <BalanceCard balance={netBalance} className="flex-1" />
+          <Card className="flex-1 rounded-lg bg-secondary-100">
+            <VStack className="gap-y-2 flex-1">
+              <Avatar
+                size="sm"
+                className="bg-error-100 border border-error-200"
+              >
+                <BanknoteArrowDown
+                  size={16}
+                  color={getErrorHex("text-error-600")}
+                />
+              </Avatar>
+              <VStack className="flex-1 justify-between">
+                <CurrencyAmountDisplay
+                  items={yourTotalUnpaidByCurrency}
+                  label="To Pay"
+                  type="pay"
+                />
+                <Text className="text-secondary-950">To Pay</Text>
+              </VStack>
+            </VStack>
+          </Card>
         </HStack>
 
         <HStack className="px-4 items-center justify-between">
@@ -245,7 +311,7 @@ export default function GroupSettlements() {
             className="rounded-full"
             onPress={() => setViewSheetOpen(true)}
           >
-            <ListFilter
+            <LayoutList
               size={20}
               color={getSecondaryHex("text-secondary-950")}
             />
@@ -287,7 +353,7 @@ export default function GroupSettlements() {
                 <Text className="text-secondary-950">No settlements found</Text>
               </Box>
             )}
-            ListFooterComponent={() => <Box className="h-12" />}
+            ListFooterComponent={() => <Box className="h-16" />}
             stickySectionHeadersEnabled={true}
           />
         </LoadingWrapper>

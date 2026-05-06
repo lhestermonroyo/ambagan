@@ -1,4 +1,4 @@
-import { ExpensePreview } from "./expenses";
+import { ExpensePreview, Payment } from "./expenses";
 import { UserPreview } from "./user";
 
 export type GroupState = {
@@ -6,7 +6,7 @@ export type GroupState = {
   details: Group | null;
   memberList: Member[];
   expenseList: ExpensePreview[];
-  memberTotalsList: MemberTotalsExpense[];
+  settlementList: Payment[];
 };
 
 export type Group = {
@@ -23,12 +23,6 @@ export type Member = UserPreview & {
   id: string;
   group_id: string;
   joined_at: string;
-};
-
-export type MemberTotalsExpense = {
-  member: UserPreview;
-  total_paid: number;
-  total_owed: number;
 };
 
 export enum GroupCategory {

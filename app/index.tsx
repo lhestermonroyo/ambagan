@@ -3,7 +3,7 @@ import states from "@/states";
 import { Redirect } from "expo-router";
 
 export default function Index() {
-  const { session, details, loading } = states.user();
+  const { session, loading } = states.user();
 
   return (
     <SplashLoading loading={loading}>

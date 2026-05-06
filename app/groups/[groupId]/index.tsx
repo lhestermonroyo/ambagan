@@ -27,7 +27,6 @@ import {
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import StatusBadge from "@/features/expense/components/StatusBadge";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
@@ -45,21 +44,20 @@ import {
   CirclePlus,
   Edit2,
   EllipsisVertical,
-  Info,
   LogOut,
   Trash2
 } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { SwipeListView } from "react-native-swipe-list-view";
 
-const tabs = ["Expenses", "Settlements", "Group Info"] as const;
+const tabs = ["Settlements", "Expenses", "Group Info"] as const;
 
 export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [openConfirmDeleteModal, setOpenConfirmDeleteModal] = useState(false);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
-  const [tab, setTab] = useState<(typeof tabs)[number]>("Expenses");
+  const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
   const { details: groupDetails, expenseList } = states.group();
   const { details: userDetails } = states.user();
@@ -128,7 +126,7 @@ export default function GroupDetailsScreen() {
         details: null,
         memberList: [],
         expenseList: [],
-        memberTotalsList: []
+        settlementList: []
       }));
 
       toast({
@@ -175,7 +173,10 @@ export default function GroupDetailsScreen() {
   const handleBack = () => {
     states.group.setState((prev) => ({
       ...prev,
-      details: null
+      details: null,
+      memberList: [],
+      expenseList: [],
+      settlementList: []
     }));
     router.back();
   };
@@ -213,72 +214,84 @@ export default function GroupDetailsScreen() {
       <InnerLayout
         title="Group Details"
         onBack={handleBack}
-        actions={[
-          <Button variant="link" className="rounded-full">
-            <Info size={20} color={getSecondaryHex("text-secondary-950")} />
-          </Button>,
-          <Menu
-            placement="left top"
-            closeOnSelect
-            selectionMode="single"
-            onSelectionChange={(selected) => {
-              const key = Array.from(selected)[0];
-              if (key === "edit") {
-                router.push(`/groups/${groupId}/edit`);
-              } else if (key === "delete") {
-                setOpenConfirmDeleteModal(true);
-              } else if (key === "leave") {
-                setLeaveSheetOpen(true);
-              }
-            }}
-            trigger={({ ...triggerProps }) => (
-              <Button variant="link" className="rounded-full" {...triggerProps}>
-                <EllipsisVertical
-                  size={20}
-                  color={getSecondaryHex("text-secondary-950")}
-                />
-              </Button>
-            )}
-          >
-            {isAdmin && (
-              <MenuItem
-                className="p-4 justify-between"
-                key="edit"
-                textValue="Edit"
-              >
-                <HStack className="gap-x-2">
-                  <Edit2 size={20} />
-                  <MenuItemLabel>Edit</MenuItemLabel>
-                </HStack>
-              </MenuItem>
-            )}
-            <MenuItem
-              className="p-4 justify-between"
-              key="leave"
-              textValue="Leave Group"
-            >
-              <HStack className="gap-x-2">
-                <LogOut size={20} />
-                <MenuItemLabel>Leave Group</MenuItemLabel>
-              </HStack>
-            </MenuItem>
-            {isAdmin && <MenuSeparator key="separator" />}
-            {isAdmin && (
-              <MenuItem
-                className="p-4 justify-between"
-                key="delete"
-                textValue="Delete"
-              >
-                <HStack className="gap-x-2">
-                  <Trash2 size={20} />
-                  <MenuItemLabel>Delete</MenuItemLabel>
-                </HStack>
-              </MenuItem>
-            )}
-          </Menu>
-        ]}
+        actions={
+          isAdmin
+            ? [
+                <Menu
+                  placement="left top"
+                  closeOnSelect
+                  selectionMode="single"
+                  onSelectionChange={(selected) => {
+                    const key = Array.from(selected)[0];
+                    if (key === "edit") {
+                      router.push(`/groups/${groupId}/edit`);
+                    } else if (key === "delete") {
+                      setOpenConfirmDeleteModal(true);
+                    } else if (key === "leave") {
+                      setLeaveSheetOpen(true);
+                    }
+                  }}
+                  trigger={({ ...triggerProps }) => (
+                    <Button
+                      variant="link"
+                      className="rounded-full"
+                      {...triggerProps}
+                    >
+                      <EllipsisVertical
+                        size={20}
+                        color={getSecondaryHex("text-secondary-950")}
+                      />
+                    </Button>
+                  )}
+                >
+                  <MenuItem
+                    className="p-4 justify-between"
+                    key="edit"
+                    textValue="Edit"
+                  >
+                    <HStack className="gap-x-2">
+                      <Edit2 size={20} />
+                      <MenuItemLabel>Edit</MenuItemLabel>
+                    </HStack>
+                  </MenuItem>
+                  <MenuItem
+                    className="p-4 justify-between"
+                    key="leave"
+                    textValue="Leave Group"
+                  >
+                    <HStack className="gap-x-2">
+                      <LogOut size={20} />
+                      <MenuItemLabel>Leave Group</MenuItemLabel>
+                    </HStack>
+                  </MenuItem>
+                  <MenuSeparator key="separator" />
+                  <MenuItem
+                    className="p-4 justify-between"
+                    key="delete"
+                    textValue="Delete"
+                  >
+                    <HStack className="gap-x-2">
+                      <Trash2 size={20} />
+                      <MenuItemLabel>Delete</MenuItemLabel>
+                    </HStack>
+                  </MenuItem>
+                </Menu>
+              ]
+            : [
+                <Button
+                  variant="link"
+                  className="rounded-full"
+                  onPress={() => setLeaveSheetOpen(true)}
+                >
+                  <LogOut
+                    size={20}
+                    color={getSecondaryHex("text-secondary-950")}
+                  />
+                </Button>
+              ]
+        }
       >
-        {tab === "Expenses" && (
+        {(tab === "Expenses" || tab === "Settlements") && (
           <Fab
             placement="bottom right"
             className="px-6"
@@ -331,6 +344,7 @@ export default function GroupDetailsScreen() {
                 </HStack>
               </ScrollView>
             </VStack>
+            {tab === "Settlements" && <GroupSettlements />}
             {tab === "Expenses" && (
               <SwipeListView
                 className="flex-1"
@@ -387,9 +401,9 @@ export default function GroupDetailsScreen() {
                     </Text>
                   </VStack>
                 )}
+                ListFooterComponent={() => <Box className="h-16" />}
               />
             )}
-            {tab === "Settlements" && <GroupSettlements />}
             {tab === "Group Info" && <GroupDetailsTab />}
           </ScrollView>
         </LoadingWrapper>
@@ -413,7 +427,7 @@ export default function GroupDetailsScreen() {
             details: null,
             memberList: [],
             expenseList: [],
-            memberTotalsList: []
+            settlementList: []
           }));
           router.push("/groups");
         }}
@@ -467,9 +481,8 @@ function ExpenseItem({
         </VStack>
         <VStack className="items-end gap-y-1">
           <Text className="text-lg text-right">
-            {formatAmount(expense.amount)}
+            {formatAmount(expense.amount, expense.currency)}
           </Text>
-          {expense.status && <StatusBadge status={expense.status} size="md" />}
         </VStack>
         <Icon as="chevron-right" className="text-secondary-950" />
       </HStack>

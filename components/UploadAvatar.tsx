@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import AppButton from "./FormButton";
 import { Box } from "./ui/box";
-import { Pressable } from "./ui/pressable";
 import { VStack } from "./ui/vstack";
 
 const UploadAvatar = ({
@@ -51,36 +50,26 @@ const UploadAvatar = ({
   };
 
   return (
-    <VStack>
-      <Pressable onPress={pickImage} className="items-center">
-        {image ? (
-          <Box className="border-primary-400 border-2 rounded-full">
-            <AppAvatar
-              name="A"
-              className={cn(
-                type === "onboarding" ? "h-[100] w-[100]" : "h-[64] w-[64]"
-              )}
-              uri={image}
-            />
-          </Box>
-        ) : (
-          <Pressable onPress={pickImage} className="items-center">
-            <Box
-              className={cn(
-                "border-2 border-background-200 rounded-full justify-center items-center",
-                type === "onboarding" ? "h-[100] w-[100]" : "h-[64] w-[64]"
-              )}
-            >
-              <Upload size={24} color={getSecondaryHex("text-secondary-950")} />
-            </Box>
-          </Pressable>
-        )}
-      </Pressable>
+    <VStack className="gap-y-4 items-center">
+      {image ? (
+        <Box className="border-2 border-background-200 rounded-full">
+          <AppAvatar name="A" className="h-[100] w-[100]" uri={image} />
+        </Box>
+      ) : (
+        <Box
+          className={cn(
+            "border-2 border-background-200 rounded-full justify-center items-center h-[100] w-[100]"
+          )}
+        >
+          <Upload size={24} color={getSecondaryHex("text-secondary-950")} />
+        </Box>
+      )}
       <AppButton
         onPress={pickImage}
-        size="md"
+        size="sm"
+        className="self-center rounded-full"
         text={image ? "Change Avatar" : "Upload Avatar"}
-        variant="link"
+        variant="outline"
       />
     </VStack>
   );

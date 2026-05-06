@@ -9,10 +9,11 @@ import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import AppearanceSheet from "@/features/profile/components/AppearanceSheet";
+import NotificationsSheet from "@/features/profile/components/NotificationsSheet";
 import TabLayout from "@/layouts/TabLayout";
 import states from "@/states";
-import { getSecondaryHex } from "@/utils/getColorHex";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
+import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
 import {
   Bell,
@@ -22,50 +23,67 @@ import {
   UserLock,
   UsersRound
 } from "lucide-react-native";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 export default function ProfileScreen() {
-  const { details: userDetails, signOut } = states.user();
+  const { details: userDetails, signOut, appearanceMode, notificationsEnabled } =
+    states.user();
   const { reset: resetExpenseState } = states.expense();
   const { reset: resetGroupState } = states.group();
   const { reset: resetNotificationState } = states.notification();
 
   const router = useRouter();
 
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  const appearanceLabel =
+    appearanceMode === "dark"
+      ? "Dark"
+      : appearanceMode === "system"
+        ? "System"
+        : "Light";
+
   const menuItems = useMemo(
     () => [
       {
-        icon: <UserCircle color={getSecondaryHex("text-secondary-950")} />,
+        icon: <UserCircle color={getPrimaryHex("text-primary-400")} />,
         label: "Personal Info",
         description: "View and edit your personal information",
-        onPress: () => {}
+        onPress: () => router.push("/profile/personal-info")
       },
       {
-        icon: <UsersRound color={getSecondaryHex("text-secondary-950")} />,
+        icon: <UsersRound color={getPrimaryHex("text-primary-400")} />,
         label: "Friends & Connections",
         description: "Manage your friends and social connections",
         onPress: () => {}
       },
       {
-        icon: <UserLock color={getSecondaryHex("text-secondary-950")} />,
+        icon: <UserLock color={getPrimaryHex("text-primary-400")} />,
         label: "Account & Privacy",
         description: "Manage your account settings and privacy preferences",
-        onPress: () => {}
+        onPress: () => router.push("/profile/account-settings")
       },
       {
-        icon: <Eye color={getSecondaryHex("text-secondary-950")} />,
+        icon: <Eye color={getPrimaryHex("text-primary-400")} />,
         label: "App Appearance",
         description: "Customize the look and feel of the app",
-        onPress: () => {}
+        value: <Text className="text-lg">{appearanceLabel}</Text>,
+        onPress: () => setAppearanceOpen(true)
       },
       {
-        icon: <Bell color={getSecondaryHex("text-secondary-950")} />,
+        icon: <Bell color={getPrimaryHex("text-primary-400")} />,
         label: "Notifications",
         description: "Manage your notification preferences",
-        onPress: () => {}
+        value: (
+          <Text className="text-lg">
+            {notificationsEnabled ? "On" : "Off"}
+          </Text>
+        ),
+        onPress: () => setNotificationsOpen(true)
       }
     ],
-    []
+    [appearanceLabel, notificationsEnabled]
   );
 
   const handleSignOut = () => {
@@ -123,6 +141,16 @@ export default function ProfileScreen() {
           </VStack>
         </VStack>
       </ScrollView>
+
+      <AppearanceSheet
+        isOpen={appearanceOpen}
+        onClose={() => setAppearanceOpen(false)}
+      />
+
+      <NotificationsSheet
+        isOpen={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+      />
     </TabLayout>
   );
 }
@@ -134,28 +162,24 @@ function MenuItem({
     icon: React.ReactNode;
     label: string;
     description: string;
+    value?: React.ReactNode;
     onPress: () => void;
   };
 }) {
-  const { icon, label, description, onPress } = item;
+  const { icon, label, description, value, onPress } = item;
 
   return (
     <PressableListItem onPress={onPress}>
       <HStack className="p-4 gap-x-4 items-center">
         {icon}
         <VStack className="flex-1">
-          <Text
-            className={cn(
-              "text-lg flex-1",
-              label === "Sign Out" ? "text-error-400" : undefined
-            )}
-          >
-            {label}
-          </Text>
-
+          <Text className="text-lg flex-1">{label}</Text>
           <Text className="text-secondary-950">{description}</Text>
         </VStack>
-        <Icon as="chevron-right" className="text-secondary-950" />
+        <HStack className="gap-x-2 items-center">
+          {value}
+          <Icon as="chevron-right" className="text-secondary-950" />
+        </HStack>
       </HStack>
     </PressableListItem>
   );

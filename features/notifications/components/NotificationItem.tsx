@@ -56,7 +56,7 @@ export default function NotificationItem({
           </Text>
         </VStack>
         <HStack className="items-center justify-center">
-          {item.is_read && (
+          {!item.is_read && (
             <Box className="w-4 h-4 rounded-full bg-primary-400" />
           )}
           <Icon as="chevron-right" className="text-secondary-950" />

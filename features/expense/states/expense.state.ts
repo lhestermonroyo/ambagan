@@ -2,7 +2,7 @@ import { ExpenseState } from "@/types/expenses";
 import { create } from "zustand";
 
 const initialState: ExpenseState = {
-  paymentList: [],
+  activityList: [],
   details: null,
   payerList: [],
   memberSplitList: [],

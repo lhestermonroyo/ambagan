@@ -1,6 +1,6 @@
-import CurrencySelection from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import { Avatar } from "@/components/ui/avatar";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,16 +11,19 @@ import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementItem from "@/features/expense/components/SettlementItem";
-import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
 import NotificationSheet from "@/features/notifications/components/NotificationSheet";
 import services from "@/services";
 import states from "@/states";
 import { PaymentPreview } from "@/types/expenses";
-import { getSecondaryHex } from "@/utils/getColorHex";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
+import {
+  getErrorHex,
+  getSecondaryHex,
+  getSuccessHex
+} from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   BanknoteArrowDown,
@@ -36,11 +39,10 @@ export default function HomeScreen() {
     activities: false,
     groups: false
   });
-  const [stats, setStats] = useState({
-    totalReceive: 0,
-    totalPay: 0
-  });
-  const [currency, setCurrency] = useState("PHP");
+  const [stats, setStats] = useState<{
+    toPay: { currency: string; amount: number }[];
+    toReceive: { currency: string; amount: number }[];
+  }>({ toPay: [], toReceive: [] });
 
   const [initialized, setInitialized] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -51,7 +53,7 @@ export default function HomeScreen() {
 
   const { details: userDetails, signOut } = states.user();
   const { list: groupList } = states.group();
-  const { paymentList } = states.expense();
+  const { activityList } = states.expense();
   const { unreadCount } = states.notification();
 
   const router = useRouter();
@@ -71,7 +73,7 @@ export default function HomeScreen() {
     await Promise.all([
       fetchStats(),
       fetchGroups(isInitialized),
-      fetchPayments(isInitialized),
+      fetchActivities(isInitialized),
       fetchUnreadCount()
     ]).then(() => {
       setInitialized(true);
@@ -97,15 +99,15 @@ export default function HomeScreen() {
       if (!response) return;
 
       setStats({
-        totalReceive: response.totalReceive,
-        totalPay: response.totalPay
+        toPay: response.toPay,
+        toReceive: response.toReceive
       });
     } catch (error) {
       console.error("Failed to fetch expense statistics:", error);
     }
   };
 
-  const fetchPayments = async (isInitialized = false) => {
+  const fetchActivities = async (isInitialized = false) => {
     if (!userDetails?.id) return;
 
     if (!isInitialized) {
@@ -124,7 +126,7 @@ export default function HomeScreen() {
 
       states.expense.setState((prev) => ({
         ...prev,
-        paymentList: response.data
+        activityList: response.data
       }));
     } catch (error) {
       console.error("Failed to fetch recent expenses:", error);
@@ -161,8 +163,8 @@ export default function HomeScreen() {
   }, [groupList]);
 
   const activitiesPreview = useMemo(() => {
-    return paymentList.slice(0, 5);
-  }, [paymentList]);
+    return activityList.slice(0, 5);
+  }, [activityList]);
 
   return (
     <Fragment>
@@ -170,13 +172,13 @@ export default function HomeScreen() {
         className="flex-1 bg-secondary-0"
         behavior="padding"
       >
-        <Box className="sticky top-0 px-4 pt-20 bg-primary-400">
-          <HStack className="items-center">
+        <Box className="sticky top-0 px-4 pt-20 pb-2 bg-primary-400">
+          <HStack className="items-center justify-center">
             <VStack className="flex-1">
               <Text className="text-background-0 opacity-80 text-lg">
                 Hello,
               </Text>
-              <Text bold className="text-2xl text-background-0">
+              <Text bold className="text-xl text-background-0">
                 {userDetails?.first_name} {userDetails?.last_name}
               </Text>
             </VStack>
@@ -200,33 +202,21 @@ export default function HomeScreen() {
         </Box>
         <ScrollView className="flex-1" bounces={false}>
           <VStack className="gap-y-4 bg-background-0 flex-1">
-            <Box className="bg-primary-400 max-h-44">
+            <Box className="bg-primary-400 max-h-40">
               <Card
                 className="m-4 rounded-2xl shadow-lg shadow-primary-400/20"
                 variant="elevated"
               >
-                <VStack className="gap-y-4 pb-2">
-                  <HStack className="items-center h-11">
+                <VStack className="gap-y-4">
+                  <HStack className="items-center">
                     <Text className="text-secondary-950 font-semibold uppercase flex-1">
                       Your Snapshot
                     </Text>
-                    <CurrencySelection
-                      currency={currency}
-                      onCurrencyChange={(value) => setCurrency(value)}
-                    />
                   </HStack>
                   <HStack className="gap-x-4 items-center">
-                    <StatItem
-                      type="RECEIVE"
-                      amount={stats.totalReceive}
-                      currency={currency}
-                    />
+                    <StatItem type="RECEIVE" items={stats.toReceive} />
                     <Divider orientation="vertical" />
-                    <StatItem
-                      type="PAY"
-                      amount={stats.totalPay}
-                      currency={currency}
-                    />
+                    <StatItem type="PAY" items={stats.toPay} />
                   </HStack>
                   <HStack className="gap-x-2">
                     <FormButton
@@ -258,7 +248,7 @@ export default function HomeScreen() {
               </Card>
             </Box>
 
-            <VStack className="mt-20">
+            <VStack className="mt-24">
               <HStack className="items-center justify-between px-4">
                 <Text bold className="text-2xl">
                   Recent Activities
@@ -361,58 +351,32 @@ export default function HomeScreen() {
 
 function StatItem({
   type,
-  amount,
-  currency = "PHP"
+  items
 }: {
   type: "RECEIVE" | "PAY";
-  amount: number;
-  currency: string;
+  items: { currency: string; amount: number }[];
 }) {
-  return (
-    <HStack className="items-center flex-1 h-30">
-      <VStack className="gap-y-4">
-        <VStack className="gap-y-4">
-          {type === "RECEIVE" ? (
-            <HStack className="gap-x-2 items-center">
-              <Box
-                className={cn(
-                  "w-6 h-6 items-center justify-center rounded-lg bg-primary-400"
-                )}
-              >
-                <BanknoteArrowDown
-                  size={14}
-                  color={getSecondaryHex("text-secondary-0")}
-                />
-              </Box>
+  const label = type === "PAY" ? "To Pay" : "To Collect";
 
-              <Text className="text-secondary-950">To Receive</Text>
-            </HStack>
-          ) : (
-            <HStack className="gap-x-2 items-center">
-              <Box
-                className={cn(
-                  "w-6 h-6 items-center justify-center rounded-lg bg-error-400"
-                )}
-              >
-                <BanknoteArrowUp
-                  size={14}
-                  color={getSecondaryHex("text-secondary-0")}
-                />
-              </Box>
-              <Text className="text-secondary-950">To Pay</Text>
-            </HStack>
-          )}
-          <Text
-            bold
-            className={cn(
-              "text-3xl",
-              type === "RECEIVE" ? undefined : "text-error-400"
-            )}
-          >
-            {formatAmount(amount, currency)}
-          </Text>
-        </VStack>
+  return (
+    <VStack className="flex-1 gap-y-2">
+      {type === "RECEIVE" ? (
+        <Avatar size="sm" className="bg-success-100 border border-success-200">
+          <BanknoteArrowUp size={16} color={getSuccessHex("text-success-600")} />
+        </Avatar>
+      ) : (
+        <Avatar size="sm" className="bg-error-100 border border-error-200">
+          <BanknoteArrowDown size={16} color={getErrorHex("text-error-600")} />
+        </Avatar>
+      )}
+      <VStack className="gap-y-1">
+        <CurrencyAmountDisplay
+          items={items}
+          label={label}
+          type={type === "PAY" ? "pay" : "receive"}
+        />
+        <Text className="text-secondary-950">{label}</Text>
       </VStack>
-    </HStack>
+    </VStack>
   );
 }

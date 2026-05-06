@@ -11,25 +11,18 @@ import states from "@/states";
 import { Member } from "@/types/groups";
 import { categories } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
-import { differenceInDays, parseISO } from "date-fns";
 import React, { Fragment, useMemo, useState } from "react";
 import EditMembersSheet from "./EditMemberSheet";
 
 export default function GroupDetailsTab() {
-  const { details, memberList, expenseList } = states.group();
+  const { details, memberList } = states.group();
+
+  if (!details) return null;
 
   const [isEditMembersOpen, setIsEditMembersOpen] = useState(false);
   const [tab, setTab] = useState<"members" | "admin">("members");
 
   const { details: userDetails } = states.user();
-
-  const daysInactive = useMemo(() => {
-    if (!expenseList || expenseList.length === 0) return 0;
-    const latest = expenseList.reduce((a, b) =>
-      new Date(a.created_at) > new Date(b.created_at) ? a : b
-    );
-    return differenceInDays(new Date(), parseISO(latest.created_at));
-  }, [expenseList]);
 
   const categoryLabel = useMemo(() => {
     if (!details) return null;
@@ -46,16 +39,6 @@ export default function GroupDetailsTab() {
       return memberList.filter((m) => m.id === details.admin.id);
     }
   }, [memberList, tab, details]);
-
-  if (!details) {
-    return (
-      <Box className="p-4">
-        <Text className="text-center text-secondary-950">
-          No group details available.
-        </Text>
-      </Box>
-    );
-  }
 
   return (
     <Fragment>
@@ -80,14 +63,6 @@ export default function GroupDetailsTab() {
           <DetailRow
             label="Created at"
             value={<Text>{formatDate(details?.created_at || "")}</Text>}
-          />
-          <DetailRow
-            label="Days Inactive"
-            value={
-              <Text>
-                {daysInactive} {daysInactive === 1 ? "day" : "days"}
-              </Text>
-            }
           />
           <DetailRow
             label="Members"

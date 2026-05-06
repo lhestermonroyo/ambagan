@@ -211,7 +211,8 @@ export default function NewExpenseScreen() {
         description: values.description,
         group_id: values.group.id,
         proof_of_payment: values.proof_of_payment,
-        split_type: values.split_type
+        split_type: values.split_type,
+        currency: values.currency
       };
       const mappedSplits = Object.keys(splits)
         .filter(

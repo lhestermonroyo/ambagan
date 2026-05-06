@@ -1,7 +1,7 @@
 import { UserPreview } from "./user";
 
 export type ExpenseState = {
-  paymentList: PaymentPreview[];
+  activityList: PaymentPreview[];
   details: Expense | null;
   payerList: ExpensePayer[];
   memberSplitList: MemberSplit[];
@@ -28,6 +28,7 @@ export type ExpensePayer = {
   expense_id: string;
   payer: UserPreview;
   amount: number;
+  currency: string;
 };
 
 export type ExpensePreview = Pick<
@@ -51,6 +52,7 @@ export type MemberSplit = {
   member: UserPreview;
   amount: number;
   percentage: number;
+  currency: string;
 };
 
 export type Payment = {
@@ -62,6 +64,7 @@ export type Payment = {
   member: UserPreview;
   payer: UserPreview;
   amount: number;
+  currency: string;
   proof_of_payment: string | null;
   member_note: string | null;
   payer_note: string | null;
@@ -78,6 +81,7 @@ export type PaymentPreview = Pick<
   | "member"
   | "payer"
   | "amount"
+  | "currency"
   | "status"
 > & {
   expense_description?: string | null;

@@ -1,17 +1,28 @@
+import AppAvatar from "@/components/AppAvatar";
 import ConfirmIconButton from "@/components/ConfirmIconButton";
+import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import { Box } from "@/components/ui/box";
+import { Divider } from "@/components/ui/divider";
+import { FlatList } from "@/components/ui/flat-list";
+import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
-import MemberExpenseDetails from "@/features/expense/components/MemberExpenseDetails";
-import PayerExpenseDetails from "@/features/expense/components/PayerExpenseDetails";
+import { Text } from "@/components/ui/text";
+import { VStack } from "@/components/ui/vstack";
+import StatusBadge from "@/features/expense/components/StatusBadge";
+import { formatAmount } from "@/features/expense/utils/formatAmount";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
+import { ExpensePayer, MemberSplit, Payment } from "@/types/expenses";
+import { formatDate } from "@/utils/formatDate";
+import { getPrimaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { Fragment, useMemo } from "react";
+import { FileImage } from "lucide-react-native";
+import { Fragment, ReactNode, useMemo } from "react";
 
 export default function ExpenseDetailsScreen() {
-  const user = states.user();
   const { details: groupDetails } = states.group();
   const {
     details: expenseDetails,
@@ -19,7 +30,7 @@ export default function ExpenseDetailsScreen() {
     memberSplitList,
     paymentSplitList
   } = states.expense();
-  const { details: userDetails } = user;
+  const { details: userDetails } = states.user();
 
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -42,27 +53,18 @@ export default function ExpenseDetailsScreen() {
   );
 
   const init = async (groupId: string, expenseId: string) => {
-    const requests = [
+    const requests: Promise<void>[] = [
       fetchExpenseDetails(expenseId),
       fetchPayers(expenseId),
-      fetchMemberSplits(expenseId)
+      fetchMemberSplits(expenseId),
+      fetchPayments(expenseId)
     ];
 
     if (!groupDetails) {
       requests.push(fetchGroupDetails(groupId));
     }
+
     await Promise.all(requests);
-
-    const { payerList: updatedPayerList } = states.expense.getState();
-    const isUserPayer = updatedPayerList.some(
-      (p) => p.payer.id === userDetails?.id
-    );
-
-    if (isUserPayer) {
-      await fetchPayments(expenseId);
-    } else {
-      await fetchMyPayments(expenseId);
-    }
   };
 
   const fetchGroupDetails = async (groupId: string) => {
@@ -76,10 +78,7 @@ export default function ExpenseDetailsScreen() {
 
       states.group.setState((prev) => ({
         ...prev,
-        details: {
-          ...prev,
-          ...response
-        }
+        details: { ...prev, ...response }
       }));
     } catch (error) {
       console.log("Error fetching group details:", error);
@@ -90,13 +89,8 @@ export default function ExpenseDetailsScreen() {
   const fetchExpenseDetails = async (expenseId: string) => {
     try {
       const response = await services.expense.getExpenseById(expenseId);
-
       if (!response) return;
-
-      states.expense.setState((prev) => ({
-        ...prev,
-        details: response
-      }));
+      states.expense.setState((prev) => ({ ...prev, details: response }));
     } catch (error) {
       console.log("Error fetching expense details:", error);
     }
@@ -105,13 +99,8 @@ export default function ExpenseDetailsScreen() {
   const fetchPayers = async (expenseId: string) => {
     try {
       const response = await services.expense.getPayersByExpenseId(expenseId);
-
       if (!response) return;
-
-      states.expense.setState((prev) => ({
-        ...prev,
-        payerList: response
-      }));
+      states.expense.setState((prev) => ({ ...prev, payerList: response }));
     } catch (error) {
       console.log("Error fetching payers:", error);
     }
@@ -121,9 +110,7 @@ export default function ExpenseDetailsScreen() {
     try {
       const response =
         await services.expense.getMemberSplitsByExpenseId(expenseId);
-
       if (!response) return;
-
       states.expense.setState((prev) => ({
         ...prev,
         memberSplitList: response
@@ -136,30 +123,13 @@ export default function ExpenseDetailsScreen() {
   const fetchPayments = async (expenseId: string) => {
     try {
       const response = await services.expense.getPaymentsByExpenseId(expenseId);
-
       if (!response) return;
-
       states.expense.setState((prev) => ({
         ...prev,
         paymentSplitList: response
       }));
     } catch (error) {
       console.log("Error fetching payments:", error);
-    }
-  };
-
-  const fetchMyPayments = async (expenseId: string) => {
-    try {
-      const response = await services.expense.getPaymentsByExpenseId(expenseId);
-
-      if (!response) return;
-
-      states.expense.setState((prev) => ({
-        ...prev,
-        paymentSplitList: response
-      }));
-    } catch (error) {
-      console.log("Error fetching my payments:", error);
     }
   };
 
@@ -203,15 +173,27 @@ export default function ExpenseDetailsScreen() {
     router.back();
   };
 
-  const isPayer = useMemo(() => {
-    return payerList.some((payer) => payer.payer.id === userDetails?.id);
-  }, [payerList, userDetails]);
+  const isPayer = useMemo(
+    () => payerList.some((payer) => payer.payer.id === userDetails?.id),
+    [payerList, userDetails]
+  );
+
+  const memberPaymentMap = useMemo(() => {
+    const map: Record<string, Payment> = {};
+    paymentSplitList.forEach((p) => {
+      const existing = map[p.member.id];
+      if (!existing || p.status !== "settled") {
+        map[p.member.id] = p;
+      }
+    });
+    return map;
+  }, [paymentSplitList]);
 
   return (
     <Fragment>
       <InnerLayout
         title="Expense Details"
-        onBack={() => handleBack()}
+        onBack={handleBack}
         actions={[
           isPayer && (
             <ConfirmIconButton
@@ -234,16 +216,186 @@ export default function ExpenseDetailsScreen() {
           text="Loading expense details, please wait..."
         >
           <ScrollView className="flex-1" bounces={false}>
-            {isPayer ? (
-              <PayerExpenseDetails onRefetch={() => fetchPayments(expenseId)} />
-            ) : (
-              <MemberExpenseDetails
-                onRefetch={() => fetchPayments(expenseId)}
-              />
+            {expenseDetails && (
+              <VStack className="gap-y-6 pb-2">
+                <VStack className="w-full gap-y-1 px-4">
+                  <Text className="text-3xl" bold>
+                    {formatAmount(expenseDetails.amount, expenseDetails.currency)}
+                  </Text>
+                  <Text className="text-lg text-secondary-950">
+                    {expenseDetails.description}
+                  </Text>
+                </VStack>
+
+                <VStack className="gap-y-2">
+                  <Box className="bg-secondary-100 mx-4 rounded-xl overflow-hidden">
+                    <DetailRow
+                      label="Expense Date"
+                      value={
+                        <Text>{formatDate(expenseDetails.created_at)}</Text>
+                      }
+                    />
+                    <DetailRow
+                      label="Created By"
+                      value={
+                        <HStack className="gap-x-2 items-center">
+                          <AppAvatar
+                            name={`${expenseDetails.creator.first_name} ${expenseDetails.creator.last_name}`}
+                            uri={expenseDetails.creator.avatar!}
+                            size="sm"
+                          />
+                          <Text>
+                            {expenseDetails.creator.first_name}{" "}
+                            {expenseDetails.creator.last_name}
+                            {expenseDetails.creator.id === userDetails?.id &&
+                              " (You)"}
+                          </Text>
+                        </HStack>
+                      }
+                    />
+                    <DetailRow
+                      label="Split Type"
+                      value={
+                        <Text className="capitalize">
+                          {expenseDetails.split_type}
+                        </Text>
+                      }
+                    />
+                    <DetailRow
+                      label="Proof of Payment"
+                      value={
+                        expenseDetails.proof_of_payment ? (
+                          <FormButton
+                            size="md"
+                            variant="outline"
+                            text="View Image"
+                            icon={
+                              <FileImage
+                                size={18}
+                                color={getPrimaryHex("text-primary-500")}
+                              />
+                            }
+                            onPress={() => {}}
+                          />
+                        ) : (
+                          <Text className="text-secondary-950">N/A</Text>
+                        )
+                      }
+                    />
+                  </Box>
+                </VStack>
+
+                <VStack className="gap-y-2">
+                  <Text className="text-xl px-4" bold>
+                    Members Split
+                  </Text>
+                  <FlatList
+                    className="flex-1"
+                    scrollEnabled={false}
+                    data={memberSplitList}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => (
+                      <MemberSplitItem
+                        memberSplit={item}
+                        payment={memberPaymentMap[item.member.id]}
+                      />
+                    )}
+                    ItemSeparatorComponent={() => (
+                      <Box className="mx-4">
+                        <Divider className="border-secondary-100" />
+                      </Box>
+                    )}
+                  />
+                </VStack>
+
+                <VStack className="gap-y-2">
+                  <Text className="text-xl px-4" bold>
+                    Payers' Contribution
+                  </Text>
+                  <FlatList
+                    className="flex-1"
+                    scrollEnabled={false}
+                    data={payerList}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => <PayerItem payer={item} />}
+                    ItemSeparatorComponent={() => (
+                      <Box className="mx-4">
+                        <Divider className="border-secondary-100" />
+                      </Box>
+                    )}
+                  />
+                </VStack>
+              </VStack>
             )}
           </ScrollView>
         </LoadingWrapper>
       </InnerLayout>
     </Fragment>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <HStack className="items-center justify-between p-4">
+      <Text className="text-secondary-950">{label}</Text>
+      {value}
+    </HStack>
+  );
+}
+
+function MemberSplitItem({
+  memberSplit,
+  payment
+}: {
+  memberSplit: MemberSplit;
+  payment?: Payment;
+}) {
+  const { details: userDetails } = states.user();
+  const isMe = memberSplit.member.id === userDetails?.id;
+
+  return (
+    <HStack className="p-4 gap-x-2 items-center">
+      <AppAvatar
+        name={memberSplit.member.first_name}
+        uri={memberSplit.member.avatar!}
+        size="md"
+      />
+      <VStack className="flex-1">
+        <Text className="text-lg">
+          {memberSplit.member.first_name} {memberSplit.member.last_name}
+          {isMe && " (You)"}
+        </Text>
+        <Text className="text-secondary-950">{memberSplit.member.email}</Text>
+      </VStack>
+      <VStack className="items-end gap-y-1">
+        <Text className="text-lg">{formatAmount(memberSplit.amount, memberSplit.currency)}</Text>
+        {payment && <StatusBadge status={payment.status} size="md" />}
+      </VStack>
+    </HStack>
+  );
+}
+
+function PayerItem({ payer }: { payer: ExpensePayer }) {
+  const { details: userDetails } = states.user();
+  const isMe = payer.payer.id === userDetails?.id;
+
+  return (
+    <HStack className="p-4 items-center justify-between">
+      <HStack className="gap-x-2 items-center flex-1">
+        <AppAvatar
+          name={payer.payer.first_name}
+          uri={payer.payer.avatar!}
+          size="md"
+        />
+        <VStack>
+          <Text className="text-lg">
+            {payer.payer.first_name} {payer.payer.last_name}
+            {isMe && " (You)"}
+          </Text>
+          <Text className="text-secondary-950">{payer.payer.email}</Text>
+        </VStack>
+      </HStack>
+      <Text className="text-lg">{formatAmount(payer.amount, payer.currency)}</Text>
+    </HStack>
   );
 }

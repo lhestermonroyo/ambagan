@@ -37,12 +37,15 @@ export default function SettlementItem({
           )}
         >
           {isUserPayer ? (
-            <BanknoteArrowDown
+            <BanknoteArrowUp
               size={16}
               color={getSuccessHex("text-success-600")}
             />
           ) : (
-            <BanknoteArrowUp size={16} color={getErrorHex("text-error-600")} />
+            <BanknoteArrowDown
+              size={16}
+              color={getErrorHex("text-error-600")}
+            />
           )}
         </Avatar>
         <VStack className="gap-y-2 flex-1">
@@ -70,7 +73,7 @@ export default function SettlementItem({
             </VStack>
             <HStack className="gap-x-2 items-center">
               <VStack className="items-end">
-                <Text className="text-lg">{formatAmount(item.amount)}</Text>
+                <Text className="text-lg">{formatAmount(item.amount, item.currency)}</Text>
                 <StatusBadge status={item.status} size="md" />
               </VStack>
               <Icon as="chevron-right" className="text-secondary-950" />

@@ -1,4 +1,5 @@
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import {
   ArrowLeftRight,
@@ -20,8 +21,8 @@ export default function TabButton(
     props;
   const isActive = props["aria-selected"];
   const color = isActive
-    ? getPrimaryHex("text-primary-400")
-    : getSecondaryHex("text-secondary-950");
+    ? getSecondaryHex("text-secondary-0")
+    : getPrimaryHex("text-primary-400");
 
   let icon: JSX.Element | null = null;
   switch (props.label) {
@@ -42,10 +43,13 @@ export default function TabButton(
   }
 
   return (
-    <VStack className="items-center justify-center py-2">
+    <VStack className="items-center justify-center">
       <Button
         variant="link"
-        className="flex flex-col gap-y-1"
+        className={cn(
+          "flex flex-col gap-y-1 w-24 h-16 rounded-full items-center justify-center",
+          isActive ? "bg-primary-600" : "bg-transparent"
+        )}
         onPress={onPress}
         accessibilityState={accessibilityState}
         accessibilityLabel={accessibilityLabel}
@@ -54,7 +58,7 @@ export default function TabButton(
         {icon}
         <Text
           size="sm"
-          className={isActive ? "text-primary-400" : "text-secondary-950"}
+          className={cn(isActive ? "text-secondary-0" : "text-primary-400")}
         >
           {label}
         </Text>

@@ -160,7 +160,7 @@ export default function SettlementActionSheet({
                     <HStack className="gap-x-2 items-center">
                       <VStack className="items-end">
                         <Text className="text-lg">
-                          {formatAmount(item.amount)}
+                          {formatAmount(item.amount, item.currency)}
                         </Text>
                         <StatusBadge status={item.status} size="md" />
                       </VStack>
@@ -173,10 +173,10 @@ export default function SettlementActionSheet({
             <VStack className="gap-y-2">
               <FormButton
                 variant="outline"
-                text="Expense Details"
+                text="Open Group Settlement"
                 onPress={() => {
                   onClose();
-                  router.push(`/groups/${item.group_id}/${item.expense_id}`);
+                  router.push(`/groups/${item.group_id}`);
                 }}
               />
               {actionConfig && (

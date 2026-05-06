@@ -1,10 +1,17 @@
 import { Session } from "@supabase/supabase-js";
 
+export type AppearanceMode = "light" | "dark" | "system";
+
 export type UserState = {
   session: Session | null;
   details: User | null;
   loading: boolean;
+  appearanceMode: AppearanceMode;
+  notificationsEnabled: boolean;
   signOut: () => Promise<void>;
+  setAppearanceMode: (mode: AppearanceMode) => Promise<void>;
+  setNotificationsEnabled: (enabled: boolean) => Promise<void>;
+  loadPreferences: () => Promise<void>;
 };
 
 export type User = {

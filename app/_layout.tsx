@@ -1,7 +1,6 @@
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
 import { ToastProvider } from "@/hooks/use-app-toast";
-import { useColorScheme } from "@/hooks/use-color-scheme.web";
 import services from "@/services";
 import states from "@/states";
 import { supabase } from "@/utils/supabase";
@@ -25,9 +24,12 @@ export default function RootLayout() {
     "GoogleSans-Bold": require("@/assets/fonts/GoogleSans-Bold.ttf"),
     "GoogleSans-BoldItalic": require("@/assets/fonts/GoogleSans-BoldItalic.ttf")
   });
-  const colorScheme = useColorScheme();
   const router = useRouter();
-  const { loading } = states.user();
+  const { loading, appearanceMode, loadPreferences } = states.user();
+
+  useEffect(() => {
+    loadPreferences();
+  }, []);
 
   useEffect(() => {
     if (loaded && !loading) {
@@ -94,7 +96,7 @@ export default function RootLayout() {
   }
 
   return (
-    <GluestackUIProvider mode="light">
+    <GluestackUIProvider mode={appearanceMode}>
       <ToastProvider>
         <ThemeProvider value={DefaultTheme}>
           <Stack screenOptions={{ headerShown: false }} />
