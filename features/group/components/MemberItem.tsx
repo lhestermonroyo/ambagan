@@ -7,6 +7,7 @@ import states from "@/states";
 import { UserPreview } from "@/types/user";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { X } from "lucide-react-native";
+import { useColorScheme } from "react-native";
 
 export default function MemberItem({
   item,
@@ -17,6 +18,7 @@ export default function MemberItem({
 }) {
   const user = states.user();
   const { details: userDetails } = user;
+  const colorScheme = useColorScheme() ?? "light";
 
   const isMe = item.id === userDetails?.id;
 
@@ -36,7 +38,7 @@ export default function MemberItem({
       </HStack>
       {!isMe && (
         <Button variant="link" className="rounded-full" onPress={onRemove}>
-          <X color={getSecondaryHex("text-secondary-950")} />
+          <X color={getSecondaryHex("text-secondary-950", colorScheme)} />
         </Button>
       )}
     </HStack>

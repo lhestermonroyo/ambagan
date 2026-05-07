@@ -14,6 +14,7 @@ import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountD
 import MarkAsSettledSheet from "@/features/expense/components/MarkAsSettledSheet";
 import RequestSettledSheet from "@/features/expense/components/RequestSettledSheet";
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
+import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { sortPaymentsByStatus } from "@/features/expense/utils/payment.util";
 import ViewBySheet, {
@@ -23,27 +24,19 @@ import services from "@/services";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { getDateGroupTitle } from "@/utils/formatDate";
-import {
-  getErrorHex,
-  getPrimaryHex,
-  getSecondaryHex,
-  getSuccessHex
-} from "@/utils/getColorHex";
+import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { format, parseISO } from "date-fns";
 import { useFocusEffect } from "expo-router";
-import {
-  BanknoteArrowDown,
-  BanknoteArrowUp,
-  HouseHeart,
-  LayoutList
-} from "lucide-react-native";
+import { HouseHeart, LayoutList } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
+import { useColorScheme } from "react-native";
 
 const settlementTabs = ["All", "Pending", "Requested", "Settled"] as const;
 
 export default function GroupSettlements() {
   const { details, expenseList, settlementList } = states.group();
   const { details: userDetails } = states.user();
+  const colorScheme = useColorScheme() ?? "light";
 
   const [loading, setLoading] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
@@ -239,11 +232,12 @@ export default function GroupSettlements() {
               >
                 <HouseHeart
                   size={16}
-                  color={getPrimaryHex("text-primary-600")}
+                  color={getPrimaryHex("text-primary-600", colorScheme)}
                 />
               </Avatar>
               <VStack className="gap-y-1">
                 <CurrencyAmountDisplay
+                  isLoading={loading}
                   items={totalGroupSpendingsByCurrency}
                   label="Total Group Spendings"
                   type="neutral"
@@ -258,18 +252,11 @@ export default function GroupSettlements() {
 
         <HStack className="gap-x-2 px-4">
           <Card className="flex-1 rounded-lg bg-secondary-100">
-            <VStack className="gap-y-2 flex-1">
-              <Avatar
-                size="sm"
-                className="bg-success-100 border border-success-200"
-              >
-                <BanknoteArrowUp
-                  size={16}
-                  color={getSuccessHex("text-success-600")}
-                />
-              </Avatar>
-              <VStack className="flex-1 justify-between">
+            <VStack className="gap-y-2">
+              <SettlementAvatar isPayer={true} />
+              <VStack className="justify-between">
                 <CurrencyAmountDisplay
+                  isLoading={loading}
                   items={yourToCollectTotalByCurrency}
                   label="To Collect"
                   type="receive"
@@ -280,18 +267,11 @@ export default function GroupSettlements() {
           </Card>
 
           <Card className="flex-1 rounded-lg bg-secondary-100">
-            <VStack className="gap-y-2 flex-1">
-              <Avatar
-                size="sm"
-                className="bg-error-100 border border-error-200"
-              >
-                <BanknoteArrowDown
-                  size={16}
-                  color={getErrorHex("text-error-600")}
-                />
-              </Avatar>
-              <VStack className="flex-1 justify-between">
+            <VStack className="gap-y-2">
+              <SettlementAvatar isPayer={false} />
+              <VStack className="justify-between">
                 <CurrencyAmountDisplay
+                  isLoading={loading}
                   items={yourTotalUnpaidByCurrency}
                   label="To Pay"
                   type="pay"
@@ -313,7 +293,7 @@ export default function GroupSettlements() {
           >
             <LayoutList
               size={20}
-              color={getSecondaryHex("text-secondary-950")}
+              color={getSecondaryHex("text-secondary-950", colorScheme)}
             />
           </Button>
         </HStack>

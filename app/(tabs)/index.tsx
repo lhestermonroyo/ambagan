@@ -1,6 +1,7 @@
+import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import { Avatar } from "@/components/ui/avatar";
+import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,37 +9,37 @@ import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
-import { ScrollView } from "@/components/ui/scroll-view";
+import {
+  ScrollView as HScrollView,
+  ScrollView
+} from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
+import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
+import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
 import NotificationSheet from "@/features/notifications/components/NotificationSheet";
 import services from "@/services";
 import states from "@/states";
-import { PaymentPreview } from "@/types/expenses";
-import {
-  getErrorHex,
-  getSecondaryHex,
-  getSuccessHex
-} from "@/utils/getColorHex";
+import { FriendSummary, PaymentPreview } from "@/types/expenses";
+import { getSecondaryHex } from "@/utils/getColorHex";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect, useRouter } from "expo-router";
-import {
-  BanknoteArrowDown,
-  BanknoteArrowUp,
-  Bell,
-  HousePlus,
-  PlusCircle
-} from "lucide-react-native";
+import { Bell, HousePlus, PlusCircle } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
+import { useColorScheme } from "react-native";
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState({
+    stats: false,
     activities: false,
-    groups: false
+    groups: false,
+    friends: false
   });
+  const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [stats, setStats] = useState<{
     toPay: { currency: string; amount: number }[];
     toReceive: { currency: string; amount: number }[];
@@ -57,6 +58,7 @@ export default function HomeScreen() {
   const { unreadCount } = states.notification();
 
   const router = useRouter();
+  const colorScheme = useColorScheme() ?? "light";
 
   useFocusEffect(
     useMemo(
@@ -71,9 +73,10 @@ export default function HomeScreen() {
 
   const init = async (isInitialized = false) => {
     await Promise.all([
-      fetchStats(),
+      fetchStats(isInitialized),
       fetchGroups(isInitialized),
       fetchActivities(isInitialized),
+      fetchFriends(isInitialized),
       fetchUnreadCount()
     ]).then(() => {
       setInitialized(true);
@@ -90,11 +93,15 @@ export default function HomeScreen() {
     }
   };
 
-  const fetchStats = async () => {
+  const fetchStats = async (isInitialized = false) => {
+    if (!userDetails?.id) return;
+
+    if (!isInitialized) {
+      setLoading((prev) => ({ ...prev, stats: true }));
+    }
+
     try {
-      const response = await services.expense.getStatsByUserId(
-        userDetails?.id || ""
-      );
+      const response = await services.expense.getStatsByUserId(userDetails.id);
 
       if (!response) return;
 
@@ -104,6 +111,8 @@ export default function HomeScreen() {
       });
     } catch (error) {
       console.error("Failed to fetch expense statistics:", error);
+    } finally {
+      setLoading((prev) => ({ ...prev, stats: false }));
     }
   };
 
@@ -158,6 +167,19 @@ export default function HomeScreen() {
     }
   };
 
+  const fetchFriends = async (isInitialized = false) => {
+    if (!userDetails?.id) return;
+    if (!isInitialized) setLoading((prev) => ({ ...prev, friends: true }));
+    try {
+      const data = await services.friend.getFriendsSummary(userDetails.id);
+      setFriends(data);
+    } catch (error) {
+      console.error("Failed to fetch friends:", error);
+    } finally {
+      setLoading((prev) => ({ ...prev, friends: false }));
+    }
+  };
+
   const groupsPreview = useMemo(() => {
     return groupList.slice(0, 5);
   }, [groupList]);
@@ -188,7 +210,10 @@ export default function HomeScreen() {
               onPress={() => setNotificationsOpen(true)}
             >
               <Box className="relative">
-                <Bell size={24} color={getSecondaryHex("text-secondary-0")} />
+                <Bell
+                  size={24}
+                  color={getSecondaryHex("text-secondary-0", colorScheme)}
+                />
                 {unreadCount > 0 && (
                   <Box className="absolute -top-1 -right-1 bg-error-400 rounded-full flex w-4 h-4 items-center justify-center">
                     <Text className="text-background-0 text-2xs font-semibold">
@@ -214,9 +239,17 @@ export default function HomeScreen() {
                     </Text>
                   </HStack>
                   <HStack className="gap-x-4 items-center">
-                    <StatItem type="RECEIVE" items={stats.toReceive} />
+                    <StatItem
+                      type="RECEIVE"
+                      isLoading={loading.activities}
+                      items={stats.toReceive}
+                    />
                     <Divider orientation="vertical" />
-                    <StatItem type="PAY" items={stats.toPay} />
+                    <StatItem
+                      type="PAY"
+                      isLoading={loading.activities}
+                      items={stats.toPay}
+                    />
                   </HStack>
                   <HStack className="gap-x-2">
                     <FormButton
@@ -224,7 +257,10 @@ export default function HomeScreen() {
                       icon={
                         <PlusCircle
                           size={18}
-                          color={getSecondaryHex("text-secondary-0")}
+                          color={getSecondaryHex(
+                            "text-secondary-0",
+                            colorScheme
+                          )}
                         />
                       }
                       text="New Expense"
@@ -238,7 +274,10 @@ export default function HomeScreen() {
                       icon={
                         <HousePlus
                           size={18}
-                          color={getSecondaryHex("text-secondary-0")}
+                          color={getSecondaryHex(
+                            "text-secondary-0",
+                            colorScheme
+                          )}
                         />
                       }
                       onPress={() => router.push("/groups/create")}
@@ -248,16 +287,61 @@ export default function HomeScreen() {
               </Card>
             </Box>
 
-            <VStack className="mt-24">
+            <VStack className="mt-[5.5rem]">
               <HStack className="items-center justify-between px-4">
-                <Text bold className="text-2xl">
-                  Recent Activities
+                <Text bold className="text-2xl flex-1">
+                  Friends
                 </Text>
                 <FormButton
                   text="View All"
                   variant="link"
-                  onPress={() => router.push("/activities")}
+                  onPress={() => router.push("/friends")}
                 />
+              </HStack>
+              <LoadingWrapper
+                text="Loading friends"
+                isLoading={loading.friends}
+              >
+                {friends.length > 0 ? (
+                  <HScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                  >
+                    <HStack className="gap-x-2 px-4">
+                      {friends.slice(0, 5).map((item) => (
+                        <FriendCard
+                          key={item.friend.id}
+                          item={item}
+                          onPress={() =>
+                            router.push({
+                              pathname: "/friends/[friendId]",
+                              params: {
+                                friendId: item.friend.id,
+                                name: `${item.friend.first_name} ${item.friend.last_name}`,
+                                email: item.friend.email,
+                                avatar: item.friend.avatar || ""
+                              }
+                            })
+                          }
+                        />
+                      ))}
+                    </HStack>
+                  </HScrollView>
+                ) : (
+                  <VStack className="flex-1 justify-center items-center p-4">
+                    <Text className="text-secondary-950">
+                      No friends with outstanding settlements.
+                    </Text>
+                  </VStack>
+                )}
+              </LoadingWrapper>
+            </VStack>
+
+            <VStack>
+              <HStack className="items-center justify-between px-4">
+                <Text bold className="text-2xl">
+                  Recent Activities
+                </Text>
               </HStack>
               <LoadingWrapper
                 text="Loading activities"
@@ -349,28 +433,64 @@ export default function HomeScreen() {
   );
 }
 
+function FriendCard({
+  item,
+  onPress
+}: {
+  item: FriendSummary;
+  onPress: () => void;
+}) {
+  const { friend, balances } = item;
+  const [primary] = balances;
+  const isNegative = (primary?.amount ?? 0) < 0;
+  const name = `${friend.first_name} ${friend.last_name}`;
+
+  return (
+    <PressableListItem
+      onPress={onPress}
+      className="border min-w-40 border-secondary-200 rounded-lg p-4"
+    >
+      <VStack className="gap-y-2">
+        <AppAvatar name={name} uri={friend.avatar || undefined} size="sm" />
+        <VStack>
+          <Text className="text-lg" numberOfLines={2}>
+            {name}
+          </Text>
+          {primary && (
+            <Text
+              className={cn(
+                "text-lg",
+                isNegative ? "text-error-400" : undefined
+              )}
+              numberOfLines={1}
+            >
+              {isNegative ? "-" : ""}
+              {formatAmount(Math.abs(primary.amount), primary.currency)}
+            </Text>
+          )}
+        </VStack>
+      </VStack>
+    </PressableListItem>
+  );
+}
+
 function StatItem({
   type,
-  items
+  items,
+  isLoading
 }: {
   type: "RECEIVE" | "PAY";
   items: { currency: string; amount: number }[];
+  isLoading: boolean;
 }) {
   const label = type === "PAY" ? "To Pay" : "To Collect";
 
   return (
     <VStack className="flex-1 gap-y-2">
-      {type === "RECEIVE" ? (
-        <Avatar size="sm" className="bg-success-100 border border-success-200">
-          <BanknoteArrowUp size={16} color={getSuccessHex("text-success-600")} />
-        </Avatar>
-      ) : (
-        <Avatar size="sm" className="bg-error-100 border border-error-200">
-          <BanknoteArrowDown size={16} color={getErrorHex("text-error-600")} />
-        </Avatar>
-      )}
+      <SettlementAvatar isPayer={type === "RECEIVE"} />
       <VStack className="gap-y-1">
         <CurrencyAmountDisplay
+          isLoading={isLoading}
           items={items}
           label={label}
           type={type === "PAY" ? "pay" : "receive"}

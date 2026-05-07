@@ -1,31 +1,29 @@
 export const getSuccessHex = (
-  className: keyof (typeof successColorMap)["light" | "dark"]
+  className: keyof (typeof successColorMap)["light" | "dark"],
+  colorScheme: "light" | "dark" = "light"
 ) => {
-  const darkMode = false;
-  return successColorMap[darkMode ? "dark" : "light"][className] || className;
+  return successColorMap[colorScheme][className] || className;
 };
 
 export const getErrorHex = (
-  className: keyof (typeof errorColorMap)["light" | "dark"]
+  className: keyof (typeof errorColorMap)["light" | "dark"],
+  colorScheme: "light" | "dark" = "light"
 ) => {
-  const darkMode = false;
-  return errorColorMap[darkMode ? "dark" : "light"][className] || className;
+  return errorColorMap[colorScheme][className] || className;
 };
 
 export const getPrimaryHex = (
-  className: keyof (typeof primaryColorMap)["light" | "dark"]
+  className: keyof (typeof primaryColorMap)["light" | "dark"],
+  colorScheme: "light" | "dark" = "light"
 ) => {
-  const darkMode = false; // Replace with your actual dark mode state
-
-  return primaryColorMap[darkMode ? "dark" : "light"][className] || className;
+  return primaryColorMap[colorScheme][className] || className;
 };
 
 export const getSecondaryHex = (
-  className: keyof (typeof secondaryColorMap)["light" | "dark"]
+  className: keyof (typeof secondaryColorMap)["light" | "dark"],
+  colorScheme: "light" | "dark" = "light"
 ) => {
-  const darkMode = false; // Replace with your actual dark mode state
-
-  return secondaryColorMap[darkMode ? "dark" : "light"][className] || className;
+  return secondaryColorMap[colorScheme][className] || className;
 };
 
 const primaryColorMap = {

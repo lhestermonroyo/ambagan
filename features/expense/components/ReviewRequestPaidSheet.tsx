@@ -21,6 +21,7 @@ import { Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { ReceiptText } from "lucide-react-native";
+import { useColorScheme } from "react-native";
 import { Fragment, ReactNode, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
 import StatusBadge from "./StatusBadge";
@@ -44,6 +45,7 @@ export default function ReviewRequestPaidSheet({
 
   const { details: userDetails } = states.user();
   const toast = useAppToast();
+  const colorScheme = useColorScheme() ?? "light";
 
   if (!payment) {
     return null;
@@ -245,7 +247,7 @@ export default function ReviewRequestPaidSheet({
                     <VStack className="gap-y-2 items-center">
                       <ReceiptText
                         size={36}
-                        color={getSecondaryHex("text-secondary-950")}
+                        color={getSecondaryHex("text-secondary-950", colorScheme)}
                       />
                       <Text className="text-secondary-950">
                         No proof of payment provided

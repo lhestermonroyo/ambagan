@@ -1,17 +1,15 @@
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
-import { Avatar } from "@/components/ui/avatar";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import StatusBadge from "@/features/expense/components/StatusBadge";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
-import { getErrorHex, getSuccessHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import { BanknoteArrowDown, BanknoteArrowUp } from "lucide-react-native";
 
 export default function SettlementItem({
   item,
@@ -28,26 +26,7 @@ export default function SettlementItem({
   return (
     <PressableListItem className="p-4" onPress={() => onPress(item)}>
       <HStack className="gap-x-2 items-start">
-        <Avatar
-          size="sm"
-          className={cn(
-            isUserPayer
-              ? "bg-success-100 border border-success-200"
-              : "bg-error-100 border border-error-200"
-          )}
-        >
-          {isUserPayer ? (
-            <BanknoteArrowUp
-              size={16}
-              color={getSuccessHex("text-success-600")}
-            />
-          ) : (
-            <BanknoteArrowDown
-              size={16}
-              color={getErrorHex("text-error-600")}
-            />
-          )}
-        </Avatar>
+        <SettlementAvatar isPayer={isUserPayer} />
         <VStack className="gap-y-2 flex-1">
           {item.expense_description && (
             <HStack className="gap-x-4 items-center flex-1">
@@ -73,7 +52,15 @@ export default function SettlementItem({
             </VStack>
             <HStack className="gap-x-2 items-center">
               <VStack className="items-end">
-                <Text className="text-lg">{formatAmount(item.amount, item.currency)}</Text>
+                <Text
+                  className={cn(
+                    "text-lg",
+                    isUserMember ? "text-error-400" : undefined
+                  )}
+                >
+                  {isUserMember && "-"}
+                  {formatAmount(item.amount, item.currency)}
+                </Text>
                 <StatusBadge status={item.status} size="md" />
               </VStack>
               <Icon as="chevron-right" className="text-secondary-950" />

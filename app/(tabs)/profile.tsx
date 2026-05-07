@@ -19,71 +19,92 @@ import {
   Bell,
   Eye,
   LogOut,
+  MonitorCog,
+  Moon,
+  Sun,
   UserCircle,
   UserLock,
   UsersRound
 } from "lucide-react-native";
 import { useMemo, useState } from "react";
+import { useColorScheme } from "react-native";
 
 export default function ProfileScreen() {
-  const { details: userDetails, signOut, appearanceMode, notificationsEnabled } =
-    states.user();
+  const {
+    details: userDetails,
+    signOut,
+    appearanceMode,
+    notificationsEnabled
+  } = states.user();
   const { reset: resetExpenseState } = states.expense();
   const { reset: resetGroupState } = states.group();
   const { reset: resetNotificationState } = states.notification();
 
   const router = useRouter();
+  const colorScheme = useColorScheme() ?? "light";
 
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  const appearanceLabel =
-    appearanceMode === "dark"
-      ? "Dark"
-      : appearanceMode === "system"
-        ? "System"
-        : "Light";
+  const appearanceLabel = useMemo(() => {
+    switch (appearanceMode) {
+      case "light":
+        return <Sun color={getPrimaryHex("text-primary-400", colorScheme)} />;
+      case "dark":
+        return <Moon color={getPrimaryHex("text-primary-400", colorScheme)} />;
+      case "system":
+        return (
+          <MonitorCog color={getPrimaryHex("text-primary-400", colorScheme)} />
+        );
+      default:
+        return "Light";
+    }
+  }, [appearanceMode]);
 
   const menuItems = useMemo(
     () => [
       {
-        icon: <UserCircle color={getPrimaryHex("text-primary-400")} />,
+        icon: (
+          <UserCircle color={getPrimaryHex("text-primary-400", colorScheme)} />
+        ),
         label: "Personal Info",
         description: "View and edit your personal information",
         onPress: () => router.push("/profile/personal-info")
       },
       {
-        icon: <UsersRound color={getPrimaryHex("text-primary-400")} />,
+        icon: (
+          <UsersRound color={getPrimaryHex("text-primary-400", colorScheme)} />
+        ),
         label: "Friends & Connections",
         description: "Manage your friends and social connections",
         onPress: () => {}
       },
       {
-        icon: <UserLock color={getPrimaryHex("text-primary-400")} />,
+        icon: (
+          <UserLock color={getPrimaryHex("text-primary-400", colorScheme)} />
+        ),
         label: "Account & Privacy",
         description: "Manage your account settings and privacy preferences",
         onPress: () => router.push("/profile/account-settings")
       },
       {
-        icon: <Eye color={getPrimaryHex("text-primary-400")} />,
+        icon: <Eye color={getPrimaryHex("text-primary-400", colorScheme)} />,
         label: "App Appearance",
         description: "Customize the look and feel of the app",
         value: <Text className="text-lg">{appearanceLabel}</Text>,
         onPress: () => setAppearanceOpen(true)
       },
       {
-        icon: <Bell color={getPrimaryHex("text-primary-400")} />,
+        icon: <Bell color={getPrimaryHex("text-primary-400", colorScheme)} />,
         label: "Notifications",
         description: "Manage your notification preferences",
         value: (
-          <Text className="text-lg">
-            {notificationsEnabled ? "On" : "Off"}
-          </Text>
+          <Text className="text-lg">{notificationsEnabled ? "On" : "Off"}</Text>
         ),
         onPress: () => setNotificationsOpen(true)
       }
     ],
-    [appearanceLabel, notificationsEnabled]
+    [appearanceLabel, notificationsEnabled, colorScheme]
   );
 
   const handleSignOut = () => {
@@ -135,7 +156,10 @@ export default function ProfileScreen() {
               action="negative"
               onPress={handleSignOut}
               icon={
-                <LogOut size={18} color={getSecondaryHex("text-secondary-0")} />
+                <LogOut
+                  size={18}
+                  color={getSecondaryHex("text-secondary-0", colorScheme)}
+                />
               }
             />
           </VStack>
@@ -170,13 +194,13 @@ function MenuItem({
 
   return (
     <PressableListItem onPress={onPress}>
-      <HStack className="p-4 gap-x-4 items-center">
+      <HStack className="p-4 gap-x-2 items-start justify-start">
         {icon}
         <VStack className="flex-1">
           <Text className="text-lg flex-1">{label}</Text>
           <Text className="text-secondary-950">{description}</Text>
         </VStack>
-        <HStack className="gap-x-2 items-center">
+        <HStack className="gap-x-2 items-center self-center">
           {value}
           <Icon as="chevron-right" className="text-secondary-950" />
         </HStack>

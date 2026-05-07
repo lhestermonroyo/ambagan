@@ -4,7 +4,7 @@ import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import * as ImagePicker from "expo-image-picker";
 import { Upload } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Alert } from "react-native";
+import { Alert, useColorScheme } from "react-native";
 import AppButton from "./FormButton";
 import { Box } from "./ui/box";
 import { VStack } from "./ui/vstack";
@@ -19,6 +19,7 @@ const UploadAvatar = ({
   type?: "onboarding" | "default";
 }) => {
   const [image, setImage] = useState<string | null>(null);
+  const colorScheme = useColorScheme() ?? "light";
 
   useEffect(() => {
     setImage(defaultAvatar || null);
@@ -61,7 +62,10 @@ const UploadAvatar = ({
             "border-2 border-background-200 rounded-full justify-center items-center h-[100] w-[100]"
           )}
         >
-          <Upload size={24} color={getSecondaryHex("text-secondary-950")} />
+          <Upload
+            size={24}
+            color={getSecondaryHex("text-secondary-950", colorScheme)}
+          />
         </Box>
       )}
       <AppButton

@@ -19,6 +19,7 @@ import { ExpensePayer, MemberSplit, Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useColorScheme } from "react-native";
 import { FileImage } from "lucide-react-native";
 import { Fragment, ReactNode, useMemo } from "react";
 
@@ -33,6 +34,7 @@ export default function ExpenseDetailsScreen() {
   const { details: userDetails } = states.user();
 
   const router = useRouter();
+  const colorScheme = useColorScheme() ?? "light";
   const params = useLocalSearchParams();
   const expenseId = params.expenseId as string;
   const groupId = params.groupId as string;
@@ -272,7 +274,7 @@ export default function ExpenseDetailsScreen() {
                             icon={
                               <FileImage
                                 size={18}
-                                color={getPrimaryHex("text-primary-500")}
+                                color={getPrimaryHex("text-primary-500", colorScheme)}
                               />
                             }
                             onPress={() => {}}

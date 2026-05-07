@@ -39,6 +39,7 @@ import { ExpensePreview } from "@/types/expenses";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { format, parseISO } from "date-fns";
+import { useColorScheme } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   CirclePlus,
@@ -63,6 +64,7 @@ export default function GroupDetailsScreen() {
   const { details: userDetails } = states.user();
 
   const router = useRouter();
+  const colorScheme = useColorScheme() ?? "light";
   const params = useLocalSearchParams();
   const groupId = params.groupId as string | undefined;
 
@@ -239,7 +241,7 @@ export default function GroupDetailsScreen() {
                     >
                       <EllipsisVertical
                         size={20}
-                        color={getSecondaryHex("text-secondary-950")}
+                        color={getSecondaryHex("text-secondary-950", colorScheme)}
                       />
                     </Button>
                   )}
@@ -285,7 +287,7 @@ export default function GroupDetailsScreen() {
                 >
                   <LogOut
                     size={20}
-                    color={getSecondaryHex("text-secondary-950")}
+                    color={getSecondaryHex("text-secondary-950", colorScheme)}
                   />
                 </Button>
               ]
@@ -300,7 +302,7 @@ export default function GroupDetailsScreen() {
             isPressed={false}
             onPress={() => router.push(`/groups/${groupId}/new-expense`)}
           >
-            <CirclePlus size={20} color={getSecondaryHex("text-secondary-0")} />
+            <CirclePlus size={20} color={getSecondaryHex("text-secondary-0", colorScheme)} />
             <FabLabel className="text-lg font-medium">New Expense</FabLabel>
           </Fab>
         )}

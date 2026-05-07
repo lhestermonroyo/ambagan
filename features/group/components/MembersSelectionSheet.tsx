@@ -19,7 +19,8 @@ import { VStack } from "@/components/ui/vstack";
 import services from "@/services";
 import states from "@/states";
 import { UserPreview } from "@/types/user";
-import { Fragment, useEffect, useState } from "react";
+import { addRecentUser, getRecentUsers } from "@/utils/recentUsers";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
 
@@ -39,6 +40,9 @@ export default function MembersSelectionSheet({
   const [tab, setTab] = useState<"recent" | "favorites">("recent");
   const [selected, setSelected] = useState<UserPreview[]>([]);
   const [users, setUsers] = useState<UserPreview[]>([]);
+  const [favoriteUsers, setFavoriteUsers] = useState<UserPreview[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [recentUsers, setRecentUsers] = useState<UserPreview[]>([]);
 
   const user = states.user();
   const { details: userDetails } = user;
@@ -48,8 +52,34 @@ export default function MembersSelectionSheet({
   }, [members]);
 
   useEffect(() => {
+    if (isOpen && userDetails?.id) {
+      loadFavorites();
+      loadRecentUsers();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     fetchUsers();
   }, [searchInput]);
+
+  const loadFavorites = async () => {
+    try {
+      const data = await services.friend.getFavorites(userDetails!.id);
+      setFavoriteUsers(data);
+      setFavoriteIds(new Set(data.map((u) => u.id)));
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
+    }
+  };
+
+  const loadRecentUsers = async () => {
+    try {
+      const recent = await getRecentUsers();
+      setRecentUsers(recent.filter((u) => u.id !== userDetails?.id));
+    } catch (error) {
+      console.error("Error loading recent users:", error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -58,33 +88,56 @@ export default function MembersSelectionSheet({
         return;
       }
       const data = await services.user.searchUsers(searchInput);
-      const filteredUsers = data.filter((u) => u.id !== userDetails?.id);
-
-      setUsers(filteredUsers);
+      setUsers(data.filter((u) => u.id !== userDetails?.id));
     } catch (error) {
       console.error("Error fetching users:", error);
     }
   };
 
-  const handleChangeMembers = (selected: (string | number)[]) => {
-    const selectedUsers = users.filter((user) => selected.includes(user.id));
+  const displayUsers = useMemo(() => {
+    if (searching) return users;
+    return tab === "favorites" ? favoriteUsers : recentUsers;
+  }, [searching, tab, users, favoriteUsers, recentUsers]);
+
+  const handleChangeMembers = (newSelectedIds: (string | number)[]) => {
+    const selectedUsers = displayUsers.filter((u) => newSelectedIds.includes(u.id));
+    const currentIds = selected.map((m) => m.id);
+    const newlyAdded = selectedUsers.filter((u) => !currentIds.includes(u.id));
+    newlyAdded.forEach((u) => addRecentUser(u));
 
     setSelected((prev) => {
       const newMembers = selectedUsers.filter(
-        (user) => !prev.some((member) => member.id === user.id)
+        (u) => !prev.some((m) => m.id === u.id)
       );
       const removedMembers = prev.filter(
-        (member) =>
-          !selected.includes(member.id) && member.id !== userDetails?.id
+        (m) => !newSelectedIds.includes(m.id) && m.id !== userDetails?.id
       );
-
       return [
         ...newMembers,
-        ...prev.filter(
-          (member) => !removedMembers.some((m) => m.id === member.id)
-        )
+        ...prev.filter((m) => !removedMembers.some((r) => r.id === m.id))
       ];
     });
+  };
+
+  const handleToggleFavorite = async (targetUser: UserPreview) => {
+    if (!userDetails?.id) return;
+    try {
+      if (favoriteIds.has(targetUser.id)) {
+        await services.friend.removeFavorite(userDetails.id, targetUser.id);
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(targetUser.id);
+          return next;
+        });
+        setFavoriteUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
+      } else {
+        await services.friend.addFavorite(userDetails.id, targetUser.id);
+        setFavoriteIds((prev) => new Set([...prev, targetUser.id]));
+        setFavoriteUsers((prev) => [targetUser, ...prev]);
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    }
   };
 
   const handleRemoveMember = (id: string) => {
@@ -113,6 +166,12 @@ export default function MembersSelectionSheet({
     handleClearStates();
     onClose();
   };
+
+  const emptyText = searching
+    ? "No results found on your search."
+    : tab === "favorites"
+      ? "No favorites added yet."
+      : "No recent users.";
 
   return (
     <Fragment>
@@ -148,7 +207,6 @@ export default function MembersSelectionSheet({
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => {
                   const isCreator = item.id === userDetails?.id;
-
                   return (
                     <SelectedMemberItem
                       key={item.id}
@@ -186,11 +244,9 @@ export default function MembersSelectionSheet({
             </HStack>
           </VStack>
           <ScrollView className="flex-1 w-full" bounces={false}>
-            {users.length === 0 && searching && (
+            {displayUsers.length === 0 && (
               <VStack className="p-4 justify-center items-center">
-                <Text className="text-secondary-950">
-                  No results found on your search.
-                </Text>
+                <Text className="text-secondary-950">{emptyText}</Text>
               </VStack>
             )}
             <CheckboxGroup
@@ -202,16 +258,17 @@ export default function MembersSelectionSheet({
                 scrollEnabled={false}
                 bounces={false}
                 className="flex-1"
-                data={users}
+                data={displayUsers}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => {
                   const isCreator = item.id === userDetails?.id;
-
                   return (
                     <UserCheckboxItem
                       key={item.id}
                       item={item}
                       disabled={isCreator}
+                      isFavorite={favoriteIds.has(item.id)}
+                      onToggleFavorite={handleToggleFavorite}
                     />
                   );
                 }}

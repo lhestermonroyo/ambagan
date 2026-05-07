@@ -23,6 +23,7 @@ import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useRouter } from "expo-router";
 import { BanknoteArrowDown, BanknoteArrowUp } from "lucide-react-native";
 import { Fragment, useState } from "react";
+import { useColorScheme } from "react-native";
 
 export default function SettlementActionSheet({
   isOpen,
@@ -35,14 +36,18 @@ export default function SettlementActionSheet({
   item: PaymentPreview | null;
   onRefetch: () => void;
 }) {
+  if (!item) return null;
+
+  const { details: userDetails } = states.user();
+
   const [requestSheetOpen, setRequestSheetOpen] = useState(false);
   const [markAsSettledSheetOpen, setMarkAsSettledSheetOpen] = useState(false);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
   const [reviewIsPayer, setReviewIsPayer] = useState(false);
   const [reviewReadOnly, setReviewReadOnly] = useState(false);
 
-  const { details: userDetails } = states.user.getState();
   const router = useRouter();
+  const colorScheme = useColorScheme() ?? "light";
 
   if (!item) return null;
 
@@ -122,12 +127,12 @@ export default function SettlementActionSheet({
                   {isUserPayer ? (
                     <BanknoteArrowDown
                       size={16}
-                      color={getSuccessHex("text-success-600")}
+                      color={getSuccessHex("text-success-600", colorScheme)}
                     />
                   ) : (
                     <BanknoteArrowUp
                       size={16}
-                      color={getErrorHex("text-error-600")}
+                      color={getErrorHex("text-error-600", colorScheme)}
                     />
                   )}
                 </Avatar>
@@ -159,7 +164,13 @@ export default function SettlementActionSheet({
                     </VStack>
                     <HStack className="gap-x-2 items-center">
                       <VStack className="items-end">
-                        <Text className="text-lg">
+                        <Text
+                          className={cn(
+                            "text-lg",
+                            isUserMember ? "text-error-400" : undefined
+                          )}
+                        >
+                          {isUserMember && "-"}
                           {formatAmount(item.amount, item.currency)}
                         </Text>
                         <StatusBadge status={item.status} size="md" />

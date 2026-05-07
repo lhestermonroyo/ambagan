@@ -20,11 +20,13 @@ import { formatAmount } from "../utils/formatAmount";
 export default function CurrencyAmountDisplay({
   items,
   label,
-  type = "neutral"
+  type = "neutral",
+  isLoading = false
 }: {
   items: { currency: string; amount: number }[];
   label: string;
   type?: "pay" | "receive" | "neutral";
+  isLoading?: boolean;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -34,6 +36,14 @@ export default function CurrencyAmountDisplay({
   const [primary, ...secondary] = sorted;
 
   const amountColor = type === "pay" ? "text-error-400" : undefined;
+
+  if (isLoading) {
+    return (
+      <Text bold className={cn("text-2xl", amountColor)}>
+        -
+      </Text>
+    );
+  }
 
   return (
     <Fragment>

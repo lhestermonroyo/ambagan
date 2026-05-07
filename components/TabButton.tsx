@@ -5,9 +5,11 @@ import {
   ArrowLeftRight,
   CircleUserRound,
   HouseHeart,
+  UsersRound,
   Wallet
 } from "lucide-react-native";
 import { JSX } from "react";
+import { useColorScheme } from "react-native";
 import { Button } from "./ui/button";
 import { Text } from "./ui/text";
 import { VStack } from "./ui/vstack";
@@ -19,10 +21,11 @@ export default function TabButton(
 ) {
   const { onPress, accessibilityState, accessibilityLabel, testID, label } =
     props;
+  const colorScheme = useColorScheme() ?? "light";
   const isActive = props["aria-selected"];
   const color = isActive
-    ? getSecondaryHex("text-secondary-0")
-    : getPrimaryHex("text-primary-400");
+    ? getSecondaryHex("text-secondary-0", colorScheme)
+    : getPrimaryHex("text-primary-400", colorScheme);
 
   let icon: JSX.Element | null = null;
   switch (props.label) {
@@ -32,6 +35,9 @@ export default function TabButton(
     case "Groups":
       icon = <HouseHeart size={24} color={color} />;
       break;
+    case "Friends":
+      icon = <UsersRound size={24} color={color} />;
+      break;
     case "Activities":
       icon = <ArrowLeftRight size={24} color={color} />;
       break;
@@ -39,7 +45,7 @@ export default function TabButton(
       icon = <CircleUserRound size={24} color={color} />;
       break;
     default:
-      null;
+      icon = null;
   }
 
   return (

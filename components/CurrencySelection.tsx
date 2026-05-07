@@ -1,6 +1,7 @@
 import { currencies } from "@/utils/constants";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { ChevronDown, CircleIcon } from "lucide-react-native";
+import { useColorScheme } from "react-native";
 import { Fragment, useMemo, useState } from "react";
 import FormButton from "./FormButton";
 import Icon from "./Icon";
@@ -30,6 +31,7 @@ const CurrencySelection = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState(currency);
+  const colorScheme = useColorScheme() ?? "light";
 
   const currencyLabel = useMemo(() => {
     return currencies.find((c) => c.value === currency)?.label;
@@ -45,7 +47,7 @@ const CurrencySelection = ({
           <Text className="font-semibold">{currencyLabel}</Text>
           <ChevronDown
             size={18}
-            color={getSecondaryHex("text-secondary-950")}
+            color={getSecondaryHex("text-secondary-950", colorScheme)}
           />
         </HStack>
       </PressableListItem>

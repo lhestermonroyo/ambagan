@@ -8,12 +8,16 @@ import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { SplashScreen, Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
-import "react-native-reanimated";
-import {
+import { useEffect, useRef } from "react";
+import Animated, {
   configureReanimatedLogger,
-  ReanimatedLogLevel
+  ReanimatedLogLevel,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming
 } from "react-native-reanimated";
+import { StyleSheet } from "react-native";
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -26,10 +30,27 @@ export default function RootLayout() {
   });
   const router = useRouter();
   const { loading, appearanceMode, loadPreferences } = states.user();
+  const overlayOpacity = useSharedValue(0);
+  const isFirstRender = useRef(true);
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value
+  }));
 
   useEffect(() => {
     loadPreferences();
   }, []);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    overlayOpacity.value = withSequence(
+      withTiming(1, { duration: 100 }),
+      withTiming(0, { duration: 400 })
+    );
+  }, [appearanceMode]);
 
   useEffect(() => {
     if (loaded && !loading) {
@@ -103,6 +124,14 @@ export default function RootLayout() {
           <StatusBar style="auto" />
         </ThemeProvider>
       </ToastProvider>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFillObject,
+          { backgroundColor: appearanceMode === "dark" ? "#000" : "#fff" },
+          overlayStyle
+        ]}
+      />
     </GluestackUIProvider>
   );
 }

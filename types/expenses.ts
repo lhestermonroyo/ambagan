@@ -87,6 +87,16 @@ export type PaymentPreview = Pick<
   expense_description?: string | null;
 };
 
+export type FriendBalance = {
+  currency: string;
+  amount: number;
+};
+
+export type FriendSummary = {
+  friend: UserPreview;
+  balances: FriendBalance[];
+};
+
 export enum SplitType {
   EQUAL = "equal",
   PERCENTAGE = "percentage",

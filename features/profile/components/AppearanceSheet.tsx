@@ -6,34 +6,23 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
+import { Divider } from "@/components/ui/divider";
+import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
-import { Pressable } from "@/components/ui/pressable";
+import {
+  Radio,
+  RadioGroup,
+  RadioIcon,
+  RadioIndicator
+} from "@/components/ui/radio";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { AppearanceMode } from "@/types/user";
 import { getPrimaryHex } from "@/utils/getColorHex";
-import { Check } from "lucide-react-native";
+import { CircleIcon, MonitorCog, Moon, Sun } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
-
-const options: { label: string; value: AppearanceMode; description: string }[] =
-  [
-    {
-      label: "Light",
-      value: "light",
-      description: "Always use light theme"
-    },
-    {
-      label: "Dark",
-      value: "dark",
-      description: "Always use dark theme"
-    },
-    {
-      label: "System",
-      value: "system",
-      description: "Follow system setting"
-    }
-  ];
+import { useMemo } from "react";
 
 export default function AppearanceSheet({
   isOpen,
@@ -43,12 +32,48 @@ export default function AppearanceSheet({
   onClose: () => void;
 }) {
   const { appearanceMode, setAppearanceMode } = states.user();
-  const { setColorScheme } = useColorScheme();
+
+  if (!appearanceMode) return null;
+
+  const { colorScheme, setColorScheme } = useColorScheme();
+
+  const options: {
+    icon: React.ReactNode;
+    label: string;
+    value: AppearanceMode;
+    description: string;
+  }[] = useMemo(
+    () => [
+      {
+        icon: <Sun color={getPrimaryHex("text-primary-400", colorScheme)} />,
+        label: "Light",
+        value: "light",
+        description: "Always use light theme"
+      },
+      {
+        icon: <Moon color={getPrimaryHex("text-primary-400", colorScheme)} />,
+        label: "Dark",
+        value: "dark",
+        description: "Always use dark theme"
+      },
+      {
+        icon: (
+          <MonitorCog color={getPrimaryHex("text-primary-400", colorScheme)} />
+        ),
+        label: "System",
+        value: "system",
+        description: "Follow system setting"
+      }
+    ],
+    [colorScheme]
+  );
+
+  if (!appearanceMode) return null;
 
   const handleSelect = async (mode: AppearanceMode) => {
     setColorScheme(mode);
     await setAppearanceMode(mode);
-    onClose();
+    // onClose();
   };
 
   return (
@@ -58,35 +83,47 @@ export default function AppearanceSheet({
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full p-4 gap-y-4">
-          <Text bold className="text-xl">
-            App Appearance
-          </Text>
-          <VStack className="gap-y-1">
-            {options.map((option) => (
-              <Pressable
-                key={option.value}
-                onPress={() => handleSelect(option.value)}
-              >
-                <HStack className="p-3 rounded-xl items-center gap-x-3">
-                  <VStack className="flex-1">
-                    <Text className="text-lg">{option.label}</Text>
-                    <Text className="text-secondary-950">
-                      {option.description}
-                    </Text>
-                  </VStack>
-                  {appearanceMode === option.value && (
-                    <Box>
-                      <Check
-                        size={20}
-                        color={getPrimaryHex("text-primary-400")}
-                      />
-                    </Box>
-                  )}
-                </HStack>
-              </Pressable>
-            ))}
+        <VStack className="w-full gap-y-4">
+          <VStack className="p-4">
+            <Text bold className="text-xl">
+              App Appearance
+            </Text>
           </VStack>
+          <RadioGroup
+            value={appearanceMode}
+            onChange={(val) => handleSelect(val as AppearanceMode)}
+          >
+            <FlatList
+              scrollEnabled={false}
+              data={options}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <Radio
+                  value={item.value}
+                  size="lg"
+                  className="justify-between px-4 py-3"
+                >
+                  <HStack className="flex-1 items-start gap-x-3">
+                    {item.icon}
+                    <VStack>
+                      <Text className="text-lg">{item.label}</Text>
+                      <Text className="text-secondary-950">
+                        {item.description}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  <RadioIndicator>
+                    <RadioIcon as={CircleIcon} />
+                  </RadioIndicator>
+                </Radio>
+              )}
+              ItemSeparatorComponent={() => (
+                <Box className="mx-4">
+                  <Divider className="border-secondary-100" />
+                </Box>
+              )}
+            />
+          </RadioGroup>
         </VStack>
       </ActionsheetContent>
     </Actionsheet>

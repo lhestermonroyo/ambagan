@@ -649,52 +649,6 @@ export const markAsSettled = async (expensePayload: {
   return { success: true, message: "Marked as settled successfully" };
 };
 
-export const getUnreadActivitiesByUserId = async (userId: string) => {
-  const user = await supabase.auth.getUser();
-
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
-  }
-  const [userReadResponse, payerReadResponse] = await Promise.all([
-    supabase
-      .from(tables.MEMBER_SPLITS_TBL)
-      .select(
-        "id, expense_id, created_at, paid_by, amount, status, member:user_id!inner(id, email, first_name, last_name, avatar), expense:expense_id(group_id, description, amount, paid_by:paid_by!inner(id, email, first_name, last_name, avatar))"
-      )
-      .or(`user_id.eq.${userId}`)
-      .eq("user_read", false),
-    supabase
-      .from(tables.MEMBER_SPLITS_TBL)
-      .select("id, expense_id, status")
-      .or(`user_id.eq.${userId}`)
-      .eq("payer_read", false)
-  ]);
-
-  if (userReadResponse.error && payerReadResponse.error) {
-    throw new Error("Failed to fetch unread activities");
-  }
-
-  const payableCount =
-    userReadResponse.data?.filter(
-      (item) => item.status === "pending" || item.status === "requested"
-    ).length || 0;
-
-  const requestCount =
-    payerReadResponse.data?.filter((item) => item.status === "requested")
-      .length || 0;
-  const pendingCount =
-    payerReadResponse.data?.filter((item) => item.status === "pending")
-      .length || 0;
-  const receivableCount = requestCount + pendingCount || 0;
-
-  return {
-    requestCount,
-    pendingCount,
-    payableCount,
-    receivableCount
-  };
-};
-
 export const getPaymentsByGroupAndUserId = async (
   groupId: string,
   userId: string

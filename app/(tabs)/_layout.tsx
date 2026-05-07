@@ -1,10 +1,14 @@
 import { HapticTab } from "@/components/haptic-tab";
 import TabButton from "@/components/TabButton";
 import { View } from "@/components/ui/view";
+import { getSecondaryHex } from "@/utils/getColorHex";
 import { Tabs } from "expo-router";
 import React from "react";
+import { useColorScheme } from "react-native";
 
 export default function TabLayout() {
+  const colorScheme = useColorScheme() ?? "light";
+
   return (
     <View style={{ flex: 1 }}>
       <Tabs
@@ -13,7 +17,10 @@ export default function TabLayout() {
           tabBarActiveTintColor: "#3B82F6",
           tabBarInactiveTintColor: "red",
           tabBarStyle: {
-            backgroundColor: "#fff",
+            backgroundColor:
+              colorScheme === "dark"
+                ? getSecondaryHex("text-secondary-100", colorScheme)
+                : getSecondaryHex("text-secondary-0", colorScheme),
             borderTopWidth: 0,
             boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.1)",
             height: 85,
@@ -37,9 +44,9 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="activities"
+          name="friends"
           options={{
-            tabBarButton: (props) => <TabButton {...props} label="Activities" />
+            tabBarButton: (props) => <TabButton {...props} label="Friends" />
           }}
         />
         <Tabs.Screen

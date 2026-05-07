@@ -15,6 +15,7 @@ import states from "@/states";
 import { formatDate } from "@/utils/formatDate";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { FileImage } from "lucide-react-native";
+import { useColorScheme } from "react-native";
 import { ReactNode } from "react";
 
 export default function ExpenseDetailsSheet({
@@ -26,6 +27,7 @@ export default function ExpenseDetailsSheet({
 }) {
   const { details: expenseDetails } = states.expense.getState();
   const { details: userDetails } = states.user();
+  const colorScheme = useColorScheme() ?? "light";
 
   if (!expenseDetails) return null;
 
@@ -83,7 +85,7 @@ export default function ExpenseDetailsSheet({
                       icon={
                         <FileImage
                           size={18}
-                          color={getPrimaryHex("text-primary-500")}
+                          color={getPrimaryHex("text-primary-500", colorScheme)}
                         />
                       }
                       onPress={() => {}}

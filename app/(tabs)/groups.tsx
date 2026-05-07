@@ -19,6 +19,7 @@ import { getSecondaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
 import { HousePlus } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 export default function GroupsScreen() {
@@ -31,6 +32,7 @@ export default function GroupsScreen() {
   const { list } = states.group();
   const { details: userDetails } = states.user();
 
+  const colorScheme = useColorScheme() ?? "light";
   const router = useRouter();
   const toast = useAppToast();
 
@@ -130,7 +132,10 @@ export default function GroupsScreen() {
         isPressed={false}
         onPress={() => router.push("/groups/create")}
       >
-        <HousePlus size={20} color={getSecondaryHex("text-secondary-0")} />
+        <HousePlus
+          size={20}
+          color={getSecondaryHex("text-secondary-0", colorScheme)}
+        />
         <FabLabel className="text-lg font-medium">Add Group</FabLabel>
       </Fab>
       <TabLayout title="Groups">
@@ -218,6 +223,7 @@ export default function GroupsScreen() {
                   </VStack>
                 );
               }}
+              ListFooterComponent={() => <Box className="h-16" />}
               stickyHeaderIndices={[0]}
             />
           </LoadingWrapper>

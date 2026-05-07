@@ -8,7 +8,8 @@ export const tables = {
   EXPENSE_PAYERS_TBL: "expense_payers_tbl",
   MEMBER_SPLITS_TBL: "member_splits_tbl",
   PAYMENT_SPLITS_TBL: "payment_splits_tbl",
-  NOTIFICATIONS_TBL: "notifications_tbl"
+  NOTIFICATIONS_TBL: "notifications_tbl",
+  USER_FAVORITES_TBL: "user_favorites_tbl"
 };
 
 // apply signs to all currencies

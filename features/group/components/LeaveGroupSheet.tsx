@@ -30,6 +30,7 @@ import { Payment } from "@/types/expenses";
 import { Member } from "@/types/groups";
 import { getErrorHex, getPrimaryHex } from "@/utils/getColorHex";
 import { AlertTriangle, CircleIcon } from "lucide-react-native";
+import { useColorScheme } from "react-native";
 import { Fragment, useEffect, useState } from "react";
 
 export default function LeaveGroupSheet({
@@ -43,6 +44,7 @@ export default function LeaveGroupSheet({
 }) {
   const { details: groupDetails, memberList } = states.group.getState();
   const { details: userDetails } = states.user();
+  const colorScheme = useColorScheme() ?? "light";
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -135,7 +137,7 @@ export default function LeaveGroupSheet({
                 {hasUnsettled ? (
                   <Fragment>
                     <HStack className="bg-error-50 rounded-xl gap-x-4 p-4 items-start">
-                      <AlertTriangle color={getErrorHex("text-error-600")} />
+                      <AlertTriangle color={getErrorHex("text-error-600", colorScheme)} />
                       <Text className="text-error-600 flex-1">
                         You have{" "}
                         <Text bold className="text-error-600">
@@ -165,7 +167,7 @@ export default function LeaveGroupSheet({
                   </Fragment>
                 ) : isSoleAdmin ? (
                   <HStack className="bg-primary-50 rounded-xl gap-x-3 p-4 items-start">
-                    <AlertTriangle color={getPrimaryHex("text-primary-600")} />
+                    <AlertTriangle color={getPrimaryHex("text-primary-600", colorScheme)} />
                     <Text className="text-primary-600 flex-1">
                       You are the only member. Leaving will{" "}
                       <Text bold className="text-primary-600">
@@ -179,7 +181,7 @@ export default function LeaveGroupSheet({
                     <HStack className="bg-primary-50 rounded-xl gap-x-3 p-4 items-start">
                       <AlertTriangle
                         size={18}
-                        color={getPrimaryHex("text-primary-600")}
+                        color={getPrimaryHex("text-primary-600", colorScheme)}
                       />
                       <Text className="text-primary-600 flex-1">
                         You are the group admin. Select a member to transfer

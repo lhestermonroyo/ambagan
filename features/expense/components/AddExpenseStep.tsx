@@ -17,6 +17,7 @@ import UploadImage from "@/components/UploadImage";
 import { Group } from "@/types/groups";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useColorScheme } from "react-native";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import GroupSelection from "./GroupSelection";
 
@@ -56,6 +57,7 @@ export default function AddExpenseStep({
   isLockedGroup = false,
   step = 1
 }: AddExpenseStepProps) {
+  const colorScheme = useColorScheme() ?? "light";
   return (
     <ScrollView className="flex-1" bounces={false}>
       <VStack className="px-4 gap-y-4">
@@ -109,7 +111,7 @@ export default function AddExpenseStep({
               <FormControlLabelText>Expense Date</FormControlLabelText>
             </FormControlLabel>
             <DateTimePicker
-              accentColor={getPrimaryHex("text-primary-400")}
+              accentColor={getPrimaryHex("text-primary-400", colorScheme)}
               value={values.expense_date}
               onChange={(_, date) => {
                 if (date) {
