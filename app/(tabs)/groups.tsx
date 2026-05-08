@@ -145,19 +145,19 @@ export default function GroupsScreen() {
         <FabLabel className="text-lg font-medium">Add Group</FabLabel>
       </Fab>
       <TabLayout title="Groups">
+        <Box className="px-4 pb-4 bg-background-0">
+          <SearchInput
+            onChangeText={setSearchInput}
+            value={searchInput}
+            placeholder="Search group"
+          />
+        </Box>
         <ScrollView
           className="flex-1"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <Box className="px-4 pb-4 bg-background-0">
-            <SearchInput
-              onChangeText={setSearchInput}
-              value={searchInput}
-              placeholder="Search group"
-            />
-          </Box>
           <LoadingWrapper
             isLoading={loading}
             text="Loading groups, please wait..."

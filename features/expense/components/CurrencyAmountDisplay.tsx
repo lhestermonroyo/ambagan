@@ -21,17 +21,19 @@ export default function CurrencyAmountDisplay({
   items,
   label,
   type = "neutral",
-  isLoading = false
+  isLoading = false,
+  primaryCurrency = "PHP"
 }: {
   items: { currency: string; amount: number }[];
   label: string;
   type?: "pay" | "receive" | "neutral";
   isLoading?: boolean;
+  primaryCurrency?: string;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const sorted = [...items].sort((a, b) =>
-    a.currency === "PHP" ? -1 : b.currency === "PHP" ? 1 : 0
+    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
   );
   const [primary, ...secondary] = sorted;
 
@@ -52,7 +54,7 @@ export default function CurrencyAmountDisplay({
       >
         <HStack className="items-center gap-x-2">
           <Text bold className={cn("text-2xl", amountColor)}>
-            {formatAmount(primary?.amount ?? 0, primary?.currency ?? "PHP")}
+            {formatAmount(primary?.amount ?? 0, primary?.currency ?? primaryCurrency)}
           </Text>
           {secondary.length > 0 && (
             <HStack className="items-center">

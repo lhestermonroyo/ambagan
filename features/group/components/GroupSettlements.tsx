@@ -45,7 +45,7 @@ export default function GroupSettlements({
   refreshTrigger?: number;
 }) {
   const { details, expenseList, settlementList } = states.group();
-  const { details: userDetails } = states.user();
+  const { details: userDetails, defaultCurrency } = states.user();
   const colorScheme = useColorScheme() ?? "light";
 
   const [loading, setLoading] = useState(false);
@@ -260,6 +260,7 @@ export default function GroupSettlements({
                     items={totalGroupSpendingsByCurrency}
                     label="Total Group Spendings"
                     type="neutral"
+                    primaryCurrency={defaultCurrency}
                   />
                   <Text className="text-secondary-950">
                     Total Group Spendings
@@ -279,6 +280,7 @@ export default function GroupSettlements({
                     items={yourToCollectTotalByCurrency}
                     label="To Collect"
                     type="receive"
+                    primaryCurrency={defaultCurrency}
                   />
                   <Text className="text-secondary-950">To Collect</Text>
                 </VStack>
@@ -294,6 +296,7 @@ export default function GroupSettlements({
                     items={yourTotalUnpaidByCurrency}
                     label="To Pay"
                     type="pay"
+                    primaryCurrency={defaultCurrency}
                   />
                   <Text className="text-secondary-950">To Pay</Text>
                 </VStack>

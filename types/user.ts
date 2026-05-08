@@ -8,10 +8,12 @@ export type UserState = {
   loading: boolean;
   appearanceMode: AppearanceMode;
   notificationsEnabled: boolean;
+  defaultCurrency: string;
   signOut: () => Promise<void>;
   setAppearanceMode: (mode: AppearanceMode) => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
-  loadPreferences: () => Promise<void>;
+  setDefaultCurrency: (userId: string, currency: string) => Promise<void>;
+  loadPreferences: (userId?: string) => Promise<void>;
 };
 
 export type User = {

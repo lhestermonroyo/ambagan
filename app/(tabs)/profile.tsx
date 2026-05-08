@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import { CurrencySelectionSheet } from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
@@ -13,18 +14,20 @@ import AppearanceSheet from "@/features/profile/components/AppearanceSheet";
 import NotificationsSheet from "@/features/profile/components/PushNotificationsSheet";
 import TabLayout from "@/layouts/TabLayout";
 import states from "@/states";
+import { currencies } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
 import {
   Bell,
+  Coins,
   Eye,
+  Info,
   LogOut,
   MonitorCog,
   Moon,
   Sun,
   UserCircle,
-  UserLock,
-  UsersRound
+  UserLock
 } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
@@ -34,7 +37,9 @@ export default function ProfileScreen() {
     details: userDetails,
     signOut,
     appearanceMode,
-    notificationsEnabled
+    notificationsEnabled,
+    defaultCurrency,
+    setDefaultCurrency
   } = states.user();
   const { reset: resetExpenseState } = states.expense();
   const { reset: resetGroupState } = states.group();
@@ -45,6 +50,11 @@ export default function ProfileScreen() {
 
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+
+  const currencyLabel = useMemo(() => {
+    return currencies.find((c) => c.value === defaultCurrency)?.label;
+  }, [defaultCurrency]);
 
   const appearanceLabel = useMemo(() => {
     switch (appearanceMode) {
@@ -73,19 +83,19 @@ export default function ProfileScreen() {
       },
       {
         icon: (
-          <UsersRound color={getPrimaryHex("text-primary-400", colorScheme)} />
-        ),
-        label: "Friends & Connections",
-        description: "Manage your friends and social connections",
-        onPress: () => {}
-      },
-      {
-        icon: (
           <UserLock color={getPrimaryHex("text-primary-400", colorScheme)} />
         ),
         label: "Account Settings",
         description: "Manage your account security and preferences",
         onPress: () => router.push("/profile/account-settings")
+      },
+
+      {
+        icon: <Coins color={getPrimaryHex("text-primary-400", colorScheme)} />,
+        label: "Default Currency",
+        description: "Manage your default currency",
+        value: <Text className="text-lg">{currencyLabel}</Text>,
+        onPress: () => setCurrencyOpen(true)
       },
       {
         icon: <Eye color={getPrimaryHex("text-primary-400", colorScheme)} />,
@@ -96,15 +106,21 @@ export default function ProfileScreen() {
       },
       {
         icon: <Bell color={getPrimaryHex("text-primary-400", colorScheme)} />,
-        label: "Notifications",
-        description: "Manage your notification preferences",
+        label: "Push Notifications",
+        description: "Manage your push notification preferences",
         value: (
           <Text className="text-lg">{notificationsEnabled ? "On" : "Off"}</Text>
         ),
         onPress: () => setNotificationsOpen(true)
+      },
+      {
+        icon: <Info color={getPrimaryHex("text-primary-400", colorScheme)} />,
+        label: "About",
+        description: "Learn more about the app and its features",
+        onPress: () => router.push("/profile/about")
       }
     ],
-    [appearanceLabel, notificationsEnabled, colorScheme]
+    [appearanceLabel, notificationsEnabled, currencyLabel, colorScheme]
   );
 
   const handleSignOut = () => {
@@ -174,6 +190,16 @@ export default function ProfileScreen() {
       <NotificationsSheet
         isOpen={notificationsOpen}
         onClose={() => setNotificationsOpen(false)}
+      />
+
+      <CurrencySelectionSheet
+        isOpen={currencyOpen}
+        currency={defaultCurrency}
+        title="Select Default Currency"
+        onClose={() => setCurrencyOpen(false)}
+        onCurrencyChange={(currency) => {
+          if (userDetails?.id) setDefaultCurrency(userDetails.id, currency);
+        }}
       />
     </TabLayout>
   );

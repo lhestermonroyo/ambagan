@@ -29,7 +29,7 @@ export default function RootLayout() {
     "GoogleSans-BoldItalic": require("@/assets/fonts/GoogleSans-BoldItalic.ttf")
   });
   const router = useRouter();
-  const { loading, appearanceMode, loadPreferences } = states.user();
+  const { loading, appearanceMode, loadPreferences, defaultCurrency } = states.user();
   const overlayOpacity = useSharedValue(0);
   const isFirstRender = useRef(true);
 
@@ -107,6 +107,8 @@ export default function RootLayout() {
         ...prev,
         details: response.data
       }));
+
+      await loadPreferences(id);
     } catch (error) {
       console.error("Error fetching user details:", error);
     }

@@ -81,20 +81,20 @@ export default function FriendsScreen() {
   return (
     <Fragment>
       <TabLayout title="Friends">
+        <Box className="px-4 pb-4 bg-background-0">
+          <SearchInput
+            value={searchInput}
+            onChangeText={setSearchInput}
+            onSetSearching={setSearching}
+            placeholder="Search friends"
+          />
+        </Box>
         <ScrollView
           className="flex-1"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <Box className="px-4 pb-4 bg-background-0">
-            <SearchInput
-              value={searchInput}
-              onChangeText={setSearchInput}
-              onSetSearching={setSearching}
-              placeholder="Search friends"
-            />
-          </Box>
           <LoadingWrapper
             isLoading={loading}
             text="Loading friends, please wait..."

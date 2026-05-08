@@ -5,6 +5,7 @@ import { create } from "zustand";
 
 const APPEARANCE_KEY = "@appearance_mode";
 const NOTIFICATIONS_KEY = "@notifications_enabled";
+const DEFAULT_CURRENCY_KEY = "@default_currency";
 
 const USER_STATE = create<UserState>((set) => ({
   loading: true,
@@ -12,6 +13,7 @@ const USER_STATE = create<UserState>((set) => ({
   details: null,
   appearanceMode: "light",
   notificationsEnabled: true,
+  defaultCurrency: "PHP",
 
   signOut: async () => {
     await supabase.auth.signOut();
@@ -28,11 +30,21 @@ const USER_STATE = create<UserState>((set) => ({
     set({ notificationsEnabled: enabled });
   },
 
-  loadPreferences: async () => {
-    const [storedAppearance, storedNotifications] = await Promise.all([
-      AsyncStorage.getItem(APPEARANCE_KEY),
-      AsyncStorage.getItem(NOTIFICATIONS_KEY)
-    ]);
+  setDefaultCurrency: async (userId: string, currency: string) => {
+    await AsyncStorage.setItem(
+      DEFAULT_CURRENCY_KEY,
+      JSON.stringify({ userId, currency })
+    );
+    set({ defaultCurrency: currency });
+  },
+
+  loadPreferences: async (userId?: string) => {
+    const [storedAppearance, storedNotifications, storedCurrency] =
+      await Promise.all([
+        AsyncStorage.getItem(APPEARANCE_KEY),
+        AsyncStorage.getItem(NOTIFICATIONS_KEY),
+        AsyncStorage.getItem(DEFAULT_CURRENCY_KEY)
+      ]);
 
     const appearanceMode: AppearanceMode =
       storedAppearance === "dark" || storedAppearance === "system"
@@ -41,7 +53,15 @@ const USER_STATE = create<UserState>((set) => ({
 
     const notificationsEnabled = storedNotifications !== "false";
 
-    set({ appearanceMode, notificationsEnabled });
+    let defaultCurrency = "PHP";
+    if (storedCurrency) {
+      const parsed = JSON.parse(storedCurrency);
+      if (!userId || parsed.userId === userId) {
+        defaultCurrency = parsed.currency;
+      }
+    }
+
+    set({ appearanceMode, notificationsEnabled, defaultCurrency });
   }
 }));
 

@@ -23,3 +23,13 @@ export const addRecentUser = async (user: UserPreview): Promise<void> => {
     // ignore
   }
 };
+
+export const removeRecentUser = async (userId: string): Promise<void> => {
+  try {
+    const current = await getRecentUsers();
+    const updated = current.filter((u) => u.id !== userId);
+    await AsyncStorage.setItem(RECENT_USERS_KEY, JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+};

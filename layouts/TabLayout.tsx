@@ -6,10 +6,12 @@ import { Fragment } from "react";
 
 export default function TabLayout({
   children,
-  title
+  title,
+  actions
 }: {
   children: React.ReactNode;
   title: string;
+  actions?: React.ReactNode[];
 }) {
   return (
     <Fragment>
@@ -22,6 +24,13 @@ export default function TabLayout({
             <Text bold className="flex-1 text-3xl">
               {title}
             </Text>
+            {actions && (
+              <HStack className="gap-x-4">
+                {actions.map((item, index) => (
+                  <Fragment key={index}>{item}</Fragment>
+                ))}
+              </HStack>
+            )}
           </HStack>
         </Box>
         {children}

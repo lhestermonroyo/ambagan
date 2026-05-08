@@ -241,6 +241,9 @@ export default function ExpenseDetailsScreen() {
                         <Text>{formatDate(expenseDetails.created_at)}</Text>
                       }
                     />
+                    <Box className="mx-4">
+                      <Divider className="border-secondary-200" />
+                    </Box>
                     <DetailRow
                       label="Created By"
                       value={
@@ -259,6 +262,9 @@ export default function ExpenseDetailsScreen() {
                         </HStack>
                       }
                     />
+                    <Box className="mx-4">
+                      <Divider className="border-secondary-200" />
+                    </Box>
                     <DetailRow
                       label="Split Type"
                       value={
@@ -267,6 +273,9 @@ export default function ExpenseDetailsScreen() {
                         </Text>
                       }
                     />
+                    <Box className="mx-4">
+                      <Divider className="border-secondary-200" />
+                    </Box>
                     <DetailRow
                       label="Proof of Payment"
                       value={

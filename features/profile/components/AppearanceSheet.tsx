@@ -73,11 +73,10 @@ export default function AppearanceSheet({
   const handleSelect = async (mode: AppearanceMode) => {
     setColorScheme(mode);
     await setAppearanceMode(mode);
-    // onClose();
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[40]}>
+    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[30]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
         <ActionsheetDragIndicatorWrapper>

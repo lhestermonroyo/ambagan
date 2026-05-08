@@ -12,11 +12,13 @@ import { VStack } from "./ui/vstack";
 const UploadAvatar = ({
   defaultAvatar,
   onSelect,
-  type = "default"
+  type = "default",
+  pending = false
 }: {
   defaultAvatar?: string;
   onSelect: (result: ImagePicker.ImagePickerSuccessResult) => void;
   type?: "onboarding" | "default";
+  pending?: boolean;
 }) => {
   const [image, setImage] = useState<string | null>(null);
   const colorScheme = useColorScheme() ?? "light";
@@ -68,13 +70,15 @@ const UploadAvatar = ({
           />
         </Box>
       )}
-      <AppButton
-        onPress={pickImage}
-        size="sm"
-        className="self-center rounded-full"
-        text={image ? "Change Avatar" : "Upload Avatar"}
-        variant="outline"
-      />
+      {!pending && (
+        <AppButton
+          onPress={pickImage}
+          size="sm"
+          className="self-center rounded-full"
+          text={image ? "Change" : "Upload"}
+          variant="outline"
+        />
+      )}
     </VStack>
   );
 };

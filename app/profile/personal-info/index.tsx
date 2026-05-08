@@ -1,6 +1,8 @@
+import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
+import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -15,7 +17,6 @@ import { User } from "@/types/user";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import FormButton from "@/components/FormButton";
 
 export default function PersonalInfoScreen() {
   const { details: userDetails } = states.user();
@@ -80,6 +81,7 @@ export default function PersonalInfoScreen() {
                   : userDetails?.avatar || undefined
               }
               onSelect={handleAvatarSelect}
+              pending={!!pendingAvatar}
             />
             {pendingAvatar && (
               <HStack className="gap-x-2">
@@ -106,15 +108,21 @@ export default function PersonalInfoScreen() {
               value={fullName || "—"}
               onPress={() => setEditNameOpen(true)}
             />
+            <Box className="mx-4">
+              <Divider className="text-secondary-200" />
+            </Box>
             <DetailRow
               label="Email"
               value={userDetails?.email || "—"}
               readOnly
               onPress={() => {}}
             />
+            <Box className="mx-4">
+              <Divider className="text-secondary-200" />
+            </Box>
             <DetailRow
               label="Phone"
-              value={userDetails?.phone || "—"}
+              value={`+63 ${userDetails?.phone || "—"}`}
               readOnly
               onPress={() => {}}
             />
@@ -147,7 +155,7 @@ function DetailRow({
         <Box className="flex-1">
           <Text className="text-secondary-950">{label}</Text>
         </Box>
-        <HStack style={{ flex: 2 }} className="w-full items-end justify-end">
+        <HStack style={{ flex: 2 }} className="w-full items-center justify-end">
           <Text>{value}</Text>
           {!readOnly && (
             <Icon as="chevron-right" className="text-secondary-950" />

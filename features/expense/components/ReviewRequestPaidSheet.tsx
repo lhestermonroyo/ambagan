@@ -9,6 +9,7 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
+import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Image } from "@/components/ui/image";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -21,8 +22,8 @@ import { Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { ReceiptText } from "lucide-react-native";
-import { useColorScheme } from "react-native";
 import { Fragment, ReactNode, useState } from "react";
+import { useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
 import StatusBadge from "./StatusBadge";
 
@@ -176,6 +177,9 @@ export default function ReviewRequestPaidSheet({
                       </Text>
                     }
                   />
+                  <Box className="mx-4">
+                    <Divider className="border-secondary-200" />
+                  </Box>
                   <DetailRow
                     label="Status"
                     value={
@@ -203,6 +207,9 @@ export default function ReviewRequestPaidSheet({
                       </HStack>
                     }
                   />
+                  <Box className="mx-4">
+                    <Divider className="border-secondary-200" />
+                  </Box>
                   <DetailRow
                     label="Note"
                     value={<Text>{payment.member_note || "N/A"}</Text>}
@@ -226,7 +233,9 @@ export default function ReviewRequestPaidSheet({
                       </HStack>
                     }
                   />
-
+                  <Box className="mx-4">
+                    <Divider className="border-secondary-200" />
+                  </Box>
                   <DetailRow
                     label="Note"
                     value={<Text>{payment.payer_note || "N/A"}</Text>}
@@ -247,7 +256,10 @@ export default function ReviewRequestPaidSheet({
                     <VStack className="gap-y-2 items-center">
                       <ReceiptText
                         size={36}
-                        color={getSecondaryHex("text-secondary-950", colorScheme)}
+                        color={getSecondaryHex(
+                          "text-secondary-950",
+                          colorScheme
+                        )}
                       />
                       <Text className="text-secondary-950">
                         No proof of payment provided

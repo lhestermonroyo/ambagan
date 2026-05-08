@@ -53,7 +53,7 @@ export default function HomeScreen() {
   );
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
-  const { details: userDetails, signOut } = states.user();
+  const { details: userDetails, signOut, defaultCurrency } = states.user();
   const { list: groupList } = states.group();
   const { activityList } = states.expense();
   const { unreadCount } = states.notification();
@@ -255,12 +255,14 @@ export default function HomeScreen() {
                       type="RECEIVE"
                       isLoading={loading.activities}
                       items={stats.toReceive}
+                      primaryCurrency={defaultCurrency}
                     />
                     <Divider orientation="vertical" />
                     <StatItem
                       type="PAY"
                       isLoading={loading.activities}
                       items={stats.toPay}
+                      primaryCurrency={defaultCurrency}
                     />
                   </HStack>
                   <HStack className="gap-x-2">
@@ -489,11 +491,13 @@ function FriendCard({
 function StatItem({
   type,
   items,
-  isLoading
+  isLoading,
+  primaryCurrency
 }: {
   type: "RECEIVE" | "PAY";
   items: { currency: string; amount: number }[];
   isLoading: boolean;
+  primaryCurrency?: string;
 }) {
   const label = type === "PAY" ? "To Pay" : "To Collect";
 
@@ -506,6 +510,7 @@ function StatItem({
           items={items}
           label={label}
           type={type === "PAY" ? "pay" : "receive"}
+          primaryCurrency={primaryCurrency}
         />
         <Text className="text-secondary-950">{label}</Text>
       </VStack>

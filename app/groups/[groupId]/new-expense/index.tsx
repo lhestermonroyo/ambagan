@@ -22,10 +22,13 @@ export default function NewExpenseScreen() {
   const groupId = params.groupId as string | undefined;
   const isLocked = groupId !== "[groupId]";
 
+  const { list: groupList } = states.group();
+  const { defaultCurrency } = states.user();
+
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
-    currency: "PHP",
+    currency: defaultCurrency,
     amount: "",
     description: "",
     expense_date: new Date(),
@@ -49,8 +52,6 @@ export default function NewExpenseScreen() {
       amount: string;
     };
   }>({});
-
-  const { list: groupList } = states.group();
 
   const toast = useAppToast();
 

@@ -60,10 +60,16 @@ export default function GroupDetailsTab() {
               </HStack>
             }
           />
+          <Box className="mx-4">
+            <Divider className="border-secondary-200" />
+          </Box>
           <DetailRow
             label="Created at"
             value={<Text>{formatDate(details?.created_at || "")}</Text>}
           />
+          <Box className="mx-4">
+            <Divider className="border-secondary-200" />
+          </Box>
           <DetailRow
             label="Members"
             value={
@@ -73,6 +79,9 @@ export default function GroupDetailsTab() {
               </Text>
             }
           />
+          <Box className="mx-4">
+            <Divider className="border-secondary-200" />
+          </Box>
           <DetailRow
             label="Category"
             value={
