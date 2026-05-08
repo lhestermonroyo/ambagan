@@ -107,9 +107,6 @@ export default function AppearanceSheet({
                     {item.icon}
                     <VStack>
                       <Text className="text-lg">{item.label}</Text>
-                      <Text className="text-secondary-950">
-                        {item.description}
-                      </Text>
                     </VStack>
                   </HStack>
                   <RadioIndicator>

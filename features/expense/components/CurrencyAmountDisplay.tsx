@@ -93,7 +93,9 @@ export default function CurrencyAmountDisplay({
                 </HStack>
               )}
               ItemSeparatorComponent={() => (
-                <Divider className="border-secondary-100" />
+                <Box className="mx-4">
+                  <Divider className="border-secondary-100" />
+                </Box>
               )}
             />
           </VStack>

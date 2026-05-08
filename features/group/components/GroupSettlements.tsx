@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
@@ -17,6 +18,11 @@ import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestP
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { sortPaymentsByStatus } from "@/features/expense/utils/payment.util";
+import DateRangeSheet, {
+  DateRangeOption,
+  dateRangeLabels,
+  getDateRangeCutoff
+} from "@/features/group/components/DateRangeSheet";
 import ViewBySheet, {
   ViewOption
 } from "@/features/group/components/ViewBySheet";
@@ -27,7 +33,7 @@ import { getDateGroupTitle } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { format, parseISO } from "date-fns";
 import { useFocusEffect } from "expo-router";
-import { HouseHeart, LayoutList } from "lucide-react-native";
+import { CalendarRange, HouseHeart, LayoutList, X } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -49,6 +55,8 @@ export default function GroupSettlements() {
     useState<(typeof settlementTabs)[number]>("All");
   const [viewBy, setViewBy] = useState<ViewOption>("By Date");
   const [viewSheetOpen, setViewSheetOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRangeOption>("All");
+  const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
 
   useFocusEffect(
     useMemo(
@@ -128,12 +136,12 @@ export default function GroupSettlements() {
   }, [settlementList]);
 
   const settlementSections = useMemo(() => {
-    const filtered =
+    const cutoff = getDateRangeCutoff(dateRange);
+    const filtered = (
       settlementTab === "All"
         ? settlementList
-        : settlementList.filter(
-            (p) => p.status === settlementTab.toLowerCase()
-          );
+        : settlementList.filter((p) => p.status === settlementTab.toLowerCase())
+    ).filter((p) => !cutoff || new Date(p.created_at) >= cutoff);
 
     if (viewBy === "By Expense") {
       const grouped: Record<string, Payment[]> = {};
@@ -179,7 +187,7 @@ export default function GroupSettlements() {
         title: getDateGroupTitle(dateKey + "T00:00:00"),
         data: groupedByDate[dateKey]
       }));
-  }, [settlementList, settlementTab, viewBy, userDetails]);
+  }, [settlementList, settlementTab, viewBy, userDetails, dateRange]);
 
   const handleSettlementItemPress = (payment: PaymentPreview | Payment) => {
     const p = payment as Payment;
@@ -222,123 +230,191 @@ export default function GroupSettlements() {
 
   return (
     <Fragment>
-      <VStack className="gap-y-4">
-        <HStack className="gap-x-2 px-4">
-          <Card className="flex-1 rounded-lg bg-secondary-100">
-            <VStack className="gap-y-2">
-              <Avatar
-                size="sm"
-                className="bg-primary-100 border border-primary-200"
-              >
-                <HouseHeart
-                  size={16}
-                  color={getPrimaryHex("text-primary-600", colorScheme)}
-                />
-              </Avatar>
-              <VStack className="gap-y-1">
-                <CurrencyAmountDisplay
-                  isLoading={loading}
-                  items={totalGroupSpendingsByCurrency}
-                  label="Total Group Spendings"
-                  type="neutral"
-                />
-                <Text className="text-secondary-950">
-                  Total Group Spendings
-                </Text>
-              </VStack>
-            </VStack>
-          </Card>
-        </HStack>
-
-        <HStack className="gap-x-2 px-4">
-          <Card className="flex-1 rounded-lg bg-secondary-100">
-            <VStack className="gap-y-2">
-              <SettlementAvatar isPayer={true} />
-              <VStack className="justify-between">
-                <CurrencyAmountDisplay
-                  isLoading={loading}
-                  items={yourToCollectTotalByCurrency}
-                  label="To Collect"
-                  type="receive"
-                />
-                <Text className="text-secondary-950">To Collect</Text>
-              </VStack>
-            </VStack>
-          </Card>
-
-          <Card className="flex-1 rounded-lg bg-secondary-100">
-            <VStack className="gap-y-2">
-              <SettlementAvatar isPayer={false} />
-              <VStack className="justify-between">
-                <CurrencyAmountDisplay
-                  isLoading={loading}
-                  items={yourTotalUnpaidByCurrency}
-                  label="To Pay"
-                  type="pay"
-                />
-                <Text className="text-secondary-950">To Pay</Text>
-              </VStack>
-            </VStack>
-          </Card>
-        </HStack>
-
-        <HStack className="px-4 items-center justify-between">
-          <Text bold className="text-xl">
-            Settlements
-          </Text>
-          <Button
-            variant="link"
-            className="rounded-full"
-            onPress={() => setViewSheetOpen(true)}
-          >
-            <LayoutList
-              size={20}
-              color={getSecondaryHex("text-secondary-950", colorScheme)}
-            />
-          </Button>
-        </HStack>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <VStack className="gap-y-6">
+        <VStack className="gap-y-2">
           <HStack className="gap-x-2 px-4">
-            {settlementTabs.map((t) => (
-              <FormButton
-                key={t}
-                size="md"
-                variant={t === settlementTab ? "solid" : "outline"}
-                text={`${t}${tabCounts[t] > 0 ? ` (${tabCounts[t]})` : ""}`}
-                onPress={() => setSettlementTab(t)}
-              />
-            ))}
+            <Card className="flex-1 rounded-lg bg-secondary-100">
+              <VStack className="gap-y-2">
+                <Avatar
+                  size="sm"
+                  className="bg-primary-100 border border-primary-200"
+                >
+                  <HouseHeart
+                    size={16}
+                    color={getPrimaryHex("text-primary-600", colorScheme)}
+                  />
+                </Avatar>
+                <VStack className="gap-y-1">
+                  <CurrencyAmountDisplay
+                    isLoading={loading}
+                    items={totalGroupSpendingsByCurrency}
+                    label="Total Group Spendings"
+                    type="neutral"
+                  />
+                  <Text className="text-secondary-950">
+                    Total Group Spendings
+                  </Text>
+                </VStack>
+              </VStack>
+            </Card>
           </HStack>
-        </ScrollView>
-        <LoadingWrapper isLoading={loading} text="Loading settlements...">
-          <SectionList
-            scrollEnabled={false}
-            sections={settlementSections}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <SettlementItem item={item} onPress={handleSettlementItemPress} />
-            )}
-            renderSectionHeader={({ section: { title } }) => (
-              <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
-                <Text className="text-sm text-secondary-950">{title}</Text>
-              </Box>
-            )}
-            ItemSeparatorComponent={() => (
-              <Box className="mx-4">
-                <Divider className="border-secondary-100" />
-              </Box>
-            )}
-            ListEmptyComponent={() => (
-              <Box className="px-4 py-8 items-center">
-                <Text className="text-secondary-950">No settlements found</Text>
-              </Box>
-            )}
-            ListFooterComponent={() => <Box className="h-16" />}
-            stickySectionHeadersEnabled={true}
-          />
-        </LoadingWrapper>
+
+          <HStack className="gap-x-2 px-4">
+            <Card className="flex-1 rounded-lg bg-secondary-100">
+              <VStack className="gap-y-2">
+                <SettlementAvatar isPayer={true} />
+                <VStack className="justify-between">
+                  <CurrencyAmountDisplay
+                    isLoading={loading}
+                    items={yourToCollectTotalByCurrency}
+                    label="To Collect"
+                    type="receive"
+                  />
+                  <Text className="text-secondary-950">To Collect</Text>
+                </VStack>
+              </VStack>
+            </Card>
+
+            <Card className="flex-1 rounded-lg bg-secondary-100">
+              <VStack className="gap-y-2">
+                <SettlementAvatar isPayer={false} />
+                <VStack className="justify-between">
+                  <CurrencyAmountDisplay
+                    isLoading={loading}
+                    items={yourTotalUnpaidByCurrency}
+                    label="To Pay"
+                    type="pay"
+                  />
+                  <Text className="text-secondary-950">To Pay</Text>
+                </VStack>
+              </VStack>
+            </Card>
+          </HStack>
+        </VStack>
+
+        <VStack className="gap-y-4">
+          <HStack>
+            <ScrollView
+              horizontal
+              className="flex-1"
+              showsHorizontalScrollIndicator={false}
+            >
+              <HStack className="gap-x-2 px-4">
+                {settlementTabs.map((t) => (
+                  <FormButton
+                    key={t}
+                    size="md"
+                    variant={t === settlementTab ? "solid" : "outline"}
+                    text={`${t}${tabCounts[t] > 0 ? ` (${tabCounts[t]})` : ""}`}
+                    onPress={() => setSettlementTab(t)}
+                  />
+                ))}
+              </HStack>
+            </ScrollView>
+            <HStack className="gap-x-4 px-4">
+              <Button
+                variant="link"
+                className="rounded-full"
+                onPress={() => setDateRangeSheetOpen(true)}
+              >
+                <CalendarRange
+                  size={20}
+                  color={
+                    dateRange !== "All"
+                      ? getPrimaryHex("text-primary-400", colorScheme)
+                      : getSecondaryHex("text-secondary-950", colorScheme)
+                  }
+                />
+              </Button>
+              <Button
+                variant="link"
+                className="rounded-full"
+                onPress={() => setViewSheetOpen(true)}
+              >
+                <LayoutList
+                  size={20}
+                  color={
+                    viewBy !== "By Date"
+                      ? getPrimaryHex("text-primary-400", colorScheme)
+                      : getSecondaryHex("text-secondary-950", colorScheme)
+                  }
+                />
+              </Button>
+            </HStack>
+          </HStack>
+
+          {(dateRange !== "All" || viewBy !== "By Date") && (
+            <HStack className="gap-x-2 px-4 flex-wrap">
+              {dateRange !== "All" && (
+                <Pressable
+                  onPress={() => setDateRange("All")}
+                  className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                >
+                  <Text className="text-sm text-primary-600">
+                    {dateRangeLabels[dateRange]}
+                  </Text>
+                  <X
+                    size={12}
+                    color={getPrimaryHex("text-primary-600", colorScheme)}
+                  />
+                </Pressable>
+              )}
+              {viewBy !== "By Date" && (
+                <Pressable
+                  onPress={() => setViewBy("By Date")}
+                  className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                >
+                  <Text className="text-sm text-primary-600">{viewBy}</Text>
+                  <X
+                    size={12}
+                    color={getPrimaryHex("text-primary-600", colorScheme)}
+                  />
+                </Pressable>
+              )}
+            </HStack>
+          )}
+
+          <LoadingWrapper isLoading={loading} text="Loading settlements...">
+            <SectionList
+              scrollEnabled={false}
+              sections={settlementSections}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <SettlementItem
+                  item={item}
+                  onPress={handleSettlementItemPress}
+                />
+              )}
+              renderSectionHeader={({ section: { title } }) => (
+                <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
+                  <Text className="text-sm text-secondary-950">{title}</Text>
+                </Box>
+              )}
+              ItemSeparatorComponent={() => (
+                <Box className="mx-4">
+                  <Divider className="border-secondary-100" />
+                </Box>
+              )}
+              ListEmptyComponent={() => (
+                <Box className="px-4 py-8 items-center">
+                  <Text className="text-secondary-950">
+                    No settlements found
+                  </Text>
+                </Box>
+              )}
+              ListFooterComponent={() => <Box className="h-16" />}
+              stickySectionHeadersEnabled={true}
+            />
+          </LoadingWrapper>
+        </VStack>
       </VStack>
 
+      <DateRangeSheet
+        isOpen={dateRangeSheetOpen}
+        onClose={() => setDateRangeSheetOpen(false)}
+        dateRange={dateRange}
+        onSelect={setDateRange}
+      />
       <ViewBySheet
         isOpen={viewSheetOpen}
         onClose={() => setViewSheetOpen(false)}

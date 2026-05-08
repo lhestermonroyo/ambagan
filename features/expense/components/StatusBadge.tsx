@@ -1,7 +1,7 @@
 import AppBadge from "@/components/AppBadge";
 import {
   CheckCheck,
-  CheckLine,
+  FileCheckCorner,
   Hourglass,
   RefreshCcw
 } from "lucide-react-native";
@@ -25,7 +25,7 @@ export default function StatusBadge({
   } else if (status === "requested") {
     action = "info";
     text = "Requested";
-    icon = <CheckLine size={iconSize} color="#0B8DCD" />;
+    icon = <FileCheckCorner size={iconSize} color="#0B8DCD" />;
   } else if (status === "pending") {
     action = "warning";
     text = "Pending";

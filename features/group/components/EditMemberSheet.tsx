@@ -21,6 +21,7 @@ import services from "@/services";
 import states from "@/states";
 import { Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
+import { addRecentUser, getRecentUsers } from "@/utils/recentUsers";
 import { useEffect, useMemo, useState } from "react";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
@@ -40,6 +41,9 @@ export default function EditMembersSheet({
   const [members, setMembers] = useState<Member[]>([]);
   const [lockedMembers, setLockedMembers] = useState<Member[]>([]);
   const [tab, setTab] = useState<"recent" | "favorites">("recent");
+  const [recentUsers, setRecentUsers] = useState<UserPreview[]>([]);
+  const [favoriteUsers, setFavoriteUsers] = useState<UserPreview[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   const { details: groupDetails, memberList } = states.group.getState();
   const { details: userDetails } = states.user();
@@ -47,8 +51,10 @@ export default function EditMembersSheet({
   const showToast = useAppToast();
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && userDetails?.id) {
       init();
+      loadRecentUsers();
+      loadFavorites();
     }
   }, [isOpen]);
 
@@ -105,12 +111,58 @@ export default function EditMembersSheet({
     }
   };
 
+  const loadRecentUsers = async () => {
+    try {
+      const recent = await getRecentUsers();
+      setRecentUsers(recent.filter((u) => u.id !== groupDetails?.admin.id));
+    } catch (error) {
+      console.error("Error loading recent users:", error);
+    }
+  };
+
+  const loadFavorites = async () => {
+    try {
+      const data = await services.friend.getFavorites(userDetails!.id);
+      const filtered = data.filter((u) => u.id !== groupDetails?.admin.id);
+      setFavoriteUsers(filtered);
+      setFavoriteIds(new Set(filtered.map((u) => u.id)));
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
+    }
+  };
+
+  const handleToggleFavorite = async (targetUser: UserPreview) => {
+    if (!userDetails?.id) return;
+    try {
+      if (favoriteIds.has(targetUser.id)) {
+        await services.friend.removeFavorite(userDetails.id, targetUser.id);
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          next.delete(targetUser.id);
+          return next;
+        });
+        setFavoriteUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
+      } else {
+        await services.friend.addFavorite(userDetails.id, targetUser.id);
+        setFavoriteIds((prev) => new Set([...prev, targetUser.id]));
+        setFavoriteUsers((prev) => [targetUser, ...prev]);
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    }
+  };
+
+  const displayUsers = useMemo(() => {
+    if (searching) return users;
+    return tab === "favorites" ? favoriteUsers : recentUsers;
+  }, [searching, tab, users, favoriteUsers, recentUsers]);
+
   const handleChangeMembers = (selected: (string | number)[]) => {
     const selectedUnlocked = selected.filter(
       (id) => !lockedMembers.some((member) => member.id === id)
     );
 
-    const selectedUsers = users
+    const selectedUsers = displayUsers
       .filter((user) => selectedUnlocked.includes(user.id))
       .map(
         (user) =>
@@ -122,16 +174,30 @@ export default function EditMembersSheet({
             last_name: user.last_name
           }) as Member
       );
+    const currentIds = members.map((m) => m.id);
+    const newlyAdded = selectedUsers.filter((u) => !currentIds.includes(u.id));
+    newlyAdded.forEach((u) =>
+      addRecentUser({
+        id: u.id,
+        email: u.email,
+        avatar: u.avatar,
+        first_name: u.first_name,
+        last_name: u.last_name
+      } as UserPreview)
+    );
+
     setMembers((prev) => {
       const newMembers = selectedUsers.filter(
         (user) => !prev.some((member) => member.id === user.id)
       );
       const removedMembers = prev.filter(
-        (member) => !selected.includes(member.id)
+        (member) =>
+          !selectedUnlocked.includes(member.id) &&
+          displayUsers.some((u) => u.id === member.id)
       );
       return [
         ...newMembers,
-        ...prev.filter((member) => !removedMembers.includes(member))
+        ...prev.filter((m) => !removedMembers.some((r) => r.id === m.id))
       ];
     });
   };
@@ -144,6 +210,10 @@ export default function EditMembersSheet({
     setTab("recent");
     setSearchInput("");
     setSearching(false);
+    setUsers([]);
+    setRecentUsers([]);
+    setFavoriteUsers([]);
+    setFavoriteIds(new Set());
   };
 
   const handleClose = () => {
@@ -257,28 +327,34 @@ export default function EditMembersSheet({
                   onSetSearching={setSearching}
                 />
               </Box>
-              <HStack className="gap-x-2 px-4">
-                <FormButton
-                  size="md"
-                  variant={tab === "recent" ? "solid" : "outline"}
-                  className="flex-1 h-10"
-                  text="Recent"
-                  onPress={() => setTab("recent")}
-                />
-                <FormButton
-                  size="md"
-                  variant={tab === "favorites" ? "solid" : "outline"}
-                  className="flex-1 h-10"
-                  text="Favorites"
-                  onPress={() => setTab("favorites")}
-                />
-              </HStack>
+              {!searching && (
+                <HStack className="gap-x-2 px-4">
+                  <FormButton
+                    size="md"
+                    variant={tab === "recent" ? "solid" : "outline"}
+                    className="flex-1 h-10"
+                    text="Recent"
+                    onPress={() => setTab("recent")}
+                  />
+                  <FormButton
+                    size="md"
+                    variant={tab === "favorites" ? "solid" : "outline"}
+                    className="flex-1 h-10"
+                    text="Favorites"
+                    onPress={() => setTab("favorites")}
+                  />
+                </HStack>
+              )}
             </VStack>
             <ScrollView className="flex-1 w-full" bounces={false}>
-              {users.length === 0 && searching && (
+              {displayUsers.length === 0 && (
                 <VStack className="p-4 justify-center items-center">
                   <Text className="text-secondary-950">
-                    No results found on your search.
+                    {searching
+                      ? "No results found on your search."
+                      : tab === "favorites"
+                        ? "No favorites added yet."
+                        : "No recent users."}
                   </Text>
                 </VStack>
               )}
@@ -291,7 +367,7 @@ export default function EditMembersSheet({
                   scrollEnabled={false}
                   bounces={false}
                   className="flex-1"
-                  data={users}
+                  data={displayUsers}
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={({ item }) => {
                     const isLocked = lockedMembers.some(
@@ -304,6 +380,8 @@ export default function EditMembersSheet({
                         key={item.id}
                         item={item}
                         disabled={isCreator || isLocked}
+                        isFavorite={favoriteIds.has(item.id)}
+                        onToggleFavorite={handleToggleFavorite}
                       />
                     );
                   }}

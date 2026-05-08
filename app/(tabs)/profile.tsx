@@ -10,7 +10,7 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import AppearanceSheet from "@/features/profile/components/AppearanceSheet";
-import NotificationsSheet from "@/features/profile/components/NotificationsSheet";
+import NotificationsSheet from "@/features/profile/components/PushNotificationsSheet";
 import TabLayout from "@/layouts/TabLayout";
 import states from "@/states";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
@@ -83,8 +83,8 @@ export default function ProfileScreen() {
         icon: (
           <UserLock color={getPrimaryHex("text-primary-400", colorScheme)} />
         ),
-        label: "Account & Privacy",
-        description: "Manage your account settings and privacy preferences",
+        label: "Account Settings",
+        description: "Manage your account security and preferences",
         onPress: () => router.push("/profile/account-settings")
       },
       {

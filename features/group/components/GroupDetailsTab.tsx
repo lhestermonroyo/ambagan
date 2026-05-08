@@ -15,7 +15,7 @@ import React, { Fragment, useMemo, useState } from "react";
 import EditMembersSheet from "./EditMemberSheet";
 
 export default function GroupDetailsTab() {
-  const { details, memberList } = states.group();
+  const { details, memberList } = states.group.getState();
 
   if (!details) return null;
 

@@ -15,6 +15,7 @@ import {
   ModalFooter,
   ModalHeader
 } from "@/components/ui/modal";
+import { Pressable } from "@/components/ui/pressable";
 import {
   ScrollView as HScrollView,
   ScrollView
@@ -26,6 +27,11 @@ import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountD
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
+import DateRangeSheet, {
+  DateRangeOption,
+  dateRangeLabels,
+  getDateRangeCutoff
+} from "@/features/group/components/DateRangeSheet";
 import ViewBySheet, {
   ViewOption
 } from "@/features/group/components/ViewBySheet";
@@ -38,7 +44,13 @@ import { getDateGroupTitle } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { format, parseISO } from "date-fns";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { Check, CheckCheck, LayoutList } from "lucide-react-native";
+import {
+  CalendarRange,
+  CheckCheck,
+  FileCheckCorner,
+  LayoutList,
+  X
+} from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -59,6 +71,8 @@ export default function FriendDetailScreen() {
   const [initialized, setInitialized] = useState(false);
   const [viewSheetOpen, setViewSheetOpen] = useState(false);
   const [viewBy, setViewBy] = useState<ViewOption>("By Date");
+  const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRangeOption>("All");
   const [pendingAction, setPendingAction] = useState<
     "settle" | "request" | null
   >(null);
@@ -182,13 +196,14 @@ export default function FriendDetailScreen() {
     }));
   }, [outstanding, userDetails]);
 
-  const filteredSettlements = useMemo(
-    () =>
+  const filteredSettlements = useMemo(() => {
+    const cutoff = getDateRangeCutoff(dateRange);
+    return (
       settlementTab === "Outstanding"
         ? settlements.filter((s) => s.status !== "settled")
-        : settlements.filter((s) => s.status === "settled"),
-    [settlements, settlementTab]
-  );
+        : settlements.filter((s) => s.status === "settled")
+    ).filter((s) => !cutoff || new Date(s.created_at) >= cutoff);
+  }, [settlements, settlementTab, dateRange]);
 
   const sections = useMemo(() => {
     if (viewBy === "By Expense") {
@@ -241,7 +256,7 @@ export default function FriendDetailScreen() {
     <>
       <InnerLayout title={decodedName} onBack={() => router.back()}>
         <ScrollView className="flex-1" bounces={false}>
-          <VStack className="gap-y-4 pb-8">
+          <VStack className="gap-y-6">
             <VStack className="px-4 gap-y-4">
               <HStack className="gap-x-3 items-center">
                 <AppAvatar
@@ -304,7 +319,7 @@ export default function FriendDetailScreen() {
                     variant="outline"
                     text="Request All as Settled"
                     icon={
-                      <Check
+                      <FileCheckCorner
                         color={getPrimaryHex("text-primary-500", colorScheme)}
                       />
                     }
@@ -314,87 +329,145 @@ export default function FriendDetailScreen() {
               </VStack>
             </VStack>
 
-            <HStack className="px-4 items-center justify-between">
-              <Text bold className="text-xl">
-                Settlements
-              </Text>
-              <Button
-                variant="link"
-                className="rounded-full"
-                onPress={() => setViewSheetOpen(true)}
-              >
-                <LayoutList
-                  size={20}
-                  color={getSecondaryHex("text-secondary-950", colorScheme)}
-                />
-              </Button>
-            </HStack>
-
-            <HScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <HStack className="gap-x-2 px-4">
-                {(["Outstanding", "History"] as const).map((tab) => (
-                  <FormButton
-                    key={tab}
-                    size="md"
-                    variant={tab === settlementTab ? "solid" : "outline"}
-                    text={tab}
-                    onPress={() => setSettlementTab(tab)}
-                  />
-                ))}
+            <VStack className="gap-y-4">
+              <HStack>
+                <HScrollView
+                  horizontal
+                  className="flex-1"
+                  showsHorizontalScrollIndicator={false}
+                >
+                  <HStack className="gap-x-2 px-4">
+                    {(["Outstanding", "History"] as const).map((tab) => (
+                      <FormButton
+                        key={tab}
+                        size="md"
+                        variant={tab === settlementTab ? "solid" : "outline"}
+                        text={tab}
+                        onPress={() => setSettlementTab(tab)}
+                      />
+                    ))}
+                  </HStack>
+                </HScrollView>
+                <HStack className="gap-x-4 px-4">
+                  <Button
+                    variant="link"
+                    className="rounded-full"
+                    onPress={() => setDateRangeSheetOpen(true)}
+                  >
+                    <CalendarRange
+                      size={20}
+                      color={
+                        dateRange !== "All"
+                          ? getPrimaryHex("text-primary-400", colorScheme)
+                          : getSecondaryHex("text-secondary-950", colorScheme)
+                      }
+                    />
+                  </Button>
+                  <Button
+                    variant="link"
+                    className="rounded-full"
+                    onPress={() => setViewSheetOpen(true)}
+                  >
+                    <LayoutList
+                      size={20}
+                      color={
+                        viewBy !== "By Date"
+                          ? getPrimaryHex("text-primary-400", colorScheme)
+                          : getSecondaryHex("text-secondary-950", colorScheme)
+                      }
+                    />
+                  </Button>
+                </HStack>
               </HStack>
-            </HScrollView>
 
-            <LoadingWrapper
-              isLoading={loading}
-              text="Loading settlements, please wait..."
-            >
-              <SectionList
-                scrollEnabled={false}
-                sections={sections}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <SettlementItem
-                    item={item}
-                    onPress={() => {
-                      setSelectedPayment(item);
-                      setActionSheetOpen(true);
-                    }}
-                  />
-                )}
-                renderSectionHeader={({ section: { title } }) => (
-                  <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
-                    <Text className="text-sm text-secondary-950">{title}</Text>
-                  </Box>
-                )}
-                ItemSeparatorComponent={() => (
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-100" />
-                  </Box>
-                )}
-                stickySectionHeadersEnabled={true}
-                ListEmptyComponent={() => (
-                  <VStack className="flex-1 justify-center items-center p-4">
-                    <Text className="text-secondary-950 text-center">
-                      {settlementTab === "Outstanding"
-                        ? "No outstanding settlements with this person."
-                        : "No settled history with this person yet."}
-                    </Text>
-                  </VStack>
-                )}
-              />
-            </LoadingWrapper>
+              {(dateRange !== "All" || viewBy !== "By Date") && (
+                <HStack className="gap-x-2 px-4 flex-wrap">
+                  {dateRange !== "All" && (
+                    <Pressable
+                      onPress={() => setDateRange("All")}
+                      className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                    >
+                      <Text className="text-sm text-primary-600">
+                        {dateRangeLabels[dateRange]}
+                      </Text>
+                      <X
+                        size={12}
+                        color={getPrimaryHex("text-primary-600", colorScheme)}
+                      />
+                    </Pressable>
+                  )}
+                  {viewBy !== "By Date" && (
+                    <Pressable
+                      onPress={() => setViewBy("By Date")}
+                      className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                    >
+                      <Text className="text-sm text-primary-600">{viewBy}</Text>
+                      <X
+                        size={12}
+                        color={getPrimaryHex("text-primary-600", colorScheme)}
+                      />
+                    </Pressable>
+                  )}
+                </HStack>
+              )}
+
+              <LoadingWrapper
+                isLoading={loading}
+                text="Loading settlements, please wait..."
+              >
+                <SectionList
+                  scrollEnabled={false}
+                  sections={sections}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <SettlementItem
+                      item={item}
+                      onPress={() => {
+                        setSelectedPayment(item);
+                        setActionSheetOpen(true);
+                      }}
+                    />
+                  )}
+                  renderSectionHeader={({ section: { title } }) => (
+                    <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
+                      <Text className="text-sm text-secondary-950">
+                        {title}
+                      </Text>
+                    </Box>
+                  )}
+                  ItemSeparatorComponent={() => (
+                    <Box className="mx-4">
+                      <Divider className="border-secondary-100" />
+                    </Box>
+                  )}
+                  stickySectionHeadersEnabled={true}
+                  ListEmptyComponent={() => (
+                    <VStack className="flex-1 justify-center items-center p-4">
+                      <Text className="text-secondary-950 text-center">
+                        {settlementTab === "Outstanding"
+                          ? "No outstanding settlements with this person."
+                          : "No settled history with this person yet."}
+                      </Text>
+                    </VStack>
+                  )}
+                />
+              </LoadingWrapper>
+            </VStack>
           </VStack>
         </ScrollView>
       </InnerLayout>
 
       <SettlementActionSheet
         isOpen={actionSheetOpen}
-        onClose={() => {
-          setActionSheetOpen(false);
-          setSelectedPayment(null);
-        }}
+        onClose={() => setActionSheetOpen(false)}
         item={selectedPayment}
         onRefetch={() => fetchSettlements(true)}
+      />
+      <DateRangeSheet
+        isOpen={dateRangeSheetOpen}
+        onClose={() => setDateRangeSheetOpen(false)}
+        dateRange={dateRange}
+        onSelect={setDateRange}
       />
       <ViewBySheet
         isOpen={viewSheetOpen}

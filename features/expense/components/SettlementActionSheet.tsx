@@ -38,8 +38,6 @@ export default function SettlementActionSheet({
 }) {
   if (!item) return null;
 
-  const { details: userDetails } = states.user();
-
   const [requestSheetOpen, setRequestSheetOpen] = useState(false);
   const [markAsSettledSheetOpen, setMarkAsSettledSheetOpen] = useState(false);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
@@ -49,11 +47,11 @@ export default function SettlementActionSheet({
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
 
-  if (!item) return null;
+  const { details: userDetails } = states.user();
 
-  const isUserMember = item.member.id === userDetails?.id;
-  const isUserPayer = item.payer.id === userDetails?.id;
   const payment = item as Payment;
+  const isUserMember = payment.member.id === userDetails?.id;
+  const isUserPayer = payment.payer.id === userDetails?.id;
 
   const getActionConfig = (): { label: string; onPress: () => void } | null => {
     if (isUserMember) {
@@ -103,6 +101,14 @@ export default function SettlementActionSheet({
   };
 
   const actionConfig = getActionConfig();
+
+  console.log(
+    isUserMember,
+    isUserPayer,
+    markAsSettledSheetOpen,
+    requestSheetOpen,
+    reviewSheetOpen
+  );
 
   return (
     <Fragment>

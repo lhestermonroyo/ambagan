@@ -1,8 +1,6 @@
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
-import { Box } from "@/components/ui/box";
 import { ScrollView } from "@/components/ui/scroll-view";
-import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
@@ -31,7 +29,11 @@ export default function AccountSettingsScreen() {
   });
 
   const validate = () => {
-    const newErrors = { currentPassword: "", newPassword: "", confirmPassword: "" };
+    const newErrors = {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: ""
+    };
     let valid = true;
 
     if (!values.currentPassword) {
@@ -93,18 +95,9 @@ export default function AccountSettingsScreen() {
   };
 
   return (
-    <InnerLayout title="Account & Privacy" onBack={() => router.back()}>
+    <InnerLayout title="Account Settings" onBack={() => router.back()}>
       <ScrollView className="flex-1" bounces={false}>
         <VStack className="gap-y-6 p-4">
-          <Box className="bg-secondary-100 rounded-xl p-4">
-            <Text bold className="text-lg mb-1">
-              Change Password
-            </Text>
-            <Text className="text-secondary-950">
-              Update your password to keep your account secure.
-            </Text>
-          </Box>
-
           <VStack className="gap-y-4">
             <FormInput
               label="Current Password"
@@ -149,7 +142,6 @@ export default function AccountSettingsScreen() {
               }
             />
           </VStack>
-
           <FormButton
             text="Update Password"
             loading={submitting}

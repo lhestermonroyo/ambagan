@@ -226,22 +226,24 @@ export default function MembersSelectionSheet({
                 onSetSearching={setSearching}
               />
             </Box>
-            <HStack className="gap-x-2 px-4">
-              <FormButton
-                size="md"
-                variant={tab === "recent" ? "solid" : "outline"}
-                className="flex-1 h-10"
-                text="Recent"
-                onPress={() => setTab("recent")}
-              />
-              <FormButton
-                size="md"
-                variant={tab === "favorites" ? "solid" : "outline"}
-                className="flex-1 h-10"
-                text="Favorites"
-                onPress={() => setTab("favorites")}
-              />
-            </HStack>
+            {!searching && (
+              <HStack className="gap-x-2 px-4">
+                <FormButton
+                  size="md"
+                  variant={tab === "recent" ? "solid" : "outline"}
+                  className="flex-1 h-10"
+                  text="Recent"
+                  onPress={() => setTab("recent")}
+                />
+                <FormButton
+                  size="md"
+                  variant={tab === "favorites" ? "solid" : "outline"}
+                  className="flex-1 h-10"
+                  text="Favorites"
+                  onPress={() => setTab("favorites")}
+                />
+              </HStack>
+            )}
           </VStack>
           <ScrollView className="flex-1 w-full" bounces={false}>
             {displayUsers.length === 0 && (

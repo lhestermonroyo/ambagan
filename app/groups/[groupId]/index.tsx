@@ -39,7 +39,6 @@ import { ExpensePreview } from "@/types/expenses";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { format, parseISO } from "date-fns";
-import { useColorScheme } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   CirclePlus,
@@ -49,6 +48,7 @@ import {
   Trash2
 } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
+import { useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 const tabs = ["Settlements", "Expenses", "Group Info"] as const;
@@ -180,7 +180,7 @@ export default function GroupDetailsScreen() {
       expenseList: [],
       settlementList: []
     }));
-    router.back();
+    router.push("/groups");
   };
 
   const formattedExpenseList = useMemo(() => {
@@ -241,7 +241,10 @@ export default function GroupDetailsScreen() {
                     >
                       <EllipsisVertical
                         size={20}
-                        color={getSecondaryHex("text-secondary-950", colorScheme)}
+                        color={getSecondaryHex(
+                          "text-secondary-950",
+                          colorScheme
+                        )}
                       />
                     </Button>
                   )}
@@ -302,7 +305,10 @@ export default function GroupDetailsScreen() {
             isPressed={false}
             onPress={() => router.push(`/groups/${groupId}/new-expense`)}
           >
-            <CirclePlus size={20} color={getSecondaryHex("text-secondary-0", colorScheme)} />
+            <CirclePlus
+              size={20}
+              color={getSecondaryHex("text-secondary-0", colorScheme)}
+            />
             <FabLabel className="text-lg font-medium">New Expense</FabLabel>
           </Fab>
         )}

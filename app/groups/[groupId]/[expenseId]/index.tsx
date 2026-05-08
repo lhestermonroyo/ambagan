@@ -9,7 +9,7 @@ import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import StatusBadge from "@/features/expense/components/StatusBadge";
+import ImageViewerSheet from "@/features/expense/components/ImageViewerSheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
@@ -19,9 +19,9 @@ import { ExpensePayer, MemberSplit, Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useColorScheme } from "react-native";
 import { FileImage } from "lucide-react-native";
-import { Fragment, ReactNode, useMemo } from "react";
+import { Fragment, ReactNode, useMemo, useState } from "react";
+import { useColorScheme } from "react-native";
 
 export default function ExpenseDetailsScreen() {
   const { details: groupDetails } = states.group();
@@ -40,6 +40,7 @@ export default function ExpenseDetailsScreen() {
   const groupId = params.groupId as string;
 
   const toast = useAppToast();
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
 
   useFocusEffect(
     useMemo(
@@ -222,7 +223,10 @@ export default function ExpenseDetailsScreen() {
               <VStack className="gap-y-6 pb-2">
                 <VStack className="w-full gap-y-1 px-4">
                   <Text className="text-3xl" bold>
-                    {formatAmount(expenseDetails.amount, expenseDetails.currency)}
+                    {formatAmount(
+                      expenseDetails.amount,
+                      expenseDetails.currency
+                    )}
                   </Text>
                   <Text className="text-lg text-secondary-950">
                     {expenseDetails.description}
@@ -274,10 +278,13 @@ export default function ExpenseDetailsScreen() {
                             icon={
                               <FileImage
                                 size={18}
-                                color={getPrimaryHex("text-primary-500", colorScheme)}
+                                color={getPrimaryHex(
+                                  "text-primary-500",
+                                  colorScheme
+                                )}
                               />
                             }
-                            onPress={() => {}}
+                            onPress={() => setImageViewerOpen(true)}
                           />
                         ) : (
                           <Text className="text-secondary-950">N/A</Text>
@@ -332,6 +339,13 @@ export default function ExpenseDetailsScreen() {
           </ScrollView>
         </LoadingWrapper>
       </InnerLayout>
+
+      <ImageViewerSheet
+        isOpen={imageViewerOpen}
+        onClose={() => setImageViewerOpen(false)}
+        uri={expenseDetails?.proof_of_payment ?? null}
+        title="Proof of Payment"
+      />
     </Fragment>
   );
 }
@@ -370,8 +384,9 @@ function MemberSplitItem({
         <Text className="text-secondary-950">{memberSplit.member.email}</Text>
       </VStack>
       <VStack className="items-end gap-y-1">
-        <Text className="text-lg">{formatAmount(memberSplit.amount, memberSplit.currency)}</Text>
-        {payment && <StatusBadge status={payment.status} size="md" />}
+        <Text className="text-lg">
+          {formatAmount(memberSplit.amount, memberSplit.currency)}
+        </Text>
       </VStack>
     </HStack>
   );
@@ -397,7 +412,9 @@ function PayerItem({ payer }: { payer: ExpensePayer }) {
           <Text className="text-secondary-950">{payer.payer.email}</Text>
         </VStack>
       </HStack>
-      <Text className="text-lg">{formatAmount(payer.amount, payer.currency)}</Text>
+      <Text className="text-lg">
+        {formatAmount(payer.amount, payer.currency)}
+      </Text>
     </HStack>
   );
 }
