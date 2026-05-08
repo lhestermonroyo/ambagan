@@ -19,12 +19,13 @@ import { getSecondaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
 import { HousePlus } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { useColorScheme } from "react-native";
+import { RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 export default function GroupsScreen() {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [initialized, setInitialized] = useState(false);
@@ -57,7 +58,6 @@ export default function GroupsScreen() {
 
   const init = async (initialized = false) => {
     await fetchGroup(initialized).then(() => {
-      console.log("groups initialized");
       setInitialized(true);
     });
   };
@@ -112,6 +112,12 @@ export default function GroupsScreen() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchGroup(true);
+    setRefreshing(false);
+  };
+
   const filteredGroups = useMemo(() => {
     if (searchInput.length === 0) {
       return list;
@@ -139,7 +145,12 @@ export default function GroupsScreen() {
         <FabLabel className="text-lg font-medium">Add Group</FabLabel>
       </Fab>
       <TabLayout title="Groups">
-        <ScrollView className="flex-1" bounces={false}>
+        <ScrollView
+          className="flex-1"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
           <Box className="px-4 pb-4 bg-background-0">
             <SearchInput
               onChangeText={setSearchInput}

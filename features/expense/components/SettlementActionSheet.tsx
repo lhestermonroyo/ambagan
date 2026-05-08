@@ -102,14 +102,6 @@ export default function SettlementActionSheet({
 
   const actionConfig = getActionConfig();
 
-  console.log(
-    isUserMember,
-    isUserPayer,
-    markAsSettledSheetOpen,
-    requestSheetOpen,
-    reviewSheetOpen
-  );
-
   return (
     <Fragment>
       <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[30]}>

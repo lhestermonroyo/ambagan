@@ -30,7 +30,7 @@ import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Bell, HousePlus, PlusCircle } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
-import { useColorScheme } from "react-native";
+import { RefreshControl, useColorScheme } from "react-native";
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState({
@@ -46,6 +46,7 @@ export default function HomeScreen() {
   }>({ toPay: [], toReceive: [] });
 
   const [initialized, setInitialized] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentPreview | null>(
     null
@@ -180,6 +181,12 @@ export default function HomeScreen() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await init(true);
+    setRefreshing(false);
+  };
+
   const groupsPreview = useMemo(() => {
     return groupList.slice(0, 5);
   }, [groupList]);
@@ -225,7 +232,12 @@ export default function HomeScreen() {
             </Button>
           </HStack>
         </Box>
-        <ScrollView className="flex-1" bounces={false}>
+        <ScrollView
+          className="flex-1"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
           <VStack className="gap-y-4 bg-background-0 flex-1">
             <Box className="bg-primary-400 max-h-40">
               <Card

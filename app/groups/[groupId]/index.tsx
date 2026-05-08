@@ -48,13 +48,15 @@ import {
   Trash2
 } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
-import { useColorScheme } from "react-native";
+import { RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 const tabs = ["Settlements", "Expenses", "Group Info"] as const;
 
 export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [settlementRefreshTrigger, setSettlementRefreshTrigger] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const [openConfirmDeleteModal, setOpenConfirmDeleteModal] = useState(false);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
@@ -115,6 +117,14 @@ export default function GroupDetailsScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    if (!groupId) return;
+    setRefreshing(true);
+    setSettlementRefreshTrigger((prev) => prev + 1);
+    await init(groupId, true);
+    setRefreshing(false);
   };
 
   const handleDeleteGroup = async () => {
@@ -316,7 +326,15 @@ export default function GroupDetailsScreen() {
           isLoading={loading}
           text="Loading group details, please wait..."
         >
-          <ScrollView className="flex-1" bounces={false}>
+          <ScrollView
+            className="flex-1"
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+              />
+            }
+          >
             <VStack className="pb-4 gap-y-6">
               <HStack className="px-4 gap-x-4 items-center">
                 <VStack>
@@ -352,7 +370,9 @@ export default function GroupDetailsScreen() {
                 </HStack>
               </ScrollView>
             </VStack>
-            {tab === "Settlements" && <GroupSettlements />}
+            <Box className={tab !== "Settlements" ? "hidden" : ""}>
+              <GroupSettlements refreshTrigger={settlementRefreshTrigger} />
+            </Box>
             {tab === "Expenses" && (
               <SwipeListView
                 className="flex-1"

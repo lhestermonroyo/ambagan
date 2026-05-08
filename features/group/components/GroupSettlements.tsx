@@ -34,12 +34,16 @@ import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { format, parseISO } from "date-fns";
 import { useFocusEffect } from "expo-router";
 import { CalendarRange, HouseHeart, LayoutList, X } from "lucide-react-native";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
 const settlementTabs = ["All", "Pending", "Requested", "Settled"] as const;
 
-export default function GroupSettlements() {
+export default function GroupSettlements({
+  refreshTrigger = 0
+}: {
+  refreshTrigger?: number;
+}) {
   const { details, expenseList, settlementList } = states.group();
   const { details: userDetails } = states.user();
   const colorScheme = useColorScheme() ?? "light";
@@ -68,6 +72,12 @@ export default function GroupSettlements() {
       [details?.id, userDetails?.id]
     )
   );
+
+  useEffect(() => {
+    if (refreshTrigger > 0 && details?.id && userDetails?.id) {
+      fetchPayments();
+    }
+  }, [refreshTrigger]);
 
   const fetchPayments = async () => {
     if (!details?.id || !userDetails?.id) return;

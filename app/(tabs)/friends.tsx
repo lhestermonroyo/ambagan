@@ -13,9 +13,11 @@ import states from "@/states";
 import { FriendSummary } from "@/types/expenses";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Fragment, useMemo, useState } from "react";
+import { RefreshControl } from "react-native";
 
 export default function FriendsScreen() {
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searching, setSearching] = useState(false);
@@ -48,6 +50,12 @@ export default function FriendsScreen() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchFriends(true);
+    setRefreshing(false);
+  };
+
   const filteredFriends = useMemo(() => {
     if (!searchInput) return friends;
     const q = searchInput.toLowerCase();
@@ -73,7 +81,12 @@ export default function FriendsScreen() {
   return (
     <Fragment>
       <TabLayout title="Friends">
-        <ScrollView className="flex-1" bounces={false}>
+        <ScrollView
+          className="flex-1"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
           <Box className="px-4 pb-4 bg-background-0">
             <SearchInput
               value={searchInput}
@@ -82,7 +95,10 @@ export default function FriendsScreen() {
               placeholder="Search friends"
             />
           </Box>
-          <LoadingWrapper isLoading={loading} text="Loading friends, please wait...">
+          <LoadingWrapper
+            isLoading={loading}
+            text="Loading friends, please wait..."
+          >
             <FlatList
               data={filteredFriends}
               keyExtractor={(item) => item.friend.id}

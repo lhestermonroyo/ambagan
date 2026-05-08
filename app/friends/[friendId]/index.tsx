@@ -52,7 +52,7 @@ import {
   X
 } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { useColorScheme } from "react-native";
+import { RefreshControl, useColorScheme } from "react-native";
 
 export default function FriendDetailScreen() {
   const { friendId, name, email, avatar } = useLocalSearchParams<{
@@ -63,6 +63,7 @@ export default function FriendDetailScreen() {
   }>();
 
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [settlements, setSettlements] = useState<PaymentPreview[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<PaymentPreview | null>(
     null
@@ -115,6 +116,12 @@ export default function FriendDetailScreen() {
       if (!isInitialized) setLoading(false);
       setInitialized(true);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchSettlements(true);
+    setRefreshing(false);
   };
 
   const handleConfirmAction = async () => {
@@ -254,8 +261,13 @@ export default function FriendDetailScreen() {
 
   return (
     <>
-      <InnerLayout title={decodedName} onBack={() => router.back()}>
-        <ScrollView className="flex-1" bounces={false}>
+      <InnerLayout title="Friend Details" onBack={() => router.back()}>
+        <ScrollView
+          className="flex-1"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
           <VStack className="gap-y-6">
             <VStack className="px-4 gap-y-4">
               <HStack className="gap-x-3 items-center">
