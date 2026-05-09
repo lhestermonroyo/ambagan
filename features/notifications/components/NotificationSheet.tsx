@@ -15,7 +15,7 @@ import { VStack } from "@/components/ui/vstack";
 import NotificationItem from "@/features/notifications/components/NotificationItem";
 import services from "@/services";
 import states from "@/states";
-import { Notification } from "@/types/notifications";
+import { Notification, NotificationType } from "@/types/notifications";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import FormButton from "../../../components/FormButton";
@@ -90,14 +90,40 @@ export default function NotificationSheet({
   };
 
   const handlePress = async (notification: Notification) => {
-    const route = await services.notification.getNotificationRoute(
-      notification.type,
-      notification.reference_id
-    );
+    const isSettlement = [
+      NotificationType.SETTLEMENT_REQUEST,
+      NotificationType.SETTLEMENT_APPROVED,
+      NotificationType.SETTLEMENT_REJECTED,
+      NotificationType.SETTLEMENT_COMPLETED
+    ].includes(notification.type);
 
-    if (route) {
+    if (isSettlement) {
+      const friend = notification.from_user;
+      const openHistory = [
+        NotificationType.SETTLEMENT_APPROVED,
+        NotificationType.SETTLEMENT_COMPLETED
+      ].includes(notification.type);
       onClose();
-      router.push(route as any);
+      router.push({
+        pathname: "/friends/[friendId]",
+        params: {
+          friendId: friend.id,
+          name: `${friend.first_name} ${friend.last_name}`,
+          email: friend.email,
+          avatar: friend.avatar || "",
+          ...(openHistory && { tab: "History" })
+        }
+      } as any);
+    } else {
+      const route = await services.notification.getNotificationRoute(
+        notification.type,
+        notification.reference_id
+      );
+
+      if (route) {
+        onClose();
+        router.push(route as any);
+      }
     }
 
     if (!notification.is_read) {

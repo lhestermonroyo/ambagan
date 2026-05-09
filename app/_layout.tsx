@@ -125,14 +125,17 @@ export default function RootLayout() {
           schema: "public",
           table: tables.NOTIFICATIONS_TBL
         },
-        (payload) => {
-          console.log(JSON.stringify(payload));
-
-          const record = payload.new as { to_user_id: string };
+        async (payload) => {
+          const record = payload.new as { id: string; to_user_id: string };
           if (record.to_user_id !== userId) return;
+
+          const notification =
+            await services.notification.getNotificationById(record.id);
+
           states.notification.setState((prev) => ({
             ...prev,
-            unreadCount: prev.unreadCount + 1
+            unreadCount: prev.unreadCount + 1,
+            list: notification ? [notification, ...prev.list] : prev.list
           }));
         }
       )

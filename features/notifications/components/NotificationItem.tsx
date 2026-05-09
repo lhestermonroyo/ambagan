@@ -41,7 +41,7 @@ export default function NotificationItem({
 
   return (
     <PressableListItem className="p-4" onPress={() => onPress(item)}>
-      <HStack className="gap-x-3 items-center">
+      <HStack className="gap-x-2">
         <AppAvatar
           name={fromName}
           uri={item.from_user.avatar ?? undefined}

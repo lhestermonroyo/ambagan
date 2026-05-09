@@ -57,11 +57,12 @@ import { useMemo, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 
 export default function FriendDetailScreen() {
-  const { friendId, name, email, avatar } = useLocalSearchParams<{
+  const { friendId, name, email, avatar, tab } = useLocalSearchParams<{
     friendId: string;
     name: string;
     email: string;
     avatar: string;
+    tab?: string;
   }>();
 
   const [loading, setLoading] = useState(false);
@@ -81,7 +82,7 @@ export default function FriendDetailScreen() {
   >(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [settlementTab, setSettlementTab] = useState<"Outstanding" | "History">(
-    "Outstanding"
+    tab === "History" ? "History" : "Outstanding"
   );
 
   const { details: userDetails } = states.user();

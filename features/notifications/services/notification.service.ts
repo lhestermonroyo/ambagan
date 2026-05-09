@@ -42,6 +42,23 @@ export const getNotificationsByUserId = async (
   };
 };
 
+export const getNotificationById = async (
+  id: string
+): Promise<Notification | null> => {
+  const { data, error } = await supabase
+    .from(tables.NOTIFICATIONS_TBL)
+    .select(
+      `id, created_at, type, reference_id, is_read,
+      from_user:from_user_id(${USER_FIELDS}),
+      to_user:to_user_id(${USER_FIELDS})`
+    )
+    .eq("id", id)
+    .single();
+
+  if (error || !data) return null;
+  return data as unknown as Notification;
+};
+
 export const getUnreadCount = async (userId: string) => {
   const user = await supabase.auth.getUser();
 
