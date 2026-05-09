@@ -75,22 +75,26 @@ export default function EditNameSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[50]}>
+    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[60]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full flex-1 gap-y-4 p-4">
-          <Text bold className="text-xl">
-            Edit Name
-          </Text>
-          <VStack className="gap-y-4 flex-1">
+        <VStack className="w-full flex-1">
+          <VStack className="p-4">
+            <Text bold className="text-xl">
+              Edit Name
+            </Text>
+          </VStack>
+          <VStack className="gap-y-4 flex-1 p-4">
             <FormInput
               label="First Name"
               placeholder="Juan"
               value={values.first_name}
-              onChangeText={(text) => setValues({ ...values, first_name: text })}
+              onChangeText={(text) =>
+                setValues({ ...values, first_name: text })
+              }
               autoCapitalize="words"
             />
             <FormInput

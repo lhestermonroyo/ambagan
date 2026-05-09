@@ -146,7 +146,7 @@ export default function ReviewRequestPaidSheet({
 
   return (
     <Fragment>
-      <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[80]}>
+      <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
         <ActionsheetBackdrop />
         <ActionsheetContent className="p-0">
           <ActionsheetDragIndicatorWrapper>

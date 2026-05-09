@@ -65,10 +65,7 @@ export default function NotificationSheet({
 
       states.notification.setState((prev) => ({
         ...prev,
-        list:
-          pageNum === 0
-            ? response.data
-            : [...prev.list, ...response.data]
+        list: pageNum === 0 ? response.data : [...prev.list, ...response.data]
       }));
 
       setPage(pageNum);
@@ -160,7 +157,7 @@ export default function NotificationSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[94]}>
+    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
         <ActionsheetDragIndicatorWrapper>
@@ -194,10 +191,7 @@ export default function NotificationSheet({
             )}
           </HStack>
 
-          <LoadingWrapper
-            isLoading={loading}
-            text="Loading notifications..."
-          >
+          <LoadingWrapper isLoading={loading} text="Loading notifications...">
             <FlatList
               data={list}
               keyExtractor={(item) => item.id}

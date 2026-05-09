@@ -281,6 +281,48 @@ export const getGroupsByUserId = async (userId: string) => {
   })) as (Group & { members: Member[] })[];
 };
 
+const GROUPS_PAGE_SIZE = 15;
+
+export const getGroupsByUserIdPaginated = async (
+  userId: string,
+  page: number = 0
+): Promise<{ data: (Group & { members: Member[] })[]; hasNext: boolean }> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const from = page * GROUPS_PAGE_SIZE;
+  const to = from + GROUPS_PAGE_SIZE - 1;
+
+  const { data, error, count } = await supabase
+    .from(tables.GROUPS_TBL)
+    .select(
+      `id, created_at, name, category, avatar, archived,
+       admin:admin_id (id, email, phone, first_name, last_name, avatar),
+       ${tables.GROUP_MEMBERS_TBL}!inner(member_id)`,
+      { count: "exact" }
+    )
+    .eq(`${tables.GROUP_MEMBERS_TBL}.member_id`, userId)
+    .eq("archived", false)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+
+  const groups = (data as any[]).map(({ group_members_tbl: _, ...group }) => group) as Group[];
+  const groupIds = groups.map((g) => g.id);
+  const members = groupIds.length ? await getMembersByGroupIds(groupIds) : [];
+
+  const totalPages = Math.ceil((count || 0) / GROUPS_PAGE_SIZE);
+
+  return {
+    data: groups.map((group) => ({
+      ...group,
+      members: members.filter((m) => m.group_id === group.id)
+    })),
+    hasNext: page < totalPages - 1
+  };
+};
+
 export const getGroupById = async (groupId: string) => {
   const user = await supabase.auth.getUser();
 

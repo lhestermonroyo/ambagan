@@ -130,7 +130,7 @@ function GroupSelectionActionSheet({
   const { list: groupList } = states.group.getState();
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[92]}>
+    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
         <ActionsheetDragIndicatorWrapper>

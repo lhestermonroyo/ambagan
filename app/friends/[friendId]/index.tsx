@@ -53,7 +53,7 @@ import {
   LayoutList,
   X
 } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 
 export default function FriendDetailScreen() {
@@ -66,8 +66,12 @@ export default function FriendDetailScreen() {
   }>();
 
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [settlements, setSettlements] = useState<PaymentPreview[]>([]);
+  const [activeSettlements, setActiveSettlements] = useState<PaymentPreview[]>([]);
+  const [settledSettlements, setSettledSettlements] = useState<PaymentPreview[]>([]);
+  const [settledPage, setSettledPage] = useState(0);
+  const [hasMoreSettled, setHasMoreSettled] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentPreview | null>(
     null
   );
@@ -84,6 +88,7 @@ export default function FriendDetailScreen() {
   const [settlementTab, setSettlementTab] = useState<"Outstanding" | "History">(
     tab === "History" ? "History" : "Outstanding"
   );
+  const initializedRef = useRef(false);
 
   const { details: userDetails } = states.user();
   const router = useRouter();
@@ -98,32 +103,73 @@ export default function FriendDetailScreen() {
     useMemo(
       () => () => {
         if (!userDetails?.id || !friendId) return;
-        fetchSettlements(initialized);
+        fetchAll(!initialized);
       },
       [userDetails?.id, friendId, initialized]
     )
   );
 
-  const fetchSettlements = async (isInitialized = false) => {
+  useEffect(() => {
+    if (!initializedRef.current) return;
     if (!userDetails?.id || !friendId) return;
-    if (!isInitialized) setLoading(true);
+    const cutoff = getDateRangeCutoff(dateRange);
+    setSettledSettlements([]);
+    setSettledPage(0);
+    fetchSettled(0, cutoff);
+  }, [dateRange]);
+
+  const fetchAll = async (showLoading = true) => {
+    if (!userDetails?.id || !friendId) return;
+    if (showLoading) setLoading(true);
     try {
-      const data = await services.friend.getFriendSettlements(
-        userDetails.id,
-        friendId
-      );
-      setSettlements(data);
+      const cutoff = getDateRangeCutoff(dateRange);
+      const [active, settled] = await Promise.all([
+        services.friend.getActiveFriendSettlements(userDetails.id, friendId),
+        services.friend.getSettledFriendSettlements(userDetails.id, friendId, { cutoff, page: 0 })
+      ]);
+      setActiveSettlements(active);
+      setSettledSettlements(settled.data);
+      setSettledPage(0);
+      setHasMoreSettled(settled.hasNext);
+      initializedRef.current = true;
     } catch (error) {
       console.error("Failed to fetch friend settlements:", error);
     } finally {
-      if (!isInitialized) setLoading(false);
+      if (showLoading) setLoading(false);
       setInitialized(true);
+    }
+  };
+
+  const fetchSettled = async (page: number, cutoff: Date | null) => {
+    if (!userDetails?.id || !friendId) return;
+    try {
+      const result = await services.friend.getSettledFriendSettlements(
+        userDetails.id,
+        friendId,
+        { cutoff, page }
+      );
+      setSettledSettlements((prev) =>
+        page === 0 ? result.data : [...prev, ...result.data]
+      );
+      setSettledPage(page);
+      setHasMoreSettled(result.hasNext);
+    } catch (error) {
+      console.error("Failed to fetch settled friend settlements:", error);
+    }
+  };
+
+  const loadMoreSettled = async () => {
+    setLoadingMore(true);
+    try {
+      await fetchSettled(settledPage + 1, getDateRangeCutoff(dateRange));
+    } finally {
+      setLoadingMore(false);
     }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchSettlements(true);
+    await fetchAll(false);
     setRefreshing(false);
   };
 
@@ -150,7 +196,7 @@ export default function FriendDetailScreen() {
         });
       }
       setPendingAction(null);
-      await fetchSettlements(true);
+      await fetchAll(false);
     } catch (error) {
       toast({
         title: "Error",
@@ -162,58 +208,46 @@ export default function FriendDetailScreen() {
     }
   };
 
-  const outstanding = useMemo(
-    () => settlements.filter((s) => s.status !== "settled"),
-    [settlements]
-  );
-
   const canSettle = useMemo(
-    () => outstanding.some((s) => s.payer.id === userDetails?.id),
-    [outstanding, userDetails]
+    () => activeSettlements.some((s) => s.payer.id === userDetails?.id),
+    [activeSettlements, userDetails]
   );
 
   const canRequestSettle = useMemo(
     () =>
-      outstanding.some(
+      activeSettlements.some(
         (s) => s.member.id === userDetails?.id && s.status === "pending"
       ),
-    [outstanding, userDetails]
+    [activeSettlements, userDetails]
   );
 
   const toCollect = useMemo(() => {
     const map: Record<string, number> = {};
-    outstanding
+    activeSettlements
       .filter((s) => s.payer.id === userDetails?.id)
       .forEach((s) => {
         map[s.currency] = (map[s.currency] ?? 0) + s.amount;
       });
-    return Object.entries(map).map(([currency, amount]) => ({
-      currency,
-      amount
-    }));
-  }, [outstanding, userDetails]);
+    return Object.entries(map).map(([currency, amount]) => ({ currency, amount }));
+  }, [activeSettlements, userDetails]);
 
   const toPay = useMemo(() => {
     const map: Record<string, number> = {};
-    outstanding
+    activeSettlements
       .filter((s) => s.member.id === userDetails?.id)
       .forEach((s) => {
         map[s.currency] = (map[s.currency] ?? 0) + s.amount;
       });
-    return Object.entries(map).map(([currency, amount]) => ({
-      currency,
-      amount
-    }));
-  }, [outstanding, userDetails]);
+    return Object.entries(map).map(([currency, amount]) => ({ currency, amount }));
+  }, [activeSettlements, userDetails]);
 
   const filteredSettlements = useMemo(() => {
+    if (settlementTab === "History") return settledSettlements;
     const cutoff = getDateRangeCutoff(dateRange);
-    return (
-      settlementTab === "Outstanding"
-        ? settlements.filter((s) => s.status !== "settled")
-        : settlements.filter((s) => s.status === "settled")
-    ).filter((s) => !cutoff || new Date(s.created_at) >= cutoff);
-  }, [settlements, settlementTab, dateRange]);
+    return activeSettlements.filter(
+      (s) => !cutoff || new Date(s.created_at) >= cutoff
+    );
+  }, [activeSettlements, settledSettlements, settlementTab, dateRange]);
 
   const sections = useMemo(() => {
     if (viewBy === "By Expense") {
@@ -470,6 +504,18 @@ export default function FriendDetailScreen() {
                       }
                     />
                   )}
+                  ListFooterComponent={() =>
+                    settlementTab === "History" && hasMoreSettled ? (
+                      <Box className="px-4 pb-2">
+                        <FormButton
+                          variant="outline"
+                          text="Load More"
+                          loading={loadingMore}
+                          onPress={loadMoreSettled}
+                        />
+                      </Box>
+                    ) : null
+                  }
                 />
               </LoadingWrapper>
             </VStack>
@@ -481,7 +527,7 @@ export default function FriendDetailScreen() {
         isOpen={actionSheetOpen}
         onClose={() => setActionSheetOpen(false)}
         item={selectedPayment}
-        onRefetch={() => fetchSettlements(true)}
+        onRefetch={() => fetchAll(false)}
       />
       <DateRangeSheet
         isOpen={dateRangeSheetOpen}

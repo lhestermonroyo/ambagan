@@ -37,6 +37,7 @@ export default function ProfileScreen() {
     details: userDetails,
     signOut,
     appearanceMode,
+    preferences,
     notificationsEnabled,
     defaultCurrency,
     setDefaultCurrency
@@ -109,7 +110,22 @@ export default function ProfileScreen() {
         label: "Push Notifications",
         description: "Manage your push notification preferences",
         value: (
-          <Text className="text-lg">{notificationsEnabled ? "On" : "Off"}</Text>
+          <Text className="text-lg">
+            {!notificationsEnabled
+              ? "Off"
+              : preferences &&
+                  [
+                    preferences.notif_settlement_request,
+                    preferences.notif_settlement_approved,
+                    preferences.notif_settlement_rejected,
+                    preferences.notif_settlement_completed,
+                    preferences.notif_expense_inclusion,
+                    preferences.notif_group_join,
+                    preferences.notif_group_leave
+                  ].every(Boolean)
+                ? "On"
+                : "Partial"}
+          </Text>
         ),
         onPress: () => setNotificationsOpen(true)
       },
@@ -120,7 +136,7 @@ export default function ProfileScreen() {
         onPress: () => router.push("/profile/about")
       }
     ],
-    [appearanceLabel, notificationsEnabled, currencyLabel, colorScheme]
+    [appearanceLabel, notificationsEnabled, preferences, currencyLabel, colorScheme]
   );
 
   const handleSignOut = () => {
@@ -136,7 +152,7 @@ export default function ProfileScreen() {
   return (
     <TabLayout title="Profile">
       <ScrollView className="flex-1" bounces={false}>
-        <VStack className="pb-4 gap-y-6">
+        <VStack className="gap-y-8">
           <HStack className="px-4 gap-x-4 items-center">
             <VStack>
               <AppAvatar

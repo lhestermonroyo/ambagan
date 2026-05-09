@@ -1,67 +1,94 @@
-import { AppearanceMode, UserState } from "@/types/user";
+import * as PREFERENCES_SERVICE from "@/features/user/services/preferences.service";
+import { AppearanceMode, UserPreferences, UserState } from "@/types/user";
 import { supabase } from "@/utils/supabase";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 
-const APPEARANCE_KEY = "@appearance_mode";
-const NOTIFICATIONS_KEY = "@notifications_enabled";
-const DEFAULT_CURRENCY_KEY = "@default_currency";
+const NOTIF_ALL_ON = {
+  notif_settlement_request: true,
+  notif_settlement_approved: true,
+  notif_settlement_rejected: true,
+  notif_settlement_completed: true,
+  notif_expense_inclusion: true,
+  notif_group_join: true,
+  notif_group_leave: true
+};
 
-const USER_STATE = create<UserState>((set) => ({
+const NOTIF_ALL_OFF = Object.fromEntries(
+  Object.keys(NOTIF_ALL_ON).map((k) => [k, false])
+) as typeof NOTIF_ALL_ON;
+
+const isAnyNotifEnabled = (prefs: UserPreferences) =>
+  Object.keys(NOTIF_ALL_ON).some((k) => prefs[k as keyof UserPreferences]);
+
+const USER_STATE = create<UserState>((set, get) => ({
   loading: true,
   session: null,
   details: null,
+  preferences: null,
   appearanceMode: "light",
   notificationsEnabled: true,
   defaultCurrency: "PHP",
 
   signOut: async () => {
     await supabase.auth.signOut();
-    set({ session: null, details: null });
+    set({ session: null, details: null, preferences: null });
   },
 
   setAppearanceMode: async (mode: AppearanceMode) => {
-    await AsyncStorage.setItem(APPEARANCE_KEY, mode);
+    const { details } = get();
+    if (!details?.id) return;
+    await PREFERENCES_SERVICE.upsertPreferences(details.id, { appearance: mode });
     set({ appearanceMode: mode });
   },
 
   setNotificationsEnabled: async (enabled: boolean) => {
-    await AsyncStorage.setItem(NOTIFICATIONS_KEY, String(enabled));
+    const { details } = get();
+    if (!details?.id) return;
+    const notifPrefs = enabled ? NOTIF_ALL_ON : NOTIF_ALL_OFF;
+    await PREFERENCES_SERVICE.upsertPreferences(details.id, notifPrefs);
     set({ notificationsEnabled: enabled });
   },
 
   setDefaultCurrency: async (userId: string, currency: string) => {
-    await AsyncStorage.setItem(
-      DEFAULT_CURRENCY_KEY,
-      JSON.stringify({ userId, currency })
-    );
+    await PREFERENCES_SERVICE.upsertPreferences(userId, { default_currency: currency });
     set({ defaultCurrency: currency });
   },
 
+  updatePreferences: async (prefs) => {
+    const { details } = get();
+    if (!details?.id) return;
+    const updated = await PREFERENCES_SERVICE.upsertPreferences(details.id, prefs);
+    set({
+      preferences: updated,
+      notificationsEnabled: isAnyNotifEnabled(updated),
+      ...(prefs.appearance !== undefined && { appearanceMode: prefs.appearance }),
+      ...(prefs.default_currency !== undefined && { defaultCurrency: prefs.default_currency })
+    });
+  },
+
   loadPreferences: async (userId?: string) => {
-    const [storedAppearance, storedNotifications, storedCurrency] =
-      await Promise.all([
-        AsyncStorage.getItem(APPEARANCE_KEY),
-        AsyncStorage.getItem(NOTIFICATIONS_KEY),
-        AsyncStorage.getItem(DEFAULT_CURRENCY_KEY)
-      ]);
+    if (!userId) return;
 
-    const appearanceMode: AppearanceMode =
-      storedAppearance === "dark" || storedAppearance === "system"
-        ? storedAppearance
-        : "light";
+    try {
+      let prefs = await PREFERENCES_SERVICE.getPreferences(userId);
 
-    const notificationsEnabled = storedNotifications !== "false";
-
-    let defaultCurrency = "PHP";
-    if (storedCurrency) {
-      const parsed = JSON.parse(storedCurrency);
-      if (!userId || parsed.userId === userId) {
-        defaultCurrency = parsed.currency;
+      if (!prefs) {
+        prefs = await PREFERENCES_SERVICE.upsertPreferences(userId, {
+          appearance: "light",
+          default_currency: "PHP",
+          ...NOTIF_ALL_ON
+        });
       }
-    }
 
-    set({ appearanceMode, notificationsEnabled, defaultCurrency });
+      set({
+        preferences: prefs,
+        appearanceMode: prefs.appearance,
+        notificationsEnabled: isAnyNotifEnabled(prefs),
+        defaultCurrency: prefs.default_currency
+      });
+    } catch (error) {
+      console.error("Error loading preferences:", error);
+    }
   }
 }));
 

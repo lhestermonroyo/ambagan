@@ -32,8 +32,8 @@ import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
 import { getErrorHex, getPrimaryHex } from "@/utils/getColorHex";
 import { AlertTriangle, CircleIcon } from "lucide-react-native";
-import { useColorScheme } from "react-native";
 import { Fragment, useEffect, useState } from "react";
+import { useColorScheme } from "react-native";
 
 export default function LeaveGroupSheet({
   isOpen,
@@ -117,7 +117,7 @@ export default function LeaveGroupSheet({
   const hasUnsettled = unsettledPayments.length > 0;
   const adminNeedsSelection = isAdmin && !isSoleAdmin && !selectedNewAdmin;
   const canLeave = !fetching && !hasUnsettled && !adminNeedsSelection;
-  const snapPoints = hasUnsettled || (isAdmin && !isSoleAdmin) ? [80] : [30];
+  const snapPoints = hasUnsettled || (isAdmin && !isSoleAdmin) ? [90] : [30];
 
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={snapPoints}>
@@ -139,7 +139,9 @@ export default function LeaveGroupSheet({
                 {hasUnsettled ? (
                   <Fragment>
                     <HStack className="bg-error-50 rounded-xl gap-x-4 p-4 items-start">
-                      <AlertTriangle color={getErrorHex("text-error-600", colorScheme)} />
+                      <AlertTriangle
+                        color={getErrorHex("text-error-600", colorScheme)}
+                      />
                       <Text className="text-error-600 flex-1">
                         You have{" "}
                         <Text bold className="text-error-600">
@@ -169,7 +171,9 @@ export default function LeaveGroupSheet({
                   </Fragment>
                 ) : isSoleAdmin ? (
                   <HStack className="bg-primary-50 rounded-xl gap-x-3 p-4 items-start">
-                    <AlertTriangle color={getPrimaryHex("text-primary-600", colorScheme)} />
+                    <AlertTriangle
+                      color={getPrimaryHex("text-primary-600", colorScheme)}
+                    />
                     <Text className="text-primary-600 flex-1">
                       You are the only member. Leaving will{" "}
                       <Text bold className="text-primary-600">

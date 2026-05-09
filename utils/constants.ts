@@ -10,7 +10,9 @@ export const tables = {
   MEMBER_SPLITS_TBL: "member_splits_tbl",
   PAYMENT_SPLITS_TBL: "payment_splits_tbl",
   NOTIFICATIONS_TBL: "notifications_tbl",
-  USER_FAVORITES_TBL: "user_favorites_tbl"
+  USER_FAVORITES_TBL: "user_favorites_tbl",
+  USER_PREFERENCES_TBL: "user_preferences_tbl",
+  USER_PUSH_TOKENS_TBL: "user_push_tokens_tbl"
 };
 
 // apply signs to all currencies

@@ -166,9 +166,30 @@ export default function RootLayout() {
 
       await loadPreferences(id);
       subscribeToNotifications(id);
+      registerDevicePushToken(id);
     } catch (error) {
       console.error("Error fetching user details:", error);
     }
+  };
+
+  const registerDevicePushToken = async (userId: string) => {
+    // To enable push notifications:
+    // 1. Run: npx expo install expo-notifications expo-device
+    // 2. Uncomment the code below and remove this comment block
+    //
+    // import * as Device from "expo-device";
+    // import * as Notifications from "expo-notifications";
+    //
+    // if (!Device.isDevice) return;
+    // const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    // let finalStatus = existingStatus;
+    // if (existingStatus !== "granted") {
+    //   const { status } = await Notifications.requestPermissionsAsync();
+    //   finalStatus = status;
+    // }
+    // if (finalStatus !== "granted") return;
+    // const { data: token } = await Notifications.getExpoPushTokenAsync();
+    // await services.pushToken.registerPushToken(userId, token);
   };
 
   if (!loaded || loading) {

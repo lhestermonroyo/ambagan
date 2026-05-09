@@ -5,10 +5,14 @@ import * as NOTIFICATION_SERVICE from "./features/notifications/services/notific
 import * as MEMBER_SERVICE from "./features/group/services/member.service";
 import * as AUTH_SERVICE from "./features/user/services/auth.service";
 import * as USER_SERVICE from "./features/user/services/user.service";
+import * as PREFERENCES_SERVICE from "./features/user/services/preferences.service";
+import * as PUSH_TOKEN_SERVICE from "./features/user/services/push-token.service";
 
 const services = {
   auth: AUTH_SERVICE,
   user: USER_SERVICE,
+  preferences: PREFERENCES_SERVICE,
+  pushToken: PUSH_TOKEN_SERVICE,
   group: GROUP_SERVICE,
   member: MEMBER_SERVICE,
   expense: EXPENSE_SERVICE,

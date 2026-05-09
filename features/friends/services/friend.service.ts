@@ -101,26 +101,10 @@ export const getFriendsSummary = async (
   }));
 };
 
-export const getFriendSettlements = async (
-  userId: string,
-  friendId: string
-): Promise<PaymentPreview[]> => {
-  const user = await supabase.auth.getUser();
-  if (!user.data.user) throw new Error("User not authenticated");
+const FRIEND_SETTLEMENT_FIELDS = `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), amount, status, expense:expense_id(description, currency)`;
 
-  const { data, error } = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .select(
-      `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), amount, status, expense:expense_id(description, currency)`
-    )
-    .or(
-      `and(member_id.eq.${userId},payer_id.eq.${friendId}),and(member_id.eq.${friendId},payer_id.eq.${userId})`
-    )
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-
-  return data.map((item) => {
+const mapFriendPaymentRows = (data: any[]): PaymentPreview[] =>
+  data.map((item) => {
     const expense = Array.isArray(item.expense) ? item.expense[0] : item.expense;
     return {
       ...item,
@@ -131,6 +115,74 @@ export const getFriendSettlements = async (
       expense: undefined
     };
   }) as PaymentPreview[];
+
+const FRIEND_PAIR_FILTER = (userId: string, friendId: string) =>
+  `and(member_id.eq.${userId},payer_id.eq.${friendId}),and(member_id.eq.${friendId},payer_id.eq.${userId})`;
+
+export const getFriendSettlements = async (
+  userId: string,
+  friendId: string
+): Promise<PaymentPreview[]> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { data, error } = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(FRIEND_SETTLEMENT_FIELDS)
+    .or(FRIEND_PAIR_FILTER(userId, friendId))
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return mapFriendPaymentRows(data);
+};
+
+export const getActiveFriendSettlements = async (
+  userId: string,
+  friendId: string
+): Promise<PaymentPreview[]> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { data, error } = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(FRIEND_SETTLEMENT_FIELDS)
+    .or(FRIEND_PAIR_FILTER(userId, friendId))
+    .in("status", ["pending", "requested"])
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return mapFriendPaymentRows(data);
+};
+
+const FRIEND_SETTLED_PAGE_SIZE = 20;
+
+export const getSettledFriendSettlements = async (
+  userId: string,
+  friendId: string,
+  options: { cutoff?: Date | null; page?: number } = {}
+): Promise<{ data: PaymentPreview[]; hasNext: boolean }> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { cutoff = null, page = 0 } = options;
+  const from = page * FRIEND_SETTLED_PAGE_SIZE;
+  const to = from + FRIEND_SETTLED_PAGE_SIZE - 1;
+
+  let query = supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(FRIEND_SETTLEMENT_FIELDS, { count: "exact" })
+    .or(FRIEND_PAIR_FILTER(userId, friendId))
+    .eq("status", "settled")
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (cutoff) query = query.gte("created_at", cutoff.toISOString());
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+
+  const totalPages = Math.ceil((count || 0) / FRIEND_SETTLED_PAGE_SIZE);
+  return { data: mapFriendPaymentRows(data), hasNext: page < totalPages - 1 };
 };
 
 export const bulkSettleWithFriend = async (

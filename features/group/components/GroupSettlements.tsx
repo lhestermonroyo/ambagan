@@ -36,7 +36,7 @@ import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { format, parseISO } from "date-fns";
 import { useFocusEffect } from "expo-router";
 import { CalendarRange, HouseHeart, LayoutList, X } from "lucide-react-native";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useColorScheme } from "react-native";
 
 const settlementTabs = ["All", "Pending", "Requested", "Settled"] as const;
@@ -46,11 +46,16 @@ export default function GroupSettlements({
 }: {
   refreshTrigger?: number;
 }) {
-  const { details, expenseList, settlementList } = states.group();
+  const { details, expenseList } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
   const colorScheme = useColorScheme() ?? "light";
 
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [activePayments, setActivePayments] = useState<Payment[]>([]);
+  const [settledPayments, setSettledPayments] = useState<Payment[]>([]);
+  const [settledPage, setSettledPage] = useState(0);
+  const [hasMoreSettled, setHasMoreSettled] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [requestSheetOpen, setRequestSheetOpen] = useState(false);
   const [markAsSettledSheetOpen, setMarkAsSettledSheetOpen] = useState(false);
@@ -63,12 +68,13 @@ export default function GroupSettlements({
   const [viewSheetOpen, setViewSheetOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
+  const initializedRef = useRef(false);
 
   useFocusEffect(
     useMemo(
       () => () => {
         if (details?.id && userDetails?.id) {
-          fetchPayments();
+          fetchAll();
         }
       },
       [details?.id, userDetails?.id]
@@ -77,26 +83,66 @@ export default function GroupSettlements({
 
   useEffect(() => {
     if (refreshTrigger > 0 && details?.id && userDetails?.id) {
-      fetchPayments();
+      fetchAll();
     }
   }, [refreshTrigger]);
 
-  const fetchPayments = async () => {
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    if (!details?.id || !userDetails?.id) return;
+    const cutoff = getDateRangeCutoff(dateRange);
+    setSettledPayments([]);
+    setSettledPage(0);
+    fetchSettled(0, cutoff);
+  }, [dateRange]);
+
+  const fetchAll = async () => {
     if (!details?.id || !userDetails?.id) return;
     setLoading(true);
     try {
-      const data = await services.expense.getPaymentsByGroupAndUserId(
-        details.id,
-        userDetails.id
-      );
+      const cutoff = getDateRangeCutoff(dateRange);
+      const [active, settled] = await Promise.all([
+        services.expense.getActivePaymentsByGroupAndUserId(details.id, userDetails.id),
+        services.expense.getSettledPaymentsByGroupAndUserId(details.id, userDetails.id, { cutoff, page: 0 })
+      ]);
+      setActivePayments(sortPaymentsByStatus(active));
+      setSettledPayments(settled.data);
+      setSettledPage(0);
+      setHasMoreSettled(settled.hasNext);
       states.group.setState((prev) => ({
         ...prev,
-        settlementList: sortPaymentsByStatus(data)
+        settlementList: sortPaymentsByStatus([...active, ...settled.data])
       }));
+      initializedRef.current = true;
     } catch (error) {
       console.error("Error fetching group payments:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSettled = async (page: number, cutoff: Date | null) => {
+    if (!details?.id || !userDetails?.id) return;
+    try {
+      const result = await services.expense.getSettledPaymentsByGroupAndUserId(
+        details.id,
+        userDetails.id,
+        { cutoff, page }
+      );
+      setSettledPayments((prev) => (page === 0 ? result.data : [...prev, ...result.data]));
+      setSettledPage(page);
+      setHasMoreSettled(result.hasNext);
+    } catch (error) {
+      console.error("Error fetching settled payments:", error);
+    }
+  };
+
+  const loadMoreSettled = async () => {
+    setLoadingMore(true);
+    try {
+      await fetchSettled(settledPage + 1, getDateRangeCutoff(dateRange));
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -118,42 +164,34 @@ export default function GroupSettlements({
 
   const yourTotalUnpaidByCurrency = useMemo(() => {
     if (!userDetails) return [];
-    return groupByCurrency(
-      settlementList.filter(
-        (p) =>
-          p.member.id === userDetails.id &&
-          (p.status === "pending" || p.status === "requested")
-      )
-    );
-  }, [settlementList, userDetails]);
+    return groupByCurrency(activePayments.filter((p) => p.member.id === userDetails.id));
+  }, [activePayments, userDetails]);
 
   const yourToCollectTotalByCurrency = useMemo(() => {
     if (!userDetails) return [];
-    return groupByCurrency(
-      settlementList.filter(
-        (p) =>
-          p.payer.id === userDetails.id &&
-          (p.status === "pending" || p.status === "requested")
-      )
-    );
-  }, [settlementList, userDetails]);
-
-  const tabCounts = useMemo(() => {
-    return {
-      All: settlementList.length,
-      Pending: settlementList.filter((p) => p.status === "pending").length,
-      Requested: settlementList.filter((p) => p.status === "requested").length,
-      Settled: settlementList.filter((p) => p.status === "settled").length
-    };
-  }, [settlementList]);
+    return groupByCurrency(activePayments.filter((p) => p.payer.id === userDetails.id));
+  }, [activePayments, userDetails]);
 
   const settlementSections = useMemo(() => {
     const cutoff = getDateRangeCutoff(dateRange);
-    const filtered = (
-      settlementTab === "All"
-        ? settlementList
-        : settlementList.filter((p) => p.status === settlementTab.toLowerCase())
-    ).filter((p) => !cutoff || new Date(p.created_at) >= cutoff);
+
+    let filtered: Payment[];
+    if (settlementTab === "Settled") {
+      filtered = settledPayments;
+    } else if (settlementTab === "Pending") {
+      filtered = activePayments
+        .filter((p) => p.status === "pending")
+        .filter((p) => !cutoff || new Date(p.created_at) >= cutoff);
+    } else if (settlementTab === "Requested") {
+      filtered = activePayments
+        .filter((p) => p.status === "requested")
+        .filter((p) => !cutoff || new Date(p.created_at) >= cutoff);
+    } else {
+      const activeFiltered = activePayments.filter(
+        (p) => !cutoff || new Date(p.created_at) >= cutoff
+      );
+      filtered = [...activeFiltered, ...settledPayments];
+    }
 
     if (viewBy === "By Expense") {
       const grouped: Record<string, Payment[]> = {};
@@ -199,7 +237,7 @@ export default function GroupSettlements({
         title: getDateGroupTitle(dateKey + "T00:00:00"),
         data: groupedByDate[dateKey]
       }));
-  }, [settlementList, settlementTab, viewBy, userDetails, dateRange]);
+  }, [activePayments, settledPayments, settlementTab, viewBy, userDetails, dateRange]);
 
   const handleSettlementItemPress = (payment: PaymentPreview | Payment) => {
     const p = payment as Payment;
@@ -320,7 +358,7 @@ export default function GroupSettlements({
                     key={t}
                     size="md"
                     variant={t === settlementTab ? "solid" : "outline"}
-                    text={`${t}${tabCounts[t] > 0 ? ` (${tabCounts[t]})` : ""}`}
+                    text={t}
                     onPress={() => setSettlementTab(t)}
                   />
                 ))}
@@ -421,7 +459,22 @@ export default function GroupSettlements({
                   }
                 />
               )}
-              ListFooterComponent={() => <Box className="h-16" />}
+              ListFooterComponent={() => (
+                <>
+                  {(settlementTab === "Settled" || settlementTab === "All") &&
+                    hasMoreSettled && (
+                      <Box className="px-4 pb-2">
+                        <FormButton
+                          variant="outline"
+                          text="Load More"
+                          loading={loadingMore}
+                          onPress={loadMoreSettled}
+                        />
+                      </Box>
+                    )}
+                  <Box className="h-16" />
+                </>
+              )}
               stickySectionHeadersEnabled={true}
             />
           </LoadingWrapper>
@@ -449,7 +502,7 @@ export default function GroupSettlements({
             setSelectedPayment(null);
           }}
           payment={selectedPayment}
-          onRefetch={fetchPayments}
+          onRefetch={fetchAll}
         />
       )}
       {selectedPayment && (
@@ -460,7 +513,7 @@ export default function GroupSettlements({
             setSelectedPayment(null);
           }}
           payment={selectedPayment}
-          onRefetch={fetchPayments}
+          onRefetch={fetchAll}
         />
       )}
       {selectedPayment && (
@@ -472,7 +525,7 @@ export default function GroupSettlements({
             setReviewSheetReadOnly(false);
           }}
           payment={selectedPayment}
-          onRefetch={fetchPayments}
+          onRefetch={fetchAll}
           isPayer={reviewIsPayer}
           readOnly={reviewSheetReadOnly}
         />

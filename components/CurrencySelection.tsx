@@ -33,7 +33,7 @@ export const CurrencySelectionSheet = ({
   title?: string;
 }) => {
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[80]}>
+    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
         <ActionsheetDragIndicatorWrapper>
@@ -125,12 +125,7 @@ function CurrencyItem({
   value: string;
 }) {
   return (
-    <Radio
-      key={value}
-      value={value}
-      size="lg"
-      className="justify-between px-4"
-    >
+    <Radio key={value} value={value} size="lg" className="justify-between px-4">
       <HStack className="flex-1 items-center gap-x-2">
         <VStack className="gap-y-4 py-4">
           <VStack>

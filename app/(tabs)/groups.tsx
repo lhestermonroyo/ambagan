@@ -1,5 +1,6 @@
 import ConfirmIconButton from "@/components/ConfirmIconButton";
 import EmptyList from "@/components/EmptyList";
+import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
@@ -24,13 +25,16 @@ import { SwipeListView } from "react-native-swipe-list-view";
 
 export default function GroupsScreen() {
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [initialized, setInitialized] = useState(false);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
-  const { list } = states.group();
   const { details: userDetails } = states.user();
 
   const colorScheme = useColorScheme() ?? "light";
@@ -41,7 +45,6 @@ export default function GroupsScreen() {
     useMemo(
       () => () => {
         if (!userDetails?.id) return;
-
         init(initialized);
       },
       [userDetails?.id, initialized]
@@ -49,41 +52,42 @@ export default function GroupsScreen() {
   );
 
   useEffect(() => {
-    if (searchInput.length > 0) {
-      setSearching(true);
-    } else {
-      setSearching(false);
-    }
+    setSearching(searchInput.length > 0);
   }, [searchInput]);
 
-  const init = async (initialized = false) => {
-    await fetchGroup(initialized).then(() => {
-      setInitialized(true);
-    });
+  const init = async (isInitialized = false) => {
+    await fetchGroup(0, isInitialized);
+    setInitialized(true);
   };
 
-  const fetchGroup = async (isInitialized = false) => {
+  const fetchGroup = async (pageNum: number, isInitialized = false) => {
     if (!userDetails?.id) return;
-
-    if (!isInitialized) {
-      setLoading(true);
-    }
-
+    if (!isInitialized) setLoading(true);
     try {
-      const groups = await services.group.getGroupsByUserId(userDetails.id);
-
-      if (!groups) return;
-
+      const result = await services.group.getGroupsByUserIdPaginated(
+        userDetails.id,
+        pageNum
+      );
+      setGroups((prev) => (pageNum === 0 ? result.data : [...prev, ...result.data]));
+      setPage(pageNum);
+      setHasMore(result.hasNext);
       states.group.setState((prev) => ({
         ...prev,
-        list: groups
+        list: pageNum === 0 ? result.data : [...prev.list, ...result.data]
       }));
     } catch (error) {
       console.error("Failed to fetch groups:", error);
     } finally {
-      if (!isInitialized) {
-        setLoading(false);
-      }
+      if (!isInitialized) setLoading(false);
+    }
+  };
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      await fetchGroup(page + 1, true);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -91,14 +95,13 @@ export default function GroupsScreen() {
     setDeleting(true);
     try {
       const response = await services.group.deleteGroup(groupId);
-
       if (response.success) {
         toast({
           title: "Group deleted",
           description: "Group deleted successfully.",
           type: "success"
         });
-        await fetchGroup(true);
+        await fetchGroup(0, true);
       }
     } catch (error) {
       console.error("Failed to delete group:", error);
@@ -114,19 +117,16 @@ export default function GroupsScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchGroup(true);
+    await fetchGroup(0, true);
     setRefreshing(false);
   };
 
   const filteredGroups = useMemo(() => {
-    if (searchInput.length === 0) {
-      return list;
-    }
-
-    return list.filter((g) =>
+    if (searchInput.length === 0) return groups;
+    return groups.filter((g) =>
       g.name.toLowerCase().includes(searchInput.toLowerCase())
     );
-  }, [searchInput, list]);
+  }, [searchInput, groups]);
 
   return (
     <Fragment>
@@ -218,7 +218,21 @@ export default function GroupsScreen() {
 
                 return <EmptyList type={EmptyType.GROUP} />;
               }}
-              ListFooterComponent={() => <Box className="h-16" />}
+              ListFooterComponent={() => (
+                <>
+                  {hasMore && (
+                    <Box className="px-4 pb-2">
+                      <FormButton
+                        variant="outline"
+                        text="Load More"
+                        loading={loadingMore}
+                        onPress={loadMore}
+                      />
+                    </Box>
+                  )}
+                  <Box className="h-16" />
+                </>
+              )}
               stickyHeaderIndices={[0]}
             />
           </LoadingWrapper>

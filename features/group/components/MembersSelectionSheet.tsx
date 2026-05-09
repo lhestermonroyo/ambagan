@@ -74,7 +74,7 @@ export default function MembersSelectionSheet({
 
   const loadRecentUsers = async () => {
     try {
-      const recent = await getRecentUsers();
+      const recent = await getRecentUsers(userDetails!.id);
       setRecentUsers(recent.filter((u) => u.id !== userDetails?.id));
     } catch (error) {
       console.error("Error loading recent users:", error);
@@ -100,10 +100,12 @@ export default function MembersSelectionSheet({
   }, [searching, tab, users, favoriteUsers, recentUsers]);
 
   const handleChangeMembers = (newSelectedIds: (string | number)[]) => {
-    const selectedUsers = displayUsers.filter((u) => newSelectedIds.includes(u.id));
+    const selectedUsers = displayUsers.filter((u) =>
+      newSelectedIds.includes(u.id)
+    );
     const currentIds = selected.map((m) => m.id);
     const newlyAdded = selectedUsers.filter((u) => !currentIds.includes(u.id));
-    newlyAdded.forEach((u) => addRecentUser(u));
+    newlyAdded.forEach((u) => addRecentUser(u, userDetails!.id));
 
     setSelected((prev) => {
       const newMembers = selectedUsers.filter(
@@ -175,7 +177,7 @@ export default function MembersSelectionSheet({
 
   return (
     <Fragment>
-      <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[94]}>
+      <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[90]}>
         <ActionsheetBackdrop />
         <ActionsheetContent className="p-0">
           <ActionsheetDragIndicatorWrapper>

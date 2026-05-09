@@ -649,6 +649,21 @@ export const markAsSettled = async (expensePayload: {
   return { success: true, message: "Marked as settled successfully" };
 };
 
+const PAYMENT_FIELDS = `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), expense:expense_id(description, currency)`;
+
+const mapPaymentRows = (data: any[]): Payment[] =>
+  data.map((item) => {
+    const expense = Array.isArray(item.expense) ? item.expense[0] : item.expense;
+    return {
+      ...item,
+      expense_description: expense?.description ?? null,
+      currency: expense?.currency ?? "PHP",
+      member: Array.isArray(item.member) ? item.member[0] : item.member,
+      payer: Array.isArray(item.payer) ? item.payer[0] : item.payer,
+      expense: undefined
+    };
+  }) as Payment[];
+
 export const getPaymentsByGroupAndUserId = async (
   groupId: string,
   userId: string
@@ -661,30 +676,66 @@ export const getPaymentsByGroupAndUserId = async (
 
   const { data, error } = await supabase
     .from(tables.PAYMENT_SPLITS_TBL)
-    .select(
-      `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), expense:expense_id(description, currency)`
-    )
+    .select(PAYMENT_FIELDS)
     .eq("group_id", groupId)
     .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    throw error;
+  if (error) throw error;
+  return mapPaymentRows(data);
+};
+
+export const getActivePaymentsByGroupAndUserId = async (
+  groupId: string,
+  userId: string
+): Promise<Payment[]> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { data, error } = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(PAYMENT_FIELDS)
+    .eq("group_id", groupId)
+    .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
+    .in("status", ["pending", "requested"])
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return mapPaymentRows(data);
+};
+
+const SETTLED_PAGE_SIZE = 20;
+
+export const getSettledPaymentsByGroupAndUserId = async (
+  groupId: string,
+  userId: string,
+  options: { cutoff?: Date | null; page?: number } = {}
+): Promise<{ data: Payment[]; hasNext: boolean }> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { cutoff = null, page = 0 } = options;
+  const from = page * SETTLED_PAGE_SIZE;
+  const to = from + SETTLED_PAGE_SIZE - 1;
+
+  let query = supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(PAYMENT_FIELDS, { count: "exact" })
+    .eq("group_id", groupId)
+    .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
+    .eq("status", "settled")
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (cutoff) {
+    query = query.gte("created_at", cutoff.toISOString());
   }
 
-  return data.map((item) => {
-    const expense = Array.isArray(item.expense)
-      ? item.expense[0]
-      : item.expense;
-    return {
-      ...item,
-      expense_description: expense?.description ?? null,
-      currency: expense?.currency ?? "PHP",
-      member: Array.isArray(item.member) ? item.member[0] : item.member,
-      payer: Array.isArray(item.payer) ? item.payer[0] : item.payer,
-      expense: undefined
-    };
-  }) as Payment[];
+  const { data, error, count } = await query;
+  if (error) throw error;
+
+  const totalPages = Math.ceil((count || 0) / SETTLED_PAGE_SIZE);
+  return { data: mapPaymentRows(data), hasNext: page < totalPages - 1 };
 };
 
 export const getUnpaidPayments = async (groupId: string, userId: string) => {

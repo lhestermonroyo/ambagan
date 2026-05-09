@@ -21,7 +21,7 @@ import services from "@/services";
 import states from "@/states";
 import { Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
-import { addRecentUser, getRecentUsers } from "@/utils/recentUsers";
+import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useEffect, useMemo, useState } from "react";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
@@ -113,7 +113,7 @@ export default function EditMembersSheet({
 
   const loadRecentUsers = async () => {
     try {
-      const recent = await getRecentUsers();
+      const recent = await getRecentUsers(userDetails!.id);
       setRecentUsers(recent.filter((u) => u.id !== groupDetails?.admin.id));
     } catch (error) {
       console.error("Error loading recent users:", error);
@@ -176,15 +176,7 @@ export default function EditMembersSheet({
       );
     const currentIds = members.map((m) => m.id);
     const newlyAdded = selectedUsers.filter((u) => !currentIds.includes(u.id));
-    newlyAdded.forEach((u) =>
-      addRecentUser({
-        id: u.id,
-        email: u.email,
-        avatar: u.avatar,
-        first_name: u.first_name,
-        last_name: u.last_name
-      } as UserPreview)
-    );
+    // intentionally not saving here — saved in bulk on submit
 
     setMembers((prev) => {
       const newMembers = selectedUsers.filter(
@@ -251,6 +243,19 @@ export default function EditMembersSheet({
         memberList: response.data
       }));
 
+      const membersToSave = members.map(
+        (m) =>
+          ({
+            id: m.id,
+            email: m.email,
+            avatar: m.avatar,
+            first_name: m.first_name,
+            last_name: m.last_name,
+            phone: ""
+          }) as UserPreview
+      );
+      await addRecentUsers(membersToSave, userDetails!.id);
+
       showToast({
         title: "Success",
         description: "Group members updated successfully",
@@ -274,7 +279,7 @@ export default function EditMembersSheet({
   }, [members, lockedMembers]);
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[94]}>
+    <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[90]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
         <ActionsheetDragIndicatorWrapper>

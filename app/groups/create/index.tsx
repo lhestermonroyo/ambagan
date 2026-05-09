@@ -21,6 +21,7 @@ import services from "@/services";
 import states from "@/states";
 import { UserPreview } from "@/types/user";
 import { categories } from "@/utils/constants";
+import { addRecentUsers } from "@/utils/recentUsers";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { Fragment, useEffect, useState } from "react";
@@ -114,6 +115,8 @@ export default function CreateGroupScreen() {
       if (!response) {
         throw new Error("Failed to create group");
       }
+
+      await addRecentUsers(members, user.details!.id);
 
       toast({
         title: "Group Created",
