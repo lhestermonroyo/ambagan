@@ -1,5 +1,6 @@
 import AppAvatar from "@/components/AppAvatar";
 import ConfirmIconButton from "@/components/ConfirmIconButton";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { Box } from "@/components/ui/box";
@@ -16,6 +17,7 @@ import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { ExpensePayer, MemberSplit, Payment } from "@/types/expenses";
+import { EmptyType } from "@/types/general";
 import { formatDate } from "@/utils/formatDate";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -216,7 +218,7 @@ export default function ExpenseDetailsScreen() {
           isLoading={
             !expenseDetails || !groupDetails || !payerList || !memberSplitList
           }
-          text="Loading expense details, please wait..."
+          text="Loading expense details..."
         >
           <ScrollView className="flex-1" bounces={false}>
             {expenseDetails && (
@@ -323,6 +325,9 @@ export default function ExpenseDetailsScreen() {
                         <Divider className="border-secondary-100" />
                       </Box>
                     )}
+                    ListEmptyComponent={() => (
+                      <EmptyList type={EmptyType.MEMBER} />
+                    )}
                   />
                 </VStack>
 
@@ -340,6 +345,9 @@ export default function ExpenseDetailsScreen() {
                       <Box className="mx-4">
                         <Divider className="border-secondary-100" />
                       </Box>
+                    )}
+                    ListEmptyComponent={() => (
+                      <EmptyList type={EmptyType.MEMBER} />
                     )}
                   />
                 </VStack>

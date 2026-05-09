@@ -35,11 +35,13 @@ import DateRangeSheet, {
 import ViewBySheet, {
   ViewOption
 } from "@/features/group/components/ViewBySheet";
+import EmptyList from "@/components/EmptyList";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { PaymentPreview } from "@/types/expenses";
+import { EmptyType } from "@/types/general";
 import { getDateGroupTitle } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { format, parseISO } from "date-fns";
@@ -425,7 +427,7 @@ export default function FriendDetailScreen() {
 
               <LoadingWrapper
                 isLoading={loading}
-                text="Loading settlements, please wait..."
+                text="Loading friend settlements..."
               >
                 <SectionList
                   scrollEnabled={false}
@@ -454,13 +456,13 @@ export default function FriendDetailScreen() {
                   )}
                   stickySectionHeadersEnabled={true}
                   ListEmptyComponent={() => (
-                    <VStack className="flex-1 justify-center items-center p-4">
-                      <Text className="text-secondary-950 text-center">
-                        {settlementTab === "Outstanding"
-                          ? "No outstanding settlements with this person."
-                          : "No settled history with this person yet."}
-                      </Text>
-                    </VStack>
+                    <EmptyList
+                      type={
+                        settlementTab === "Outstanding"
+                          ? EmptyType.OUTSTANDING
+                          : EmptyType.HISTORY
+                      }
+                    />
                   )}
                 />
               </LoadingWrapper>

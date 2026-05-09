@@ -47,11 +47,7 @@ const AppAvatar = ({
       )}
       {showFallback && (
         <AvatarFallbackText size={props.size} allowFontScaling={false}>
-          {name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase() || "A"}
+          {name[0]?.toUpperCase() || "A"}
         </AvatarFallbackText>
       )}
       {unread && <AvatarBadge className="bg-red-500" />}

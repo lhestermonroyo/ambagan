@@ -1,3 +1,4 @@
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { Avatar } from "@/components/ui/avatar";
@@ -29,6 +30,7 @@ import ViewBySheet, {
 import services from "@/services";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
+import { EmptyType } from "@/types/general";
 import { getDateGroupTitle } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { format, parseISO } from "date-fns";
@@ -409,11 +411,17 @@ export default function GroupSettlements({
                 </Box>
               )}
               ListEmptyComponent={() => (
-                <Box className="px-4 py-8 items-center">
-                  <Text className="text-secondary-950">
-                    No settlements found
-                  </Text>
-                </Box>
+                <EmptyList
+                  type={
+                    settlementTab === "Pending"
+                      ? EmptyType.SETTLEMENT_PENDING
+                      : settlementTab === "Requested"
+                        ? EmptyType.SETTLEMENT_REQUESTED
+                        : settlementTab === "Settled"
+                          ? EmptyType.SETTLEMENT_SETTLED
+                          : EmptyType.SETTLEMENT_ALL
+                  }
+                />
               )}
               ListFooterComponent={() => <Box className="h-16" />}
               stickySectionHeadersEnabled={true}

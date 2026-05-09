@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
@@ -23,6 +24,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { Group } from "@/types/groups";
+import { EmptyType } from "@/types/general";
 import { formatDate } from "@/utils/formatDate";
 import { useRouter } from "expo-router";
 import { CircleIcon } from "lucide-react-native";
@@ -160,6 +162,7 @@ function GroupSelectionActionSheet({
                   <Divider className="border-secondary-100" />
                 </Box>
               )}
+              ListEmptyComponent={() => <EmptyList type={EmptyType.GROUP} />}
             />
           </RadioGroup>
         </VStack>

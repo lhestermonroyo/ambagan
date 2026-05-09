@@ -158,7 +158,7 @@ export default function EditGroupScreen() {
         <ScrollView className="flex-1" bounces={false}>
           <LoadingWrapper
             isLoading={loading}
-            text="Loading group details, please wait..."
+            text="Loading group details..."
           >
             <VStack className="gap-y-6 p-4">
               <UploadAvatar

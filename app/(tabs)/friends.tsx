@@ -1,16 +1,16 @@
+import EmptyList from "@/components/EmptyList";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { ScrollView } from "@/components/ui/scroll-view";
-import { Text } from "@/components/ui/text";
-import { VStack } from "@/components/ui/vstack";
 import FriendItem from "@/features/friends/components/FriendItem";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
 import { FriendSummary } from "@/types/expenses";
+import { EmptyType } from "@/types/general";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Fragment, useMemo, useState } from "react";
 import { RefreshControl } from "react-native";
@@ -97,7 +97,7 @@ export default function FriendsScreen() {
         >
           <LoadingWrapper
             isLoading={loading}
-            text="Loading friends, please wait..."
+            text="Loading friends with outstanding settlements..."
           >
             <FlatList
               data={filteredFriends}
@@ -111,15 +111,13 @@ export default function FriendsScreen() {
                   <Divider className="border-secondary-100" />
                 </Box>
               )}
-              ListEmptyComponent={() => (
-                <VStack className="flex-1 justify-center items-center p-4">
-                  <Text className="text-secondary-950 text-center">
-                    {searching
-                      ? "No results found on your search."
-                      : "No friends with outstanding settlements."}
-                  </Text>
-                </VStack>
-              )}
+              ListEmptyComponent={() =>
+                searching ? (
+                  <EmptyList type={EmptyType.SEARCH} />
+                ) : (
+                  <EmptyList type={EmptyType.FRIEND} />
+                )
+              }
               ListFooterComponent={() => <Box className="h-16" />}
             />
           </LoadingWrapper>

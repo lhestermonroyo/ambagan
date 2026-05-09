@@ -281,7 +281,7 @@ export default function EditMembersSheet({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
         <Box className="w-full flex-1">
-          <LoadingWrapper text="Loading selected members" isLoading={loading}>
+          <LoadingWrapper text="Loading members..." isLoading={loading}>
             <VStack className="w-full gap-y-4 py-4 bg-typography-0">
               <VStack>
                 <HStack className="px-4">

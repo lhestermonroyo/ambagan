@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
+import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
 import { categories } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
@@ -92,8 +94,6 @@ export default function GroupDetailsTab() {
           />
         </Box>
 
-        <Divider className="border-secondary-100" />
-
         <VStack className="gap-y-2">
           <HStack className="items-center gap-x-2">
             <Text bold className="text-xl flex-1">
@@ -130,6 +130,7 @@ export default function GroupDetailsTab() {
             ItemSeparatorComponent={() => (
               <Divider className="border-secondary-100" />
             )}
+            ListEmptyComponent={() => <EmptyList type={EmptyType.MEMBER} />}
           />
         </VStack>
       </VStack>

@@ -1,4 +1,5 @@
 import ConfirmIconButton from "@/components/ConfirmIconButton";
+import EmptyList from "@/components/EmptyList";
 import Icon from "@/components/Icon";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
@@ -8,13 +9,12 @@ import { Divider } from "@/components/ui/divider";
 import { Fab, FabLabel } from "@/components/ui/fab";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
-import { Text } from "@/components/ui/text";
-import { VStack } from "@/components/ui/vstack";
 import GroupItem from "@/features/group/components/GroupItem";
 import useAppToast from "@/hooks/use-app-toast";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
+import { EmptyType } from "@/types/general";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
 import { HousePlus } from "lucide-react-native";
@@ -158,10 +158,7 @@ export default function GroupsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <LoadingWrapper
-            isLoading={loading}
-            text="Loading groups, please wait..."
-          >
+          <LoadingWrapper isLoading={loading} text="Loading groups...">
             <SwipeListView
               className="flex-1"
               scrollEnabled={false}
@@ -216,23 +213,10 @@ export default function GroupsScreen() {
               )}
               ListEmptyComponent={() => {
                 if (searching) {
-                  return (
-                    <VStack className="flex-1 justify-center items-center p-4">
-                      <Text className="text-secondary-950 text-center">
-                        No results found on your search.
-                      </Text>
-                    </VStack>
-                  );
+                  return <EmptyList type={EmptyType.SEARCH} />;
                 }
 
-                return (
-                  <VStack className="flex-1 justify-center items-center p-4">
-                    <Text className="text-secondary-950 text-center">
-                      No groups joined or created yet. Create a group by
-                      clicking the button below.
-                    </Text>
-                  </VStack>
-                );
+                return <EmptyList type={EmptyType.GROUP} />;
               }}
               ListFooterComponent={() => <Box className="h-16" />}
               stickyHeaderIndices={[0]}

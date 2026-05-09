@@ -1,5 +1,6 @@
 import AppAvatar from "@/components/AppAvatar";
 import ConfirmButton from "@/components/ConfirmButton";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import {
@@ -27,6 +28,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
+import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
 import { getErrorHex, getPrimaryHex } from "@/utils/getColorHex";
 import { AlertTriangle, CircleIcon } from "lucide-react-native";
@@ -233,6 +235,9 @@ export default function LeaveGroupSheet({
                             <Box className="mx-4">
                               <Divider className="border-secondary-200" />
                             </Box>
+                          )}
+                          ListEmptyComponent={() => (
+                            <EmptyList type={EmptyType.MEMBER} />
                           )}
                         />
                       </RadioGroup>

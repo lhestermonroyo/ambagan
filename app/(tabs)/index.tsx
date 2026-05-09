@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
@@ -25,6 +26,7 @@ import NotificationSheet from "@/features/notifications/components/NotificationS
 import services from "@/services";
 import states from "@/states";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
+import { EmptyType } from "@/types/general";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -53,7 +55,7 @@ export default function HomeScreen() {
   );
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
-  const { details: userDetails, signOut, defaultCurrency } = states.user();
+  const { details: userDetails, defaultCurrency } = states.user();
   const { list: groupList } = states.group();
   const { activityList } = states.expense();
   const { unreadCount } = states.notification();
@@ -313,7 +315,7 @@ export default function HomeScreen() {
                 />
               </HStack>
               <LoadingWrapper
-                text="Loading friends"
+                text="Loading friends..."
                 isLoading={loading.friends}
               >
                 {friends.length > 0 ? (
@@ -342,11 +344,7 @@ export default function HomeScreen() {
                     </HStack>
                   </HScrollView>
                 ) : (
-                  <VStack className="flex-1 justify-center items-center p-4">
-                    <Text className="text-secondary-950">
-                      No friends with outstanding settlements.
-                    </Text>
-                  </VStack>
+                  <EmptyList type={EmptyType.FRIEND} />
                 )}
               </LoadingWrapper>
             </VStack>
@@ -358,7 +356,7 @@ export default function HomeScreen() {
                 </Text>
               </HStack>
               <LoadingWrapper
-                text="Loading activities"
+                text="Loading recent activities..."
                 isLoading={loading.activities}
               >
                 <FlatList
@@ -380,11 +378,7 @@ export default function HomeScreen() {
                     </Box>
                   )}
                   ListEmptyComponent={() => (
-                    <VStack className="flex-1 justify-center items-center p-4">
-                      <Text className="text-secondary-950">
-                        No activities recorded yet.
-                      </Text>
-                    </VStack>
+                    <EmptyList type={EmptyType.ACTIVITY} />
                   )}
                 />
               </LoadingWrapper>
@@ -402,7 +396,7 @@ export default function HomeScreen() {
                 />
               </HStack>
               <LoadingWrapper
-                text="Loading previous groups"
+                text="Loading recent groups..."
                 isLoading={loading.groups}
               >
                 <FlatList
@@ -421,11 +415,7 @@ export default function HomeScreen() {
                     </Box>
                   )}
                   ListEmptyComponent={() => (
-                    <VStack className="flex-1 justify-center items-center p-4">
-                      <Text className="text-secondary-950">
-                        No groups joined or created yet.
-                      </Text>
-                    </VStack>
+                    <EmptyList type={EmptyType.GROUP} />
                   )}
                 />
               </LoadingWrapper>

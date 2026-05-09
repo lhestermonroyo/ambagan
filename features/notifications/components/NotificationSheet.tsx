@@ -170,7 +170,7 @@ export default function NotificationSheet({
 
           <LoadingWrapper
             isLoading={loading}
-            text="Loading notifications, please wait..."
+            text="Loading notifications..."
           >
             <FlatList
               data={list}

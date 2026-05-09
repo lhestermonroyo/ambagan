@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import StepperProgress from "@/components/StepperProgress";
 import { Box } from "@/components/ui/box";
@@ -11,6 +12,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { Member } from "@/types/groups";
+import { EmptyType } from "@/types/general";
 import { currencies, splitTypes } from "@/utils/constants";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -193,6 +195,7 @@ export default function SplitSelection({
                   <Divider className="border-secondary-100" />
                 </Box>
               )}
+              ListEmptyComponent={() => <EmptyList type={EmptyType.MEMBER} />}
               renderItem={({ item: member }) => (
                 <MemberSplitItem
                   currency={currency}

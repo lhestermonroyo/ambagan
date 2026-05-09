@@ -1,3 +1,4 @@
+import { EmptyType } from "@/types/general";
 import { GroupCategory } from "@/types/groups";
 
 export const tables = {
@@ -143,6 +144,89 @@ export const splitTypes = [
   {
     label: "Customize Split",
     value: "custom"
+  }
+];
+
+export const emptyTypes = [
+  {
+    type: EmptyType.FRIEND,
+    content: "No friends with outstanding settlements yet.",
+    icon: "👫"
+  },
+  {
+    type: EmptyType.ACTIVITY,
+    content: "No activities yet.",
+    icon: "📋"
+  },
+  {
+    type: EmptyType.GROUP,
+    content: "No groups yet. Create or join a group to get started!",
+    icon: "🏠"
+  },
+  {
+    type: EmptyType.EXPENSE,
+    content: "No expenses yet. Start adding some!",
+    icon: "💸"
+  },
+  {
+    type: EmptyType.SETTLEMENT,
+    content: "No settlements yet.",
+    icon: "🤝"
+  },
+  {
+    type: EmptyType.NOTIFICATION,
+    content: "No notifications yet.",
+    icon: "🔔"
+  },
+  {
+    type: EmptyType.USER,
+    content: "No users found.",
+    icon: "👤"
+  },
+  {
+    type: EmptyType.FAVORITE,
+    content: "No favorites yet.",
+    icon: "❤️"
+  },
+  {
+    type: EmptyType.SEARCH,
+    content: "No results found on your search.",
+    icon: "😔"
+  },
+  {
+    type: EmptyType.MEMBER,
+    content: "No members found.",
+    icon: "👥"
+  },
+  {
+    type: EmptyType.OUTSTANDING,
+    content: "You're all settled up with this person.",
+    icon: "🎉"
+  },
+  {
+    type: EmptyType.HISTORY,
+    content: "No settled payments with this person yet.",
+    icon: "📭"
+  },
+  {
+    type: EmptyType.SETTLEMENT_ALL,
+    content: "No settlements in this group yet.",
+    icon: "🤝"
+  },
+  {
+    type: EmptyType.SETTLEMENT_PENDING,
+    content: "No pending settlements.",
+    icon: "⏳"
+  },
+  {
+    type: EmptyType.SETTLEMENT_REQUESTED,
+    content: "No requested settlements.",
+    icon: "📨"
+  },
+  {
+    type: EmptyType.SETTLEMENT_SETTLED,
+    content: "No settled payments yet.",
+    icon: "✅"
   }
 ];
 

@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
@@ -23,6 +24,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { Member } from "@/types/groups";
+import { EmptyType } from "@/types/general";
 import { CircleIcon } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 
@@ -131,6 +133,7 @@ function PayerSelectionActionSheet({
                     <Divider className="border-secondary-100" />
                   </Box>
                 )}
+                ListEmptyComponent={() => <EmptyList type={EmptyType.MEMBER} />}
               />
             </RadioGroup>
           </VStack>

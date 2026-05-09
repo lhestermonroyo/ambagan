@@ -324,7 +324,7 @@ export default function GroupDetailsScreen() {
         )}
         <LoadingWrapper
           isLoading={loading}
-          text="Loading group details, please wait..."
+          text="Loading group details..."
         >
           <ScrollView
             className="flex-1"
