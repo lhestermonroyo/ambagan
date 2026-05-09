@@ -242,7 +242,7 @@ export default function GroupSettlements({
 
   return (
     <Fragment>
-      <VStack className="gap-y-6">
+      <VStack className="gap-y-8">
         <VStack className="gap-y-2">
           <HStack className="gap-x-2 px-4">
             <Card className="flex-1 rounded-lg bg-secondary-100">
@@ -333,7 +333,6 @@ export default function GroupSettlements({
                 onPress={() => setDateRangeSheetOpen(true)}
               >
                 <CalendarRange
-                  size={20}
                   color={
                     dateRange !== "All"
                       ? getPrimaryHex("text-primary-400", colorScheme)
@@ -347,7 +346,6 @@ export default function GroupSettlements({
                 onPress={() => setViewSheetOpen(true)}
               >
                 <LayoutList
-                  size={20}
                   color={
                     viewBy !== "By Date"
                       ? getPrimaryHex("text-primary-400", colorScheme)

@@ -222,7 +222,7 @@ export default function ExpenseDetailsScreen() {
         >
           <ScrollView className="flex-1" bounces={false}>
             {expenseDetails && (
-              <VStack className="gap-y-6 pb-2">
+              <VStack className="gap-y-8">
                 <VStack className="w-full gap-y-1 px-4">
                   <Text className="text-3xl" bold>
                     {formatAmount(

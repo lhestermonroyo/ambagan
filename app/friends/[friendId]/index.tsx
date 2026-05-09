@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { Box } from "@/components/ui/box";
@@ -35,7 +36,6 @@ import DateRangeSheet, {
 import ViewBySheet, {
   ViewOption
 } from "@/features/group/components/ViewBySheet";
-import EmptyList from "@/components/EmptyList";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
@@ -271,8 +271,8 @@ export default function FriendDetailScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <VStack className="gap-y-6">
-            <VStack className="px-4 gap-y-4">
+          <VStack className="gap-y-8">
+            <VStack className="px-4 gap-y-8">
               <HStack className="gap-x-3 items-center">
                 <AppAvatar
                   name={decodedName}
@@ -287,60 +287,65 @@ export default function FriendDetailScreen() {
                 </VStack>
               </HStack>
 
-              <HStack className="gap-x-2">
-                <Card className="flex-1 rounded-lg bg-secondary-100">
-                  <VStack className="gap-y-2">
-                    <SettlementAvatar isPayer={true} />
-                    <VStack className="justify-between">
-                      <CurrencyAmountDisplay
-                        isLoading={loading}
-                        items={toCollect}
-                        label="To Collect"
-                        type="receive"
-                      />
-                      <Text className="text-secondary-950">To Collect</Text>
+              <VStack className="gap-y-4">
+                <HStack className="gap-x-2">
+                  <Card className="flex-1 rounded-lg bg-secondary-100">
+                    <VStack className="gap-y-2">
+                      <SettlementAvatar isPayer={true} />
+                      <VStack className="justify-between">
+                        <CurrencyAmountDisplay
+                          isLoading={loading}
+                          items={toCollect}
+                          label="To Collect"
+                          type="receive"
+                        />
+                        <Text className="text-secondary-950">To Collect</Text>
+                      </VStack>
                     </VStack>
-                  </VStack>
-                </Card>
-                <Card className="flex-1 rounded-lg bg-secondary-100">
-                  <VStack className="gap-y-2">
-                    <SettlementAvatar isPayer={false} />
-                    <VStack className="justify-between">
-                      <CurrencyAmountDisplay
-                        isLoading={loading}
-                        items={toPay}
-                        label="To Pay"
-                        type="pay"
-                      />
-                      <Text className="text-secondary-950">To Pay</Text>
+                  </Card>
+                  <Card className="flex-1 rounded-lg bg-secondary-100">
+                    <VStack className="gap-y-2">
+                      <SettlementAvatar isPayer={false} />
+                      <VStack className="justify-between">
+                        <CurrencyAmountDisplay
+                          isLoading={loading}
+                          items={toPay}
+                          label="To Pay"
+                          type="pay"
+                        />
+                        <Text className="text-secondary-950">To Pay</Text>
+                      </VStack>
                     </VStack>
-                  </VStack>
-                </Card>
-              </HStack>
-              <VStack className="gap-y-2">
-                {canSettle && (
-                  <FormButton
-                    text="Settle All"
-                    icon={
-                      <CheckCheck
-                        color={getSecondaryHex("text-secondary-0", colorScheme)}
-                      />
-                    }
-                    onPress={() => setPendingAction("settle")}
-                  />
-                )}
-                {canRequestSettle && (
-                  <FormButton
-                    variant="outline"
-                    text="Request All as Settled"
-                    icon={
-                      <FileCheckCorner
-                        color={getPrimaryHex("text-primary-500", colorScheme)}
-                      />
-                    }
-                    onPress={() => setPendingAction("request")}
-                  />
-                )}
+                  </Card>
+                </HStack>
+                <VStack className="gap-y-2">
+                  {canSettle && (
+                    <FormButton
+                      text="Settle All"
+                      icon={
+                        <CheckCheck
+                          color={getSecondaryHex(
+                            "text-secondary-0",
+                            colorScheme
+                          )}
+                        />
+                      }
+                      onPress={() => setPendingAction("settle")}
+                    />
+                  )}
+                  {canRequestSettle && (
+                    <FormButton
+                      variant="outline"
+                      text="Request All as Settled"
+                      icon={
+                        <FileCheckCorner
+                          color={getPrimaryHex("text-primary-500", colorScheme)}
+                        />
+                      }
+                      onPress={() => setPendingAction("request")}
+                    />
+                  )}
+                </VStack>
               </VStack>
             </VStack>
 
@@ -366,11 +371,11 @@ export default function FriendDetailScreen() {
                 <HStack className="gap-x-4 px-4">
                   <Button
                     variant="link"
+                    size="lg"
                     className="rounded-full"
                     onPress={() => setDateRangeSheetOpen(true)}
                   >
                     <CalendarRange
-                      size={20}
                       color={
                         dateRange !== "All"
                           ? getPrimaryHex("text-primary-400", colorScheme)
@@ -380,11 +385,11 @@ export default function FriendDetailScreen() {
                   </Button>
                   <Button
                     variant="link"
+                    size="lg"
                     className="rounded-full"
                     onPress={() => setViewSheetOpen(true)}
                   >
                     <LayoutList
-                      size={20}
                       color={
                         viewBy !== "By Date"
                           ? getPrimaryHex("text-primary-400", colorScheme)

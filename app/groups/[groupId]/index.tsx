@@ -322,10 +322,7 @@ export default function GroupDetailsScreen() {
             <FabLabel className="text-lg font-medium">New Expense</FabLabel>
           </Fab>
         )}
-        <LoadingWrapper
-          isLoading={loading}
-          text="Loading group details..."
-        >
+        <LoadingWrapper isLoading={loading} text="Loading group details...">
           <ScrollView
             className="flex-1"
             refreshControl={
@@ -335,7 +332,7 @@ export default function GroupDetailsScreen() {
               />
             }
           >
-            <VStack className="pb-4 gap-y-6">
+            <VStack className="pb-4 gap-y-8">
               <HStack className="px-4 gap-x-4 items-center">
                 <VStack>
                   <AppAvatar

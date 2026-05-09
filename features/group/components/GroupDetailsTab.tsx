@@ -44,7 +44,7 @@ export default function GroupDetailsTab() {
 
   return (
     <Fragment>
-      <VStack className="gap-y-4 px-4">
+      <VStack className="gap-y-8 px-4">
         <Box className="bg-secondary-100 rounded-xl overflow-hidden">
           <DetailRow
             label="Admin"
