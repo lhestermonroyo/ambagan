@@ -22,6 +22,7 @@ import {
   getPrimaryHex,
   getSecondaryHex
 } from "@/utils/getColorHex";
+import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { AlertCircle, BellOff } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -132,7 +133,9 @@ export default function PushNotificationsSheet({
     setPermissionStatus(status);
     if (status === "granted" && userDetails?.id) {
       try {
-        const { data: token } = await Notifications.getExpoPushTokenAsync();
+        const { data: token } = await Notifications.getExpoPushTokenAsync({
+          projectId: Constants.expoConfig?.extra?.eas?.projectId
+        });
         await services.pushToken.registerPushToken(userDetails.id, token);
       } catch (error) {
         console.error("Failed to register push token:", error);
@@ -181,7 +184,7 @@ export default function PushNotificationsSheet({
               </VStack>
             )}
 
-            {permissionStatus !== "denied" && (
+            {permissionStatus === "denied" && (
               <VStack className="mx-4 p-4 bg-error-50 rounded-xl gap-y-4">
                 <HStack className="gap-x-2 items-start">
                   <BellOff color={getErrorHex("text-error-500", colorScheme)} />

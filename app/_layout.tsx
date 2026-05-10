@@ -3,16 +3,19 @@ import "@/global.css";
 import { ToastProvider } from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
+import { NotificationType } from "@/types/notifications";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import Constants from "expo-constants";
 import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
 import { SplashScreen, Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { StyleSheet } from "react-native";
+
 import Animated, {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -21,6 +24,16 @@ import Animated, {
   withSequence,
   withTiming
 } from "react-native-reanimated";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false
+  })
+});
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -37,6 +50,8 @@ export default function RootLayout() {
   const isFirstRender = useRef(true);
   const notificationChannel = useRef<RealtimeChannel | null>(null);
   const subscribedUserId = useRef<string | null>(null);
+  const notifReceivedListener = useRef<Notifications.EventSubscription | null>(null);
+  const notifResponseListener = useRef<Notifications.EventSubscription | null>(null);
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: overlayOpacity.value
@@ -62,6 +77,50 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded, loading]);
+
+  useEffect(() => {
+    notifReceivedListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        const data = notification.request.content.data as {
+          type?: NotificationType;
+          referenceId?: string;
+        };
+
+        if (!data?.type) return;
+
+        states.notification.setState((prev) => ({
+          ...prev,
+          unreadCount: prev.unreadCount + 1
+        }));
+      });
+
+    notifResponseListener.current =
+      Notifications.addNotificationResponseReceivedListener(
+        async (response) => {
+          const data = response.notification.request.content.data as {
+            type?: NotificationType;
+            referenceId?: string;
+          };
+
+          if (!data?.type || !data?.referenceId) return;
+
+          try {
+            const route = await services.notification.getNotificationRoute(
+              data.type,
+              data.referenceId
+            );
+            if (route) router.push(route as any);
+          } catch {
+            // silently ignore — don't crash on a bad tap
+          }
+        }
+      );
+
+    return () => {
+      notifReceivedListener.current?.remove();
+      notifResponseListener.current?.remove();
+    };
+  }, []);
 
   useEffect(() => {
     supabase.auth
@@ -177,7 +236,9 @@ export default function RootLayout() {
     try {
       const { status } = await Notifications.getPermissionsAsync();
       if (status !== "granted") return;
-      const { data: token } = await Notifications.getExpoPushTokenAsync();
+      const { data: token } = await Notifications.getExpoPushTokenAsync({
+        projectId: Constants.expoConfig?.extra?.eas?.projectId
+      });
       await services.pushToken.registerPushToken(userId, token);
     } catch (error) {
       console.error("Failed to register push token:", error);

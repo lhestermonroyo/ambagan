@@ -18,7 +18,7 @@ const NOTIF_PREF_KEY: Record<NotificationType, keyof UserPreferences> = {
 export async function sendPushNotification(
   toUserId: string,
   type: NotificationType,
-  payload: { title: string; body: string; data?: Record<string, unknown> }
+  payload: { title: string; body: string; referenceId?: string; data?: Record<string, unknown> }
 ): Promise<void> {
   const prefKey = NOTIF_PREF_KEY[type];
 
@@ -44,7 +44,7 @@ export async function sendPushNotification(
     to: t.token,
     title: payload.title,
     body: payload.body,
-    data: payload.data,
+    data: { type, referenceId: payload.referenceId, ...payload.data },
     sound: "default"
   }));
 

@@ -11,6 +11,7 @@ import { VStack } from "@/components/ui/vstack";
 import services from "@/services";
 import states from "@/states";
 import { getPrimaryHex } from "@/utils/getColorHex";
+import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { Bell } from "lucide-react-native";
 import { useColorScheme } from "react-native";
@@ -30,7 +31,9 @@ export default function PushNotificationPermissionSheet({
     try {
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== "granted" || !userDetails?.id) return;
-      const { data: token } = await Notifications.getExpoPushTokenAsync();
+      const { data: token } = await Notifications.getExpoPushTokenAsync({
+        projectId: Constants.expoConfig?.extra?.eas?.projectId
+      });
       await services.pushToken.registerPushToken(userDetails.id, token);
     } catch (error) {
       console.error("Failed to register push token:", error);

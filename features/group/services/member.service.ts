@@ -82,7 +82,8 @@ export const leaveGroup = async (
           }),
           sendPushNotification(member.member_id, NotificationType.GROUP_LEAVE, {
             title: "Member Left",
-            body: "A member has left your group"
+            body: "A member has left your group",
+            referenceId: groupId
           })
         ])
       )

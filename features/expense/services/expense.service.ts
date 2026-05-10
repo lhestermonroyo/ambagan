@@ -131,7 +131,8 @@ export const saveExpense = async (
         }),
         sendPushNotification(memberId, NotificationType.EXPENSE_INCLUSION, {
           title: "New Expense",
-          body: `You've been added to "${description}"`
+          body: `You've been added to "${description}"`,
+          referenceId: expenseId
         })
       ])
     )
@@ -524,7 +525,8 @@ export const createSettledRequest = async (expensePayload: {
         NotificationType.SETTLEMENT_REQUEST,
         {
           title: "Settlement Requested",
-          body: "Someone is requesting to settle a payment with you"
+          body: "Someone is requesting to settle a payment with you",
+          referenceId: expenseSplitId
         }
       )
     ]);
@@ -594,7 +596,8 @@ export const rejectSettledRequest = async (expenseSplitId: string) => {
         NotificationType.SETTLEMENT_REJECTED,
         {
           title: "Settlement Rejected",
-          body: "Your settlement request has been rejected"
+          body: "Your settlement request has been rejected",
+          referenceId: expenseSplitId
         }
       )
     ]);
@@ -656,7 +659,8 @@ export const markAsSettled = async (expensePayload: {
         NotificationType.SETTLEMENT_APPROVED,
         {
           title: "Settlement Approved",
-          body: "Your settlement request has been approved"
+          body: "Your settlement request has been approved",
+          referenceId: expenseSplitId
         }
       )
     ]);

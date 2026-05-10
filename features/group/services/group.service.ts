@@ -88,7 +88,8 @@ export const saveGroup = async ({
         }),
         sendPushNotification(memberId, NotificationType.GROUP_JOIN, {
           title: "Added to a Group",
-          body: `You've been added to "${name}"`
+          body: `You've been added to "${name}"`,
+          referenceId: groupId
         })
       ])
     )
