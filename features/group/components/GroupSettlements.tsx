@@ -1,17 +1,18 @@
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
+import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { Avatar } from "@/components/ui/avatar";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import ListDivider from "@/components/ListDivider";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import MarkAsSettledSheet from "@/features/expense/components/MarkAsSettledSheet";
 import RequestSettledSheet from "@/features/expense/components/RequestSettledSheet";
@@ -461,11 +462,7 @@ export default function GroupSettlements({
                   <Text className="text-sm text-secondary-950">{title}</Text>
                 </Box>
               )}
-              ItemSeparatorComponent={() => (
-                <Box className="mx-4">
-                  <Divider className="border-secondary-100" />
-                </Box>
-              )}
+              ItemSeparatorComponent={ListDivider}
               ListEmptyComponent={() => (
                 <EmptyList
                   type={
@@ -483,14 +480,11 @@ export default function GroupSettlements({
                 <>
                   {(settlementTab === "Settled" || settlementTab === "All") &&
                     hasMoreSettled && (
-                      <Box className="px-4 pb-2">
-                        <FormButton
-                          variant="outline"
-                          text="Load More"
-                          loading={loadingMore}
-                          onPress={loadMoreSettled}
-                        />
-                      </Box>
+                      <ListFooter
+                        hasNextPage={hasMoreSettled}
+                        loading={loadingMore}
+                        onLoadMore={loadMoreSettled}
+                      />
                     )}
                   <Box className="h-16" />
                 </>

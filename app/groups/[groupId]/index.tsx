@@ -50,6 +50,7 @@ import {
 import { Fragment, useMemo, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
+import ListDivider from "@/components/ListDivider";
 
 const tabs = ["Settlements", "Expenses", "Group Info"] as const;
 
@@ -413,11 +414,7 @@ export default function GroupDetailsScreen() {
                     <Text className="text-sm text-secondary-950">{title}</Text>
                   </Box>
                 )}
-                ItemSeparatorComponent={() => (
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-100" />
-                  </Box>
-                )}
+                ItemSeparatorComponent={ListDivider}
                 stickySectionHeadersEnabled={true}
                 ListEmptyComponent={() => (
                   <VStack className="flex-1 justify-center items-center py-4">

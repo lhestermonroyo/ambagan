@@ -24,6 +24,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { FileImage } from "lucide-react-native";
 import { Fragment, ReactNode, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
+import ListDivider from "@/components/ListDivider";
 
 export default function ExpenseDetailsScreen() {
   const { details: groupDetails } = states.group();
@@ -320,11 +321,7 @@ export default function ExpenseDetailsScreen() {
                         payment={memberPaymentMap[item.member.id]}
                       />
                     )}
-                    ItemSeparatorComponent={() => (
-                      <Box className="mx-4">
-                        <Divider className="border-secondary-100" />
-                      </Box>
-                    )}
+                    ItemSeparatorComponent={ListDivider}
                     ListEmptyComponent={() => (
                       <EmptyList type={EmptyType.MEMBER} />
                     )}
@@ -341,11 +338,7 @@ export default function ExpenseDetailsScreen() {
                     data={payerList}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => <PayerItem payer={item} />}
-                    ItemSeparatorComponent={() => (
-                      <Box className="mx-4">
-                        <Divider className="border-secondary-100" />
-                      </Box>
-                    )}
+                    ItemSeparatorComponent={ListDivider}
                     ListEmptyComponent={() => (
                       <EmptyList type={EmptyType.MEMBER} />
                     )}

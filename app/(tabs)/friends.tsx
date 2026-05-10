@@ -2,7 +2,6 @@ import EmptyList from "@/components/EmptyList";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
 import { Box } from "@/components/ui/box";
-import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { ScrollView } from "@/components/ui/scroll-view";
 import FriendItem from "@/features/friends/components/FriendItem";
@@ -14,6 +13,7 @@ import { EmptyType } from "@/types/general";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Fragment, useMemo, useState } from "react";
 import { RefreshControl } from "react-native";
+import ListDivider from "@/components/ListDivider";
 
 export default function FriendsScreen() {
   const [loading, setLoading] = useState(false);
@@ -106,11 +106,7 @@ export default function FriendsScreen() {
               renderItem={({ item }) => (
                 <FriendItem item={item} onPress={handleFriendPress} />
               )}
-              ItemSeparatorComponent={() => (
-                <Box className="mx-4">
-                  <Divider className="border-secondary-100" />
-                </Box>
-              )}
+              ItemSeparatorComponent={ListDivider}
               ListEmptyComponent={() =>
                 searching ? (
                   <EmptyList type={EmptyType.SEARCH} />

@@ -6,7 +6,6 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
-import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -17,6 +16,7 @@ import states from "@/states";
 import { UserPreferences } from "@/types/user";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { useColorScheme } from "react-native";
+import ListDivider from "@/components/ListDivider";
 
 type NotifKey = keyof Pick<
   UserPreferences,
@@ -113,49 +113,47 @@ export default function PushNotificationsSheet({
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full p-4">
-          <Text bold className="text-xl">
-            Push Notifications
-          </Text>
+        <VStack className="w-full flex-1">
+          <VStack className="p-4">
+            <Text bold className="text-xl">
+              Push Notifications
+            </Text>
+          </VStack>
+          <ScrollView className="flex-1 w-full" bounces={false}>
+            {SECTIONS.map((section) => (
+              <VStack key={section.title}>
+                <Box className="px-4 pt-5 pb-2">
+                  <Text bold className="text-xl">
+                    {section.title}
+                  </Text>
+                </Box>
+                <FlatList
+                  data={section.data}
+                  keyExtractor={(item) => item.key}
+                  scrollEnabled={false}
+                  bounces={false}
+                  renderItem={({ item }) => (
+                    <HStack className="items-center justify-between px-4 py-3">
+                      <VStack className="flex-1 pr-4">
+                        <Text className="text-lg">{item.label}</Text>
+                        <Text className="text-secondary-950">
+                          {item.description}
+                        </Text>
+                      </VStack>
+                      <Switch
+                        size="sm"
+                        value={preferences[item.key]}
+                        onValueChange={(val) => handleToggle(item.key, val)}
+                        trackColor={switchColors}
+                      />
+                    </HStack>
+                  )}
+                  ItemSeparatorComponent={ListDivider}
+                />
+              </VStack>
+            ))}
+          </ScrollView>
         </VStack>
-        <ScrollView className="flex-1 w-full" bounces={false}>
-          {SECTIONS.map((section) => (
-            <VStack key={section.title}>
-              <Box className="px-4 pt-5 pb-2">
-                <Text bold className="text-xl">
-                  {section.title}
-                </Text>
-              </Box>
-              <FlatList
-                data={section.data}
-                keyExtractor={(item) => item.key}
-                scrollEnabled={false}
-                bounces={false}
-                renderItem={({ item }) => (
-                  <HStack className="items-center justify-between px-4 py-3">
-                    <VStack className="flex-1 pr-4">
-                      <Text className="text-lg">{item.label}</Text>
-                      <Text className="text-secondary-950">
-                        {item.description}
-                      </Text>
-                    </VStack>
-                    <Switch
-                      size="sm"
-                      value={preferences[item.key]}
-                      onValueChange={(val) => handleToggle(item.key, val)}
-                      trackColor={switchColors}
-                    />
-                  </HStack>
-                )}
-                ItemSeparatorComponent={() => (
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-100" />
-                  </Box>
-                )}
-              />
-            </VStack>
-          ))}
-        </ScrollView>
       </ActionsheetContent>
     </Actionsheet>
   );

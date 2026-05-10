@@ -1,11 +1,11 @@
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
+import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Divider } from "@/components/ui/divider";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
 import {
@@ -24,6 +24,7 @@ import {
 import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import ListDivider from "@/components/ListDivider";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
@@ -502,11 +503,7 @@ export default function FriendDetailScreen() {
                       </Text>
                     </Box>
                   )}
-                  ItemSeparatorComponent={() => (
-                    <Box className="mx-4">
-                      <Divider className="border-secondary-100" />
-                    </Box>
-                  )}
+                  ItemSeparatorComponent={ListDivider}
                   stickySectionHeadersEnabled={true}
                   ListEmptyComponent={() => (
                     <EmptyList
@@ -519,14 +516,11 @@ export default function FriendDetailScreen() {
                   )}
                   ListFooterComponent={() =>
                     settlementTab === "History" && hasMoreSettled ? (
-                      <Box className="px-4 pb-2">
-                        <FormButton
-                          variant="outline"
-                          text="Load More"
-                          loading={loadingMore}
-                          onPress={loadMoreSettled}
-                        />
-                      </Box>
+                      <ListFooter
+                        hasNextPage={hasMoreSettled}
+                        loading={loadingMore}
+                        onLoadMore={loadMoreSettled}
+                      />
                     ) : null
                   }
                 />

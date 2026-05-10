@@ -4,7 +4,6 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
-import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -32,6 +31,7 @@ import {
 } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
+import ListDivider from "@/components/ListDivider";
 
 export default function ProfileScreen() {
   const {
@@ -173,11 +173,7 @@ export default function ProfileScreen() {
             keyExtractor={(item) => item.label}
             scrollEnabled={false}
             renderItem={({ item }) => <MenuItem item={item} />}
-            ItemSeparatorComponent={() => (
-              <Box className="mx-4">
-                <Divider className="border-secondary-100" />
-              </Box>
-            )}
+            ItemSeparatorComponent={ListDivider}
           />
 
           <VStack className="px-4">

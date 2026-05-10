@@ -1,4 +1,5 @@
 import FormButton from "@/components/FormButton";
+import ListDivider from "@/components/ListDivider";
 import SearchInput from "@/components/SearchInput";
 import {
   Actionsheet,
@@ -9,18 +10,19 @@ import {
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { CheckboxGroup } from "@/components/ui/checkbox";
-import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import services from "@/services";
 import states from "@/states";
 import { UserPreview } from "@/types/user";
 import { addRecentUser, getRecentUsers } from "@/utils/recentUsers";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import RecentFavoritesTab from "./RecentFavoritesTab";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
 
@@ -40,12 +42,13 @@ export default function MembersSelectionSheet({
   const [tab, setTab] = useState<"recent" | "favorites">("recent");
   const [selected, setSelected] = useState<UserPreview[]>([]);
   const [users, setUsers] = useState<UserPreview[]>([]);
-  const [favoriteUsers, setFavoriteUsers] = useState<UserPreview[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [recentUsers, setRecentUsers] = useState<UserPreview[]>([]);
 
   const user = states.user();
   const { details: userDetails } = user;
+
+  const { favoriteIds, favoriteUsers, loadFavorites, handleToggleFavorite } =
+    useFavoriteToggle(userDetails?.id);
 
   useEffect(() => {
     setSelected(members);
@@ -61,16 +64,6 @@ export default function MembersSelectionSheet({
   useEffect(() => {
     fetchUsers();
   }, [searchInput]);
-
-  const loadFavorites = async () => {
-    try {
-      const data = await services.friend.getFavorites(userDetails!.id);
-      setFavoriteUsers(data);
-      setFavoriteIds(new Set(data.map((u) => u.id)));
-    } catch (error) {
-      console.error("Error fetching favorites:", error);
-    }
-  };
 
   const loadRecentUsers = async () => {
     try {
@@ -119,27 +112,6 @@ export default function MembersSelectionSheet({
         ...prev.filter((m) => !removedMembers.some((r) => r.id === m.id))
       ];
     });
-  };
-
-  const handleToggleFavorite = async (targetUser: UserPreview) => {
-    if (!userDetails?.id) return;
-    try {
-      if (favoriteIds.has(targetUser.id)) {
-        await services.friend.removeFavorite(userDetails.id, targetUser.id);
-        setFavoriteIds((prev) => {
-          const next = new Set(prev);
-          next.delete(targetUser.id);
-          return next;
-        });
-        setFavoriteUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
-      } else {
-        await services.friend.addFavorite(userDetails.id, targetUser.id);
-        setFavoriteIds((prev) => new Set([...prev, targetUser.id]));
-        setFavoriteUsers((prev) => [targetUser, ...prev]);
-      }
-    } catch (error) {
-      console.error("Error toggling favorite:", error);
-    }
   };
 
   const handleRemoveMember = (id: string) => {
@@ -238,22 +210,7 @@ export default function MembersSelectionSheet({
               />
             </HStack>
             {!searching && (
-              <HStack className="gap-x-2 px-4">
-                <FormButton
-                  size="md"
-                  variant={tab === "recent" ? "solid" : "outline"}
-                  className="flex-1 h-10"
-                  text="Recent"
-                  onPress={() => setTab("recent")}
-                />
-                <FormButton
-                  size="md"
-                  variant={tab === "favorites" ? "solid" : "outline"}
-                  className="flex-1 h-10"
-                  text="Favorites"
-                  onPress={() => setTab("favorites")}
-                />
-              </HStack>
+              <RecentFavoritesTab tab={tab} onTabChange={setTab} />
             )}
           </VStack>
           <ScrollView className="flex-1 w-full" bounces={false}>
@@ -285,11 +242,7 @@ export default function MembersSelectionSheet({
                     />
                   );
                 }}
-                ItemSeparatorComponent={() => (
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-100" />
-                  </Box>
-                )}
+                ItemSeparatorComponent={ListDivider}
               />
             </CheckboxGroup>
           </ScrollView>

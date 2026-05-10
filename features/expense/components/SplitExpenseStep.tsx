@@ -3,7 +3,6 @@ import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import StepperProgress from "@/components/StepperProgress";
 import { Box } from "@/components/ui/box";
-import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Input, InputField, InputSlot } from "@/components/ui/input";
@@ -16,6 +15,7 @@ import { EmptyType } from "@/types/general";
 import { currencies, splitTypes } from "@/utils/constants";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import ListDivider from "@/components/ListDivider";
 import { formatAmount } from "../utils/formatAmount";
 import {
   getAmountPerPerson,
@@ -190,11 +190,7 @@ export default function SplitSelection({
               className="flex-1 h-full"
               data={members}
               keyExtractor={(item) => item.id}
-              ItemSeparatorComponent={() => (
-                <Box className="mx-4">
-                  <Divider className="border-secondary-100" />
-                </Box>
-              )}
+              ItemSeparatorComponent={ListDivider}
               ListEmptyComponent={() => <EmptyList type={EmptyType.MEMBER} />}
               renderItem={({ item: member }) => (
                 <MemberSplitItem

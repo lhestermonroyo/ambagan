@@ -2,11 +2,12 @@ import ConfirmIconButton from "@/components/ConfirmIconButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import ListDivider from "@/components/ListDivider";
+import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
-import { Divider } from "@/components/ui/divider";
 import { Fab, FabLabel } from "@/components/ui/fab";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -208,11 +209,7 @@ export default function GroupsScreen() {
               }
               rightOpenValue={-116}
               disableRightSwipe
-              ItemSeparatorComponent={() => (
-                <Box className="mx-4">
-                  <Divider className="border-secondary-100" />
-                </Box>
-              )}
+              ItemSeparatorComponent={ListDivider}
               ListEmptyComponent={() => {
                 if (searching) {
                   return <EmptyList type={EmptyType.SEARCH} />;
@@ -223,14 +220,11 @@ export default function GroupsScreen() {
               ListFooterComponent={() => (
                 <>
                   {hasMore && (
-                    <Box className="px-4 pb-2">
-                      <FormButton
-                        variant="outline"
-                        text="Load More"
-                        loading={loadingMore}
-                        onPress={loadMore}
-                      />
-                    </Box>
+                    <ListFooter
+                      hasNextPage={hasMore}
+                      loading={loadingMore}
+                      onLoadMore={loadMore}
+                    />
                   )}
                   <Box className="h-16" />
                 </>

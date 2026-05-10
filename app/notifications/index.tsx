@@ -1,10 +1,9 @@
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
+import ListDivider from "@/components/ListDivider";
+import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import { Box } from "@/components/ui/box";
-import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
-import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import NotificationItem from "@/features/notifications/components/NotificationItem";
 import InnerLayout from "@/layouts/InnerLayout";
@@ -180,11 +179,7 @@ export default function NotificationsScreen() {
           renderItem={({ item }) => (
             <NotificationItem item={item} onPress={handlePress} />
           )}
-          ItemSeparatorComponent={() => (
-            <Box className="mx-4">
-              <Divider className="border-secondary-100" />
-            </Box>
-          )}
+          ItemSeparatorComponent={ListDivider}
           ListEmptyComponent={() => (
             <VStack className="flex-1 items-center justify-center p-8">
               <EmptyList type={EmptyType.NOTIFICATION} />
@@ -192,22 +187,12 @@ export default function NotificationsScreen() {
           )}
           ListFooterComponent={
             list.length > 0 ? (
-              hasNextPage ? (
-                <FormButton
-                  size="md"
-                  variant="outline"
-                  className="mx-4 my-2"
-                  text="Load More"
-                  loading={loadMoreLoading}
-                  onPress={handleLoadMore}
-                />
-              ) : (
-                <VStack className="justify-center items-center p-4">
-                  <Text className="text-secondary-950 text-center">
-                    You've reached the end.
-                  </Text>
-                </VStack>
-              )
+              <ListFooter
+                hasNextPage={hasNextPage}
+                loading={loadMoreLoading}
+                onLoadMore={handleLoadMore}
+                showEndMessage
+              />
             ) : null
           }
         />

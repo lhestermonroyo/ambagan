@@ -6,7 +6,6 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
-import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import {
@@ -23,6 +22,7 @@ import { getPrimaryHex } from "@/utils/getColorHex";
 import { CircleIcon, MonitorCog, Moon, Sun } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useMemo } from "react";
+import ListDivider from "@/components/ListDivider";
 
 export default function AppearanceSheet({
   isOpen,
@@ -113,11 +113,7 @@ export default function AppearanceSheet({
                   </RadioIndicator>
                 </Radio>
               )}
-              ItemSeparatorComponent={() => (
-                <Box className="mx-4">
-                  <Divider className="border-secondary-100" />
-                </Box>
-              )}
+              ItemSeparatorComponent={ListDivider}
             />
           </RadioGroup>
         </VStack>

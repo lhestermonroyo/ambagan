@@ -18,6 +18,7 @@ import { HStack } from "./ui/hstack";
 import { Radio, RadioGroup, RadioIcon, RadioIndicator } from "./ui/radio";
 import { Text } from "./ui/text";
 import { VStack } from "./ui/vstack";
+import ListDivider from "@/components/ListDivider";
 
 export const CurrencySelectionSheet = ({
   isOpen,
@@ -64,11 +65,7 @@ export const CurrencySelectionSheet = ({
                   value={item.value}
                 />
               )}
-              ItemSeparatorComponent={() => (
-                <Box className="mx-4">
-                  <Divider className="border-secondary-100" />
-                </Box>
-              )}
+              ItemSeparatorComponent={ListDivider}
             />
           </RadioGroup>
         </VStack>

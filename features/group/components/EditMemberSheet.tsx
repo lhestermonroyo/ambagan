@@ -1,4 +1,5 @@
 import FormButton from "@/components/FormButton";
+import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
 import {
@@ -10,12 +11,12 @@ import {
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { CheckboxGroup } from "@/components/ui/checkbox";
-import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
@@ -23,6 +24,7 @@ import { Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useEffect, useMemo, useState } from "react";
+import RecentFavoritesTab from "./RecentFavoritesTab";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
 
@@ -42,11 +44,12 @@ export default function EditMembersSheet({
   const [lockedMembers, setLockedMembers] = useState<Member[]>([]);
   const [tab, setTab] = useState<"recent" | "favorites">("recent");
   const [recentUsers, setRecentUsers] = useState<UserPreview[]>([]);
-  const [favoriteUsers, setFavoriteUsers] = useState<UserPreview[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   const { details: groupDetails, memberList } = states.group.getState();
   const { details: userDetails } = states.user();
+
+  const { favoriteIds, favoriteUsers, loadFavorites, handleToggleFavorite, resetFavorites } =
+    useFavoriteToggle(userDetails?.id);
 
   const showToast = useAppToast();
 
@@ -54,7 +57,7 @@ export default function EditMembersSheet({
     if (isOpen && userDetails?.id) {
       init();
       loadRecentUsers();
-      loadFavorites();
+      loadFavorites((u) => u.id !== groupDetails?.admin.id);
     }
   }, [isOpen]);
 
@@ -120,38 +123,6 @@ export default function EditMembersSheet({
     }
   };
 
-  const loadFavorites = async () => {
-    try {
-      const data = await services.friend.getFavorites(userDetails!.id);
-      const filtered = data.filter((u) => u.id !== groupDetails?.admin.id);
-      setFavoriteUsers(filtered);
-      setFavoriteIds(new Set(filtered.map((u) => u.id)));
-    } catch (error) {
-      console.error("Error fetching favorites:", error);
-    }
-  };
-
-  const handleToggleFavorite = async (targetUser: UserPreview) => {
-    if (!userDetails?.id) return;
-    try {
-      if (favoriteIds.has(targetUser.id)) {
-        await services.friend.removeFavorite(userDetails.id, targetUser.id);
-        setFavoriteIds((prev) => {
-          const next = new Set(prev);
-          next.delete(targetUser.id);
-          return next;
-        });
-        setFavoriteUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
-      } else {
-        await services.friend.addFavorite(userDetails.id, targetUser.id);
-        setFavoriteIds((prev) => new Set([...prev, targetUser.id]));
-        setFavoriteUsers((prev) => [targetUser, ...prev]);
-      }
-    } catch (error) {
-      console.error("Error toggling favorite:", error);
-    }
-  };
-
   const displayUsers = useMemo(() => {
     if (searching) return users;
     return tab === "favorites" ? favoriteUsers : recentUsers;
@@ -204,8 +175,7 @@ export default function EditMembersSheet({
     setSearching(false);
     setUsers([]);
     setRecentUsers([]);
-    setFavoriteUsers([]);
-    setFavoriteIds(new Set());
+    resetFavorites();
   };
 
   const handleClose = () => {
@@ -333,22 +303,7 @@ export default function EditMembersSheet({
                 />
               </Box>
               {!searching && (
-                <HStack className="gap-x-2 px-4">
-                  <FormButton
-                    size="md"
-                    variant={tab === "recent" ? "solid" : "outline"}
-                    className="flex-1 h-10"
-                    text="Recent"
-                    onPress={() => setTab("recent")}
-                  />
-                  <FormButton
-                    size="md"
-                    variant={tab === "favorites" ? "solid" : "outline"}
-                    className="flex-1 h-10"
-                    text="Favorites"
-                    onPress={() => setTab("favorites")}
-                  />
-                </HStack>
+                <RecentFavoritesTab tab={tab} onTabChange={setTab} />
               )}
             </VStack>
             <ScrollView className="flex-1 w-full" bounces={false}>
@@ -390,11 +345,7 @@ export default function EditMembersSheet({
                       />
                     );
                   }}
-                  ItemSeparatorComponent={() => (
-                    <Box className="mx-4">
-                      <Divider className="border-secondary-100" />
-                    </Box>
-                  )}
+                  ItemSeparatorComponent={ListDivider}
                 />
               </CheckboxGroup>
             </ScrollView>

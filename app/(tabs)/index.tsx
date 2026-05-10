@@ -37,6 +37,7 @@ import {
 } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
+import ListDivider from "@/components/ListDivider";
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState({
@@ -385,11 +386,7 @@ export default function HomeScreen() {
                       }}
                     />
                   )}
-                  ItemSeparatorComponent={() => (
-                    <Box className="mx-4">
-                      <Divider className="border-secondary-100" />
-                    </Box>
-                  )}
+                  ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
                     <EmptyList type={EmptyType.ACTIVITY} />
                   )}
@@ -422,11 +419,7 @@ export default function HomeScreen() {
                       onOpen={() => router.push(`/groups/${item.id}`)}
                     />
                   )}
-                  ItemSeparatorComponent={() => (
-                    <Box className="mx-4">
-                      <Divider className="border-secondary-100" />
-                    </Box>
-                  )}
+                  ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
                     <EmptyList type={EmptyType.GROUP} />
                   )}

@@ -11,7 +11,6 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
-import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import {
@@ -29,6 +28,7 @@ import { formatDate } from "@/utils/formatDate";
 import { useRouter } from "expo-router";
 import { CircleIcon } from "lucide-react-native";
 import { Fragment, useState } from "react";
+import ListDivider from "@/components/ListDivider";
 
 export default function GroupSelection({
   group,
@@ -157,11 +157,7 @@ function GroupSelectionActionSheet({
                 />
               )}
               keyExtractor={(item) => item.id.toString()}
-              ItemSeparatorComponent={() => (
-                <Box className="mx-4">
-                  <Divider className="border-secondary-100" />
-                </Box>
-              )}
+              ItemSeparatorComponent={ListDivider}
               ListEmptyComponent={() => <EmptyList type={EmptyType.GROUP} />}
             />
           </RadioGroup>

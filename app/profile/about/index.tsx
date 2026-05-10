@@ -21,6 +21,7 @@ import {
   Wallet
 } from "lucide-react-native";
 import { useColorScheme } from "react-native";
+import ListDivider from "@/components/ListDivider";
 
 const VERSION = "1.0.0";
 
@@ -140,11 +141,7 @@ export default function AboutScreen() {
                     </VStack>
                   </HStack>
                 )}
-                ItemSeparatorComponent={() => (
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-100" />
-                  </Box>
-                )}
+                ItemSeparatorComponent={ListDivider}
               />
             </Box>
           </VStack>
@@ -172,11 +169,7 @@ export default function AboutScreen() {
                     <Text>{item.value}</Text>
                   </HStack>
                 )}
-                ItemSeparatorComponent={() => (
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-100" />
-                  </Box>
-                )}
+                ItemSeparatorComponent={ListDivider}
               />
             </Box>
           </VStack>

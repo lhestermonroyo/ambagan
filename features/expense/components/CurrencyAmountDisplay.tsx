@@ -7,7 +7,6 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
-import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
@@ -16,6 +15,7 @@ import { VStack } from "@/components/ui/vstack";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
+import ListDivider from "@/components/ListDivider";
 
 export default function CurrencyAmountDisplay({
   items,
@@ -94,11 +94,7 @@ export default function CurrencyAmountDisplay({
                   </Text>
                 </HStack>
               )}
-              ItemSeparatorComponent={() => (
-                <Box className="mx-4">
-                  <Divider className="border-secondary-100" />
-                </Box>
-              )}
+              ItemSeparatorComponent={ListDivider}
             />
           </VStack>
         </ActionsheetContent>
