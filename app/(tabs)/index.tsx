@@ -22,7 +22,6 @@ import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
-import NotificationSheet from "@/features/notifications/components/NotificationSheet";
 import services from "@/services";
 import states from "@/states";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
@@ -30,7 +29,12 @@ import { EmptyType } from "@/types/general";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Bell, HousePlus, PlusCircle } from "lucide-react-native";
+import {
+  Bell,
+  CircleQuestionMark,
+  HousePlus,
+  PlusCircle
+} from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 
@@ -49,7 +53,6 @@ export default function HomeScreen() {
 
   const [initialized, setInitialized] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentPreview | null>(
     null
   );
@@ -213,25 +216,35 @@ export default function HomeScreen() {
                 {userDetails?.first_name} {userDetails?.last_name}
               </Text>
             </VStack>
-            <Button
-              variant="link"
-              className="rounded-full"
-              onPress={() => setNotificationsOpen(true)}
-            >
-              <Box className="relative">
-                <Bell
-                  size={24}
+            <HStack className="gap-x-6">
+              <Button
+                variant="link"
+                className="rounded-full"
+                onPress={() => router.push("/profile/help-center")}
+              >
+                <CircleQuestionMark
                   color={getSecondaryHex("text-secondary-0", colorScheme)}
                 />
-                {unreadCount > 0 && (
-                  <Box className="absolute -top-1 -right-1 bg-error-400 rounded-full flex w-4 h-4 items-center justify-center">
-                    <Text className="text-background-0 text-2xs font-semibold">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </Text>
-                  </Box>
-                )}
-              </Box>
-            </Button>
+              </Button>
+              <Button
+                variant="link"
+                className="rounded-full"
+                onPress={() => router.push("/notifications")}
+              >
+                <Box className="relative">
+                  <Bell
+                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                  />
+                  {unreadCount > 0 && (
+                    <Box className="absolute -top-1 -right-1 bg-error-400 rounded-full flex w-4 h-4 items-center justify-center">
+                      <Text className="text-background-0 text-2xs font-semibold">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </Text>
+                    </Box>
+                  )}
+                </Box>
+              </Button>
+            </HStack>
           </HStack>
         </Box>
         <ScrollView
@@ -423,10 +436,6 @@ export default function HomeScreen() {
           </VStack>
         </ScrollView>
       </KeyboardAvoidingView>
-      <NotificationSheet
-        isOpen={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-      />
       <SettlementActionSheet
         isOpen={actionSheetOpen}
         onClose={() => setActionSheetOpen(false)}
@@ -452,7 +461,7 @@ function FriendCard({
   return (
     <PressableListItem
       onPress={onPress}
-      className="border min-w-40 border-secondary-200 rounded-lg p-4"
+      className="border min-w-40 border-secondary-500 rounded-lg p-4"
     >
       <VStack className="gap-y-2">
         <AppAvatar name={name} uri={friend.avatar || undefined} size="sm" />

@@ -102,8 +102,15 @@ export default function GroupSettlements({
     try {
       const cutoff = getDateRangeCutoff(dateRange);
       const [active, settled] = await Promise.all([
-        services.expense.getActivePaymentsByGroupAndUserId(details.id, userDetails.id),
-        services.expense.getSettledPaymentsByGroupAndUserId(details.id, userDetails.id, { cutoff, page: 0 })
+        services.expense.getActivePaymentsByGroupAndUserId(
+          details.id,
+          userDetails.id
+        ),
+        services.expense.getSettledPaymentsByGroupAndUserId(
+          details.id,
+          userDetails.id,
+          { cutoff, page: 0 }
+        )
       ]);
       setActivePayments(sortPaymentsByStatus(active));
       setSettledPayments(settled.data);
@@ -129,7 +136,9 @@ export default function GroupSettlements({
         userDetails.id,
         { cutoff, page }
       );
-      setSettledPayments((prev) => (page === 0 ? result.data : [...prev, ...result.data]));
+      setSettledPayments((prev) =>
+        page === 0 ? result.data : [...prev, ...result.data]
+      );
       setSettledPage(page);
       setHasMoreSettled(result.hasNext);
     } catch (error) {
@@ -164,12 +173,16 @@ export default function GroupSettlements({
 
   const yourTotalUnpaidByCurrency = useMemo(() => {
     if (!userDetails) return [];
-    return groupByCurrency(activePayments.filter((p) => p.member.id === userDetails.id));
+    return groupByCurrency(
+      activePayments.filter((p) => p.member.id === userDetails.id)
+    );
   }, [activePayments, userDetails]);
 
   const yourToCollectTotalByCurrency = useMemo(() => {
     if (!userDetails) return [];
-    return groupByCurrency(activePayments.filter((p) => p.payer.id === userDetails.id));
+    return groupByCurrency(
+      activePayments.filter((p) => p.payer.id === userDetails.id)
+    );
   }, [activePayments, userDetails]);
 
   const settlementSections = useMemo(() => {
@@ -237,7 +250,14 @@ export default function GroupSettlements({
         title: getDateGroupTitle(dateKey + "T00:00:00"),
         data: groupedByDate[dateKey]
       }));
-  }, [activePayments, settledPayments, settlementTab, viewBy, userDetails, dateRange]);
+  }, [
+    activePayments,
+    settledPayments,
+    settlementTab,
+    viewBy,
+    userDetails,
+    dateRange
+  ]);
 
   const handleSettlementItemPress = (payment: PaymentPreview | Payment) => {
     const p = payment as Payment;
@@ -364,7 +384,7 @@ export default function GroupSettlements({
                 ))}
               </HStack>
             </ScrollView>
-            <HStack className="gap-x-4 px-4">
+            <HStack className="gap-x-6 px-4">
               <Button
                 variant="link"
                 className="rounded-full"

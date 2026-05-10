@@ -142,7 +142,7 @@ export default function AboutScreen() {
                 )}
                 ItemSeparatorComponent={() => (
                   <Box className="mx-4">
-                    <Divider className="border-secondary-200" />
+                    <Divider className="border-secondary-100" />
                   </Box>
                 )}
               />
@@ -174,7 +174,7 @@ export default function AboutScreen() {
                 )}
                 ItemSeparatorComponent={() => (
                   <Box className="mx-4">
-                    <Divider className="border-secondary-200" />
+                    <Divider className="border-secondary-100" />
                   </Box>
                 )}
               />

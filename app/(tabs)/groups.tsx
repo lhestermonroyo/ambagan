@@ -68,7 +68,9 @@ export default function GroupsScreen() {
         userDetails.id,
         pageNum
       );
-      setGroups((prev) => (pageNum === 0 ? result.data : [...prev, ...result.data]));
+      setGroups((prev) =>
+        pageNum === 0 ? result.data : [...prev, ...result.data]
+      );
       setPage(pageNum);
       setHasMore(result.hasNext);
       states.group.setState((prev) => ({
@@ -139,7 +141,7 @@ export default function GroupsScreen() {
         onPress={() => router.push("/groups/create")}
       >
         <HousePlus
-          size={20}
+          size={18}
           color={getSecondaryHex("text-secondary-0", colorScheme)}
         />
         <FabLabel className="text-lg font-medium">Add Group</FabLabel>

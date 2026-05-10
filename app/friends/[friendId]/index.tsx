@@ -68,8 +68,12 @@ export default function FriendDetailScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeSettlements, setActiveSettlements] = useState<PaymentPreview[]>([]);
-  const [settledSettlements, setSettledSettlements] = useState<PaymentPreview[]>([]);
+  const [activeSettlements, setActiveSettlements] = useState<PaymentPreview[]>(
+    []
+  );
+  const [settledSettlements, setSettledSettlements] = useState<
+    PaymentPreview[]
+  >([]);
   const [settledPage, setSettledPage] = useState(0);
   const [hasMoreSettled, setHasMoreSettled] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentPreview | null>(
@@ -125,7 +129,10 @@ export default function FriendDetailScreen() {
       const cutoff = getDateRangeCutoff(dateRange);
       const [active, settled] = await Promise.all([
         services.friend.getActiveFriendSettlements(userDetails.id, friendId),
-        services.friend.getSettledFriendSettlements(userDetails.id, friendId, { cutoff, page: 0 })
+        services.friend.getSettledFriendSettlements(userDetails.id, friendId, {
+          cutoff,
+          page: 0
+        })
       ]);
       setActiveSettlements(active);
       setSettledSettlements(settled.data);
@@ -228,7 +235,10 @@ export default function FriendDetailScreen() {
       .forEach((s) => {
         map[s.currency] = (map[s.currency] ?? 0) + s.amount;
       });
-    return Object.entries(map).map(([currency, amount]) => ({ currency, amount }));
+    return Object.entries(map).map(([currency, amount]) => ({
+      currency,
+      amount
+    }));
   }, [activeSettlements, userDetails]);
 
   const toPay = useMemo(() => {
@@ -238,7 +248,10 @@ export default function FriendDetailScreen() {
       .forEach((s) => {
         map[s.currency] = (map[s.currency] ?? 0) + s.amount;
       });
-    return Object.entries(map).map(([currency, amount]) => ({ currency, amount }));
+    return Object.entries(map).map(([currency, amount]) => ({
+      currency,
+      amount
+    }));
   }, [activeSettlements, userDetails]);
 
   const filteredSettlements = useMemo(() => {
@@ -402,7 +415,7 @@ export default function FriendDetailScreen() {
                     ))}
                   </HStack>
                 </HScrollView>
-                <HStack className="gap-x-4 px-4">
+                <HStack className="gap-x-6 px-4">
                   <Button
                     variant="link"
                     size="lg"

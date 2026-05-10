@@ -1,4 +1,8 @@
-import * as PREFERENCES_SERVICE from "@/features/user/services/preferences.service";
+import {
+  createPreferences,
+  getPreferences,
+  updatePreferences as updatePreferencesInDB
+} from "@/features/user/services/preferences.service";
 import { AppearanceMode, UserPreferences, UserState } from "@/types/user";
 import { supabase } from "@/utils/supabase";
 import { create } from "zustand";
@@ -37,7 +41,7 @@ const USER_STATE = create<UserState>((set, get) => ({
   setAppearanceMode: async (mode: AppearanceMode) => {
     const { details } = get();
     if (!details?.id) return;
-    await PREFERENCES_SERVICE.upsertPreferences(details.id, { appearance: mode });
+    await updatePreferencesInDB(details.id, { appearance: mode });
     set({ appearanceMode: mode });
   },
 
@@ -45,19 +49,19 @@ const USER_STATE = create<UserState>((set, get) => ({
     const { details } = get();
     if (!details?.id) return;
     const notifPrefs = enabled ? NOTIF_ALL_ON : NOTIF_ALL_OFF;
-    await PREFERENCES_SERVICE.upsertPreferences(details.id, notifPrefs);
+    await updatePreferencesInDB(details.id, notifPrefs);
     set({ notificationsEnabled: enabled });
   },
 
   setDefaultCurrency: async (userId: string, currency: string) => {
-    await PREFERENCES_SERVICE.upsertPreferences(userId, { default_currency: currency });
+    await updatePreferencesInDB(userId, { default_currency: currency });
     set({ defaultCurrency: currency });
   },
 
   updatePreferences: async (prefs) => {
     const { details } = get();
     if (!details?.id) return;
-    const updated = await PREFERENCES_SERVICE.upsertPreferences(details.id, prefs);
+    const updated = await updatePreferencesInDB(details.id, prefs);
     set({
       preferences: updated,
       notificationsEnabled: isAnyNotifEnabled(updated),
@@ -70,10 +74,10 @@ const USER_STATE = create<UserState>((set, get) => ({
     if (!userId) return;
 
     try {
-      let prefs = await PREFERENCES_SERVICE.getPreferences(userId);
+      let prefs = await getPreferences(userId);
 
       if (!prefs) {
-        prefs = await PREFERENCES_SERVICE.upsertPreferences(userId, {
+        prefs = await createPreferences(userId, {
           appearance: "light",
           default_currency: "PHP",
           ...NOTIF_ALL_ON

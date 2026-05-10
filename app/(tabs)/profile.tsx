@@ -19,6 +19,7 @@ import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
 import {
   Bell,
+  CircleQuestionMark,
   Coins,
   Eye,
   Info,
@@ -90,7 +91,12 @@ export default function ProfileScreen() {
         description: "Manage your account security and preferences",
         onPress: () => router.push("/profile/account-settings")
       },
-
+      {
+        icon: <Bell color={getPrimaryHex("text-primary-400", colorScheme)} />,
+        label: "Push Notifications",
+        description: "Manage your push notification preferences",
+        onPress: () => setNotificationsOpen(true)
+      },
       {
         icon: <Coins color={getPrimaryHex("text-primary-400", colorScheme)} />,
         label: "Default Currency",
@@ -106,37 +112,29 @@ export default function ProfileScreen() {
         onPress: () => setAppearanceOpen(true)
       },
       {
-        icon: <Bell color={getPrimaryHex("text-primary-400", colorScheme)} />,
-        label: "Push Notifications",
-        description: "Manage your push notification preferences",
-        value: (
-          <Text className="text-lg">
-            {!notificationsEnabled
-              ? "Off"
-              : preferences &&
-                  [
-                    preferences.notif_settlement_request,
-                    preferences.notif_settlement_approved,
-                    preferences.notif_settlement_rejected,
-                    preferences.notif_settlement_completed,
-                    preferences.notif_expense_inclusion,
-                    preferences.notif_group_join,
-                    preferences.notif_group_leave
-                  ].every(Boolean)
-                ? "On"
-                : "Partial"}
-          </Text>
+        icon: (
+          <CircleQuestionMark
+            color={getPrimaryHex("text-primary-400", colorScheme)}
+          />
         ),
-        onPress: () => setNotificationsOpen(true)
+        label: "Help Center",
+        description: "Get support and find answers to your questions",
+        onPress: () => router.push("/profile/help-center")
       },
-      {
-        icon: <Info color={getPrimaryHex("text-primary-400", colorScheme)} />,
-        label: "About",
-        description: "Learn more about the app and its features",
-        onPress: () => router.push("/profile/about")
-      }
+      // {
+      //   icon: <Info color={getPrimaryHex("text-primary-400", colorScheme)} />,
+      //   label: "About",
+      //   description: "Learn more about the app and its features",
+      //   onPress: () => router.push("/profile/about")
+      // }
     ],
-    [appearanceLabel, notificationsEnabled, preferences, currencyLabel, colorScheme]
+    [
+      appearanceLabel,
+      notificationsEnabled,
+      preferences,
+      currencyLabel,
+      colorScheme
+    ]
   );
 
   const handleSignOut = () => {

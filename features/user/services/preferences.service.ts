@@ -13,16 +13,28 @@ export const getPreferences = async (userId: string): Promise<UserPreferences | 
   return data as UserPreferences | null;
 };
 
-export const upsertPreferences = async (
+export const createPreferences = async (
+  userId: string,
+  prefs: Omit<UserPreferences, "id" | "user_id" | "updated_at">
+): Promise<UserPreferences> => {
+  const { data, error } = await supabase
+    .from(tables.USER_PREFERENCES_TBL)
+    .insert({ user_id: userId, ...prefs })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return data as UserPreferences;
+};
+
+export const updatePreferences = async (
   userId: string,
   prefs: Partial<Omit<UserPreferences, "id" | "user_id" | "updated_at">>
 ): Promise<UserPreferences> => {
   const { data, error } = await supabase
     .from(tables.USER_PREFERENCES_TBL)
-    .upsert(
-      { user_id: userId, ...prefs, updated_at: new Date().toISOString() },
-      { onConflict: "user_id" }
-    )
+    .update({ ...prefs, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
     .select("*")
     .single();
 

@@ -1,35 +1,24 @@
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
+import EmptyList from "@/components/EmptyList";
+import FormButton from "@/components/FormButton";
+import LoadingWrapper from "@/components/LoadingWrapper";
 import { Box } from "@/components/ui/box";
-import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
-import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import NotificationItem from "@/features/notifications/components/NotificationItem";
+import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
+import { EmptyType } from "@/types/general";
 import { Notification, NotificationType } from "@/types/notifications";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import FormButton from "../../../components/FormButton";
-import Icon from "../../../components/Icon";
-import LoadingWrapper from "../../../components/LoadingWrapper";
+import { RefreshControl } from "react-native";
 
-export default function NotificationSheet({
-  isOpen,
-  onClose
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) {
+export default function NotificationsScreen() {
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadMoreLoading, setLoadMoreLoading] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
   const [page, setPage] = useState(0);
@@ -41,10 +30,10 @@ export default function NotificationSheet({
   const router = useRouter();
 
   useEffect(() => {
-    if (isOpen && userDetails?.id) {
+    if (userDetails?.id) {
       fetchNotifications(0, true);
     }
-  }, [isOpen, userDetails?.id]);
+  }, [userDetails?.id]);
 
   const fetchNotifications = async (
     pageNum: number = 0,
@@ -77,6 +66,15 @@ export default function NotificationSheet({
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchNotifications(0);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleLoadMore = async () => {
     setLoadMoreLoading(true);
     try {
@@ -100,7 +98,6 @@ export default function NotificationSheet({
         NotificationType.SETTLEMENT_APPROVED,
         NotificationType.SETTLEMENT_COMPLETED
       ].includes(notification.type);
-      onClose();
       router.push({
         pathname: "/friends/[friendId]",
         params: {
@@ -118,7 +115,6 @@ export default function NotificationSheet({
       );
 
       if (route) {
-        onClose();
         router.push(route as any);
       }
     }
@@ -157,83 +153,65 @@ export default function NotificationSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
-      <ActionsheetBackdrop />
-      <ActionsheetContent className="p-0">
-        <ActionsheetDragIndicatorWrapper>
-          <ActionsheetDragIndicator />
-        </ActionsheetDragIndicatorWrapper>
-
-        <VStack className="w-full py-4 flex-1 gap-y-4">
-          <HStack className="items-center px-4">
-            <Button variant="link" className="rounded-full" onPress={onClose}>
-              <Icon as="arrow-back-ios" className="text-secondary-950" />
-            </Button>
-            <HStack className="flex-1 items-center gap-x-2">
-              <Text bold className="text-xl">
-                Notifications
-              </Text>
-              {unreadCount > 0 && (
-                <Box className="bg-primary-400 rounded-full h-6 w-6 flex items-center justify-center">
-                  <Text className="text-background-0 text-xs font-semibold">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </Text>
-                </Box>
-              )}
-            </HStack>
-            {unreadCount > 0 && (
+    <InnerLayout
+      title="Notifications"
+      onBack={() => router.back()}
+      actions={
+        unreadCount > 0
+          ? [
               <FormButton
+                key="mark-all"
                 text={markingAll ? "Marking..." : "Mark all read"}
                 variant="link"
                 onPress={handleMarkAllRead}
                 disabled={markingAll}
               />
-            )}
-          </HStack>
-
-          <LoadingWrapper isLoading={loading} text="Loading notifications...">
-            <FlatList
-              data={list}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <NotificationItem item={item} onPress={handlePress} />
-              )}
-              ItemSeparatorComponent={() => (
-                <Box className="mx-4">
-                  <Divider className="border-secondary-100" />
-                </Box>
-              )}
-              ListEmptyComponent={() => (
-                <VStack className="flex-1 items-center justify-center p-8">
+            ]
+          : undefined
+      }
+    >
+      <LoadingWrapper isLoading={loading} text="Loading notifications...">
+        <FlatList
+          data={list}
+          keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+          renderItem={({ item }) => (
+            <NotificationItem item={item} onPress={handlePress} />
+          )}
+          ItemSeparatorComponent={() => (
+            <Box className="mx-4">
+              <Divider className="border-secondary-100" />
+            </Box>
+          )}
+          ListEmptyComponent={() => (
+            <VStack className="flex-1 items-center justify-center p-8">
+              <EmptyList type={EmptyType.NOTIFICATION} />
+            </VStack>
+          )}
+          ListFooterComponent={
+            list.length > 0 ? (
+              hasNextPage ? (
+                <FormButton
+                  size="md"
+                  variant="outline"
+                  className="mx-4 my-2"
+                  text="Load More"
+                  loading={loadMoreLoading}
+                  onPress={handleLoadMore}
+                />
+              ) : (
+                <VStack className="justify-center items-center p-4">
                   <Text className="text-secondary-950 text-center">
-                    No notifications yet.
+                    You've reached the end.
                   </Text>
                 </VStack>
-              )}
-              ListFooterComponent={
-                list.length > 0 ? (
-                  hasNextPage ? (
-                    <FormButton
-                      size="md"
-                      variant="outline"
-                      className="mx-4 my-2"
-                      text="Load More"
-                      loading={loadMoreLoading}
-                      onPress={handleLoadMore}
-                    />
-                  ) : (
-                    <VStack className="justify-center items-center p-4">
-                      <Text className="text-secondary-950 text-center">
-                        You've reached the end.
-                      </Text>
-                    </VStack>
-                  )
-                ) : null
-              }
-            />
-          </LoadingWrapper>
-        </VStack>
-      </ActionsheetContent>
-    </Actionsheet>
+              )
+            ) : null
+          }
+        />
+      </LoadingWrapper>
+    </InnerLayout>
   );
 }
