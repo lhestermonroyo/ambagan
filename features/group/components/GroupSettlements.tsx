@@ -19,6 +19,7 @@ import RequestSettledSheet from "@/features/expense/components/RequestSettledShe
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
+import { groupByDate, groupByExpenseId } from "@/features/expense/utils/grouping.util";
 import { sortPaymentsByStatus } from "@/features/expense/utils/payment.util";
 import DateRangeSheet, {
   DateRangeOption,
@@ -32,9 +33,8 @@ import services from "@/services";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
-import { getDateGroupTitle } from "@/utils/formatDate";
+import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import { format, parseISO } from "date-fns";
 import { useFocusEffect } from "expo-router";
 import { CalendarRange, HouseHeart, LayoutList, X } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -156,17 +156,6 @@ export default function GroupSettlements({
     }
   };
 
-  const groupByCurrency = (items: { amount: number; currency: string }[]) => {
-    const map: Record<string, number> = {};
-    items.forEach(({ amount, currency }) => {
-      map[currency] = (map[currency] ?? 0) + amount;
-    });
-    return Object.entries(map).map(([currency, amount]) => ({
-      currency,
-      amount
-    }));
-  };
-
   const totalGroupSpendingsByCurrency = useMemo(
     () => groupByCurrency(expenseList),
     [expenseList]
@@ -208,15 +197,7 @@ export default function GroupSettlements({
     }
 
     if (viewBy === "By Expense") {
-      const grouped: Record<string, Payment[]> = {};
-      filtered.forEach((p) => {
-        if (!grouped[p.expense_id]) grouped[p.expense_id] = [];
-        grouped[p.expense_id].push(p);
-      });
-      return Object.keys(grouped).map((expenseId) => ({
-        title: grouped[expenseId][0].expense_description || "Unknown Expense",
-        data: grouped[expenseId]
-      }));
+      return groupByExpenseId(filtered);
     }
 
     if (viewBy === "By Person") {
@@ -239,18 +220,7 @@ export default function GroupSettlements({
       });
     }
 
-    const groupedByDate: Record<string, Payment[]> = {};
-    filtered.forEach((p) => {
-      const dateKey = format(parseISO(p.created_at), "yyyy-MM-dd");
-      if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
-      groupedByDate[dateKey].push(p);
-    });
-    return Object.keys(groupedByDate)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-      .map((dateKey) => ({
-        title: getDateGroupTitle(dateKey + "T00:00:00"),
-        data: groupedByDate[dateKey]
-      }));
+    return groupByDate(filtered);
   }, [
     activePayments,
     settledPayments,

@@ -12,7 +12,8 @@ import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { Member } from "@/types/groups";
 import { EmptyType } from "@/types/general";
-import { currencies, splitTypes } from "@/utils/constants";
+import { getCurrencySign } from "@/utils/currency";
+import { splitTypes } from "@/utils/constants";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import ListDivider from "@/components/ListDivider";
@@ -291,10 +292,7 @@ function MemberSplitItem({
   const { details: userDetails } = states.user();
   const isMe = member.id === userDetails?.id;
 
-  const currencySign = useMemo(
-    () => currencies.find((c) => c.value === currency)?.sign,
-    [currency]
-  );
+  const currencySign = useMemo(() => getCurrencySign(currency), [currency]);
 
   return (
     <Box className="p-4">

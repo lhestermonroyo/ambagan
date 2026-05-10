@@ -11,6 +11,7 @@ import { NotificationType } from "@/types/notifications";
 import { splitTypes, tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
+import { sendPushNotification } from "@/utils/sendPushNotifications";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { v4 as uuid } from "uuid";
 
@@ -121,12 +122,18 @@ export const saveExpense = async (
 
   await Promise.allSettled(
     membersToNotify.map((memberId) =>
-      createNotification({
-        fromUserId: user.data.user!.id,
-        toUserId: memberId,
-        type: NotificationType.EXPENSE_INCLUSION,
-        referenceId: expenseId
-      })
+      Promise.all([
+        createNotification({
+          fromUserId: user.data.user!.id,
+          toUserId: memberId,
+          type: NotificationType.EXPENSE_INCLUSION,
+          referenceId: expenseId
+        }),
+        sendPushNotification(memberId, NotificationType.EXPENSE_INCLUSION, {
+          title: "New Expense",
+          body: `You've been added to "${description}"`
+        })
+      ])
     )
   );
 
@@ -505,12 +512,22 @@ export const createSettledRequest = async (expensePayload: {
   }
 
   try {
-    await createNotification({
-      fromUserId: user.data.user.id,
-      toUserId: splitResponse.data.payer_id,
-      type: NotificationType.SETTLEMENT_REQUEST,
-      referenceId: expenseSplitId
-    });
+    await Promise.all([
+      createNotification({
+        fromUserId: user.data.user.id,
+        toUserId: splitResponse.data.payer_id,
+        type: NotificationType.SETTLEMENT_REQUEST,
+        referenceId: expenseSplitId
+      }),
+      sendPushNotification(
+        splitResponse.data.payer_id,
+        NotificationType.SETTLEMENT_REQUEST,
+        {
+          title: "Settlement Requested",
+          body: "Someone is requesting to settle a payment with you"
+        }
+      )
+    ]);
   } catch (err) {
     console.error("Failed to send payment request notification:", err);
   }
@@ -565,12 +582,22 @@ export const rejectSettledRequest = async (expenseSplitId: string) => {
   }
 
   try {
-    await createNotification({
-      fromUserId: user.data.user.id,
-      toUserId: splitResponse.data.member_id,
-      type: NotificationType.SETTLEMENT_REJECTED,
-      referenceId: expenseSplitId
-    });
+    await Promise.all([
+      createNotification({
+        fromUserId: user.data.user.id,
+        toUserId: splitResponse.data.member_id,
+        type: NotificationType.SETTLEMENT_REJECTED,
+        referenceId: expenseSplitId
+      }),
+      sendPushNotification(
+        splitResponse.data.member_id,
+        NotificationType.SETTLEMENT_REJECTED,
+        {
+          title: "Settlement Rejected",
+          body: "Your settlement request has been rejected"
+        }
+      )
+    ]);
   } catch (err) {
     console.error("Failed to send payment rejected notification:", err);
   }
@@ -617,12 +644,22 @@ export const markAsSettled = async (expensePayload: {
   }
 
   try {
-    await createNotification({
-      fromUserId: user.data.user.id,
-      toUserId: splitResponse.data.member_id,
-      type: NotificationType.SETTLEMENT_APPROVED,
-      referenceId: expenseSplitId
-    });
+    await Promise.all([
+      createNotification({
+        fromUserId: user.data.user.id,
+        toUserId: splitResponse.data.member_id,
+        type: NotificationType.SETTLEMENT_APPROVED,
+        referenceId: expenseSplitId
+      }),
+      sendPushNotification(
+        splitResponse.data.member_id,
+        NotificationType.SETTLEMENT_APPROVED,
+        {
+          title: "Settlement Approved",
+          body: "Your settlement request has been approved"
+        }
+      )
+    ]);
   } catch (err) {
     console.error("Failed to send payment approved notification:", err);
   }

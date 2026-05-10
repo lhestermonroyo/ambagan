@@ -29,6 +29,7 @@ import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountD
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
+import { groupByDate, groupByExpenseId } from "@/features/expense/utils/grouping.util";
 import DateRangeSheet, {
   DateRangeOption,
   dateRangeLabels,
@@ -43,9 +44,8 @@ import services from "@/services";
 import states from "@/states";
 import { PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
-import { getDateGroupTitle } from "@/utils/formatDate";
+import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import { format, parseISO } from "date-fns";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   CalendarRange,
@@ -229,31 +229,17 @@ export default function FriendDetailScreen() {
     [activeSettlements, userDetails]
   );
 
-  const toCollect = useMemo(() => {
-    const map: Record<string, number> = {};
-    activeSettlements
-      .filter((s) => s.payer.id === userDetails?.id)
-      .forEach((s) => {
-        map[s.currency] = (map[s.currency] ?? 0) + s.amount;
-      });
-    return Object.entries(map).map(([currency, amount]) => ({
-      currency,
-      amount
-    }));
-  }, [activeSettlements, userDetails]);
+  const toCollect = useMemo(
+    () =>
+      groupByCurrency(activeSettlements.filter((s) => s.payer.id === userDetails?.id)),
+    [activeSettlements, userDetails]
+  );
 
-  const toPay = useMemo(() => {
-    const map: Record<string, number> = {};
-    activeSettlements
-      .filter((s) => s.member.id === userDetails?.id)
-      .forEach((s) => {
-        map[s.currency] = (map[s.currency] ?? 0) + s.amount;
-      });
-    return Object.entries(map).map(([currency, amount]) => ({
-      currency,
-      amount
-    }));
-  }, [activeSettlements, userDetails]);
+  const toPay = useMemo(
+    () =>
+      groupByCurrency(activeSettlements.filter((s) => s.member.id === userDetails?.id)),
+    [activeSettlements, userDetails]
+  );
 
   const filteredSettlements = useMemo(() => {
     if (settlementTab === "History") return settledSettlements;
@@ -265,15 +251,7 @@ export default function FriendDetailScreen() {
 
   const sections = useMemo(() => {
     if (viewBy === "By Expense") {
-      const grouped: Record<string, PaymentPreview[]> = {};
-      filteredSettlements.forEach((s) => {
-        if (!grouped[s.expense_id]) grouped[s.expense_id] = [];
-        grouped[s.expense_id].push(s);
-      });
-      return Object.keys(grouped).map((expenseId) => ({
-        title: grouped[expenseId][0].expense_description || "Unknown Expense",
-        data: grouped[expenseId]
-      }));
+      return groupByExpenseId(filteredSettlements);
     }
 
     if (viewBy === "By Person") {
@@ -296,18 +274,7 @@ export default function FriendDetailScreen() {
       ].filter(Boolean) as { title: string; data: PaymentPreview[] }[];
     }
 
-    const groupedByDate: Record<string, PaymentPreview[]> = {};
-    filteredSettlements.forEach((s) => {
-      const dateKey = format(parseISO(s.created_at), "yyyy-MM-dd");
-      if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
-      groupedByDate[dateKey].push(s);
-    });
-    return Object.keys(groupedByDate)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-      .map((dateKey) => ({
-        title: getDateGroupTitle(dateKey + "T00:00:00"),
-        data: groupedByDate[dateKey]
-      }));
+    return groupByDate(filteredSettlements);
   }, [filteredSettlements, viewBy, userDetails]);
 
   return (

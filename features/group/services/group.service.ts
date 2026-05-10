@@ -4,6 +4,7 @@ import { Group, Member } from "@/types/groups";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
+import { sendPushNotification } from "@/utils/sendPushNotifications";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
@@ -78,12 +79,18 @@ export const saveGroup = async ({
 
   await Promise.allSettled(
     membersToNotify.map((memberId) =>
-      createNotification({
-        fromUserId: admin_id,
-        toUserId: memberId,
-        type: NotificationType.GROUP_JOIN,
-        referenceId: groupId
-      })
+      Promise.all([
+        createNotification({
+          fromUserId: admin_id,
+          toUserId: memberId,
+          type: NotificationType.GROUP_JOIN,
+          referenceId: groupId
+        }),
+        sendPushNotification(memberId, NotificationType.GROUP_JOIN, {
+          title: "Added to a Group",
+          body: `You've been added to "${name}"`
+        })
+      ])
     )
   );
 

@@ -10,7 +10,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { Member } from "@/types/groups";
-import { currencies } from "@/utils/constants";
+import { getCurrencySign } from "@/utils/currency";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment, useMemo } from "react";
 import { formatAmount } from "../utils/formatAmount";
@@ -47,9 +47,7 @@ export default function PayersContributionStep({
     return parseFloat(amount) - totalPayerAmount;
   }, [formattedPayers, amount]);
 
-  const currencySign = useMemo(() => {
-    return currencies.find((c) => c.value === currency)?.sign;
-  }, [currency]);
+  const currencySign = useMemo(() => getCurrencySign(currency), [currency]);
 
   return (
     <Fragment>

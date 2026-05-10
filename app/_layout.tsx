@@ -8,6 +8,7 @@ import { supabase } from "@/utils/supabase";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { useFonts } from "expo-font";
+import * as Notifications from "expo-notifications";
 import { SplashScreen, Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
@@ -173,23 +174,14 @@ export default function RootLayout() {
   };
 
   const registerDevicePushToken = async (userId: string) => {
-    // To enable push notifications:
-    // 1. Run: npx expo install expo-notifications expo-device
-    // 2. Uncomment the code below and remove this comment block
-    //
-    // import * as Device from "expo-device";
-    // import * as Notifications from "expo-notifications";
-    //
-    // if (!Device.isDevice) return;
-    // const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    // let finalStatus = existingStatus;
-    // if (existingStatus !== "granted") {
-    //   const { status } = await Notifications.requestPermissionsAsync();
-    //   finalStatus = status;
-    // }
-    // if (finalStatus !== "granted") return;
-    // const { data: token } = await Notifications.getExpoPushTokenAsync();
-    // await services.pushToken.registerPushToken(userId, token);
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== "granted") return;
+      const { data: token } = await Notifications.getExpoPushTokenAsync();
+      await services.pushToken.registerPushToken(userId, token);
+    } catch (error) {
+      console.error("Failed to register push token:", error);
+    }
   };
 
   if (!loaded || loading) {

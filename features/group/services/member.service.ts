@@ -3,6 +3,7 @@ import { NotificationType } from "@/types/notifications";
 import { Member } from "@/types/groups";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
+import { sendPushNotification } from "@/utils/sendPushNotifications";
 
 export const leaveGroup = async (
   groupId: string,
@@ -72,12 +73,18 @@ export const leaveGroup = async (
   if (!membersError && remainingMembers && remainingMembers.length > 0) {
     await Promise.allSettled(
       remainingMembers.map((member) =>
-        createNotification({
-          fromUserId: userId,
-          toUserId: member.member_id,
-          type: NotificationType.GROUP_LEAVE,
-          referenceId: groupId
-        })
+        Promise.all([
+          createNotification({
+            fromUserId: userId,
+            toUserId: member.member_id,
+            type: NotificationType.GROUP_LEAVE,
+            referenceId: groupId
+          }),
+          sendPushNotification(member.member_id, NotificationType.GROUP_LEAVE, {
+            title: "Member Left",
+            body: "A member has left your group"
+          })
+        ])
       )
     );
   }

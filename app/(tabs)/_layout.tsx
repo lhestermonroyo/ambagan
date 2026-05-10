@@ -1,13 +1,47 @@
 import { HapticTab } from "@/components/haptic-tab";
 import TabButton from "@/components/TabButton";
 import { View } from "@/components/ui/view";
+import PushNotificationPermissionSheet from "@/features/user/components/PushNotificationPermissionSheet";
+import states from "@/states";
 import { getSecondaryHex } from "@/utils/getColorHex";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
 import { Tabs } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
+
+const PUSH_ASKED_KEY = "@push_permission_asked";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme() ?? "light";
+  const [permissionSheetOpen, setPermissionSheetOpen] = useState(false);
+  const { details: userDetails } = states.user();
+
+  useEffect(() => {
+    if (!userDetails?.id) return;
+    checkAndPromptPermission();
+  }, [userDetails?.id]);
+
+  const checkAndPromptPermission = async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status === "granted") return;
+
+      const alreadyAsked = await AsyncStorage.getItem(PUSH_ASKED_KEY);
+      if (alreadyAsked) return;
+
+      setPermissionSheetOpen(true);
+    } catch {
+      // silently fail — don't block the user from using the app
+    }
+  };
+
+  const handleClose = async () => {
+    setPermissionSheetOpen(false);
+    try {
+      await AsyncStorage.setItem(PUSH_ASKED_KEY, "true");
+    } catch {}
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -57,6 +91,11 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
+
+      <PushNotificationPermissionSheet
+        isOpen={permissionSheetOpen}
+        onClose={handleClose}
+      />
     </View>
   );
 }

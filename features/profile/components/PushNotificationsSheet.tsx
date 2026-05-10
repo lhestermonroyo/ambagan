@@ -1,3 +1,5 @@
+import FormButton from "@/components/FormButton";
+import ListDivider from "@/components/ListDivider";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -12,11 +14,18 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import services from "@/services";
 import states from "@/states";
 import { UserPreferences } from "@/types/user";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import { useColorScheme } from "react-native";
-import ListDivider from "@/components/ListDivider";
+import {
+  getErrorHex,
+  getPrimaryHex,
+  getSecondaryHex
+} from "@/utils/getColorHex";
+import * as Notifications from "expo-notifications";
+import { AlertCircle, BellOff } from "lucide-react-native";
+import { useEffect, useState } from "react";
+import { Linking, useColorScheme } from "react-native";
 
 type NotifKey = keyof Pick<
   UserPreferences,
@@ -91,11 +100,23 @@ export default function PushNotificationsSheet({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const { preferences, updatePreferences } = states.user();
+  const {
+    details: userDetails,
+    preferences,
+    updatePreferences
+  } = states.user();
 
-  if (!preferences) return null;
+  if (!userDetails) return null;
 
   const colorScheme = useColorScheme() ?? "light";
+  const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    Notifications.getPermissionsAsync().then(({ status }) => {
+      setPermissionStatus(status);
+    });
+  }, [isOpen]);
 
   const switchColors = {
     false: getSecondaryHex("text-secondary-300", colorScheme),
@@ -105,6 +126,21 @@ export default function PushNotificationsSheet({
   const handleToggle = async (key: NotifKey, value: boolean) => {
     await updatePreferences({ [key]: value });
   };
+
+  const handleEnableNotifications = async () => {
+    const { status } = await Notifications.requestPermissionsAsync();
+    setPermissionStatus(status);
+    if (status === "granted" && userDetails?.id) {
+      try {
+        const { data: token } = await Notifications.getExpoPushTokenAsync();
+        await services.pushToken.registerPushToken(userDetails.id, token);
+      } catch (error) {
+        console.error("Failed to register push token:", error);
+      }
+    }
+  };
+
+  if (!preferences) return null;
 
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
@@ -119,7 +155,53 @@ export default function PushNotificationsSheet({
               Push Notifications
             </Text>
           </VStack>
+
           <ScrollView className="flex-1 w-full" bounces={false}>
+            {permissionStatus === "undetermined" && (
+              <VStack className="mx-4 p-4 bg-primary-50 rounded-xl gap-y-4">
+                <HStack className="gap-x-2 items-start">
+                  <AlertCircle
+                    color={getPrimaryHex("text-primary-500", colorScheme)}
+                  />
+                  <VStack className="flex-1 gap-y-2">
+                    <Text bold className="text-lg text-primary-600">
+                      Notifications not enabled
+                    </Text>
+                    <Text className="text-primary-500">
+                      You haven't enabled push notifications yet. Enable them to
+                      get real-time updates on settlements, expenses, and group
+                      activity.
+                    </Text>
+                  </VStack>
+                </HStack>
+                <FormButton
+                  text="Enable Notifications"
+                  onPress={handleEnableNotifications}
+                />
+              </VStack>
+            )}
+
+            {permissionStatus !== "denied" && (
+              <VStack className="mx-4 p-4 bg-error-50 rounded-xl gap-y-4">
+                <HStack className="gap-x-2 items-start">
+                  <BellOff color={getErrorHex("text-error-500", colorScheme)} />
+                  <VStack className="flex-1 gap-y-2">
+                    <Text bold className="text-lg text-error-600">
+                      Notifications are disabled
+                    </Text>
+                    <Text className="text-error-500">
+                      Push notifications are turned off in your device settings.
+                      Go to Settings to allow us to send you notifications.
+                    </Text>
+                  </VStack>
+                </HStack>
+                <FormButton
+                  text="Open Settings"
+                  onPress={() => Linking.openSettings()}
+                />
+              </VStack>
+            )}
+
             {SECTIONS.map((section) => (
               <VStack key={section.title}>
                 <Box className="px-4 pt-5 pb-2">
