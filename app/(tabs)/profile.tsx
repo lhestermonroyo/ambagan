@@ -2,8 +2,8 @@ import AppAvatar from "@/components/AppAvatar";
 import { CurrencySelectionSheet } from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import ListDivider from "@/components/ListDivider";
 import PressableListItem from "@/components/PressableListItem";
-import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -31,7 +31,6 @@ import {
 } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
-import ListDivider from "@/components/ListDivider";
 
 export default function ProfileScreen() {
   const {
@@ -121,12 +120,12 @@ export default function ProfileScreen() {
         description: "Get support and find answers to your questions",
         onPress: () => router.push("/profile/help-center")
       },
-      // {
-      //   icon: <Info color={getPrimaryHex("text-primary-400", colorScheme)} />,
-      //   label: "About",
-      //   description: "Learn more about the app and its features",
-      //   onPress: () => router.push("/profile/about")
-      // }
+      {
+        icon: <Info color={getPrimaryHex("text-primary-400", colorScheme)} />,
+        label: "About",
+        description: "Learn more about the app and its features",
+        onPress: () => router.push("/profile/about")
+      }
     ],
     [
       appearanceLabel,

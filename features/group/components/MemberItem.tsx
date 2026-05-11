@@ -18,6 +18,9 @@ export default function MemberItem({
 }) {
   const user = states.user();
   const { details: userDetails } = user;
+
+  if (!userDetails) return null;
+
   const colorScheme = useColorScheme() ?? "light";
 
   const isMe = item.id === userDetails?.id;

@@ -22,9 +22,7 @@ export default function AuthLayout({
       <KeyboardAvoidingView className="flex-1" behavior="padding">
         <ScrollView className="flex-1" bounces={false}>
           <VStack className="px-4 py-10 gap-y-10">
-            <Box className="justify-center">
-              <Logo type="auth" />
-            </Box>
+            <Logo type="auth" />
 
             <VStack>
               <Text size="3xl" bold>

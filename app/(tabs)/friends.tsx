@@ -1,19 +1,23 @@
 import EmptyList from "@/components/EmptyList";
+import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
+import FavoritesSheet from "@/features/friends/components/FavoritesSheet";
 import FriendItem from "@/features/friends/components/FriendItem";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
 import { FriendSummary } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
+import { getSecondaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
+import { HeartPlus } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
-import { RefreshControl } from "react-native";
-import ListDivider from "@/components/ListDivider";
+import { RefreshControl, useColorScheme } from "react-native";
 
 export default function FriendsScreen() {
   const [loading, setLoading] = useState(false);
@@ -25,6 +29,9 @@ export default function FriendsScreen() {
 
   const { details: userDetails } = states.user();
   const router = useRouter();
+  const [favoritesSheetOpen, setFavoritesSheetOpen] = useState(false);
+
+  const colorScheme = useColorScheme() ?? "light";
 
   useFocusEffect(
     useMemo(
@@ -80,7 +87,19 @@ export default function FriendsScreen() {
 
   return (
     <Fragment>
-      <TabLayout title="Friends">
+      <TabLayout
+        title="Friends"
+        actions={[
+          <Pressable
+            key="favorites"
+            onPress={() => setFavoritesSheetOpen(true)}
+          >
+            <HeartPlus
+              color={getSecondaryHex("text-secondary-950", colorScheme)}
+            />
+          </Pressable>
+        ]}
+      >
         <Box className="px-4 pb-4 bg-background-0">
           <SearchInput
             value={searchInput}
@@ -119,6 +138,10 @@ export default function FriendsScreen() {
           </LoadingWrapper>
         </ScrollView>
       </TabLayout>
+      <FavoritesSheet
+        isOpen={favoritesSheetOpen}
+        onClose={() => setFavoritesSheetOpen(false)}
+      />
     </Fragment>
   );
 }

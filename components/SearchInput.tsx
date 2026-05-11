@@ -37,7 +37,13 @@ const SearchInput: React.FC<IFormInputProps> = ({
   errorMessage,
   ...props
 }) => {
-  const [searchValue, setSearchValue] = useState("");
+  const [searchValue, setSearchValue] = useState(value ?? "");
+
+  useEffect(() => {
+    if (value === "") {
+      setSearchValue("");
+    }
+  }, [value]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -57,6 +63,7 @@ const SearchInput: React.FC<IFormInputProps> = ({
       <InputField
         autoCapitalize="none"
         placeholder={placeholder}
+        value={searchValue}
         onChangeText={setSearchValue}
         {...props}
       />

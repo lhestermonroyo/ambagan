@@ -5,8 +5,8 @@ import {
   AccordionHeader,
   AccordionIcon,
   AccordionItem,
-  AccordionTrigger,
-  AccordionTitleText
+  AccordionTitleText,
+  AccordionTrigger
 } from "@/components/ui/accordion";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
@@ -146,8 +146,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       },
       {
         question: "How do I sign out?",
-        answer:
-          "Scroll to the bottom of the Profile tab and tap Sign Out."
+        answer: "Scroll to the bottom of the Profile tab and tap Sign Out."
       }
     ]
   }
@@ -160,25 +159,23 @@ export default function HelpCenterScreen() {
     <InnerLayout title="Help Center" onBack={() => router.back()}>
       <ScrollView className="flex-1" bounces={false}>
         <VStack className="p-4 gap-y-6 pb-10">
-          <VStack className="gap-y-1">
-            <Text className="text-secondary-950">
-              Find answers to common questions below. If you need further help,
-              contact us at{" "}
-              <Text bold className="text-primary-400">
-                support@ambagan.ph
-              </Text>
-              .
+          <Text className="text-secondary-950">
+            Find answers to common questions below. If you need further help,
+            contact us at{" "}
+            <Text bold className="text-primary-400">
+              support@ambagan.ph
             </Text>
-          </VStack>
+            .
+          </Text>
 
-          {FAQ_SECTIONS.map((section, sectionIndex) => (
+          {FAQ_SECTIONS.map((section) => (
             <VStack key={section.title} className="gap-y-2">
               <Text bold className="text-lg">
                 {section.title}
               </Text>
-              <Box className="rounded-xl overflow-hidden border border-secondary-100">
+              <Box className="rounded-xl overflow-hidden border border-secondary-500">
                 <Accordion
-                  size="md"
+                  size="lg"
                   variant="unfilled"
                   type="multiple"
                   isCollapsible
@@ -193,7 +190,9 @@ export default function HelpCenterScreen() {
                                 {item.question}
                               </AccordionTitleText>
                               <AccordionIcon
-                                as={isExpanded ? ChevronUpIcon : ChevronDownIcon}
+                                as={
+                                  isExpanded ? ChevronUpIcon : ChevronDownIcon
+                                }
                                 className="text-secondary-950"
                               />
                             </>

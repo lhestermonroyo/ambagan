@@ -145,6 +145,11 @@ export default function RootLayout() {
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (_event === "PASSWORD_RECOVERY") {
+        router.replace("/(auth)/reset-password");
+        return;
+      }
+
       if (!session) {
         unsubscribeNotifications();
         return;

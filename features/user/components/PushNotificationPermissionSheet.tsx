@@ -49,7 +49,7 @@ export default function PushNotificationPermissionSheet({
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full gap-y-6 py-4 items-center">
           <VStack className="items-center gap-y-4">
-            <VStack className="bg-primary-100 rounded-full p-5">
+            <VStack className="bg-primary-100 rounded-full p-6">
               <Bell
                 size={36}
                 color={getPrimaryHex("text-primary-500", colorScheme)}
