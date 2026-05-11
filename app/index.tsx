@@ -10,7 +10,7 @@ export default function Index() {
       {session ? (
         <Redirect href="/(tabs)" />
       ) : (
-        <Redirect href="/(auth)/login" />
+        <Redirect href="/(auth)/welcome" />
       )}
     </SplashLoading>
   );

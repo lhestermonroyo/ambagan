@@ -24,6 +24,7 @@ export default function SignUpScreen() {
     confirmPassword: ""
   }) as any;
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const router = useRouter();
@@ -115,15 +116,15 @@ export default function SignUpScreen() {
         />
 
         <FormInput
-          type={showPassword ? "text" : "password"}
+          type={showConfirmPassword ? "text" : "password"}
           label="Confirm Password"
           placeholder="Confirm your password"
           value={values.confirmPassword}
           onChangeText={(text) =>
             setValues({ ...values, confirmPassword: text })
           }
-          rightIcon={showPassword ? EyeIcon : EyeOffIcon}
-          onPressRightIcon={() => setShowPassword(!showPassword)}
+          rightIcon={showConfirmPassword ? EyeIcon : EyeOffIcon}
+          onPressRightIcon={() => setShowConfirmPassword(!showConfirmPassword)}
           errorMessage={formErrors.confirmPassword}
         />
 
