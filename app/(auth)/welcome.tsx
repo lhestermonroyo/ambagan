@@ -18,25 +18,23 @@ export default function WelcomeScreen() {
     >
       <View style={styles.overlay} />
       <SafeAreaView className="flex-1 px-4">
-        <VStack className="flex-1 items-center justify-center gap-y-8">
+        <VStack className="flex-1 justify-end gap-y-6 pb-8">
           <Logo type="splash" />
-          <VStack className="gap-y-2 items-center">
-            <Text bold className="text-background-0 text-center text-2xl">
+          <VStack className="gap-y-2">
+            <Text bold className="text-background-0 text-3xl">
               Split expenses effortlessly
             </Text>
             <Box className="w-2 h-2 rounded-full bg-primary-400" />
-            <Text className="text-background-300 text-lg text-center">
+            <Text className="text-background-300 text-lg">
               Track shared costs, settle up with friends, and stay on top of
               every payment — all in one place.
             </Text>
           </VStack>
+          <FormButton
+            text="Get Started"
+            onPress={() => router.push("/(auth)/login")}
+          />
         </VStack>
-        <Box className="h-28 " />
-
-        <FormButton
-          text="Get Started"
-          onPress={() => router.push("/(auth)/login")}
-        />
       </SafeAreaView>
     </ImageBackground>
   );

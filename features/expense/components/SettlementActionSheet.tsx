@@ -6,7 +6,6 @@ import {
   ActionsheetDragIndicator,
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
-import { Avatar } from "@/components/ui/avatar";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -18,14 +17,12 @@ import { formatAmount } from "@/features/expense/utils/formatAmount";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
-import { getErrorHex, getSuccessHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useRouter } from "expo-router";
-import { BanknoteArrowDown, BanknoteArrowUp } from "lucide-react-native";
-import { Fragment, useState } from "react";
-import { useColorScheme } from "react-native";
+import { Fragment, useMemo, useState } from "react";
+import SettlementAvatar from "./SettlementAvatar";
 
-export default function SettlementActionSheet({
+function SettlementContent({
   isOpen,
   onClose,
   item,
@@ -33,11 +30,9 @@ export default function SettlementActionSheet({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  item: PaymentPreview | null;
+  item: PaymentPreview;
   onRefetch: () => void;
 }) {
-  if (!item) return null;
-
   const [requestSheetOpen, setRequestSheetOpen] = useState(false);
   const [markAsSettledSheetOpen, setMarkAsSettledSheetOpen] = useState(false);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
@@ -45,7 +40,6 @@ export default function SettlementActionSheet({
   const [reviewReadOnly, setReviewReadOnly] = useState(false);
 
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? "light";
 
   const { details: userDetails } = states.user();
 
@@ -100,7 +94,7 @@ export default function SettlementActionSheet({
     return null;
   };
 
-  const actionConfig = getActionConfig();
+  const actionConfig = useMemo(() => getActionConfig(), [item, userDetails]);
 
   return (
     <Fragment>
@@ -114,26 +108,7 @@ export default function SettlementActionSheet({
           <VStack className="w-full h-full gap-y-4 p-4">
             <VStack className="flex-1">
               <HStack className="gap-x-2 items-start">
-                <Avatar
-                  size="sm"
-                  className={cn(
-                    isUserPayer
-                      ? "bg-success-100 border border-success-200"
-                      : "bg-error-100 border border-error-200"
-                  )}
-                >
-                  {isUserPayer ? (
-                    <BanknoteArrowDown
-                      size={16}
-                      color={getSuccessHex("text-success-600", colorScheme)}
-                    />
-                  ) : (
-                    <BanknoteArrowUp
-                      size={16}
-                      color={getErrorHex("text-error-600", colorScheme)}
-                    />
-                  )}
-                </Avatar>
+                <SettlementAvatar isPayer={isUserPayer} />
                 <VStack className="gap-y-2 flex-1">
                   {item.expense_description && (
                     <HStack className="gap-x-4 items-center">
@@ -220,5 +195,28 @@ export default function SettlementActionSheet({
         readOnly={reviewReadOnly}
       />
     </Fragment>
+  );
+}
+
+export default function SettlementActionSheet({
+  isOpen,
+  onClose,
+  item,
+  onRefetch
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  item: PaymentPreview | null;
+  onRefetch: () => void;
+}) {
+  if (!item) return null;
+
+  return (
+    <SettlementContent
+      isOpen={isOpen}
+      onClose={onClose}
+      item={item}
+      onRefetch={onRefetch}
+    />
   );
 }
