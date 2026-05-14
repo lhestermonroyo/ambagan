@@ -2,6 +2,7 @@ import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
+import ProBadge from "@/components/ProBadge";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -19,6 +20,7 @@ export default function GroupItem({
 }) {
   const { details: userDetails } = states.user();
   const isAdmin = details.admin?.id === userDetails?.id;
+  const isGroupPro = details.admin?.plan === "pro";
 
   const appAvatarGroupItems = useMemo(
     () =>
@@ -35,12 +37,19 @@ export default function GroupItem({
       <HStack className="items-center gap-x-2">
         <AppAvatar name={details.name} uri={details.avatar || undefined} />
         <VStack className="flex-1">
-          <Text className="text-lg" numberOfLines={2} ellipsizeMode="tail">
-            {details.name}
-          </Text>
+          <HStack className="items-center gap-x-2">
+            <Text
+              className="text-lg flex-shrink"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {details.name}
+            </Text>
+            {isGroupPro && <ProBadge />}
+          </HStack>
           <HStack className="gap-x-1 items-center">
             <Text className="text-secondary-950">
-              {isAdmin ? "Created" : "Joined"} {formatDate(details.created_at)}
+              {formatDate(details.created_at)} &bull; {details.expense_count ?? 0} expense{(details.expense_count ?? 0) !== 1 ? "s" : ""}
             </Text>
           </HStack>
         </VStack>

@@ -1,3 +1,4 @@
+import ListDivider from "@/components/ListDivider";
 import { currencies } from "@/utils/constants";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { ChevronDown, CircleIcon } from "lucide-react-native";
@@ -11,14 +12,11 @@ import {
   ActionsheetDragIndicator,
   ActionsheetDragIndicatorWrapper
 } from "./ui/actionsheet";
-import { Box } from "./ui/box";
-import { Divider } from "./ui/divider";
 import { FlatList } from "./ui/flat-list";
 import { HStack } from "./ui/hstack";
 import { Radio, RadioGroup, RadioIcon, RadioIndicator } from "./ui/radio";
 import { Text } from "./ui/text";
 import { VStack } from "./ui/vstack";
-import ListDivider from "@/components/ListDivider";
 
 export const CurrencySelectionSheet = ({
   isOpen,

@@ -51,7 +51,7 @@ function SettlementContent({
     if (isUserMember) {
       if (item.status === "pending") {
         return {
-          label: "Request as Settled",
+          label: "Settle Up",
           onPress: () => {
             onClose();
             setRequestSheetOpen(true);
@@ -59,7 +59,7 @@ function SettlementContent({
         };
       }
       return {
-        label: item.status === "settled" ? "View Settlement" : "View Request",
+        label: "View Details",
         onPress: () => {
           onClose();
           setReviewIsPayer(false);
@@ -72,7 +72,7 @@ function SettlementContent({
     if (isUserPayer) {
       if (item.status === "pending") {
         return {
-          label: "Mark as Settled",
+          label: "Settle Up",
           onPress: () => {
             onClose();
             setMarkAsSettledSheetOpen(true);
@@ -80,8 +80,7 @@ function SettlementContent({
         };
       }
       return {
-        label:
-          item.status === "settled" ? "View Settlement" : "Review Settlement",
+        label: "View Details",
         onPress: () => {
           onClose();
           setReviewIsPayer(true);

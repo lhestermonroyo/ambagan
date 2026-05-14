@@ -4,6 +4,8 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import PressableListItem from "@/components/PressableListItem";
+import ProBadge from "@/components/ProBadge";
+import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -15,11 +17,13 @@ import TabLayout from "@/layouts/TabLayout";
 import states from "@/states";
 import { currencies } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useRouter } from "expo-router";
 import {
   Bell,
   CircleQuestionMark,
   Coins,
+  Crown,
   Eye,
   Info,
   LogOut,
@@ -30,7 +34,7 @@ import {
   UserLock
 } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { useColorScheme } from "react-native";
+import { Pressable, useColorScheme } from "react-native";
 
 export default function ProfileScreen() {
   const {
@@ -71,6 +75,8 @@ export default function ProfileScreen() {
         return "Light";
     }
   }, [appearanceMode]);
+
+  const isPro = userDetails?.plan === "pro";
 
   const menuItems = useMemo(
     () => [
@@ -120,12 +126,12 @@ export default function ProfileScreen() {
         description: "Get support and find answers to your questions",
         onPress: () => router.push("/profile/help-center")
       },
-      {
-        icon: <Info color={getPrimaryHex("text-primary-400", colorScheme)} />,
-        label: "About",
-        description: "Learn more about the app and its features",
-        onPress: () => router.push("/profile/about")
-      }
+      // {
+      //   icon: <Info color={getPrimaryHex("text-primary-400", colorScheme)} />,
+      //   label: "About",
+      //   description: "Learn more about the app and its features",
+      //   onPress: () => router.push("/profile/about")
+      // }
     ],
     [
       appearanceLabel,
@@ -159,36 +165,76 @@ export default function ProfileScreen() {
                 size="lg"
               />
             </VStack>
-            <VStack>
-              <Text bold className="text-2xl" numberOfLines={3}>
-                {userDetails?.first_name} {userDetails?.last_name}
-              </Text>
+            <VStack className="flex-1">
+              <HStack className="items-center gap-x-2">
+                <Text bold className="text-2xl flex-shrink" numberOfLines={2}>
+                  {userDetails?.first_name} {userDetails?.last_name}
+                </Text>
+                {isPro && <ProBadge />}
+              </HStack>
               <Text className="text-secondary-950">{userDetails?.email}</Text>
             </VStack>
           </HStack>
 
-          <FlatList
-            data={menuItems}
-            keyExtractor={(item) => item.label}
-            scrollEnabled={false}
-            renderItem={({ item }) => <MenuItem item={item} />}
-            ItemSeparatorComponent={ListDivider}
-          />
+          <VStack className="gap-y-4">
+            <Pressable
+              className="mx-4"
+              onPress={() => router.push("/profile/subscription")}
+            >
+              <Box
+                className={cn(
+                  "rounded-2xl p-4 flex-row items-center gap-x-2",
+                  isPro ? "bg-primary-400" : "bg-warning-400"
+                )}
+              >
+                <Box className="bg-background-0 rounded-full p-4">
+                  <Crown
+                    size={24}
+                    color={
+                      isPro
+                        ? getPrimaryHex("text-primary-400", colorScheme)
+                        : "#d97706"
+                    }
+                  />
+                </Box>
+                <VStack className="flex-1">
+                  <Text bold className="text-background-0 text-xl">
+                    {isPro ? "You're on Pro!" : "Upgrade to Pro!"}
+                  </Text>
+                  <Text className="text-background-0 opacity-80">
+                    {isPro
+                      ? "Manage your active subscription"
+                      : "Unlock multi-currency, exports & more"}
+                  </Text>
+                </VStack>
+                <Icon as="chevron-right" className="text-background-0" />
+              </Box>
+            </Pressable>
 
-          <VStack className="px-4">
-            <FormButton
-              text="Sign Out"
-              action="negative"
-              onPress={handleSignOut}
-              icon={
-                <LogOut
-                  size={18}
-                  color={getSecondaryHex("text-secondary-0", colorScheme)}
-                />
-              }
+            <FlatList
+              data={menuItems}
+              keyExtractor={(item) => item.label}
+              scrollEnabled={false}
+              renderItem={({ item }) => <MenuItem item={item} />}
+              ItemSeparatorComponent={ListDivider}
             />
+
+            <VStack className="px-4">
+              <FormButton
+                text="Sign Out"
+                action="negative"
+                onPress={handleSignOut}
+                icon={
+                  <LogOut
+                    size={18}
+                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                  />
+                }
+              />
+            </VStack>
           </VStack>
         </VStack>
+        <Box className="h-16" />
       </ScrollView>
 
       <AppearanceSheet

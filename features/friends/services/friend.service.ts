@@ -12,7 +12,7 @@ export const getFavorites = async (userId: string): Promise<UserPreview[]> => {
   const { data, error } = await supabase
     .from(tables.USER_FAVORITES_TBL)
     .select(
-      `favorite:favorite_id(id, email, phone, first_name, last_name, avatar)`
+      `favorite:favorite_id(id, email, phone, first_name, last_name, avatar, plan)`
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -64,7 +64,7 @@ export const getFriendsSummary = async (
   const { data, error } = await supabase
     .from(tables.PAYMENT_SPLITS_TBL)
     .select(
-      `amount, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
+      `amount, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), expense:expense_id(currency)`
     )
     .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
     .or(`status.eq.pending,status.eq.requested`);
@@ -101,7 +101,7 @@ export const getFriendsSummary = async (
   }));
 };
 
-const FRIEND_SETTLEMENT_FIELDS = `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), amount, status, expense:expense_id(description, currency)`;
+const FRIEND_SETTLEMENT_FIELDS = `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), amount, status, expense:expense_id(description, currency)`;
 
 const mapFriendPaymentRows = (data: any[]): PaymentPreview[] =>
   data.map((item) => {

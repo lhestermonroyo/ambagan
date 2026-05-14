@@ -56,7 +56,8 @@ export default function CreateGroupScreen() {
           last_name: user.details.last_name,
           email: user.details.email,
           phone: user.details.phone,
-          avatar: user.details.avatar
+          avatar: user.details.avatar,
+          plan: user.details.plan
         }
       ]);
     }

@@ -1,7 +1,9 @@
 import AmountInput from "@/components/AmountInput";
 import CurrencySelection from "@/components/CurrencySelection";
 import FormTextarea from "@/components/FormTextarea";
+import ProBadge from "@/components/ProBadge";
 import StepperProgress from "@/components/StepperProgress";
+import { Box } from "@/components/ui/box";
 import {
   FormControl,
   FormControlHelper,
@@ -17,8 +19,8 @@ import UploadImage from "@/components/UploadImage";
 import { Group } from "@/types/groups";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useColorScheme } from "react-native";
 import { ImagePickerSuccessResult } from "expo-image-picker";
+import { useColorScheme } from "react-native";
 import GroupSelection from "./GroupSelection";
 
 type AddExpenseStepProps = {
@@ -47,6 +49,7 @@ type AddExpenseStepProps = {
     description?: string;
   };
   isLockedGroup?: boolean;
+  isGroupPro?: boolean;
   step: number;
 };
 
@@ -55,6 +58,7 @@ export default function AddExpenseStep({
   setValues,
   formErrors,
   isLockedGroup = false,
+  isGroupPro = false,
   step = 1
 }: AddExpenseStepProps) {
   const colorScheme = useColorScheme() ?? "light";
@@ -74,15 +78,25 @@ export default function AddExpenseStep({
       <VStack className="gap-y-6 p-4">
         <FormControl size="md">
           <FormControlLabel>
-            <FormControlLabelText>Amount</FormControlLabelText>
+            <HStack className="items-center gap-x-2">
+              <FormControlLabelText>Amount</FormControlLabelText>
+            </HStack>
           </FormControlLabel>
           <HStack className="gap-x-2 items-end h-12">
-            <CurrencySelection
-              currency={values.currency}
-              onCurrencyChange={(currency) =>
-                setValues((prevValues) => ({ ...prevValues, currency }))
-              }
-            />
+            {isGroupPro ? (
+              <CurrencySelection
+                currency={values.currency}
+                onCurrencyChange={(currency) =>
+                  setValues((prevValues) => ({ ...prevValues, currency }))
+                }
+              />
+            ) : (
+              <Box className="border border-secondary-500 bg-secondary-50 items-center justify-center h-full px-2 py-2 rounded-lg">
+                <Text className="font-semibold text-secondary-950">
+                  PHP (₱)
+                </Text>
+              </Box>
+            )}
             <VStack className="flex-1">
               <AmountInput
                 className="h-full"
@@ -93,6 +107,16 @@ export default function AddExpenseStep({
               />
             </VStack>
           </HStack>
+          {!isGroupPro && (
+            <FormControlHelper>
+              <HStack className="items-center gap-x-1">
+                <FormControlHelperText className="text-secondary-950 text-sm">
+                  Multi-currency requires
+                </FormControlHelperText>
+                <ProBadge />
+              </HStack>
+            </FormControlHelper>
+          )}
         </FormControl>
 
         <FormTextarea

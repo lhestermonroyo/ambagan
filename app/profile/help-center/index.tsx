@@ -62,7 +62,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I archive or leave a group?",
         answer:
-          "Open the group and tap the menu in the top-right corner. Admins can archive the group; other members can choose to leave."
+          "Open the group and tap the menu (⋮) in the top-right corner. Admins can archive the group; all members can choose to leave. Archived groups are hidden from your active list but all history is preserved."
+      },
+      {
+        question: "How do I restore an archived group?",
+        answer:
+          "Go to the Groups tab and switch to the Archived filter. Swipe left on the group and tap the restore button, or open the group and tap the menu then select Unarchive. The group will move back to your active list."
       }
     ]
   },
@@ -97,7 +102,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I settle a payment?",
         answer:
-          "Go to the Settlements tab inside a group or open the friend's details from the Friends tab. Tap Request Settle on the amount you owe, and the payer will review and approve it."
+          "Go to the Settlements tab inside a group or open the friend's details from the Friends tab. Tap on a settlement entry and press Settle Up. The payer will be notified and can review and approve your request."
       },
       {
         question: "What happens after I request a settlement?",
@@ -108,6 +113,31 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "Where can I see my settlement history?",
         answer:
           "Open any friend's detail page and switch to the History tab. You can also view settled payments in the Settlements tab of each group."
+      }
+    ]
+  },
+  {
+    title: "Friends",
+    items: [
+      {
+        question: "How do friends appear in Ambagan?",
+        answer:
+          "Anyone who is a member of a group you belong to automatically appears in your Friends tab. You can also mark friends as favorites for quick access."
+      },
+      {
+        question: "What does the Friends tab show?",
+        answer:
+          "The Friends tab shows everyone you share a group with, along with a balance summary of how much they owe you or you owe them. Use the Owes Me, I Owe, and Favorites filters to quickly find who you need."
+      },
+      {
+        question: "How do I add someone as a favorite?",
+        answer:
+          "Open the Friends tab, find the person, and tap the star icon next to their name. Favorites appear first and are accessible from the Home screen carousel."
+      },
+      {
+        question: "How do I view payment history with a friend?",
+        answer:
+          "Tap on a friend's name in the Friends tab to open their detail page. You'll see your balance breakdown, shared groups, and full payment history with that person."
       }
     ]
   },
@@ -123,6 +153,31 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "How do I turn off notifications?",
         answer:
           "Go to Profile → Push Notifications. You can toggle individual notification types on or off depending on your preference."
+      }
+    ]
+  },
+  {
+    title: "Pro Plan",
+    items: [
+      {
+        question: "What is the Pro plan?",
+        answer:
+          "The Pro plan unlocks premium features including unlimited groups (free plan is limited to 3), multi-currency expenses, CSV export of settlements, and a Pro badge on your profile."
+      },
+      {
+        question: "How do I upgrade to Pro?",
+        answer:
+          "Go to Profile → Subscription and choose a monthly or yearly plan. Upgrading unlocks all Pro features immediately."
+      },
+      {
+        question: "How do I export settlements to CSV?",
+        answer:
+          "Pro users can export settlement data from a group's Settlements tab. This is useful for record-keeping or reimbursement reports."
+      },
+      {
+        question: "How many groups can I create on the free plan?",
+        answer:
+          "Free users can create up to 3 active groups. Archived groups do not count toward this limit. Upgrade to Pro for unlimited groups."
       }
     ]
   },
@@ -143,6 +198,16 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "How do I update my name or profile photo?",
         answer:
           "Go to Profile → Personal Info. From there you can update your display name and upload a new profile photo."
+      },
+      {
+        question: "How do I change my password?",
+        answer:
+          "Go to Profile → Account Settings → Change Password. Enter your current password and then your new password to update it."
+      },
+      {
+        question: "I forgot my password. What do I do?",
+        answer:
+          "On the login screen, tap Forgot Password and enter your email. You'll receive a reset link to set a new password."
       },
       {
         question: "How do I sign out?",

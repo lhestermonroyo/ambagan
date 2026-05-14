@@ -262,7 +262,7 @@ export const getGroupsByUserId = async (userId: string) => {
         name,
         category,
         avatar,
-        admin:admin_id (id, email, phone, first_name, last_name, avatar),
+        admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
         archived
       )`
     )
@@ -291,9 +291,12 @@ export const getGroupsByUserId = async (userId: string) => {
 
 const GROUPS_PAGE_SIZE = 15;
 
+export type GroupFilter = "all" | "created" | "joined" | "archived";
+
 export const getGroupsByUserIdPaginated = async (
   userId: string,
-  page: number = 0
+  page: number = 0,
+  filter: GroupFilter = "all"
 ): Promise<{ data: (Group & { members: Member[] })[]; hasNext: boolean }> => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
@@ -301,22 +304,34 @@ export const getGroupsByUserIdPaginated = async (
   const from = page * GROUPS_PAGE_SIZE;
   const to = from + GROUPS_PAGE_SIZE - 1;
 
-  const { data, error, count } = await supabase
+  let query = supabase
     .from(tables.GROUPS_TBL)
     .select(
       `id, created_at, name, category, avatar, archived,
-       admin:admin_id (id, email, phone, first_name, last_name, avatar),
-       ${tables.GROUP_MEMBERS_TBL}!inner(member_id)`,
+       admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
+       ${tables.GROUP_MEMBERS_TBL}!inner(member_id),
+       expenses:${tables.EXPENSES_TBL}(count)`,
       { count: "exact" }
     )
     .eq(`${tables.GROUP_MEMBERS_TBL}.member_id`, userId)
-    .eq("archived", false)
+    .eq("archived", filter === "archived")
     .order("created_at", { ascending: false })
     .range(from, to);
 
+  if (filter === "created") {
+    query = query.eq("admin_id", userId);
+  } else if (filter === "joined") {
+    query = query.neq("admin_id", userId);
+  }
+
+  const { data, error, count } = await query;
+
   if (error) throw error;
 
-  const groups = (data as any[]).map(({ group_members_tbl: _, ...group }) => group) as Group[];
+  const groups = (data as any[]).map(({ group_members_tbl: _, expenses: expData, ...group }) => ({
+    ...group,
+    expense_count: (expData as any[])?.[0]?.count ?? 0
+  })) as Group[];
   const groupIds = groups.map((g) => g.id);
   const members = groupIds.length ? await getMembersByGroupIds(groupIds) : [];
 
@@ -340,7 +355,7 @@ export const getGroupById = async (groupId: string) => {
 
   const { data, error } = await supabase
     .from(tables.GROUPS_TBL)
-    .select(`*, admin:admin_id (id, email, first_name, last_name, avatar)`)
+    .select(`*, admin:admin_id (id, email, phone, first_name, last_name, avatar, plan)`)
     .eq("id", groupId)
     .single();
 
@@ -349,6 +364,48 @@ export const getGroupById = async (groupId: string) => {
   }
 
   return data as Group;
+};
+
+export const archiveGroup = async (groupId: string) => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { error } = await supabase
+    .from(tables.GROUPS_TBL)
+    .update({ archived: true })
+    .eq("id", groupId)
+    .eq("admin_id", user.data.user.id);
+
+  if (error) throw error;
+  return { success: true };
+};
+
+export const unarchiveGroup = async (groupId: string) => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { error } = await supabase
+    .from(tables.GROUPS_TBL)
+    .update({ archived: false })
+    .eq("id", groupId)
+    .eq("admin_id", user.data.user.id);
+
+  if (error) throw error;
+  return { success: true };
+};
+
+export const getActiveAdminGroupsCount = async (userId: string): Promise<number> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { count, error } = await supabase
+    .from(tables.GROUPS_TBL)
+    .select("id", { count: "exact", head: true })
+    .eq("admin_id", userId)
+    .eq("archived", false);
+
+  if (error) throw error;
+  return count ?? 0;
 };
 
 export const getStatsByGroupId = async (groupId: string) => {

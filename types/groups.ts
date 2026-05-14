@@ -17,6 +17,7 @@ export type Group = {
   category: string;
   avatar: string | null;
   archived: boolean;
+  expense_count: number;
 };
 
 export type Member = UserPreview & {

@@ -3,13 +3,12 @@ import AppAvatarGroup from "@/components/AppAvatarGroup";
 import ConfirmIconButton from "@/components/ConfirmIconButton";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
-import { Divider } from "@/components/ui/divider";
 import { Fab, FabLabel } from "@/components/ui/fab";
-import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
 import {
   Menu,
@@ -17,13 +16,6 @@ import {
   MenuItemLabel,
   MenuSeparator
 } from "@/components/ui/menu";
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader
-} from "@/components/ui/modal";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -37,20 +29,20 @@ import services from "@/services";
 import states from "@/states";
 import { ExpensePreview } from "@/types/expenses";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
-import { getSecondaryHex } from "@/utils/getColorHex";
-import { format, parseISO } from "date-fns";
+import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { differenceInDays, format, parseISO } from "date-fns";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
+  Archive,
+  ArchiveRestore,
   CirclePlus,
   Edit2,
   EllipsisVertical,
-  LogOut,
-  Trash2
+  LogOut
 } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
-import ListDivider from "@/components/ListDivider";
 
 const tabs = ["Settlements", "Expenses", "Group Info"] as const;
 
@@ -58,12 +50,12 @@ export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [settlementRefreshTrigger, setSettlementRefreshTrigger] = useState(0);
-  const [deleting, setDeleting] = useState(false);
-  const [openConfirmDeleteModal, setOpenConfirmDeleteModal] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [showArchiveBanner, setShowArchiveBanner] = useState(true);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
-  const { details: groupDetails, expenseList } = states.group();
+  const { details: groupDetails, expenseList, settlementList } = states.group();
   const { details: userDetails } = states.user();
 
   const router = useRouter();
@@ -128,36 +120,27 @@ export default function GroupDetailsScreen() {
     setRefreshing(false);
   };
 
-  const handleDeleteGroup = async () => {
-    setDeleting(true);
+  const handleUnarchiveGroup = async () => {
+    setArchiving(true);
     try {
-      await services.group.deleteGroup(groupId!);
-
+      await services.group.unarchiveGroup(groupId!);
       states.group.setState((prev) => ({
         ...prev,
-        list: prev.list.filter((g) => g.id !== groupId),
-        details: null,
-        memberList: [],
-        expenseList: [],
-        settlementList: []
+        details: prev.details ? { ...prev.details, archived: false } : null
       }));
-
       toast({
-        title: "Success",
-        description: "Group deleted successfully",
+        title: "Group restored",
+        description: "Group has been moved back to your active groups.",
         type: "success"
       });
-      setOpenConfirmDeleteModal(false);
-      router.push("/groups");
     } catch (error) {
-      console.log("Error deleting group:", error);
       toast({
         title: "Error",
-        description: "Failed to delete group. Please try again.",
+        description: "Failed to restore group. Please try again.",
         type: "error"
       });
     } finally {
-      setDeleting(false);
+      setArchiving(false);
     }
   };
 
@@ -222,6 +205,56 @@ export default function GroupDetailsScreen() {
 
   const isAdmin = groupDetails?.admin.id === userDetails?.id;
 
+  const shouldSuggestArchive = useMemo(() => {
+    if (!isAdmin || !groupDetails || groupDetails.archived || loading)
+      return false;
+    if (expenseList.length === 0) return false;
+
+    const hasActiveSettlements = settlementList.some(
+      (p) => p.status === "pending" || p.status === "requested"
+    );
+    if (hasActiveSettlements) return false;
+
+    const dates = [
+      expenseList[0]?.created_at,
+      ...settlementList.map((p) => p.status_updated_at)
+    ]
+      .filter(Boolean)
+      .map((d) => new Date(d));
+
+    const lastActivity = new Date(Math.max(...dates.map((d) => d.getTime())));
+    return differenceInDays(new Date(), lastActivity) >= 30;
+  }, [isAdmin, groupDetails, loading, expenseList, settlementList]);
+
+  const handleArchiveGroup = async () => {
+    setArchiving(true);
+    try {
+      await services.group.archiveGroup(groupId!);
+      states.group.setState((prev) => ({
+        ...prev,
+        list: prev.list.filter((g) => g.id !== groupId),
+        details: null,
+        memberList: [],
+        expenseList: [],
+        settlementList: []
+      }));
+      toast({
+        title: "Group archived",
+        description: "You can find it in the Archived tab.",
+        type: "success"
+      });
+      router.push("/groups");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to archive group. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   return (
     <Fragment>
       <InnerLayout
@@ -238,8 +271,10 @@ export default function GroupDetailsScreen() {
                     const key = Array.from(selected)[0];
                     if (key === "edit") {
                       router.push(`/groups/${groupId}/edit`);
-                    } else if (key === "delete") {
-                      setOpenConfirmDeleteModal(true);
+                    } else if (key === "archive") {
+                      handleArchiveGroup();
+                    } else if (key === "unarchive") {
+                      handleUnarchiveGroup();
                     } else if (key === "leave") {
                       setLeaveSheetOpen(true);
                     }
@@ -260,16 +295,18 @@ export default function GroupDetailsScreen() {
                     </Button>
                   )}
                 >
-                  <MenuItem
-                    className="p-4 justify-between"
-                    key="edit"
-                    textValue="Edit"
-                  >
-                    <HStack className="gap-x-2">
-                      <Edit2 size={20} />
-                      <MenuItemLabel>Edit</MenuItemLabel>
-                    </HStack>
-                  </MenuItem>
+                  {!groupDetails?.archived && (
+                    <MenuItem
+                      className="p-4 justify-between"
+                      key="edit"
+                      textValue="Edit"
+                    >
+                      <HStack className="gap-x-2">
+                        <Edit2 size={20} />
+                        <MenuItemLabel>Edit</MenuItemLabel>
+                      </HStack>
+                    </MenuItem>
+                  )}
                   <MenuItem
                     className="p-4 justify-between"
                     key="leave"
@@ -281,16 +318,29 @@ export default function GroupDetailsScreen() {
                     </HStack>
                   </MenuItem>
                   <MenuSeparator key="separator" />
-                  <MenuItem
-                    className="p-4 justify-between"
-                    key="delete"
-                    textValue="Delete"
-                  >
-                    <HStack className="gap-x-2">
-                      <Trash2 size={20} />
-                      <MenuItemLabel>Delete</MenuItemLabel>
-                    </HStack>
-                  </MenuItem>
+                  {groupDetails?.archived ? (
+                    <MenuItem
+                      className="p-4 justify-between"
+                      key="unarchive"
+                      textValue="Unarchive"
+                    >
+                      <HStack className="gap-x-2">
+                        <ArchiveRestore size={20} />
+                        <MenuItemLabel>Unarchive</MenuItemLabel>
+                      </HStack>
+                    </MenuItem>
+                  ) : (
+                    <MenuItem
+                      className="p-4 justify-between"
+                      key="archive"
+                      textValue="Archive"
+                    >
+                      <HStack className="gap-x-2">
+                        <Archive size={20} />
+                        <MenuItemLabel>Archive</MenuItemLabel>
+                      </HStack>
+                    </MenuItem>
+                  )}
                 </Menu>
               ]
             : [
@@ -307,22 +357,23 @@ export default function GroupDetailsScreen() {
               ]
         }
       >
-        {(tab === "Expenses" || tab === "Settlements") && (
-          <Fab
-            placement="bottom right"
-            className="px-6"
-            isHovered={false}
-            isDisabled={false}
-            isPressed={false}
-            onPress={() => router.push(`/groups/${groupId}/new-expense`)}
-          >
-            <CirclePlus
-              size={20}
-              color={getSecondaryHex("text-secondary-0", colorScheme)}
-            />
-            <FabLabel className="text-lg font-medium">New Expense</FabLabel>
-          </Fab>
-        )}
+        {(tab === "Expenses" || tab === "Settlements") &&
+          !groupDetails?.archived && (
+            <Fab
+              placement="bottom right"
+              className="px-6"
+              isHovered={false}
+              isDisabled={false}
+              isPressed={false}
+              onPress={() => router.push(`/groups/${groupId}/new-expense`)}
+            >
+              <CirclePlus
+                size={20}
+                color={getSecondaryHex("text-secondary-0", colorScheme)}
+              />
+              <FabLabel className="text-lg font-medium">New Expense</FabLabel>
+            </Fab>
+          )}
         <LoadingWrapper isLoading={loading} text="Loading group details...">
           <ScrollView
             className="flex-1"
@@ -368,6 +419,67 @@ export default function GroupDetailsScreen() {
                 </HStack>
               </ScrollView>
             </VStack>
+
+            {groupDetails?.archived ? (
+              <HStack className="mx-4 p-4 rounded-xl bg-secondary-100 dark:bg-secondary-900 border border-secondary-200 dark:border-secondary-800 gap-x-3 items-start">
+                <Archive
+                  size={18}
+                  color={getSecondaryHex("text-secondary-950", colorScheme)}
+                  style={{ marginTop: 2 }}
+                />
+                <VStack className="flex-1 gap-y-3">
+                  <VStack className="gap-y-0.5">
+                    <Text className="text-lg font-semibold">
+                      This group is archived
+                    </Text>
+                    <Text className="text-secondary-950">
+                      New expenses are disabled. Unarchive to continue adding expenses.
+                    </Text>
+                  </VStack>
+                  {isAdmin && (
+                    <FormButton
+                      text="Unarchive"
+                      loading={archiving}
+                      onPress={handleUnarchiveGroup}
+                    />
+                  )}
+                </VStack>
+              </HStack>
+            ) : (
+              shouldSuggestArchive && showArchiveBanner && (
+                <HStack className="mx-4 p-4 rounded-xl bg-primary-50 dark:bg-primary-950 border border-primary-200 dark:border-primary-800 gap-x-3 items-start">
+                  <Archive
+                    size={18}
+                    color={getPrimaryHex("text-primary-500", colorScheme)}
+                    style={{ marginTop: 2 }}
+                  />
+                  <VStack className="flex-1 gap-y-3">
+                    <VStack className="gap-y-0.5">
+                      <Text className="text-lg font-semibold">
+                        Ready to archive?
+                      </Text>
+                      <Text className="text-secondary-950">
+                        All settled up with no activity for 30+ days.
+                      </Text>
+                    </VStack>
+                    <HStack className="gap-x-2">
+                      <FormButton
+                        text="Archive"
+                        loading={archiving}
+                        onPress={handleArchiveGroup}
+                      />
+                      <FormButton
+                        variant="outline"
+                        text="Dismiss"
+                        disabled={archiving}
+                        onPress={() => setShowArchiveBanner(false)}
+                      />
+                    </HStack>
+                  </VStack>
+                </HStack>
+              )
+            )}
+
             <Box className={tab !== "Settlements" ? "hidden" : ""}>
               <GroupSettlements refreshTrigger={settlementRefreshTrigger} />
             </Box>
@@ -430,12 +542,6 @@ export default function GroupDetailsScreen() {
           </ScrollView>
         </LoadingWrapper>
       </InnerLayout>
-      <ConfirmDeleteModal
-        isOpen={openConfirmDeleteModal}
-        onClose={() => setOpenConfirmDeleteModal(false)}
-        onConfirm={handleDeleteGroup}
-        loading={deleting}
-      />
       <LeaveGroupSheet
         isOpen={leaveSheetOpen}
         onClose={() => setLeaveSheetOpen(false)}
@@ -512,46 +618,3 @@ function ExpenseItem({
   );
 }
 
-function ConfirmDeleteModal({
-  isOpen,
-  onClose,
-  onConfirm,
-  loading
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  loading?: boolean;
-}) {
-  return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalContent>
-        <ModalHeader>
-          <Heading size="lg">Delete Group</Heading>
-        </ModalHeader>
-        <ModalBody>
-          <Text>
-            Deleting this group will remove all associated expenses and
-            payments. Are you sure you want to proceed?
-          </Text>
-        </ModalBody>
-        <ModalFooter>
-          <HStack className="gap-x-2">
-            <FormButton
-              variant="outline"
-              text="Cancel"
-              disabled={loading}
-              onPress={onClose}
-            />
-            <FormButton
-              text="Yes"
-              action="negative"
-              loading={loading}
-              onPress={onConfirm}
-            />
-          </HStack>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  );
-}

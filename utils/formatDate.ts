@@ -22,7 +22,10 @@ export const formatDate = (date: string) => {
     return format(parsedDate, "MMM dd - hh:mm a");
   }
 
-  return formatDistanceToNow(parsedDate, { addSuffix: true });
+  return formatDistanceToNow(parsedDate, {
+    addSuffix: true, 
+    
+   });
 };
 
 export const getDateGroupTitle = (dateString: string) => {

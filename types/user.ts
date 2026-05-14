@@ -33,6 +33,8 @@ export type UserState = {
   loadPreferences: (userId?: string) => Promise<void>;
 };
 
+export type UserPlan = "free" | "pro";
+
 export type User = {
   id: string;
   created_at: string;
@@ -42,9 +44,11 @@ export type User = {
   last_name: string;
   avatar: string | null;
   archived: boolean;
+  plan: UserPlan;
+  plan_expires_at: string | null;
 };
 
 export type UserPreview = Pick<
   User,
-  "id" | "email" | "phone" | "first_name" | "last_name" | "avatar"
+  "id" | "email" | "phone" | "first_name" | "last_name" | "avatar" | "plan"
 >;
