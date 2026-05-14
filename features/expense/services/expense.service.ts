@@ -779,6 +779,30 @@ export const getSettledPaymentsByGroupAndUserId = async (
   return { data: mapPaymentRows(data), hasNext: page < totalPages - 1 };
 };
 
+export const getPaymentsForExport = async (
+  groupId: string,
+  userId: string,
+  cutoff: Date | null
+): Promise<Payment[]> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  let query = supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(PAYMENT_FIELDS)
+    .eq("group_id", groupId)
+    .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
+    .order("created_at", { ascending: false });
+
+  if (cutoff) {
+    query = query.gte("created_at", cutoff.toISOString());
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return mapPaymentRows(data);
+};
+
 export const getUnpaidPayments = async (groupId: string, userId: string) => {
   const user = await supabase.auth.getUser();
 

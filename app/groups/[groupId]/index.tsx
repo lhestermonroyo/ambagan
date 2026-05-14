@@ -21,6 +21,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
+import GroupExportTab from "@/features/group/components/GroupExportTab";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
 import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
 import useAppToast from "@/hooks/use-app-toast";
@@ -44,7 +45,7 @@ import { Fragment, useMemo, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
-const tabs = ["Settlements", "Expenses", "Group Info"] as const;
+const tabs = ["Settlements", "Expenses", "Group Info", "Export"] as const;
 
 export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);
@@ -539,6 +540,14 @@ export default function GroupDetailsScreen() {
               />
             )}
             {tab === "Group Info" && <GroupDetailsTab />}
+            {tab === "Export" && groupId && userDetails && (
+              <GroupExportTab
+                groupId={groupId}
+                groupName={groupDetails?.name ?? ""}
+                userId={userDetails.id}
+                isPro={userDetails.plan === "pro"}
+              />
+            )}
           </ScrollView>
         </LoadingWrapper>
       </InnerLayout>
