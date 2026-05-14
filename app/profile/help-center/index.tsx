@@ -172,7 +172,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I export settlements to CSV?",
         answer:
-          "Pro users can export settlement data from a group's Settlements tab. This is useful for record-keeping or reimbursement reports."
+          "Open a group and go to the Export tab. Select a date range, then tap Export CSV. The file will include all settlements you're involved in for that group and will open your device's share sheet so you can save or send it."
       },
       {
         question: "How many groups can I create on the free plan?",
