@@ -200,7 +200,7 @@ export default function FriendsScreen() {
                 {TABS.map((tab) => (
                   <FormButton
                     key={tab.key}
-                    size="md"
+                    size="sm"
                     variant={activeTab === tab.key ? "solid" : "outline"}
                     text={tab.label}
                     onPress={() => handleTabChange(tab.key)}

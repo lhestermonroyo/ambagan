@@ -347,7 +347,7 @@ export default function GroupSettlements({
                 {settlementTabs.map((t) => (
                   <FormButton
                     key={t}
-                    size="md"
+                    size="sm"
                     variant={t === settlementTab ? "solid" : "outline"}
                     text={t}
                     onPress={() => setSettlementTab(t)}

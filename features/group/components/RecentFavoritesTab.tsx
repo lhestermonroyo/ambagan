@@ -11,14 +11,14 @@ export default function RecentFavoritesTab({
   return (
     <HStack className="gap-x-2 px-4">
       <FormButton
-        size="md"
+        size="sm"
         variant={tab === "recent" ? "solid" : "outline"}
         className="flex-1 h-10"
         text="Recent"
         onPress={() => onTabChange("recent")}
       />
       <FormButton
-        size="md"
+        size="sm"
         variant={tab === "favorites" ? "solid" : "outline"}
         className="flex-1 h-10"
         text="Favorites"

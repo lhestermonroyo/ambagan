@@ -22,7 +22,7 @@ import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArchiveRestore, HousePlus } from "lucide-react-native";
+import { HousePlus } from "lucide-react-native";
 import { Fragment, useMemo, useRef, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
@@ -238,7 +238,7 @@ export default function GroupsScreen() {
                 {TABS.map((tab) => (
                   <FormButton
                     key={tab.key}
-                    size="md"
+                    size="sm"
                     variant={activeTab === tab.key ? "solid" : "outline"}
                     text={tab.label}
                     onPress={() => handleTabChange(tab.key)}

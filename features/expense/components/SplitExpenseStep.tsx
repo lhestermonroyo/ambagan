@@ -175,7 +175,7 @@ export default function SplitSelection({
               <HStack className="gap-x-2 px-4">
                 {splitTypes.map((type) => (
                   <FormButton
-                    size="md"
+                    size="sm"
                     key={type.value}
                     variant={type.value === tab ? "solid" : "outline"}
                     className="flex-1 h-10"

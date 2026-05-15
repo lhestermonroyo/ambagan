@@ -1,5 +1,4 @@
 import AppAvatar from "@/components/AppAvatar";
-import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
 import SearchInput from "@/components/SearchInput";
 import {
@@ -10,6 +9,7 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { FlatList } from "@/components/ui/flat-list";
+import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -24,7 +24,7 @@ import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { addRecentUser, getRecentUsers } from "@/utils/recentUsers";
 import { Heart } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Keyboard, useColorScheme } from "react-native";
+import { useColorScheme } from "react-native";
 
 export default function FavoritesSheet({
   isOpen,
@@ -121,28 +121,14 @@ export default function FavoritesSheet({
           </VStack>
 
           <VStack className="gap-y-4">
-            <HStack className="px-4 gap-x-2 items-center">
-              <VStack className="flex-1">
-                <SearchInput
-                  placeholder="Search users"
-                  value={searchInput}
-                  onChangeText={setSearchInput}
-                  onSetSearching={setSearching}
-                />
-              </VStack>
-              {searchInput.length > 0 && (
-                <FormButton
-                  size="sm"
-                  variant="outline"
-                  text="Cancel"
-                  onPress={() => {
-                    setSearchInput("");
-                    setSearching(false);
-                    Keyboard.dismiss();
-                  }}
-                />
-              )}
-            </HStack>
+            <Box className="px-4">
+              <SearchInput
+                placeholder="Search users"
+                value={searchInput}
+                onChangeText={setSearchInput}
+                onSetSearching={setSearching}
+              />
+            </Box>
 
             {!searching && (
               <RecentFavoritesTab tab={tab} onTabChange={setTab} />

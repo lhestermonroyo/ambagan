@@ -410,7 +410,7 @@ export default function GroupDetailsScreen() {
                 <HStack className="gap-x-2 px-4">
                   {tabs.map((type) => (
                     <FormButton
-                      size="md"
+                      size="sm"
                       key={type}
                       variant={type === tab ? "solid" : "outline"}
                       text={type}

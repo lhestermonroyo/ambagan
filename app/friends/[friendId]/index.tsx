@@ -375,7 +375,7 @@ export default function FriendDetailScreen() {
                     {(["Outstanding", "History"] as const).map((tab) => (
                       <FormButton
                         key={tab}
-                        size="md"
+                        size="sm"
                         variant={tab === settlementTab ? "solid" : "outline"}
                         text={tab}
                         onPress={() => setSettlementTab(tab)}

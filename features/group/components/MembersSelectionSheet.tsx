@@ -192,23 +192,14 @@ export default function MembersSelectionSheet({
                 }}
               />
             </VStack>
-            <HStack className="px-4 gap-x-2 justify-center items-center">
-              <Box className="flex-1">
-                <SearchInput
-                  placeholder="Search users to add or remove"
-                  value={searchInput}
-                  onChangeText={(val) => setSearchInput(val)}
-                  onSetSearching={setSearching}
-                />
-              </Box>
-              <FormButton
-                size="sm"
-                variant="outline"
-                text="Cancel"
-                onPress={() => setSearchInput("")}
-                disabled={!searchInput}
+            <Box className="px-4">
+              <SearchInput
+                placeholder="Search users to add or remove"
+                value={searchInput}
+                onChangeText={(val) => setSearchInput(val)}
+                onSetSearching={setSearching}
               />
-            </HStack>
+            </Box>
             {!searching && (
               <RecentFavoritesTab tab={tab} onTabChange={setTab} />
             )}
