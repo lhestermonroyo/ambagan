@@ -22,8 +22,11 @@ import UploadImage from "@/components/UploadImage";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import { Payment } from "@/types/expenses";
+import { getSecondaryHex } from "@/utils/getColorHex";
 import { ImagePickerSuccessResult } from "expo-image-picker";
+import { ChevronLeft } from "lucide-react-native";
 import { useState } from "react";
+import { Pressable, useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
 
 export default function RequestSettledSheet({
@@ -44,6 +47,7 @@ export default function RequestSettledSheet({
   });
 
   const toast = useAppToast();
+  const colorScheme = useColorScheme() ?? "light";
 
   if (!payment) {
     return null;
@@ -91,11 +95,16 @@ export default function RequestSettledSheet({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full flex-1">
-          <VStack className="p-4">
-            <Text bold className="text-xl">
-              Request as Settled
-            </Text>
-          </VStack>
+          <Pressable onPress={onClose}>
+            <HStack className="p-4 items-center gap-x-2">
+              <ChevronLeft
+                color={getSecondaryHex("text-secondary-950", colorScheme)}
+              />
+              <Text bold className="text-xl">
+                Request as Settled
+              </Text>
+            </HStack>
+          </Pressable>
           <ScrollView className="flex-1 px-4" bounces={false}>
             <VStack className="gap-y-6">
               <VStack className="flex-1">
@@ -155,13 +164,6 @@ export default function RequestSettledSheet({
         </VStack>
         <Box className="items-center justify-center p-4">
           <HStack className="gap-x-2">
-            <FormButton
-              className="flex-1"
-              variant="outline"
-              text="Cancel"
-              disabled={submitting}
-              onPress={onClose}
-            />
             <FormButton
               className="flex-1"
               text="Request"

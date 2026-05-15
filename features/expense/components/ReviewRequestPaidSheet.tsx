@@ -1,6 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
 import ConfirmButton from "@/components/ConfirmButton";
-import FormButton from "@/components/FormButton";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -12,6 +11,7 @@ import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Image } from "@/components/ui/image";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -21,7 +21,7 @@ import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
-import { ReceiptText } from "lucide-react-native";
+import { ChevronLeft, ReceiptText } from "lucide-react-native";
 import { Fragment, ReactNode, useState } from "react";
 import { useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
@@ -153,11 +153,16 @@ export default function ReviewRequestPaidSheet({
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
           <VStack className="w-full flex-1">
-            <VStack className="p-4">
-              <Text bold className="text-xl">
-                Review Settlement
-              </Text>
-            </VStack>
+            <Pressable onPress={onClose}>
+              <HStack className="p-4 items-center gap-x-2">
+                <ChevronLeft
+                  color={getSecondaryHex("text-secondary-950", colorScheme)}
+                />
+                <Text bold className="text-xl">
+                  Review Settlement
+                </Text>
+              </HStack>
+            </Pressable>
 
             <ScrollView className="flex-1 px-4" bounces={false}>
               <VStack className="gap-y-6">
@@ -272,13 +277,6 @@ export default function ReviewRequestPaidSheet({
           </VStack>
           <Box className="items-center justify-center p-4">
             <HStack className="gap-x-2">
-              <FormButton
-                className="flex-1"
-                variant="outline"
-                text={readOnly ? "Close" : "Cancel"}
-                disabled={submitting}
-                onPress={onClose}
-              />
               {!readOnly && payment.status !== "settled" && (
                 <Fragment>
                   {isPayer ? (
