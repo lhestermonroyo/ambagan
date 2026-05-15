@@ -107,8 +107,6 @@ export default function PushNotificationsSheet({
     updatePreferences
   } = states.user();
 
-  if (!userDetails) return null;
-
   const colorScheme = useColorScheme() ?? "light";
   const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
 
@@ -118,6 +116,8 @@ export default function PushNotificationsSheet({
       setPermissionStatus(status);
     });
   }, [isOpen]);
+
+  if (!userDetails || !preferences) return null;
 
   const switchColors = {
     false: getSecondaryHex("text-secondary-300", colorScheme),
@@ -142,8 +142,6 @@ export default function PushNotificationsSheet({
       }
     }
   };
-
-  if (!preferences) return null;
 
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>

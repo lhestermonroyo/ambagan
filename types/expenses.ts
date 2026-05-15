@@ -107,6 +107,6 @@ export enum PaymentStatus {
   PENDING = "pending",
   REQUESTED = "requested",
   SETTLED = "settled",
-  ONGING = "ongoing",
+  ONGOING = "ongoing",
   COMPLETED = "completed"
 }

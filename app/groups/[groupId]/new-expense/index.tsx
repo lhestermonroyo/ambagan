@@ -344,7 +344,7 @@ export default function NewExpenseScreen() {
               iconEnd={
                 <Icon as="chevron-right" className="text-background-0" />
               }
-              onPress={() => router.push("/groups/new")}
+              onPress={() => router.push("/groups/create")}
             />
           </VStack>
         </VStack>

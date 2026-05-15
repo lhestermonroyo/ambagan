@@ -84,7 +84,7 @@ export default function ExpenseDetailsScreen() {
 
       states.group.setState((prev) => ({
         ...prev,
-        details: { ...prev, ...response }
+        details: response
       }));
     } catch (error) {
       console.log("Error fetching group details:", error);

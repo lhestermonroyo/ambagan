@@ -48,12 +48,16 @@ export async function sendPushNotification(
     sound: "default"
   }));
 
-  await fetch(EXPO_PUSH_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json"
-    },
-    body: JSON.stringify(messages)
-  });
+  try {
+    await fetch(EXPO_PUSH_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify(messages)
+    });
+  } catch {
+    // Silently ignore push delivery failures — notification is best-effort
+  }
 }

@@ -263,7 +263,8 @@ export const getGroupsByUserId = async (userId: string) => {
         category,
         avatar,
         admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
-        archived
+        archived,
+        expenses:${tables.EXPENSES_TBL}(count)
       )`
     )
     .eq("member_id", userId);
@@ -273,7 +274,13 @@ export const getGroupsByUserId = async (userId: string) => {
   }
 
   const groups = (data as any[])
-    .map((item) => item[tables.GROUPS_TBL])
+    .map((item) => {
+      const { expenses: expData, ...group } = item[tables.GROUPS_TBL];
+      return {
+        ...group,
+        expense_count: (expData as any[])?.[0]?.count ?? 0
+      };
+    })
     .filter((group) => group.archived === false)
     .sort(
       (a, b) =>

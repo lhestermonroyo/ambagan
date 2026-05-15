@@ -41,6 +41,10 @@ export default function SignUpScreen() {
       errors.password = "Password is required";
     }
 
+    if (values.password && values.confirmPassword !== values.password) {
+      errors.confirmPassword = "Passwords do not match";
+    }
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;

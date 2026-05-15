@@ -14,6 +14,7 @@ import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { User } from "@/types/user";
+import { formatPhoneDisplay } from "@/utils/formatPhone";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -122,7 +123,7 @@ export default function PersonalInfoScreen() {
             </Box>
             <DetailRow
               label="Phone"
-              value={`+63 ${userDetails?.phone || "—"}`}
+              value={formatPhoneDisplay(userDetails?.phone)}
               readOnly
               onPress={() => {}}
             />

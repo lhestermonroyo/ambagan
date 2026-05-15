@@ -400,8 +400,8 @@ export default function GroupDetailsScreen() {
                     {groupDetails?.name}
                   </Text>
                   <Text className="text-secondary-950">
-                    {isAdmin ? "Created" : "Joined"}{" "}
-                    {formatDate(groupDetails?.created_at || "")}
+                    {formatDate(groupDetails?.created_at || "")} &bull;{" "}
+                    {expenseList.length} expense{expenseList.length !== 1 ? "s" : ""}
                   </Text>
                 </VStack>
               </HStack>
@@ -434,7 +434,8 @@ export default function GroupDetailsScreen() {
                       This group is archived
                     </Text>
                     <Text className="text-secondary-950">
-                      New expenses are disabled. Unarchive to continue adding expenses.
+                      New expenses are disabled. Unarchive to continue adding
+                      expenses.
                     </Text>
                   </VStack>
                   {isAdmin && (
@@ -447,7 +448,8 @@ export default function GroupDetailsScreen() {
                 </VStack>
               </HStack>
             ) : (
-              shouldSuggestArchive && showArchiveBanner && (
+              shouldSuggestArchive &&
+              showArchiveBanner && (
                 <HStack className="mx-4 p-4 rounded-xl bg-primary-50 dark:bg-primary-950 border border-primary-200 dark:border-primary-800 gap-x-3 items-start">
                   <Archive
                     size={18}
@@ -626,4 +628,3 @@ function ExpenseItem({
     </PressableListItem>
   );
 }
-

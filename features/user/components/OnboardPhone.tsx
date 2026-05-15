@@ -1,6 +1,7 @@
 import FormInput from "@/components/FormInput";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { formatPhoneInput, parsePhoneInput } from "@/utils/formatPhone";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import React from "react";
 
@@ -36,8 +37,8 @@ const OnboardPhone = ({
           label="Phone Number"
           placeholder="9XX XXX XXXX"
           keyboardType="phone-pad"
-          value={values.phone}
-          onChangeText={(text) => setValues({ ...values, phone: text })}
+          value={formatPhoneInput(values.phone)}
+          onChangeText={(text) => setValues({ ...values, phone: parsePhoneInput(text) })}
           leftAddon="+63"
           autoCapitalize="none"
         />
