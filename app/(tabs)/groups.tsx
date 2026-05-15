@@ -19,6 +19,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
+import { cacheService } from "@/utils/cacheService";
 import { EmptyType } from "@/types/general";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -79,6 +80,7 @@ export default function GroupsScreen() {
     isInitialized = false
   ) => {
     if (!userDetails?.id) return;
+    const isPro = userDetails?.plan === "pro";
     if (!isInitialized) setLoading(true);
     try {
       const result = await services.group.getGroupsByUserIdPaginated(
@@ -96,9 +98,19 @@ export default function GroupsScreen() {
           ...prev,
           list: pageNum === 0 ? result.data : [...prev.list, ...result.data]
         }));
+        if (isPro && pageNum === 0) {
+          cacheService.saveGroupsList(userDetails.id, result.data).catch(() => {});
+        }
       }
     } catch (error) {
       console.error("Failed to fetch groups:", error);
+      if (isPro && pageNum === 0 && filter === "all") {
+        const cached = await cacheService.getGroupsList(userDetails.id);
+        if (cached) {
+          setGroups(cached);
+          states.group.setState((prev) => ({ ...prev, list: cached }));
+        }
+      }
     } finally {
       if (!isInitialized) setLoading(false);
     }

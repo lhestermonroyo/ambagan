@@ -1,10 +1,11 @@
 import AppAvatar from "@/components/AppAvatar";
+import ImagePickerSheet from "@/components/ImagePickerSheet";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import * as ImagePicker from "expo-image-picker";
 import { Upload } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Alert, useColorScheme } from "react-native";
+import { useColorScheme } from "react-native";
 import AppButton from "./FormButton";
 import { Box } from "./ui/box";
 import { VStack } from "./ui/vstack";
@@ -21,35 +22,16 @@ const UploadAvatar = ({
   pending?: boolean;
 }) => {
   const [image, setImage] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const colorScheme = useColorScheme() ?? "light";
 
   useEffect(() => {
     setImage(defaultAvatar || null);
   }, [defaultAvatar]);
 
-  const pickImage = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permissionResult.granted) {
-      Alert.alert(
-        "Permission required",
-        "Permission to access the media library is required."
-      );
-      return;
-    }
-
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images", "videos"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1
-    });
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-      onSelect(result);
-    }
+  const handleSelect = (result: ImagePicker.ImagePickerSuccessResult) => {
+    setImage(result.assets[0].uri);
+    onSelect(result);
   };
 
   return (
@@ -72,13 +54,20 @@ const UploadAvatar = ({
       )}
       {!pending && (
         <AppButton
-          onPress={pickImage}
+          onPress={() => setSheetOpen(true)}
           size="sm"
           className="self-center rounded-full"
           text={image ? "Change" : "Upload"}
           variant="outline"
         />
       )}
+
+      <ImagePickerSheet
+        isOpen={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        onSelect={handleSelect}
+        options={{ allowsEditing: true, aspect: [1, 1], mediaTypes: ["images"] }}
+      />
     </VStack>
   );
 };

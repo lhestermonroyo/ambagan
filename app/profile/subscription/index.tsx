@@ -20,6 +20,7 @@ import {
   HousePlus,
   TrendingUp,
   Users,
+  WifiOff,
   XCircle
 } from "lucide-react-native";
 import { useState } from "react";
@@ -59,6 +60,12 @@ const FEATURES: {
   {
     icon: Users,
     label: "Members inherit Pro features",
+    free: null,
+    pro: "Included"
+  },
+  {
+    icon: WifiOff,
+    label: "Offline access",
     free: null,
     pro: "Included"
   },
@@ -162,8 +169,8 @@ export default function SubscriptionScreen() {
                 <>
                   <Divider className="border-background-200" />
                   <Text className="text-secondary-950">
-                    Upgrade to Pro to unlock multi-currency, CSV exports, and
-                    unlimited groups.
+                    Upgrade to Pro to unlock multi-currency, CSV exports,
+                    unlimited groups, and offline access.
                   </Text>
                 </>
               )}

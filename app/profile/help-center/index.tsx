@@ -162,7 +162,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is the Pro plan?",
         answer:
-          "The Pro plan unlocks premium features including unlimited groups (free plan is limited to 3), multi-currency expenses, CSV export of settlements, and a Pro badge on your profile."
+          "The Pro plan unlocks premium features including unlimited groups (free plan is limited to 3), multi-currency expenses, CSV export of settlements, offline access to your data, and a Pro badge on your profile."
       },
       {
         question: "How do I upgrade to Pro?",
@@ -178,6 +178,11 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "How many groups can I create on the free plan?",
         answer:
           "Free users can create up to 3 active groups. Archived groups do not count toward this limit. Upgrade to Pro for unlimited groups."
+      },
+      {
+        question: "Can I use Ambagan offline?",
+        answer:
+          "Pro users can browse their groups, expenses, settlements, and friends while offline. Data is automatically cached when you're connected and shown when you lose signal. A banner will appear at the top of the app to let you know you're viewing cached data. Creating or settling expenses still requires an internet connection."
       }
     ]
   },

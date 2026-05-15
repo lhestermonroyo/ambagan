@@ -28,6 +28,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
+import { cacheService } from "@/utils/cacheService";
 import { ExpensePreview } from "@/types/expenses";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
@@ -86,6 +87,8 @@ export default function GroupDetailsScreen() {
       setLoading(true);
     }
 
+    const isPro = userDetails?.plan === "pro";
+
     try {
       const [groupDetailsResponse, expensesResponse, membersResponse] =
         await Promise.all([
@@ -99,6 +102,12 @@ export default function GroupDetailsScreen() {
         return;
       }
 
+      if (isPro) {
+        cacheService
+          .saveGroupDetail(groupId, expensesResponse, membersResponse)
+          .catch(() => {});
+      }
+
       states.group.setState((prev) => ({
         ...prev,
         details: groupDetailsResponse,
@@ -107,6 +116,18 @@ export default function GroupDetailsScreen() {
       }));
     } catch (error) {
       console.log("Error fetching group details:", error);
+      if (isPro) {
+        const cached = await cacheService.getGroupDetail(groupId);
+        if (cached) {
+          states.group.setState((prev) => ({
+            ...prev,
+            expenseList: cached.expenseList,
+            memberList: cached.memberList
+          }));
+          setLoading(false);
+          return;
+        }
+      }
       router.push("/groups");
     } finally {
       setLoading(false);

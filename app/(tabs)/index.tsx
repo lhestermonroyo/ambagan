@@ -24,6 +24,7 @@ import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
 import services from "@/services";
 import states from "@/states";
+import { cacheService } from "@/utils/cacheService";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { getSecondaryHex } from "@/utils/getColorHex";
@@ -125,6 +126,7 @@ export default function HomeScreen() {
 
   const fetchActivities = async (isInitialized = false) => {
     if (!userDetails?.id) return;
+    const isPro = userDetails?.plan === "pro";
 
     if (!isInitialized) {
       setLoading((prev) => ({ ...prev, activities: true }));
@@ -140,12 +142,18 @@ export default function HomeScreen() {
 
       if (!response || !response.data) return;
 
+      if (isPro) cacheService.savePayments(userDetails.id, response.data).catch(() => {});
+
       states.expense.setState((prev) => ({
         ...prev,
         activityList: response.data
       }));
     } catch (error) {
       console.error("Failed to fetch recent expenses:", error);
+      if (isPro) {
+        const cached = await cacheService.getPayments(userDetails.id);
+        if (cached) states.expense.setState((prev) => ({ ...prev, activityList: cached }));
+      }
     } finally {
       setLoading((prev) => ({ ...prev, activities: false }));
     }
@@ -153,6 +161,7 @@ export default function HomeScreen() {
 
   const fetchGroups = async (isInitialized = false) => {
     if (!userDetails?.id) return;
+    const isPro = userDetails?.plan === "pro";
 
     if (!isInitialized) {
       setLoading((prev) => ({ ...prev, groups: true }));
@@ -163,12 +172,18 @@ export default function HomeScreen() {
 
       if (!response) return;
 
+      if (isPro) cacheService.saveGroupsList(userDetails.id, response).catch(() => {});
+
       states.group.setState((prev) => ({
         ...prev,
         list: response
       }));
     } catch (error) {
       console.error("Failed to fetch groups:", error);
+      if (isPro) {
+        const cached = await cacheService.getGroupsList(userDetails.id);
+        if (cached) states.group.setState((prev) => ({ ...prev, list: cached }));
+      }
     } finally {
       setLoading((prev) => ({ ...prev, groups: false }));
     }
@@ -176,12 +191,18 @@ export default function HomeScreen() {
 
   const fetchFriends = async (isInitialized = false) => {
     if (!userDetails?.id) return;
+    const isPro = userDetails?.plan === "pro";
     if (!isInitialized) setLoading((prev) => ({ ...prev, friends: true }));
     try {
       const data = await services.friend.getFriendsSummary(userDetails.id);
+      if (isPro) cacheService.saveFriends(userDetails.id, data).catch(() => {});
       setFriends(data);
     } catch (error) {
       console.error("Failed to fetch friends:", error);
+      if (isPro) {
+        const cached = await cacheService.getFriends(userDetails.id);
+        if (cached) setFriends(cached);
+      }
     } finally {
       setLoading((prev) => ({ ...prev, friends: false }));
     }

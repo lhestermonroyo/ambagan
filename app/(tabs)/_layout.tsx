@@ -1,7 +1,9 @@
 import { HapticTab } from "@/components/haptic-tab";
+import OfflineBanner from "@/components/OfflineBanner";
 import TabButton from "@/components/TabButton";
 import { View } from "@/components/ui/view";
 import PushNotificationPermissionSheet from "@/features/user/components/PushNotificationPermissionSheet";
+import { useNetwork } from "@/hooks/useNetwork";
 import states from "@/states";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -16,6 +18,9 @@ export default function TabLayout() {
   const colorScheme = useColorScheme() ?? "light";
   const [permissionSheetOpen, setPermissionSheetOpen] = useState(false);
   const { details: userDetails } = states.user();
+  const { isOnline } = useNetwork();
+  const isPro = userDetails?.plan === "pro";
+  const showOfflineBanner = !isOnline && isPro;
 
   useEffect(() => {
     if (!userDetails?.id) return;
@@ -45,6 +50,7 @@ export default function TabLayout() {
 
   return (
     <View style={{ flex: 1 }}>
+      {showOfflineBanner && <OfflineBanner />}
       <Tabs
         screenOptions={{
           headerShown: false,

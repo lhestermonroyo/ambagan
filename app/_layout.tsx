@@ -5,6 +5,7 @@ import services from "@/services";
 import states from "@/states";
 import { NotificationType } from "@/types/notifications";
 import { tables } from "@/utils/constants";
+import { getDb } from "@/utils/offlineDb";
 import { supabase } from "@/utils/supabase";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { RealtimeChannel } from "@supabase/supabase-js";
@@ -59,6 +60,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     loadPreferences();
+    getDb().catch(() => {});
   }, []);
 
   useEffect(() => {
