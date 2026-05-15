@@ -47,7 +47,7 @@ const AppAvatarGroup = ({
             )}
             {!avatar.uri && (
               <AvatarFallbackText className="text-background-0">
-                {avatar.name}
+                {avatar.name[0]?.toUpperCase() || "A"}
               </AvatarFallbackText>
             )}
           </Avatar>
