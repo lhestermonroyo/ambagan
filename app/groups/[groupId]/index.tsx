@@ -28,8 +28,8 @@ import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
-import { cacheService } from "@/utils/cacheService";
 import { ExpensePreview } from "@/types/expenses";
+import { cacheService } from "@/utils/cacheService";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
@@ -55,6 +55,7 @@ export default function GroupDetailsScreen() {
   const [archiving, setArchiving] = useState(false);
   const [showArchiveBanner, setShowArchiveBanner] = useState(true);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
   const { details: groupDetails, expenseList, settlementList } = states.group();
@@ -288,18 +289,24 @@ export default function GroupDetailsScreen() {
                 <Menu
                   placement="left top"
                   closeOnSelect
+                  isOpen={menuOpen}
+                  onOpen={() => setMenuOpen(true)}
+                  onClose={() => setMenuOpen(false)}
                   selectionMode="single"
                   onSelectionChange={(selected) => {
                     const key = Array.from(selected)[0];
-                    if (key === "edit") {
-                      router.push(`/groups/${groupId}/edit`);
-                    } else if (key === "archive") {
-                      handleArchiveGroup();
-                    } else if (key === "unarchive") {
-                      handleUnarchiveGroup();
-                    } else if (key === "leave") {
-                      setLeaveSheetOpen(true);
-                    }
+                    setMenuOpen(false);
+                    setTimeout(() => {
+                      if (key === "edit") {
+                        router.push(`/groups/${groupId}/edit`);
+                      } else if (key === "archive") {
+                        handleArchiveGroup();
+                      } else if (key === "unarchive") {
+                        handleUnarchiveGroup();
+                      } else if (key === "leave") {
+                        setLeaveSheetOpen(true);
+                      }
+                    }, 150);
                   }}
                   trigger={({ ...triggerProps }) => (
                     <Button
@@ -422,7 +429,8 @@ export default function GroupDetailsScreen() {
                   </Text>
                   <Text className="text-secondary-950">
                     {formatDate(groupDetails?.created_at || "")} &bull;{" "}
-                    {expenseList.length} expense{expenseList.length !== 1 ? "s" : ""}
+                    {expenseList.length} expense
+                    {expenseList.length !== 1 ? "s" : ""}
                   </Text>
                 </VStack>
               </HStack>
@@ -443,14 +451,12 @@ export default function GroupDetailsScreen() {
             </VStack>
 
             {groupDetails?.archived ? (
-              <HStack className="mx-4 p-4 rounded-xl bg-secondary-100 dark:bg-secondary-900 border border-secondary-200 dark:border-secondary-800 gap-x-3 items-start">
+              <HStack className="mx-4 mb-4 p-4 rounded-xl bg-secondary-100 dark:bg-secondary-900 border border-secondary-200 dark:border-secondary-800 gap-x-2 items-start">
                 <Archive
-                  size={18}
                   color={getSecondaryHex("text-secondary-950", colorScheme)}
-                  style={{ marginTop: 2 }}
                 />
-                <VStack className="flex-1 gap-y-3">
-                  <VStack className="gap-y-0.5">
+                <VStack className="flex-1 gap-y-4">
+                  <VStack className="gap-y-1">
                     <Text className="text-lg font-semibold">
                       This group is archived
                     </Text>
@@ -471,11 +477,9 @@ export default function GroupDetailsScreen() {
             ) : (
               shouldSuggestArchive &&
               showArchiveBanner && (
-                <HStack className="mx-4 p-4 rounded-xl bg-primary-50 dark:bg-primary-950 border border-primary-200 dark:border-primary-800 gap-x-3 items-start">
+                <HStack className="mx-4 mb-4 p-4 rounded-xl bg-primary-50 dark:bg-primary-950 border border-primary-200 dark:border-primary-800 gap-x-2 items-start">
                   <Archive
-                    size={18}
                     color={getPrimaryHex("text-primary-500", colorScheme)}
-                    style={{ marginTop: 2 }}
                   />
                   <VStack className="flex-1 gap-y-3">
                     <VStack className="gap-y-0.5">
@@ -616,7 +620,7 @@ function ExpenseItem({
         ...expense.payer_list.filter((p) => p !== userPayer)
       ].map((item) => ({
         id: item.payer.id,
-        name: `${item.payer.first_name} ${item.payer.last_name?.[0] || ""}`,
+        name: item.payer.first_name,
         uri: item.payer.avatar || undefined
       }));
     }

@@ -1,3 +1,5 @@
+import { avatarColors } from "@/utils/constants";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import {
   Avatar,
   AvatarFallbackText,
@@ -27,7 +29,15 @@ const AppAvatarGroup = ({
           <Avatar
             key={index}
             size={size}
-            className={`border-2 border-outline-0 ${items.length === 1 ? "" : "mr-[-10]"} z-[${index + 1}]`}
+            className={cn(
+              avatarColors[
+                (avatar.name[0]?.toLowerCase() as keyof typeof avatarColors) ||
+                  "a"
+              ],
+              items.length === 1 ? "" : "mr-[-10]",
+              `z-${index + 1}`,
+              "border-2 border-outline-0"
+            )}
           >
             {avatar.uri && (
               <AvatarImage
@@ -46,7 +56,11 @@ const AppAvatarGroup = ({
       {items.length > maxDisplay && (
         <Avatar
           size={size}
-          className={`border-2 border-outline-0 bg-slate-700`}
+          className={cn(
+            "border-2 border-outline-0 bg-slate-700",
+            items.length === 1 ? "" : "mr-[-10]",
+            `z-${maxDisplay + 1}`
+          )}
         >
           <AvatarFallbackText>
             {"+ " + (items.length - maxDisplay)}
@@ -55,39 +69,6 @@ const AppAvatarGroup = ({
       )}
     </AvatarGroup>
   );
-  // return (
-  //   <AvatarGroup className="self-start flex-row">
-  //     {items.length > maxDisplay && (
-  //       <Avatar
-  //         size={size}
-  //         style={{ marginLeft: "6%" }}
-  //         className="border-primary-400 border-1 bg-slate-700"
-  //       >
-  //         <AvatarFallbackText>
-  //           {"+ " + (items.length - maxDisplay)}
-  //         </AvatarFallbackText>
-  //       </Avatar>
-  //     )}
-  //     {items.slice(0, maxDisplay).map((item, index) => (
-  //       <Avatar
-  //         className="border-primary-400 border-1 p-1"
-  //         key={item.id}
-  //         size={size}
-  //         style={{
-  //           marginLeft: maxDisplay - index === 1 ? 0 : "6%"
-  //         }}
-  //       >
-  //         <AvatarFallbackText>{item.name}</AvatarFallbackText>
-  //         <AvatarImage
-  //           alt={item.name}
-  //           source={{
-  //             uri: item.avatar || undefined
-  //           }}
-  //         />
-  //       </Avatar>
-  //     ))}
-  //   </AvatarGroup>
-  // );
 };
 
 export default AppAvatarGroup;

@@ -2,6 +2,7 @@ import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import ListDivider from "@/components/ListDivider";
 import PressableListItem from "@/components/PressableListItem";
 import {
   Actionsheet,
@@ -22,13 +23,12 @@ import {
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
-import { Group } from "@/types/groups";
 import { EmptyType } from "@/types/general";
+import { Group } from "@/types/groups";
 import { formatDate } from "@/utils/formatDate";
 import { useRouter } from "expo-router";
 import { CircleIcon } from "lucide-react-native";
 import { Fragment, useState } from "react";
-import ListDivider from "@/components/ListDivider";
 
 export default function GroupSelection({
   group,
@@ -203,8 +203,8 @@ function GroupItem({ group, onPress }: { group: Group; onPress: () => void }) {
         <VStack className="gap-y-4 py-4">
           <VStack>
             <Text className="text-lg">{group?.name}</Text>
-            <Text className="text-secondary-950 text-sm">
-              Joined {formatDate(group?.created_at)}
+            <Text className="text-secondary-950">
+              {formatDate(group?.created_at)}
             </Text>
           </VStack>
         </VStack>

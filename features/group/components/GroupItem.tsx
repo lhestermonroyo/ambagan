@@ -6,7 +6,6 @@ import ProBadge from "@/components/ProBadge";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import states from "@/states";
 import { Group, Member } from "@/types/groups";
 import { formatDate } from "@/utils/formatDate";
 import { useMemo } from "react";
@@ -18,15 +17,13 @@ export default function GroupItem({
   details: Group & { members: Member[] };
   onOpen: () => void;
 }) {
-  const { details: userDetails } = states.user();
-  const isAdmin = details.admin?.id === userDetails?.id;
   const isGroupPro = details.admin?.plan === "pro";
 
   const appAvatarGroupItems = useMemo(
     () =>
       details.members.map((item) => ({
         id: item.id,
-        name: `${item.first_name} ${item.last_name}`,
+        name: item.first_name,
         uri: item.avatar || undefined
       })),
     [details.members]
@@ -49,7 +46,9 @@ export default function GroupItem({
           </HStack>
           <HStack className="gap-x-1 items-center">
             <Text className="text-secondary-950">
-              {formatDate(details.created_at)} &bull; {details.expense_count ?? 0} expense{(details.expense_count ?? 0) !== 1 ? "s" : ""}
+              {formatDate(details.created_at)} &bull;{" "}
+              {details.expense_count ?? 0} expense
+              {(details.expense_count ?? 0) !== 1 ? "s" : ""}
             </Text>
           </HStack>
         </VStack>
