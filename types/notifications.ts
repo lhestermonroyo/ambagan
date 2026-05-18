@@ -19,6 +19,7 @@ export enum NotificationType {
   SETTLEMENT_REQUEST = "settlement_request",
   SETTLEMENT_APPROVED = "settlement_approved", // when the payer approves the settlement request of the member
   SETTLEMENT_REJECTED = "settlement_rejected", // when the payer rejects the settlement request of the member
+  SETTLEMENT_REVERTED = "settlement_reverted", // when the payer reverts an already-approved settlement back to requested
   SETTLEMENT_COMPLETED = "settlement_completed", // when the payer approves the settlement without request from the member
   EXPENSE_INCLUSION = "expense_inclusion",
   GROUP_JOIN = "group_join",

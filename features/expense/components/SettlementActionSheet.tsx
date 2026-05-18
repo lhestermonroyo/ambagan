@@ -84,7 +84,7 @@ function SettlementContent({
         onPress: () => {
           onClose();
           setReviewIsPayer(true);
-          setReviewReadOnly(item.status === "settled");
+          setReviewReadOnly(false);
           setReviewSheetOpen(true);
         }
       };

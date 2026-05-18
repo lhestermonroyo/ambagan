@@ -16,6 +16,8 @@ function getNotificationSuffix(type: NotificationType): string {
       return "approved your settlement request.";
     case NotificationType.SETTLEMENT_REJECTED:
       return "rejected your settlement request.";
+    case NotificationType.SETTLEMENT_REVERTED:
+      return "reopened your settlement for review.";
     case NotificationType.SETTLEMENT_COMPLETED:
       return "completed a settlement.";
     case NotificationType.EXPENSE_INCLUSION:

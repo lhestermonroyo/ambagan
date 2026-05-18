@@ -608,6 +608,52 @@ export const rejectSettledRequest = async (expenseSplitId: string) => {
   return { success: true, message: "Settled request rejected successfully" };
 };
 
+export const revertSettledRequest = async (expenseSplitId: string) => {
+  const user = await supabase.auth.getUser();
+
+  if (!user.data.user) {
+    throw new Error("User not authenticated");
+  }
+
+  const splitResponse = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .update({
+      status: "requested",
+      status_updated_at: new Date().toISOString()
+    })
+    .eq("id", expenseSplitId)
+    .select("member_id")
+    .single();
+
+  if (splitResponse.error) {
+    throw splitResponse.error;
+  }
+
+  try {
+    await Promise.all([
+      createNotification({
+        fromUserId: user.data.user.id,
+        toUserId: splitResponse.data.member_id,
+        type: NotificationType.SETTLEMENT_REVERTED,
+        referenceId: expenseSplitId
+      }),
+      sendPushNotification(
+        splitResponse.data.member_id,
+        NotificationType.SETTLEMENT_REVERTED,
+        {
+          title: "Settlement Reopened",
+          body: "Your settlement has been reopened for review",
+          referenceId: expenseSplitId
+        }
+      )
+    ]);
+  } catch (err) {
+    console.error("Failed to send settlement reverted notification:", err);
+  }
+
+  return { success: true, message: "Settled request reverted successfully" };
+};
+
 export const markAsSettled = async (expensePayload: {
   note: string;
   receipt: ImagePickerSuccessResult | null;

@@ -1,6 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
+import Icon from "@/components/Icon";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -22,9 +23,7 @@ import UploadImage from "@/components/UploadImage";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import { Payment } from "@/types/expenses";
-import { getSecondaryHex } from "@/utils/getColorHex";
 import { ImagePickerSuccessResult } from "expo-image-picker";
-import { ChevronLeft } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
@@ -96,10 +95,8 @@ export default function RequestSettledSheet({
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full flex-1">
           <Pressable onPress={onClose}>
-            <HStack className="p-4 items-center gap-x-2">
-              <ChevronLeft
-                color={getSecondaryHex("text-secondary-950", colorScheme)}
-              />
+            <HStack className="p-4 items-center">
+              <Icon as="arrow-back-ios" className="text-secondary-950" />
               <Text bold className="text-xl">
                 Request as Settled
               </Text>

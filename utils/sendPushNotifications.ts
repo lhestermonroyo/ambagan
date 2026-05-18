@@ -9,6 +9,7 @@ const NOTIF_PREF_KEY: Record<NotificationType, keyof UserPreferences> = {
   [NotificationType.SETTLEMENT_REQUEST]: "notif_settlement_request",
   [NotificationType.SETTLEMENT_APPROVED]: "notif_settlement_approved",
   [NotificationType.SETTLEMENT_REJECTED]: "notif_settlement_rejected",
+  [NotificationType.SETTLEMENT_REVERTED]: "notif_settlement_rejected",
   [NotificationType.SETTLEMENT_COMPLETED]: "notif_settlement_completed",
   [NotificationType.EXPENSE_INCLUSION]: "notif_expense_inclusion",
   [NotificationType.GROUP_JOIN]: "notif_group_join",

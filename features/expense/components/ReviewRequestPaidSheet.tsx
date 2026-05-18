@@ -1,5 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
 import ConfirmButton from "@/components/ConfirmButton";
+import FormButton from "@/components/FormButton";
+import Icon from "@/components/Icon";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -21,7 +23,7 @@ import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
-import { ChevronLeft, ReceiptText } from "lucide-react-native";
+import { ReceiptText } from "lucide-react-native";
 import { Fragment, ReactNode, useState } from "react";
 import { useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
@@ -141,6 +143,34 @@ export default function ReviewRequestPaidSheet({
     }
   };
 
+  const handleRevertSettledRequest = async () => {
+    setSubmitting(true);
+    try {
+      const response = await services.expense.revertSettledRequest(payment.id);
+
+      if (!response) {
+        throw new Error("Failed to revert settled request");
+      }
+
+      onRefetch();
+      onClose();
+      toast({
+        description: "The settlement has been reopened for review.",
+        type: "success"
+      });
+    } catch (error) {
+      console.error("Error reverting settled request:", error);
+      toast({
+        title: "Error",
+        description:
+          "There was an issue reverting this settlement. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const isMemberMe = payment.member.id === userDetails?.id;
   const isPayerMe = payment.payer.id === userDetails?.id;
 
@@ -154,10 +184,8 @@ export default function ReviewRequestPaidSheet({
           </ActionsheetDragIndicatorWrapper>
           <VStack className="w-full flex-1">
             <Pressable onPress={onClose}>
-              <HStack className="p-4 items-center gap-x-2">
-                <ChevronLeft
-                  color={getSecondaryHex("text-secondary-950", colorScheme)}
-                />
+              <HStack className="p-4 items-center">
+                <Icon as="arrow-back-ios" className="text-secondary-950" />
                 <Text bold className="text-xl">
                   Review Settlement
                 </Text>
@@ -277,38 +305,50 @@ export default function ReviewRequestPaidSheet({
           </VStack>
           <Box className="items-center justify-center p-4">
             <HStack className="gap-x-2">
-              {!readOnly && payment.status !== "settled" && (
+              {!readOnly && (
                 <Fragment>
                   {isPayer ? (
                     <Fragment>
+                      {payment.status === "settled" ? (
+                        <FormButton
+                          className="flex-1"
+                          action="negative"
+                          text="Revert"
+                          loading={submitting}
+                          onPress={handleRevertSettledRequest}
+                        />
+                      ) : (
+                        <Fragment>
+                          <ConfirmButton
+                            className="flex-1"
+                            action="negative"
+                            text="Reject"
+                            loading={submitting}
+                            onConfirm={handleRejectRequest}
+                            confirmTitle="Reject Settlement Request"
+                            confirmDescription="Are you sure you want to reject this settlement request? This will send it back to pending and remove the submitted proof of payment."
+                          />
+                          <FormButton
+                            className="flex-1"
+                            text="Approve"
+                            loading={submitting}
+                            onPress={handleMarkAsSettled}
+                          />
+                        </Fragment>
+                      )}
+                    </Fragment>
+                  ) : (
+                    payment.status !== "settled" && (
                       <ConfirmButton
                         className="flex-1"
                         action="negative"
-                        text="Reject"
+                        text="Undo Request"
                         loading={submitting}
-                        onConfirm={handleRejectRequest}
-                        confirmTitle="Reject Settlement Request"
-                        confirmDescription="Are you sure you want to reject this settlement request? This will send it back to pending and remove the submitted proof of payment."
+                        onConfirm={handleUndoRequest}
+                        confirmTitle="Undo Settlement Request"
+                        confirmDescription="Are you sure you want to undo your settlement request? This will change the status back to pending and remove any notes or receipt you added."
                       />
-                      <ConfirmButton
-                        className="flex-1"
-                        text="Approve"
-                        loading={submitting}
-                        onConfirm={handleMarkAsSettled}
-                        confirmTitle="Approve Settlement Request"
-                        confirmDescription="Are you sure you want to approve this settlement request? This will notify the requester that you have settled the payment and update the status of this split."
-                      />
-                    </Fragment>
-                  ) : (
-                    <ConfirmButton
-                      className="flex-1"
-                      action="negative"
-                      text="Undo Request"
-                      loading={submitting}
-                      onConfirm={handleUndoRequest}
-                      confirmTitle="Undo Settlement Request"
-                      confirmDescription="Are you sure you want to undo your settlement request? This will change the status back to pending and remove any notes or receipt you added."
-                    />
+                    )
                   )}
                 </Fragment>
               )}

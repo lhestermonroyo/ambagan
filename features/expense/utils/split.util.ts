@@ -44,8 +44,8 @@ export const generatePaymentSplits = (
       amount: settled
     });
 
-    creditor.amount -= settled;
-    debtor.amount -= settled;
+    creditor.amount = parseFloat((creditor.amount - settled).toFixed(2));
+    debtor.amount = parseFloat((debtor.amount - settled).toFixed(2));
 
     if (creditor.amount < 0.001) i++;
     if (debtor.amount < 0.001) j++;
