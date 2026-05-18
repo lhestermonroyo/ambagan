@@ -27,9 +27,10 @@ import { HeartPlus } from "lucide-react-native";
 import { Fragment, useMemo, useRef, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 
-type FriendsTab = "owes-me" | "i-owe" | "favorites";
+type FriendsTab = "all" | "owes-me" | "i-owe" | "favorites";
 
 const TABS: { key: FriendsTab; label: string }[] = [
+  { key: "all", label: "All" },
   { key: "owes-me", label: "Owes Me" },
   { key: "i-owe", label: "I Owe" },
   { key: "favorites", label: "Favorites" }
@@ -44,10 +45,10 @@ export default function FriendsScreen() {
   const [searchInput, setSearchInput] = useState("");
   const [searching, setSearching] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [activeTab, setActiveTab] = useState<FriendsTab>("owes-me");
+  const [activeTab, setActiveTab] = useState<FriendsTab>("all");
   const [favoritesSheetOpen, setFavoritesSheetOpen] = useState(false);
 
-  const activeTabRef = useRef<FriendsTab>("owes-me");
+  const activeTabRef = useRef<FriendsTab>("all");
 
   const { details: userDetails } = states.user();
   const router = useRouter();
@@ -58,9 +59,7 @@ export default function FriendsScreen() {
       () => () => {
         if (!userDetails?.id) return;
         fetchFriends(initialized);
-        if (activeTabRef.current === "favorites") {
-          fetchFavorites(true);
-        }
+        fetchFavorites(true);
       },
       [userDetails?.id, initialized]
     )
@@ -98,17 +97,11 @@ export default function FriendsScreen() {
     if (tab === activeTabRef.current) return;
     activeTabRef.current = tab;
     setActiveTab(tab);
-    if (tab === "favorites" && !favoritesInitialized) {
-      fetchFavorites();
-    }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchFriends(true);
-    if (activeTabRef.current === "favorites") {
-      await fetchFavorites(true);
-    }
+    await Promise.all([fetchFriends(true), fetchFavorites(true)]);
     setRefreshing(false);
   };
 
@@ -136,6 +129,16 @@ export default function FriendsScreen() {
     });
   };
 
+  const allList = useMemo(
+    () =>
+      [...friends].sort(
+        (a, b) =>
+          Math.abs(b.balances[0]?.amount ?? 0) -
+          Math.abs(a.balances[0]?.amount ?? 0)
+      ),
+    [friends]
+  );
+
   const owesMeList = useMemo(
     () => friends.filter((f) => (f.balances[0]?.amount ?? 0) > 0),
     [friends]
@@ -148,14 +151,19 @@ export default function FriendsScreen() {
 
   const filteredFriends = useMemo(() => {
     const q = searchInput.toLowerCase();
-    const list = activeTab === "i-owe" ? iOweList : owesMeList;
+    const list =
+      activeTab === "all"
+        ? allList
+        : activeTab === "i-owe"
+          ? iOweList
+          : owesMeList;
     if (!q) return list;
     return list.filter(
       ({ friend }) =>
         `${friend.first_name} ${friend.last_name}`.toLowerCase().includes(q) ||
         friend.email.toLowerCase().includes(q)
     );
-  }, [searchInput, activeTab, owesMeList, iOweList]);
+  }, [searchInput, activeTab, allList, owesMeList, iOweList]);
 
   const filteredFavorites = useMemo(() => {
     if (!searchInput) return favorites;
@@ -219,17 +227,62 @@ export default function FriendsScreen() {
         >
           <LoadingWrapper isLoading={loading} text="Loading friends...">
             {activeTab !== "favorites" ? (
-              <FlatList
-                data={filteredFriends}
-                keyExtractor={(item) => item.friend.id}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <FriendItem item={item} onPress={handleFriendPress} />
+              <>
+                {activeTab === "all" && filteredFavorites.length > 0 && (
+                  <VStack className="gap-y-2">
+                    <Text className="px-4 font-semibold text-secondary-950">
+                      Favorites
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                    >
+                      <HStack className="px-4 pb-3">
+                        {filteredFavorites.map((fav) => (
+                          <Pressable
+                            key={fav.id}
+                            style={{ maxWidth: 100 }}
+                            className="p-2"
+                            onPress={() => handleFavoritePress(fav)}
+                          >
+                            <VStack className="relative justify-center items-center gap-y-2">
+                              <AppAvatar
+                                name={fav.first_name}
+                                uri={fav.avatar || undefined}
+                                size="lg"
+                                className="rounded-full p-1 bg-primary-400"
+                              />
+                              <VStack className="items-center gap-y-0">
+                                <Text className="text-center break-words">
+                                  {fav.first_name} {fav.last_name}
+                                </Text>
+                              </VStack>
+                            </VStack>
+                          </Pressable>
+                        ))}
+                      </HStack>
+                    </ScrollView>
+                  </VStack>
                 )}
-                ItemSeparatorComponent={ListDivider}
-                ListEmptyComponent={() => <EmptyList type={emptyType} />}
-                ListFooterComponent={() => <Box className="h-16" />}
-              />
+                <VStack className="gap-y-2">
+                  {activeTab === "all" && (
+                    <Text className="px-4 font-semibold text-secondary-950">
+                      Settlements
+                    </Text>
+                  )}
+                  <FlatList
+                    data={filteredFriends}
+                    keyExtractor={(item) => item.friend.id}
+                    scrollEnabled={false}
+                    renderItem={({ item }) => (
+                      <FriendItem item={item} onPress={handleFriendPress} />
+                    )}
+                    ItemSeparatorComponent={ListDivider}
+                    ListEmptyComponent={() => <EmptyList type={emptyType} />}
+                    ListFooterComponent={() => <Box className="h-16" />}
+                  />
+                </VStack>
+              </>
             ) : (
               <FlatList
                 data={filteredFavorites}
@@ -255,7 +308,7 @@ export default function FriendsScreen() {
         isOpen={favoritesSheetOpen}
         onClose={() => {
           setFavoritesSheetOpen(false);
-          if (activeTab === "favorites") fetchFavorites(true);
+          fetchFavorites(true);
         }}
       />
     </Fragment>
@@ -272,10 +325,7 @@ function FavoriteListItem({
   return (
     <PressableListItem className="p-4" onPress={() => onPress(item)}>
       <HStack className="gap-x-3 items-center">
-        <AppAvatar
-          name={`${item.first_name} ${item.last_name}`}
-          uri={item.avatar || undefined}
-        />
+        <AppAvatar name={item.first_name} uri={item.avatar || undefined} />
         <VStack className="flex-1">
           <Text className="text-lg">
             {item.first_name} {item.last_name}
