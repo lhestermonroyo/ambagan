@@ -155,7 +155,7 @@ export default function MembersSelectionSheet({
           <ActionsheetDragIndicatorWrapper>
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full gap-y-4 py-4 bg-typography-0">
+          <VStack className="w-full gap-y-4 py-4">
             <VStack>
               <HStack className="px-4">
                 <Text className="text-secondary-950 flex-1">

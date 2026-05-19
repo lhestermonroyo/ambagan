@@ -62,7 +62,7 @@ const AppAvatarGroup = ({
             `z-${maxDisplay + 1}`
           )}
         >
-          <AvatarFallbackText>
+          <AvatarFallbackText className="text-secondary-950">
             {"+ " + (items.length - maxDisplay)}
           </AvatarFallbackText>
         </Avatar>

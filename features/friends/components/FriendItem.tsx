@@ -23,10 +23,7 @@ export default function FriendItem({
   return (
     <PressableListItem className="p-4" onPress={() => onPress(item)}>
       <HStack className="gap-x-3 items-center">
-        <AppAvatar
-          name={`${friend.first_name} ${friend.last_name}`}
-          uri={friend.avatar || undefined}
-        />
+        <AppAvatar name={friend.first_name} uri={friend.avatar || undefined} />
         <VStack className="flex-1">
           <Text className="text-lg">
             {friend.first_name} {friend.last_name}

@@ -31,8 +31,8 @@ type FriendsTab = "all" | "owes-me" | "i-owe" | "favorites";
 
 const TABS: { key: FriendsTab; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "owes-me", label: "Owes Me" },
-  { key: "i-owe", label: "I Owe" },
+  { key: "owes-me", label: "To Collect" },
+  { key: "i-owe", label: "To Pay" },
   { key: "favorites", label: "Favorites" }
 ];
 
@@ -250,7 +250,7 @@ export default function FriendsScreen() {
                                 name={fav.first_name}
                                 uri={fav.avatar || undefined}
                                 size="lg"
-                                className="rounded-full p-1 bg-primary-400"
+                                className="rounded-full"
                               />
                               <VStack className="items-center gap-y-0">
                                 <Text className="text-center break-words">
@@ -264,24 +264,48 @@ export default function FriendsScreen() {
                     </ScrollView>
                   </VStack>
                 )}
-                <VStack className="gap-y-2">
-                  {activeTab === "all" && (
-                    <Text className="px-4 font-semibold text-secondary-950">
-                      Settlements
-                    </Text>
-                  )}
-                  <FlatList
-                    data={filteredFriends}
-                    keyExtractor={(item) => item.friend.id}
-                    scrollEnabled={false}
-                    renderItem={({ item }) => (
-                      <FriendItem item={item} onPress={handleFriendPress} />
+                {activeTab === "all" && searchInput.length > 0 ? (
+                  filteredFriends.length > 0 ? (
+                    <VStack className="gap-y-2">
+                      {filteredFavorites.length > 0 && (
+                        <Text className="px-4 font-semibold text-secondary-950">
+                          Settlements
+                        </Text>
+                      )}
+                      <FlatList
+                        data={filteredFriends}
+                        keyExtractor={(item) => item.friend.id}
+                        scrollEnabled={false}
+                        renderItem={({ item }) => (
+                          <FriendItem item={item} onPress={handleFriendPress} />
+                        )}
+                        ItemSeparatorComponent={ListDivider}
+                        ListFooterComponent={() => <Box className="h-16" />}
+                      />
+                    </VStack>
+                  ) : filteredFavorites.length === 0 ? (
+                    <EmptyList type={EmptyType.SEARCH} />
+                  ) : null
+                ) : (
+                  <VStack className="gap-y-2">
+                    {activeTab === "all" && (
+                      <Text className="px-4 font-semibold text-secondary-950">
+                        Settlements
+                      </Text>
                     )}
-                    ItemSeparatorComponent={ListDivider}
-                    ListEmptyComponent={() => <EmptyList type={emptyType} />}
-                    ListFooterComponent={() => <Box className="h-16" />}
-                  />
-                </VStack>
+                    <FlatList
+                      data={filteredFriends}
+                      keyExtractor={(item) => item.friend.id}
+                      scrollEnabled={false}
+                      renderItem={({ item }) => (
+                        <FriendItem item={item} onPress={handleFriendPress} />
+                      )}
+                      ItemSeparatorComponent={ListDivider}
+                      ListEmptyComponent={() => <EmptyList type={emptyType} />}
+                      ListFooterComponent={() => <Box className="h-16" />}
+                    />
+                  </VStack>
+                )}
               </>
             ) : (
               <FlatList

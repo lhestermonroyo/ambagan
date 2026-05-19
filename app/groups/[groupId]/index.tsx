@@ -292,22 +292,6 @@ export default function GroupDetailsScreen() {
                   isOpen={menuOpen}
                   onOpen={() => setMenuOpen(true)}
                   onClose={() => setMenuOpen(false)}
-                  selectionMode="single"
-                  onSelectionChange={(selected) => {
-                    const key = Array.from(selected)[0];
-                    setMenuOpen(false);
-                    setTimeout(() => {
-                      if (key === "edit") {
-                        router.push(`/groups/${groupId}/edit`);
-                      } else if (key === "archive") {
-                        handleArchiveGroup();
-                      } else if (key === "unarchive") {
-                        handleUnarchiveGroup();
-                      } else if (key === "leave") {
-                        setLeaveSheetOpen(true);
-                      }
-                    }, 150);
-                  }}
                   trigger={({ ...triggerProps }) => (
                     <Button
                       variant="link"
@@ -329,9 +313,19 @@ export default function GroupDetailsScreen() {
                       className="p-4 justify-between"
                       key="edit"
                       textValue="Edit"
+                      onPress={() => {
+                        setMenuOpen(false);
+                        setTimeout(() => router.push(`/groups/${groupId}/edit`), 150);
+                      }}
                     >
                       <HStack className="gap-x-2">
-                        <Edit2 size={20} />
+                        <Edit2
+                          size={20}
+                          color={getSecondaryHex(
+                            "text-secondary-950",
+                            colorScheme
+                          )}
+                        />
                         <MenuItemLabel>Edit</MenuItemLabel>
                       </HStack>
                     </MenuItem>
@@ -340,9 +334,19 @@ export default function GroupDetailsScreen() {
                     className="p-4 justify-between"
                     key="leave"
                     textValue="Leave Group"
+                    onPress={() => {
+                      setMenuOpen(false);
+                      setTimeout(() => setLeaveSheetOpen(true), 150);
+                    }}
                   >
                     <HStack className="gap-x-2">
-                      <LogOut size={20} />
+                      <LogOut
+                        size={20}
+                        color={getSecondaryHex(
+                          "text-secondary-950",
+                          colorScheme
+                        )}
+                      />
                       <MenuItemLabel>Leave Group</MenuItemLabel>
                     </HStack>
                   </MenuItem>
@@ -352,9 +356,19 @@ export default function GroupDetailsScreen() {
                       className="p-4 justify-between"
                       key="unarchive"
                       textValue="Unarchive"
+                      onPress={() => {
+                        setMenuOpen(false);
+                        setTimeout(() => handleUnarchiveGroup(), 150);
+                      }}
                     >
                       <HStack className="gap-x-2">
-                        <ArchiveRestore size={20} />
+                        <ArchiveRestore
+                          size={20}
+                          color={getSecondaryHex(
+                            "text-secondary-950",
+                            colorScheme
+                          )}
+                        />
                         <MenuItemLabel>Unarchive</MenuItemLabel>
                       </HStack>
                     </MenuItem>
@@ -363,9 +377,19 @@ export default function GroupDetailsScreen() {
                       className="p-4 justify-between"
                       key="archive"
                       textValue="Archive"
+                      onPress={() => {
+                        setMenuOpen(false);
+                        setTimeout(() => handleArchiveGroup(), 150);
+                      }}
                     >
                       <HStack className="gap-x-2">
-                        <Archive size={20} />
+                        <Archive
+                          size={20}
+                          color={getSecondaryHex(
+                            "text-secondary-950",
+                            colorScheme
+                          )}
+                        />
                         <MenuItemLabel>Archive</MenuItemLabel>
                       </HStack>
                     </MenuItem>

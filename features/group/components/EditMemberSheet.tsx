@@ -48,8 +48,13 @@ export default function EditMembersSheet({
   const { details: groupDetails, memberList } = states.group.getState();
   const { details: userDetails } = states.user();
 
-  const { favoriteIds, favoriteUsers, loadFavorites, handleToggleFavorite, resetFavorites } =
-    useFavoriteToggle(userDetails?.id);
+  const {
+    favoriteIds,
+    favoriteUsers,
+    loadFavorites,
+    handleToggleFavorite,
+    resetFavorites
+  } = useFavoriteToggle(userDetails?.id);
 
   const showToast = useAppToast();
 
@@ -257,7 +262,7 @@ export default function EditMembersSheet({
         </ActionsheetDragIndicatorWrapper>
         <Box className="w-full flex-1">
           <LoadingWrapper text="Loading members..." isLoading={loading}>
-            <VStack className="w-full gap-y-4 py-4 bg-typography-0">
+            <VStack className="w-full gap-y-4 py-4">
               <VStack>
                 <HStack className="px-4">
                   <Text className="text-secondary-950 flex-1">

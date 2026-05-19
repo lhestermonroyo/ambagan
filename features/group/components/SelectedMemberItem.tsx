@@ -44,7 +44,7 @@ export default function SelectedMemberItem({
             name={member.first_name || ""}
             uri={member.avatar!}
             size="lg"
-            className="rounded-full p-1 bg-primary-400"
+            className="rounded-full"
           />
         </Box>
         <VStack className="items-center gap-y-0">

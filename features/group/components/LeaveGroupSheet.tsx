@@ -23,14 +23,18 @@ import {
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import SettlementItem from "@/features/expense/components/SettlementItem";
+import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
+import StatusBadge from "@/features/expense/components/StatusBadge";
+import { formatAmount } from "@/features/expense/utils/formatAmount";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
+import { formatDate } from "@/utils/formatDate";
 import { getErrorHex, getPrimaryHex } from "@/utils/getColorHex";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { AlertTriangle, CircleIcon } from "lucide-react-native";
 import { Fragment, useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
@@ -133,12 +137,12 @@ export default function LeaveGroupSheet({
             </Text>
           </VStack>
 
-          <ScrollView className="flex-1 px-4" bounces={false}>
+          <ScrollView className="flex-1" bounces={false}>
             <VStack className="gap-y-4">
               <LoadingWrapper isLoading={fetching}>
                 {hasUnsettled ? (
                   <Fragment>
-                    <HStack className="bg-error-50 rounded-xl gap-x-4 p-4 items-start">
+                    <HStack className="bg-error-50 rounded-xl gap-x-4 p-4 mx-4 items-start">
                       <AlertTriangle
                         color={getErrorHex("text-error-600", colorScheme)}
                       />
@@ -155,13 +159,11 @@ export default function LeaveGroupSheet({
                     </HStack>
 
                     <FlatList
-                      className="bg-secondary-100 rounded-xl overflow-hidden"
+                      className="rounded-xl overflow-hidden"
                       scrollEnabled={false}
                       data={unsettledPayments}
                       keyExtractor={(item) => item.id}
-                      renderItem={({ item }) => (
-                        <SettlementItem item={item} onPress={() => {}} />
-                      )}
+                      renderItem={({ item }) => <SettlementItem item={item} />}
                       ItemSeparatorComponent={() => (
                         <Box className="mx-4">
                           <Divider className="border-secondary-200" />
@@ -205,7 +207,7 @@ export default function LeaveGroupSheet({
                         }}
                       >
                         <FlatList
-                          className="bg-secondary-100 rounded-xl overflow-hidden"
+                          className="rounded-xl overflow-hidden"
                           scrollEnabled={false}
                           data={otherMembers}
                           keyExtractor={(item) => item.id}
@@ -290,3 +292,55 @@ export default function LeaveGroupSheet({
     </Actionsheet>
   );
 }
+
+const SettlementItem = ({ item }: { item: Payment }) => {
+  const { details: userDetails } = states.user();
+
+  const isUserPayer = item.payer.id === userDetails?.id;
+  const isUserMember = item.member.id === userDetails?.id;
+
+  return (
+    <HStack className="gap-x-2 items-start p-4">
+      <SettlementAvatar isPayer={isUserPayer} />
+      <VStack className="gap-y-2 flex-1">
+        {item.expense_description && (
+          <HStack className="gap-x-4 items-center flex-1">
+            <Text className="text-secondary-950 flex-1" numberOfLines={1}>
+              {item.expense_description}
+            </Text>
+            <Text className="text-secondary-950">
+              {formatDate(item.created_at)}
+            </Text>
+          </HStack>
+        )}
+        <HStack className="gap-x-4">
+          <VStack className="flex-1">
+            <Text className="text-lg">
+              {item.member.first_name} {item.member.last_name}
+              {isUserMember && " (You)"}
+            </Text>
+            <Text className="text-sm text-secondary-950">pays</Text>
+            <Text className="text-lg">
+              {item.payer.first_name} {item.payer.last_name}
+              {isUserPayer && " (You)"}
+            </Text>
+          </VStack>
+          <HStack className="gap-x-2 items-center">
+            <VStack className="items-end">
+              <Text
+                className={cn(
+                  "text-lg",
+                  isUserMember ? "text-error-400" : undefined
+                )}
+              >
+                {isUserMember && "-"}
+                {formatAmount(item.amount, item.currency)}
+              </Text>
+              <StatusBadge status={item.status} size="md" />
+            </VStack>
+          </HStack>
+        </HStack>
+      </VStack>
+    </HStack>
+  );
+};
