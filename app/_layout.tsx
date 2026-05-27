@@ -15,9 +15,8 @@ import * as Notifications from "expo-notifications";
 import { SplashScreen, Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
-import { StyleSheet } from "react-native";
 
-import Animated, {
+import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
   useAnimatedStyle,
@@ -51,8 +50,12 @@ export default function RootLayout() {
   const isFirstRender = useRef(true);
   const notificationChannel = useRef<RealtimeChannel | null>(null);
   const subscribedUserId = useRef<string | null>(null);
-  const notifReceivedListener = useRef<Notifications.EventSubscription | null>(null);
-  const notifResponseListener = useRef<Notifications.EventSubscription | null>(null);
+  const notifReceivedListener = useRef<Notifications.EventSubscription | null>(
+    null
+  );
+  const notifResponseListener = useRef<Notifications.EventSubscription | null>(
+    null
+  );
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: overlayOpacity.value
@@ -196,8 +199,9 @@ export default function RootLayout() {
           const record = payload.new as { id: string; to_user_id: string };
           if (record.to_user_id !== userId) return;
 
-          const notification =
-            await services.notification.getNotificationById(record.id);
+          const notification = await services.notification.getNotificationById(
+            record.id
+          );
 
           states.notification.setState((prev) => ({
             ...prev,
@@ -264,14 +268,6 @@ export default function RootLayout() {
           <StatusBar style="auto" />
         </ThemeProvider>
       </ToastProvider>
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFillObject,
-          { backgroundColor: appearanceMode === "dark" ? "#000" : "#fff" },
-          overlayStyle
-        ]}
-      />
     </GluestackUIProvider>
   );
 }
