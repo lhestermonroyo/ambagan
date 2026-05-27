@@ -3,6 +3,7 @@ import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import { NotificationListSkeleton } from "@/components/SkeletonLoader";
 import { FlatList } from "@/components/ui/flat-list";
 import { VStack } from "@/components/ui/vstack";
 import NotificationItem from "@/features/notifications/components/NotificationItem";
@@ -169,7 +170,7 @@ export default function NotificationsScreen() {
           : undefined
       }
     >
-      <LoadingWrapper isLoading={loading} text="Loading notifications...">
+      <LoadingWrapper isLoading={loading} skeleton={<NotificationListSkeleton />}>
         <FlatList
           data={list}
           keyExtractor={(item) => item.id}

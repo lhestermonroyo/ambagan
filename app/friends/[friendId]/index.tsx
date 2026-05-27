@@ -3,6 +3,7 @@ import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import { SettlementListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -448,7 +449,7 @@ export default function FriendDetailScreen() {
 
               <LoadingWrapper
                 isLoading={loading}
-                text="Loading friend settlements..."
+                skeleton={<SettlementListSkeleton />}
               >
                 <SectionList
                   scrollEnabled={false}

@@ -5,6 +5,7 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import { GroupListSkeleton } from "@/components/SkeletonLoader";
 import SearchInput from "@/components/SearchInput";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import { Box } from "@/components/ui/box";
@@ -267,7 +268,7 @@ export default function GroupsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <LoadingWrapper isLoading={loading} text="Loading groups...">
+          <LoadingWrapper isLoading={loading} skeleton={<GroupListSkeleton />}>
             <SwipeListView
               className="flex-1"
               scrollEnabled={false}

@@ -5,6 +5,7 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
@@ -427,7 +428,7 @@ export default function GroupDetailsScreen() {
               <FabLabel className="text-lg font-medium">New Expense</FabLabel>
             </Fab>
           )}
-        <LoadingWrapper isLoading={loading} text="Loading group details...">
+        <LoadingWrapper isLoading={loading} skeleton={<ExpenseListSkeleton />}>
           <ScrollView
             className="flex-1"
             refreshControl={

@@ -2,6 +2,7 @@ import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import { SettlementListSkeleton } from "@/components/SkeletonLoader";
 import { Avatar } from "@/components/ui/avatar";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
@@ -416,7 +417,7 @@ export default function GroupSettlements({
             </HStack>
           )}
 
-          <LoadingWrapper isLoading={loading} text="Loading settlements...">
+          <LoadingWrapper isLoading={loading} skeleton={<SettlementListSkeleton />}>
             <SectionList
               scrollEnabled={false}
               sections={settlementSections}

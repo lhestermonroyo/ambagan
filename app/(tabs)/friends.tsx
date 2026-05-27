@@ -4,6 +4,7 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import { FriendListSkeleton } from "@/components/SkeletonLoader";
 import PressableListItem from "@/components/PressableListItem";
 import SearchInput from "@/components/SearchInput";
 import { Box } from "@/components/ui/box";
@@ -225,7 +226,7 @@ export default function FriendsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <LoadingWrapper isLoading={loading} text="Loading friends...">
+          <LoadingWrapper isLoading={loading} skeleton={<FriendListSkeleton />}>
             {activeTab !== "favorites" ? (
               <>
                 {activeTab === "all" && filteredFavorites.length > 0 && (

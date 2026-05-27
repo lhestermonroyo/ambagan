@@ -2,6 +2,11 @@ import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import {
+  FriendCardListSkeleton,
+  GroupListSkeleton,
+  SettlementListSkeleton
+} from "@/components/SkeletonLoader";
 import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
@@ -350,8 +355,8 @@ export default function HomeScreen() {
                 />
               </HStack>
               <LoadingWrapper
-                text="Loading friends..."
                 isLoading={loading.friends}
+                skeleton={<FriendCardListSkeleton />}
               >
                 {friends.length > 0 ? (
                   <HScrollView
@@ -391,8 +396,8 @@ export default function HomeScreen() {
                 </Text>
               </HStack>
               <LoadingWrapper
-                text="Loading recent activities..."
                 isLoading={loading.activities}
+                skeleton={<SettlementListSkeleton count={3} />}
               >
                 <FlatList
                   data={activitiesPreview}
@@ -427,8 +432,8 @@ export default function HomeScreen() {
                 />
               </HStack>
               <LoadingWrapper
-                text="Loading recent groups..."
                 isLoading={loading.groups}
+                skeleton={<GroupListSkeleton count={3} />}
               >
                 <FlatList
                   data={groupsPreview}
