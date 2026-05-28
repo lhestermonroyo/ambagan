@@ -70,14 +70,13 @@ export default function GroupSelection({
         <Box className="p-4 border border-background-200 rounded-lg">
           <HStack className="gap-x-4 justify-center items-center">
             <VStack className="flex-1 gap-y-4">
-              <HStack className="gap-x-2">
-                <AppAvatar name={group.name} uri={group.avatar || ""} />
-                <VStack>
-                  <Text className="text-lg">{group.name}</Text>
-                  <Text className="text-secondary-950">
-                    Joined {formatDate(group.created_at)}
-                  </Text>
-                </VStack>
+              <HStack className="gap-x-2 items-center">
+                <AppAvatar
+                  size="xs"
+                  name={group.name}
+                  uri={group.avatar || ""}
+                />
+                <Text className="text-lg">{group.name}</Text>
               </HStack>
             </VStack>
           </HStack>
@@ -89,14 +88,13 @@ export default function GroupSelection({
         >
           <HStack className="gap-x-4 justify-center items-center">
             <VStack className="flex-1 gap-y-4">
-              <HStack className="gap-x-2">
-                <AppAvatar name={group.name} uri={group.avatar || ""} />
-                <VStack>
-                  <Text className="text-lg">{group.name}</Text>
-                  <Text className="text-secondary-950">
-                    Joined {formatDate(group.created_at)}
-                  </Text>
-                </VStack>
+              <HStack className="gap-x-2 items-center">
+                <AppAvatar
+                  size="xs"
+                  name={group.name}
+                  uri={group.avatar || ""}
+                />
+                <Text className="text-lg">{group.name}</Text>
               </HStack>
             </VStack>
             <Icon as="unfold-more" className="text-secondary-950" />

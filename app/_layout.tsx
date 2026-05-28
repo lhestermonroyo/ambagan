@@ -8,6 +8,8 @@ import { tables } from "@/utils/constants";
 import { getDb } from "@/utils/offlineDb";
 import { supabase } from "@/utils/supabase";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import Constants from "expo-constants";
 import { useFonts } from "expo-font";
@@ -276,14 +278,18 @@ export default function RootLayout() {
   }
 
   return (
-    <GluestackUIProvider mode={appearanceMode}>
-      <ToastProvider>
-        <ThemeProvider value={DefaultTheme}>
-          <Stack screenOptions={{ headerShown: false }} />
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </ToastProvider>
-    </GluestackUIProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <BottomSheetModalProvider>
+        <GluestackUIProvider mode={appearanceMode}>
+          <ToastProvider>
+            <ThemeProvider value={DefaultTheme}>
+              <Stack screenOptions={{ headerShown: false }} />
+              <StatusBar style="auto" />
+            </ThemeProvider>
+          </ToastProvider>
+        </GluestackUIProvider>
+      </BottomSheetModalProvider>
+    </GestureHandlerRootView>
   );
 }
 
