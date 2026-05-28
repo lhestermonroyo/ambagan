@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.lhestermonroyo.ambaganph"
+      "bundleIdentifier": "com.lhestermonroyo.ambaganph",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -60,9 +63,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "43521256-f38c-4649-a3d6-58c76dfaf1bb"
+        "projectId": "39236d20-59ff-4cad-ba80-20348dda7e2c"
       }
     },
-    "owner": "lhestermonroyo"
+    "owner": "lhestermonroyo.dev"
   }
 }

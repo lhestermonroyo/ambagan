@@ -182,6 +182,7 @@ export default function AddExpenseStep({
             any document that shows the expense details.
           </Text>
         </VStack>
+
       </VStack>
     </ScrollView>
   );

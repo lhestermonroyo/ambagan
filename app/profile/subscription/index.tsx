@@ -9,6 +9,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
+import services from "@/services";
 import states from "@/states";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { format } from "date-fns";
@@ -23,14 +24,15 @@ import {
   WifiOff,
   XCircle
 } from "lucide-react-native";
-import { useState } from "react";
-import { Pressable, useColorScheme } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, useColorScheme } from "react-native";
+import { PurchasesOffering, PurchasesPackage } from "react-native-purchases";
 
-const MONTHLY_PRICE = 149;
-const YEARLY_PRICE = 999;
-const YEARLY_MONTHLY_EQUIV = Math.round(YEARLY_PRICE / 12);
+const FALLBACK_MONTHLY = 149;
+const FALLBACK_YEARLY = 999;
+const YEARLY_MONTHLY_EQUIV = Math.round(FALLBACK_YEARLY / 12);
 const YEARLY_SAVINGS_PCT = Math.round(
-  (1 - YEARLY_MONTHLY_EQUIV / MONTHLY_PRICE) * 100
+  (1 - YEARLY_MONTHLY_EQUIV / FALLBACK_MONTHLY) * 100
 );
 
 const FEATURES: {
@@ -82,6 +84,10 @@ type BillingPeriod = "monthly" | "yearly";
 export default function SubscriptionScreen() {
   const { details: userDetails } = states.user();
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [loadingOffering, setLoadingOffering] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const router = useRouter();
   const toast = useAppToast();
@@ -90,35 +96,128 @@ export default function SubscriptionScreen() {
   const isPro = userDetails?.plan === "pro";
   const expiresAt = userDetails?.plan_expires_at;
 
-  const currentPrice =
-    billingPeriod === "monthly" ? MONTHLY_PRICE : YEARLY_PRICE;
-  const priceLabel =
-    billingPeriod === "monthly"
-      ? `₱${MONTHLY_PRICE}/month`
-      : `₱${YEARLY_PRICE}/year`;
+  const monthlyPkg = offering
+    ? services.purchase.getMonthlyPackage(offering)
+    : undefined;
+  const yearlyPkg = offering
+    ? services.purchase.getAnnualPackage(offering)
+    : undefined;
 
-  const handleUpgrade = () => {
-    toast({
-      title: "Coming Soon",
-      description:
-        "In-app purchase is being set up. Stay tuned for the official launch!",
-      type: "info"
-    });
+  const selectedPkg: PurchasesPackage | undefined =
+    billingPeriod === "monthly" ? monthlyPkg : yearlyPkg;
+
+  const monthlyPriceLabel = monthlyPkg
+    ? `₱${Math.round(monthlyPkg.product.price).toLocaleString("en-PH")}`
+    : `₱${FALLBACK_MONTHLY}`;
+  const yearlyPriceLabel = yearlyPkg
+    ? `₱${Math.round(yearlyPkg.product.price).toLocaleString("en-PH")}`
+    : `₱${FALLBACK_YEARLY}`;
+
+  const ctaPriceLabel =
+    billingPeriod === "monthly"
+      ? `${monthlyPriceLabel}/month`
+      : `${yearlyPriceLabel}/year`;
+
+  useEffect(() => {
+    fetchOffering();
+  }, []);
+
+  const fetchOffering = async () => {
+    setLoadingOffering(true);
+    try {
+      const current = await services.purchase.getOfferings();
+      setOffering(current);
+    } catch (error) {
+      console.error("Failed to fetch offerings:", error);
+    } finally {
+      setLoadingOffering(false);
+    }
   };
 
-  const handleManage = () => {
-    toast({
-      title: "Manage Subscription",
-      description:
-        "To cancel or modify your subscription, go to your App Store or Play Store subscription settings.",
-      type: "info"
-    });
+  const handleUpgrade = async () => {
+    if (!selectedPkg) {
+      toast({
+        title: "Products Unavailable",
+        description:
+          "Could not load subscription products. Please try again later.",
+        type: "error"
+      });
+      return;
+    }
+
+    setPurchasing(true);
+    try {
+      const customerInfo = await services.purchase.purchasePackage(selectedPkg);
+      const { plan, planExpiresAt } =
+        await services.purchase.syncPlanToSupabase(customerInfo);
+
+      states.user.setState((prev) => ({
+        ...prev,
+        details: prev.details
+          ? { ...prev.details, plan, plan_expires_at: planExpiresAt }
+          : prev.details
+      }));
+
+      toast({
+        title: "Welcome to Pro!",
+        description: "Your subscription is now active. Enjoy all Pro features.",
+        type: "success"
+      });
+    } catch (error) {
+      console.error("Purchase failed:", error);
+      if (services.purchase.isPurchaseCancelled(error)) return;
+      toast({
+        title: "Purchase Failed",
+        description: "Something went wrong during checkout. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    try {
+      const customerInfo = await services.purchase.restorePurchases();
+      const { plan, planExpiresAt } =
+        await services.purchase.syncPlanToSupabase(customerInfo);
+
+      states.user.setState((prev) => ({
+        ...prev,
+        details: prev.details
+          ? { ...prev.details, plan, plan_expires_at: planExpiresAt }
+          : prev.details
+      }));
+
+      const restored = plan === "pro";
+      toast({
+        title: restored ? "Subscription Restored" : "No Active Subscription",
+        description: restored
+          ? "Your Pro subscription has been restored."
+          : "No previous subscription found for this account.",
+        type: restored ? "success" : "info"
+      });
+    } catch (error) {
+      toast({
+        title: "Restore Failed",
+        description: "Could not restore purchases. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  const handleManage = async () => {
+    await services.purchase.showManageSubscriptions();
   };
 
   return (
     <InnerLayout title="Subscription" onBack={() => router.back()}>
       <ScrollView className="flex-1" bounces={false}>
         <VStack className="gap-y-6 p-4 pb-10">
+          {/* Current plan card */}
           <Box
             className={`rounded-2xl p-4 ${
               isPro
@@ -180,9 +279,17 @@ export default function SubscriptionScreen() {
           {/* Billing period toggle — only for free users */}
           {!isPro && (
             <VStack className="gap-y-2">
-              <Text bold className="text-xl">
-                Billing Period
-              </Text>
+              <HStack className="items-center justify-between">
+                <Text bold className="text-xl">
+                  Billing Period
+                </Text>
+                {loadingOffering && (
+                  <ActivityIndicator
+                    size="small"
+                    color={getPrimaryHex("text-primary-400", colorScheme)}
+                  />
+                )}
+              </HStack>
               <HStack className="gap-x-2">
                 <Pressable
                   className="flex-1"
@@ -207,7 +314,7 @@ export default function SubscriptionScreen() {
                       bold
                       className={`text-xl ${billingPeriod === "monthly" ? "text-primary-400" : ""}`}
                     >
-                      ₱{MONTHLY_PRICE}
+                      {monthlyPriceLabel}
                     </Text>
                     <Text className="text-secondary-950 text-sm">
                       per month
@@ -245,7 +352,7 @@ export default function SubscriptionScreen() {
                       bold
                       className={`text-xl ${billingPeriod === "yearly" ? "text-primary-400" : ""}`}
                     >
-                      ₱{YEARLY_PRICE}
+                      {yearlyPriceLabel}
                     </Text>
                     <Text className="text-secondary-950 text-sm">
                       ₱{YEARLY_MONTHLY_EQUIV}/month billed annually
@@ -296,8 +403,17 @@ export default function SubscriptionScreen() {
           {!isPro ? (
             <VStack className="gap-y-3">
               <FormButton
-                text={`Upgrade to Pro — ${priceLabel}`}
+                text={`Upgrade to Pro — ${ctaPriceLabel}`}
+                loading={purchasing}
+                disabled={purchasing || restoring || loadingOffering}
                 onPress={handleUpgrade}
+              />
+              <FormButton
+                text="Restore Purchases"
+                variant="outline"
+                loading={restoring}
+                disabled={purchasing || restoring}
+                onPress={handleRestore}
               />
               <Text className="text-center text-secondary-950 text-sm leading-relaxed">
                 In-app purchase via App Store / Play Store.{"\n"}Cancel anytime

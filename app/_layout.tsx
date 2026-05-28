@@ -238,6 +238,21 @@ export default function RootLayout() {
       await loadPreferences(id);
       subscribeToNotifications(id);
       registerDevicePushToken(id);
+      services.purchase.initializePurchases(id);
+
+      try {
+        const customerInfo = await services.purchase.getCustomerInfo();
+        const { plan, planExpiresAt } =
+          await services.purchase.syncPlanToSupabase(customerInfo);
+        states.user.setState((prev) => ({
+          ...prev,
+          details: prev.details
+            ? { ...prev.details, plan, plan_expires_at: planExpiresAt }
+            : prev.details
+        }));
+      } catch (error) {
+        console.error("Failed to sync plan on launch:", error);
+      }
     } catch (error) {
       console.error("Error fetching user details:", error);
     }
