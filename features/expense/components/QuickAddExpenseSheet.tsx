@@ -1,5 +1,10 @@
+import AmountInput from "@/components/AmountInput";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
+import CurrencySelection from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
+import FormTextarea from "@/components/FormTextarea";
+import Icon from "@/components/Icon";
+import PressableListItem from "@/components/PressableListItem";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -8,11 +13,18 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
+import {
+  FormControl,
+  FormControlLabel,
+  FormControlLabelText
+} from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
-import { Input, InputField, InputSlot } from "@/components/ui/input";
 import { Pressable } from "@/components/ui/pressable";
+import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { GroupSelectionActionSheet } from "@/features/expense/components/GroupSelection";
+import { formatAmount } from "@/features/expense/utils/formatAmount";
 import {
   generatePaymentSplits,
   getAmountPerPerson,
@@ -21,50 +33,64 @@ import {
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
-import { Member } from "@/types/groups";
-import { getSecondaryHex } from "@/utils/getColorHex";
-import { ChevronLeft } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
-import { useColorScheme } from "react-native";
+import { Group, Member } from "@/types/groups";
+import { useRouter } from "expo-router";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 type QuickAddExpenseSheetProps = {
   isOpen: boolean;
-  groupId: string;
+  group: Group | null;
+  allowGroupChange?: boolean;
   onClose: () => void;
   onSuccess: () => void;
 };
 
 export default function QuickAddExpenseSheet({
   isOpen,
-  groupId,
+  group,
+  allowGroupChange = false,
   onClose,
   onSuccess
 }: QuickAddExpenseSheetProps) {
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(group);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
+  const [currency, setCurrency] = useState("PHP");
   const [submitting, setSubmitting] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
+  const [groupPickerOpen, setGroupPickerOpen] = useState(false);
 
   const { details: currentUser, defaultCurrency } = states.user();
-  const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
+  const router = useRouter();
+
+  const isGroupPro = selectedGroup?.admin?.plan === "pro";
 
   useEffect(() => {
-    if (isOpen && groupId) {
-      fetchMembers();
-    } else {
+    if (isOpen) {
       setAmount("");
       setDescription("");
+      setSelectedGroup(group);
+      setCurrency(group?.admin?.plan === "pro" ? defaultCurrency : "PHP");
+      if (group) fetchMembers(group.id);
+    } else {
       setMembers([]);
     }
-  }, [isOpen, groupId]);
+  }, [isOpen]);
 
-  const fetchMembers = async () => {
+  useEffect(() => {
+    if (selectedGroup && isOpen) {
+      setCurrency(isGroupPro ? defaultCurrency : "PHP");
+      fetchMembers(selectedGroup.id);
+    }
+  }, [selectedGroup?.id]);
+
+  const fetchMembers = async (groupId: string) => {
     try {
       const result = await services.member.getMembersByGroupId(groupId);
       if (result) setMembers(result);
     } catch {
-      // submit button stays disabled if fetch fails
+      // submit stays disabled if fetch fails
     }
   };
 
@@ -87,10 +113,11 @@ export default function QuickAddExpenseSheet({
     description.trim().length > 0 &&
     !submitting &&
     memberCount >= 2 &&
-    !!currentUser;
+    !!currentUser &&
+    !!selectedGroup;
 
   const handleSubmit = async () => {
-    if (!currentUser || !canSubmit) return;
+    if (!currentUser || !selectedGroup || !canSubmit) return;
     setSubmitting(true);
 
     try {
@@ -110,10 +137,10 @@ export default function QuickAddExpenseSheet({
         {
           amount: parsedAmount,
           description: description.trim(),
-          group_id: groupId,
+          group_id: selectedGroup.id,
           proof_of_payment: null,
           split_type: "equal",
-          currency: defaultCurrency
+          currency
         },
         payers,
         memberSplits,
@@ -139,89 +166,197 @@ export default function QuickAddExpenseSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[55]}>
-      <ActionsheetBackdrop />
-      <ActionsheetContent className="p-0">
-        <ActionsheetDragIndicatorWrapper>
-          <ActionsheetDragIndicator />
-        </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full flex-1 gap-y-4">
-          <Pressable onPress={onClose}>
-            <HStack className="p-4 items-center gap-x-2">
-              <ChevronLeft
-                color={getSecondaryHex("text-secondary-950", colorScheme)}
-              />
-              <VStack>
-                <Text bold className="text-xl">
-                  Quick Add
-                </Text>
-                <Text className="text-secondary-950 text-sm">
-                  You paid · Split equally among all members
-                </Text>
+    <>
+      <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[60]}>
+        <ActionsheetBackdrop />
+        <ActionsheetContent className="p-0">
+          <ActionsheetDragIndicatorWrapper>
+            <ActionsheetDragIndicator />
+          </ActionsheetDragIndicatorWrapper>
+          <VStack className="w-full flex-1">
+            <Pressable onPress={onClose}>
+              <HStack className="p-4 items-start gap-x-1">
+                <Icon as="arrow-back-ios" className="text-secondary-950" />
+                <VStack>
+                  <Text bold className="text-xl">
+                    Quick Add
+                  </Text>
+                  <Text className="text-secondary-950">
+                    Paid by you · Equal split · Dated today
+                  </Text>
+                </VStack>
+              </HStack>
+            </Pressable>
+
+            {!group ? (
+              <VStack className="flex-1 items-center justify-center px-8 gap-y-4 pb-8">
+                <Icon as="group-add" className="text-primary-400" size="xl" />
+                <VStack className="items-center gap-y-1">
+                  <Text bold className="text-lg text-center">
+                    No Group Yet
+                  </Text>
+                  <Text className="text-secondary-950 text-sm text-center">
+                    You need a group to add expenses. Create one to get
+                    started.
+                  </Text>
+                </VStack>
+                <FormButton
+                  text="Create Group"
+                  onPress={() => {
+                    onClose();
+                    setTimeout(() => router.push("/groups/create"), 300);
+                  }}
+                />
               </VStack>
-            </HStack>
-          </Pressable>
+            ) : (
+              <>
+                <ScrollView className="flex-1 px-4" bounces={false}>
+                  <VStack className="gap-y-6">
+                    <FormControl size="md">
+                      <FormControlLabel>
+                        <FormControlLabelText>Amount</FormControlLabelText>
+                      </FormControlLabel>
+                      <HStack className="gap-x-2 items-end h-12">
+                        {isGroupPro ? (
+                          <CurrencySelection
+                            currency={currency}
+                            onCurrencyChange={setCurrency}
+                          />
+                        ) : (
+                          <Box className="border border-secondary-500 bg-secondary-50 items-center justify-center h-full px-2 py-2 rounded-lg">
+                            <Text className="font-semibold text-secondary-950">
+                              PHP (₱)
+                            </Text>
+                          </Box>
+                        )}
+                        <VStack className="flex-1">
+                          <AmountInput
+                            className="h-full"
+                            placeholder="0.00"
+                            value={amount}
+                            onChangeText={setAmount}
+                          />
+                        </VStack>
+                      </HStack>
+                    </FormControl>
 
-          <VStack className="px-4 gap-y-4">
-            <Input size="lg" className="rounded-lg h-16">
-              <InputSlot className="pl-3">
-                <Text bold className="text-2xl">
-                  ₱
-                </Text>
-              </InputSlot>
-              <InputField
-                keyboardType="numeric"
-                placeholder="0.00"
-                value={amount}
-                onChangeText={setAmount}
-                autoFocus
-                className="text-2xl font-bold"
-              />
-            </Input>
-
-            <Input size="lg" className="rounded-lg">
-              <InputField
-                placeholder="What's this for?"
-                value={description}
-                onChangeText={setDescription}
-              />
-            </Input>
-
-            {memberCount > 0 && (
-              <Box className="p-4 rounded-xl border border-secondary-200 dark:border-secondary-800 bg-secondary-100 dark:bg-secondary-900">
-                <HStack className="justify-between items-center">
-                  <VStack className="gap-y-1">
-                    <AppAvatarGroup
-                      items={memberAvatars}
+                    <FormTextarea
+                      label="Description"
+                      placeholder="Enter description (e.g., Dinner at KFC Baguio)"
+                      value={description}
+                      onChangeText={setDescription}
+                      autoCapitalize="none"
                       size="sm"
-                      maxDisplay={4}
                     />
-                    <Text className="text-secondary-950 text-xs">
-                      {memberCount} member{memberCount !== 1 ? "s" : ""}
-                    </Text>
+
+                    {memberCount > 0 && (
+                      <Fragment>
+                        {allowGroupChange ? (
+                          <PressableListItem
+                            className="p-4 border border-background-200 rounded-lg"
+                            onPress={() => setGroupPickerOpen(true)}
+                          >
+                            <HStack className="justify-between items-center gap-x-2 flex-1">
+                              <HStack className="gap-x-2 items-center flex-1">
+                                <VStack className="gap-y-2 flex-1">
+                                  <Text className="text-secondary-950 font-medium">
+                                    {selectedGroup?.name}
+                                  </Text>
+                                  <VStack className="items-start gap-y-1">
+                                    <AppAvatarGroup
+                                      items={memberAvatars}
+                                      size="sm"
+                                      maxDisplay={4}
+                                    />
+                                    <Text className="text-secondary-950 text-sm">
+                                      {memberCount} member
+                                      {memberCount !== 1 ? "s" : ""}
+                                    </Text>
+                                  </VStack>
+                                </VStack>
+                                <VStack className="items-end">
+                                  <Text
+                                    bold
+                                    className="text-2xl text-primary-400"
+                                  >
+                                    {formatAmount(perPerson, currency)}
+                                  </Text>
+                                  <Text className="text-secondary-950 text-sm">
+                                    each
+                                  </Text>
+                                </VStack>
+                              </HStack>
+                              <Icon
+                                as="unfold-more"
+                                className="text-secondary-950"
+                              />
+                            </HStack>
+                          </PressableListItem>
+                        ) : (
+                          <Box className="p-4 border border-background-200 rounded-lg">
+                            <HStack className="justify-between items-center gap-x-2 flex-1">
+                              <HStack className="gap-x-2 items-center flex-1">
+                                <VStack className="gap-y-2 flex-1">
+                                  <Text className="text-secondary-950 font-medium">
+                                    {selectedGroup?.name}
+                                  </Text>
+                                  <VStack className="items-start gap-y-1">
+                                    <AppAvatarGroup
+                                      items={memberAvatars}
+                                      size="sm"
+                                      maxDisplay={4}
+                                    />
+                                    <Text className="text-secondary-950 text-sm">
+                                      {memberCount} member
+                                      {memberCount !== 1 ? "s" : ""}
+                                    </Text>
+                                  </VStack>
+                                </VStack>
+                                <VStack className="items-end">
+                                  <Text
+                                    bold
+                                    className="text-2xl text-primary-400"
+                                  >
+                                    {formatAmount(perPerson, currency)}
+                                  </Text>
+                                  <Text className="text-secondary-950 text-sm">
+                                    each
+                                  </Text>
+                                </VStack>
+                              </HStack>
+                            </HStack>
+                          </Box>
+                        )}
+                      </Fragment>
+                    )}
                   </VStack>
-                  <VStack className="items-end">
-                    <Text bold className="text-2xl text-primary-400">
-                      ₱{perPerson > 0 ? perPerson.toFixed(2) : "0.00"}
-                    </Text>
-                    <Text className="text-secondary-950 text-xs">each</Text>
-                  </VStack>
-                </HStack>
-              </Box>
+                </ScrollView>
+
+                <Box className="items-center justify-center p-4">
+                  <HStack className="gap-x-2">
+                    <FormButton
+                      className="flex-1"
+                      text="Add Expense"
+                      loading={submitting}
+                      disabled={!canSubmit}
+                      onPress={handleSubmit}
+                    />
+                  </HStack>
+                </Box>
+              </>
             )}
           </VStack>
-        </VStack>
+        </ActionsheetContent>
+      </Actionsheet>
 
-        <Box className="p-4">
-          <FormButton
-            className="flex-1"
-            text="Add Expense"
-            loading={submitting}
-            disabled={!canSubmit}
-            onPress={handleSubmit}
-          />
-        </Box>
-      </ActionsheetContent>
-    </Actionsheet>
+      {selectedGroup && (
+        <GroupSelectionActionSheet
+          isOpen={groupPickerOpen}
+          onClose={() => setGroupPickerOpen(false)}
+          currentGroup={selectedGroup}
+          onChangeGroup={(g) => setSelectedGroup(g)}
+        />
+      )}
+    </>
   );
 }

@@ -472,14 +472,19 @@ export default function HomeScreen() {
           router.push("/groups/[groupId]/new-expense");
         }}
       />
-      {groupList[0]?.id && (
-        <QuickAddExpenseSheet
-          isOpen={quickAddOpen}
-          groupId={groupList[0].id}
-          onClose={() => setQuickAddOpen(false)}
-          onSuccess={() => init(true)}
-        />
-      )}
+      <QuickAddExpenseSheet
+        isOpen={quickAddOpen}
+        group={groupList[0] ?? null}
+        allowGroupChange
+        onClose={() => setQuickAddOpen(false)}
+        onSuccess={() => {
+          init(true);
+          states.group.setState((prev) => ({
+            ...prev,
+            settlementRefreshToken: prev.settlementRefreshToken + 1
+          }));
+        }}
+      />
     </Fragment>
   );
 }

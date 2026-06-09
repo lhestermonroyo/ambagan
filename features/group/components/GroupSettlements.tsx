@@ -48,7 +48,7 @@ export default function GroupSettlements({
 }: {
   refreshTrigger?: number;
 }) {
-  const { details, expenseList } = states.group();
+  const { details, expenseList, settlementRefreshToken } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
   const colorScheme = useColorScheme() ?? "light";
 
@@ -88,6 +88,12 @@ export default function GroupSettlements({
       fetchAll();
     }
   }, [refreshTrigger]);
+
+  useEffect(() => {
+    if (settlementRefreshToken > 0 && details?.id && userDetails?.id) {
+      fetchAll();
+    }
+  }, [settlementRefreshToken]);
 
   useEffect(() => {
     if (!initializedRef.current) return;

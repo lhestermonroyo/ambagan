@@ -734,14 +734,17 @@ export default function GroupDetailsScreen() {
           router.push("/groups");
         }}
       />
-      {groupId && (
-        <QuickAddExpenseSheet
-          isOpen={quickAddOpen}
-          groupId={groupId}
-          onClose={() => setQuickAddOpen(false)}
-          onSuccess={() => init(groupId, true)}
-        />
-      )}
+      <QuickAddExpenseSheet
+        isOpen={quickAddOpen}
+        group={groupDetails}
+        onClose={() => setQuickAddOpen(false)}
+        onSuccess={() => {
+          if (groupId) {
+            init(groupId, true);
+            setSettlementRefreshTrigger((prev) => prev + 1);
+          }
+        }}
+      />
     </Fragment>
   );
 }

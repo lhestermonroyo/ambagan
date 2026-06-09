@@ -22,9 +22,13 @@ const AppAvatarGroup = ({
   maxDisplay = 3,
   size
 }: AppAvatarGroupProps) => {
+  const displayCount = Math.min(items.length, maxDisplay);
+  const hasOverflow = items.length > maxDisplay;
+
   return (
     <AvatarGroup className="items-center">
       {items.slice(0, maxDisplay).map((avatar, index) => {
+        const isLast = index === displayCount - 1 && !hasOverflow;
         return (
           <Avatar
             key={index}
@@ -34,7 +38,7 @@ const AppAvatarGroup = ({
                 (avatar.name[0]?.toLowerCase() as keyof typeof avatarColors) ||
                   "a"
               ],
-              items.length === 1 ? "" : "mr-[-10]",
+              !isLast ? "mr-[-10]" : "",
               `z-${index + 1}`,
               "border-2 border-outline-0"
             )}
@@ -53,12 +57,11 @@ const AppAvatarGroup = ({
           </Avatar>
         );
       })}
-      {items.length > maxDisplay && (
+      {hasOverflow && (
         <Avatar
           size={size}
           className={cn(
             "border-2 border-outline-0 bg-slate-700",
-            items.length === 1 ? "" : "mr-[-10]",
             `z-${maxDisplay + 1}`
           )}
         >

@@ -7,6 +7,7 @@ export type GroupState = {
   memberList: Member[];
   expenseList: ExpensePreview[];
   settlementList: Payment[];
+  settlementRefreshToken: number;
 };
 
 export type Group = {

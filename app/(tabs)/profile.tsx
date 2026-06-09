@@ -25,7 +25,6 @@ import {
   Coins,
   Crown,
   Eye,
-  Info,
   LogOut,
   MonitorCog,
   Moon,
@@ -125,7 +124,7 @@ export default function ProfileScreen() {
         label: "Help Center",
         description: "Get support and find answers to your questions",
         onPress: () => router.push("/profile/help-center")
-      },
+      }
       // {
       //   icon: <Info color={getPrimaryHex("text-primary-400", colorScheme)} />,
       //   label: "About",
@@ -154,7 +153,7 @@ export default function ProfileScreen() {
 
   return (
     <TabLayout title="Profile">
-      <ScrollView className="flex-1" bounces={false}>
+      <ScrollView className="flex-1">
         <VStack className="gap-y-8">
           <HStack className="px-4 gap-x-4 items-center">
             <VStack>

@@ -112,7 +112,7 @@ export default function GroupSelection({
   );
 }
 
-function GroupSelectionActionSheet({
+export function GroupSelectionActionSheet({
   isOpen,
   onClose,
   currentGroup,

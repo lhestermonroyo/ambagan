@@ -6,7 +6,8 @@ const initialState: GroupState = {
   details: null,
   memberList: [],
   expenseList: [],
-  settlementList: []
+  settlementList: [],
+  settlementRefreshToken: 0
 };
 
 const GROUP_STATE = create<

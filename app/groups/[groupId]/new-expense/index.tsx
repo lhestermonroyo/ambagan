@@ -327,7 +327,11 @@ export default function NewExpenseScreen() {
 
   if (!values.group) {
     return (
-      <FormLayout title="New Expense" onBack={() => router.back()} footer={[]}>
+      <FormLayout
+        title="Custom Expense"
+        onBack={() => router.back()}
+        footer={[]}
+      >
         <VStack className="flex-1 p-4">
           <VStack className="items-center justify-center flex-1 gap-y-4">
             <Icon
@@ -337,7 +341,7 @@ export default function NewExpenseScreen() {
             />
             <Text className="text-center">
               You are not part of any group yet. Please join or create a group
-              to first to add an expense.
+              to be able to add an expense.
             </Text>
             <FormButton
               text="Create Group"
@@ -354,7 +358,7 @@ export default function NewExpenseScreen() {
 
   return (
     <FormLayout
-      title="New Expense"
+      title="Custom Expense"
       onBack={() => router.back()}
       footer={[
         step === 1 && (

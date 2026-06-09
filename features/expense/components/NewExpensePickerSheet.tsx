@@ -48,7 +48,7 @@ export default function NewExpensePickerSheet({
         icon: Zap,
         iconColor: getPrimaryHex("text-primary-400", colorScheme),
         label: "Quick Add",
-        description: "You paid · Split equally among all members",
+        description: "Paid by you · Equal split · Dated today",
         onPress: () => {
           onClose();
           setTimeout(onQuickAdd, 300);
