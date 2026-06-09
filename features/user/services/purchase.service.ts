@@ -16,7 +16,7 @@ import Purchases, {
 const PRO_ENTITLEMENT_ID = "Ambagan Pro";
 
 export const initializePurchases = (userId: string) => {
-  const apiKey = process.env.EXPO_PUBLIC_REVENUE_CAT_API_KEY!;
+  const apiKey = process.env.EXPO_PUBLIC_REVENUE_CAT_API_KEY_TEST!;
   if (__DEV__) {
     Purchases.setLogLevel(LOG_LEVEL.DEBUG);
   }
@@ -58,7 +58,6 @@ export const getCustomerInfo = async (): Promise<CustomerInfo> => {
   console.log("[getCustomerInfo]", JSON.stringify(info, null, 2));
   return info;
 };
-
 
 export const showManageSubscriptions = async (): Promise<void> => {
   try {

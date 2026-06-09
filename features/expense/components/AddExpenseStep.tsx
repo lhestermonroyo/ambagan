@@ -205,6 +205,12 @@ export default function AddExpenseStep({
       <BottomSheetModal
         ref={dateSheetRef}
         snapPoints={["60%"]}
+        backgroundStyle={{
+          backgroundColor: getSecondaryHex("text-secondary-0", colorScheme)
+        }}
+        handleIndicatorStyle={{
+          backgroundColor: getSecondaryHex("text-secondary-500", colorScheme)
+        }}
         backdropComponent={(props) => (
           <BottomSheetBackdrop
             {...props}
@@ -216,8 +222,14 @@ export default function AddExpenseStep({
         <BottomSheetView>
           <VStack className="gap-y-2 items-center">
             <VStack className="self-start px-4">
-              <Text bold className="text-xl">
-                Push Notifications
+              <Text
+                bold
+                className="text-xl"
+                style={{
+                  color: colorScheme === "dark" ? "#F5F5F5" : "#141414"
+                }}
+              >
+                Select Expense Date
               </Text>
             </VStack>
             <VStack className="pb-4">
@@ -225,6 +237,7 @@ export default function AddExpenseStep({
                 value={values.expense_date}
                 mode="date"
                 display="inline"
+                themeVariant={colorScheme}
                 accentColor={getPrimaryHex("text-primary-400", colorScheme)}
                 onChange={(_, date) => {
                   if (date) {

@@ -22,6 +22,8 @@ import {
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
+import NewExpensePickerSheet from "@/features/expense/components/NewExpensePickerSheet";
+import QuickAddExpenseSheet from "@/features/expense/components/QuickAddExpenseSheet";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
@@ -64,6 +66,8 @@ export default function HomeScreen() {
     null
   );
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
+  const [newExpensePickerOpen, setNewExpensePickerOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const { details: userDetails, defaultCurrency } = states.user();
   const { list: groupList } = states.group();
@@ -320,9 +324,7 @@ export default function HomeScreen() {
                         />
                       }
                       text="New Expense"
-                      onPress={() =>
-                        router.push("/groups/[groupId]/new-expense")
-                      }
+                      onPress={() => setNewExpensePickerOpen(true)}
                     />
                     <FormButton
                       className="flex-1"
@@ -461,6 +463,23 @@ export default function HomeScreen() {
         item={selectedPayment}
         onRefetch={() => init(true)}
       />
+      <NewExpensePickerSheet
+        isOpen={newExpensePickerOpen}
+        onClose={() => setNewExpensePickerOpen(false)}
+        onQuickAdd={() => setQuickAddOpen(true)}
+        onCustom={() => {
+          setNewExpensePickerOpen(false);
+          router.push("/groups/[groupId]/new-expense");
+        }}
+      />
+      {groupList[0]?.id && (
+        <QuickAddExpenseSheet
+          isOpen={quickAddOpen}
+          groupId={groupList[0].id}
+          onClose={() => setQuickAddOpen(false)}
+          onSuccess={() => init(true)}
+        />
+      )}
     </Fragment>
   );
 }

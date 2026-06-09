@@ -21,6 +21,7 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import QuickAddExpenseSheet from "@/features/expense/components/QuickAddExpenseSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
 import GroupExportTab from "@/features/group/components/GroupExportTab";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
@@ -41,10 +42,13 @@ import {
   CirclePlus,
   Edit2,
   EllipsisVertical,
-  LogOut
+  ListPlus,
+  LogOut,
+  X,
+  Zap
 } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
-import { RefreshControl, useColorScheme } from "react-native";
+import { Pressable, RefreshControl, useColorScheme, View } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 const tabs = ["Settlements", "Expenses", "Group Info", "Export"] as const;
@@ -57,6 +61,8 @@ export default function GroupDetailsScreen() {
   const [showArchiveBanner, setShowArchiveBanner] = useState(true);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
   const { details: groupDetails, expenseList, settlementList } = states.group();
@@ -413,20 +419,127 @@ export default function GroupDetailsScreen() {
       >
         {(tab === "Expenses" || tab === "Settlements") &&
           !groupDetails?.archived && (
-            <Fab
-              placement="bottom right"
-              className="px-6"
-              isHovered={false}
-              isDisabled={false}
-              isPressed={false}
-              onPress={() => router.push(`/groups/${groupId}/new-expense`)}
-            >
-              <CirclePlus
-                size={20}
-                color={getSecondaryHex("text-secondary-0", colorScheme)}
-              />
-              <FabLabel className="text-lg font-medium">New Expense</FabLabel>
-            </Fab>
+            <>
+              {fabOpen && (
+                <Pressable
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 40
+                  }}
+                  onPress={() => setFabOpen(false)}
+                />
+              )}
+              {fabOpen && (
+                <View
+                  style={{
+                    position: "absolute",
+                    bottom: 80,
+                    right: 16,
+                    zIndex: 50,
+                    gap: 8,
+                    alignItems: "flex-end"
+                  }}
+                >
+                  <Pressable
+                    onPress={() => {
+                      setFabOpen(false);
+                      setQuickAddOpen(true);
+                    }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      backgroundColor:
+                        colorScheme === "dark" ? "#1F1F1F" : "#FFFFFF",
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 999,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 4,
+                      elevation: 4
+                    }}
+                  >
+                    <Zap
+                      size={16}
+                      color={getPrimaryHex("text-primary-400", colorScheme)}
+                    />
+                    <Text
+                      style={{
+                        color:
+                          colorScheme === "dark" ? "#F5F5F5" : "#141414",
+                        fontWeight: "600"
+                      }}
+                    >
+                      Quick Add
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      setFabOpen(false);
+                      router.push(`/groups/${groupId}/new-expense`);
+                    }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      backgroundColor:
+                        colorScheme === "dark" ? "#1F1F1F" : "#FFFFFF",
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 999,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 4,
+                      elevation: 4
+                    }}
+                  >
+                    <ListPlus
+                      size={16}
+                      color={getSecondaryHex("text-secondary-950", colorScheme)}
+                    />
+                    <Text
+                      style={{
+                        color:
+                          colorScheme === "dark" ? "#F5F5F5" : "#141414",
+                        fontWeight: "600"
+                      }}
+                    >
+                      Custom
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+              <Fab
+                placement="bottom right"
+                className="px-6"
+                isHovered={false}
+                isDisabled={false}
+                isPressed={false}
+                onPress={() => setFabOpen((prev) => !prev)}
+              >
+                {fabOpen ? (
+                  <X
+                    size={20}
+                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                  />
+                ) : (
+                  <CirclePlus
+                    size={20}
+                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                  />
+                )}
+                <FabLabel className="text-lg font-medium">
+                  {fabOpen ? "Close" : "New Expense"}
+                </FabLabel>
+              </Fab>
+            </>
           )}
         <LoadingWrapper isLoading={loading} skeleton={<ExpenseListSkeleton />}>
           <ScrollView
@@ -621,6 +734,14 @@ export default function GroupDetailsScreen() {
           router.push("/groups");
         }}
       />
+      {groupId && (
+        <QuickAddExpenseSheet
+          isOpen={quickAddOpen}
+          groupId={groupId}
+          onClose={() => setQuickAddOpen(false)}
+          onSuccess={() => init(groupId, true)}
+        />
+      )}
     </Fragment>
   );
 }
