@@ -157,7 +157,7 @@ export default function PushNotificationsSheet({
             </Text>
           </VStack>
 
-          <ScrollView className="flex-1 w-full" bounces={false}>
+          <ScrollView className="flex-1 w-full">
             {permissionStatus === "undetermined" && (
               <VStack className="mx-4 p-4 bg-primary-50 rounded-xl gap-y-4">
                 <HStack className="gap-x-2 items-start">
@@ -214,7 +214,6 @@ export default function PushNotificationsSheet({
                   data={section.data}
                   keyExtractor={(item) => item.key}
                   scrollEnabled={false}
-                  bounces={false}
                   renderItem={({ item }) => (
                     <HStack className="items-center justify-between px-4 py-3">
                       <VStack className="flex-1 pr-4">

@@ -215,7 +215,7 @@ export default function SubscriptionScreen() {
 
   return (
     <InnerLayout title="Subscription" onBack={() => router.back()}>
-      <ScrollView className="flex-1" bounces={false}>
+      <ScrollView className="flex-1">
         <VStack className="gap-y-6 p-4 pb-10">
           {/* Current plan card */}
           <Box

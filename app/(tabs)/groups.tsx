@@ -281,7 +281,6 @@ export default function GroupsScreen() {
                   key={item.id}
                 />
               )}
-              bounces={false}
               renderHiddenItem={({ item }, rowMap) =>
                 item.admin.id === userDetails?.id && (
                   <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">

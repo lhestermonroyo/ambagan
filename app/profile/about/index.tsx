@@ -93,7 +93,7 @@ export default function AboutScreen() {
 
   return (
     <InnerLayout title="About" onBack={() => router.back()}>
-      <ScrollView className="flex-1" bounces={false}>
+      <ScrollView className="flex-1">
         <VStack className="gap-y-6 pb-8">
           <Box className="bg-primary-400 items-center justify-center py-10 gap-y-2">
             <Text bold className="text-4xl text-background-0">

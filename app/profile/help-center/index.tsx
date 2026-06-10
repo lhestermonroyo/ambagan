@@ -77,17 +77,32 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I add an expense?",
         answer:
-          "Open a group and tap Add Expense. Enter the amount, description, date, and choose how to split — equally, by percentage, or with a custom amount per person."
+          "Open a group and tap the New Expense button. You can choose between two options: Quick Add for a fast, simplified entry, or Custom for full control over the date, split type, payer contributions, and proof of payment."
+      },
+      {
+        question: "What is Quick Add and when should I use it?",
+        answer:
+          "Quick Add is a streamlined way to log an expense in just a few taps. Enter the amount and a description, pick who paid, and the bill is automatically split equally among all group members and dated today. Use it when you're splitting a bill on the spot and everyone pays an equal share."
+      },
+      {
+        question: "Can I choose who paid in Quick Add?",
+        answer:
+          "Yes. Quick Add defaults to you as the payer, but you can tap the Payer field to open a member list and select someone else. The subtitle at the top of the sheet updates to reflect the selected payer so you always know who the expense is attributed to."
+      },
+      {
+        question: "When should I use Custom instead of Quick Add?",
+        answer:
+          "Use Custom when you need to set a specific date, split the bill by percentage or custom amounts, have multiple payers contribute different amounts, or attach a proof of payment image. Quick Add covers the common equal-split case; Custom handles everything else."
       },
       {
         question: "What split types are available?",
         answer:
-          "You can split expenses equally among all members, by a percentage you define per person, or with a fully custom amount for each participant."
+          "You can split expenses equally among all members, by a percentage you define per person, or with a fully custom amount for each participant. Split type selection is available in the Custom expense form."
       },
       {
         question: "Can I attach proof of payment to an expense?",
         answer:
-          "Yes. When adding or viewing an expense, you can upload an image as proof of payment (e.g. a receipt or bank transfer screenshot)."
+          "Yes. When adding an expense via the Custom form, you can upload an image as proof of payment (e.g. a receipt or bank transfer screenshot)."
       },
       {
         question: "Can I use different currencies?",
@@ -227,7 +242,7 @@ export default function HelpCenterScreen() {
 
   return (
     <InnerLayout title="Help Center" onBack={() => router.back()}>
-      <ScrollView className="flex-1" bounces={false}>
+      <ScrollView className="flex-1">
         <VStack className="p-4 gap-y-6 pb-10">
           <Text className="text-secondary-950">
             Find answers to common questions below. If you need further help,

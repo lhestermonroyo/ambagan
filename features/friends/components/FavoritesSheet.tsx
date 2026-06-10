@@ -134,7 +134,7 @@ export default function FavoritesSheet({
               <RecentFavoritesTab tab={tab} onTabChange={setTab} />
             )}
 
-            <ScrollView className="w-full" bounces={false}>
+            <ScrollView className="w-full">
               {displayUsers.length === 0 && (
                 <VStack className="p-4 justify-center items-center">
                   <Text className="text-secondary-950">{emptyLabel}</Text>
@@ -142,7 +142,6 @@ export default function FavoritesSheet({
               )}
               <FlatList
                 scrollEnabled={false}
-                bounces={false}
                 data={displayUsers}
                 keyExtractor={(item) => item.id}
                 ItemSeparatorComponent={ListDivider}

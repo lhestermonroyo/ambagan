@@ -102,7 +102,7 @@ export default function RequestSettledSheet({
               </Text>
             </HStack>
           </Pressable>
-          <ScrollView className="flex-1 px-4" bounces={false}>
+          <ScrollView className="flex-1 px-4">
             <VStack className="gap-y-6">
               <VStack className="flex-1">
                 <Text className="text-3xl" bold>

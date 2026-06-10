@@ -72,7 +72,7 @@ export default function PersonalInfoScreen() {
 
   return (
     <InnerLayout title="Personal Info" onBack={() => router.back()}>
-      <ScrollView className="flex-1" bounces={false}>
+      <ScrollView className="flex-1">
         <VStack className="gap-y-8 p-4">
           <VStack className="items-center pt-4 pb-2 gap-y-4">
             <UploadAvatar

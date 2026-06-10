@@ -204,7 +204,7 @@ export default function MembersSelectionSheet({
               <RecentFavoritesTab tab={tab} onTabChange={setTab} />
             )}
           </VStack>
-          <ScrollView className="flex-1 w-full" bounces={false}>
+          <ScrollView className="flex-1 w-full">
             {displayUsers.length === 0 && (
               <VStack className="p-4 justify-center items-center">
                 <Text className="text-secondary-950">{emptyText}</Text>
@@ -217,7 +217,6 @@ export default function MembersSelectionSheet({
             >
               <FlatList
                 scrollEnabled={false}
-                bounces={false}
                 className="flex-1"
                 data={displayUsers}
                 keyExtractor={(item) => item.id.toString()}

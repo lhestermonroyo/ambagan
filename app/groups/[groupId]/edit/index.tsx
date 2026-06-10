@@ -155,7 +155,7 @@ export default function EditGroupScreen() {
           />
         ]}
       >
-        <ScrollView className="flex-1" bounces={false}>
+        <ScrollView className="flex-1">
           <LoadingWrapper
             isLoading={loading}
             text="Loading group details..."

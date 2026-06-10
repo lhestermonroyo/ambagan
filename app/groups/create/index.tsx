@@ -153,7 +153,7 @@ export default function CreateGroupScreen() {
           />
         ]}
       >
-        <ScrollView className="flex-1" bounces={false}>
+        <ScrollView className="flex-1">
           <VStack className="gap-y-6 p-4">
             <UploadAvatar
               onSelect={(result) => setValues({ ...values, avatar: result })}

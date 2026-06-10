@@ -221,7 +221,7 @@ export default function ExpenseDetailsScreen() {
           }
           text="Loading expense details..."
         >
-          <ScrollView className="flex-1" bounces={false}>
+          <ScrollView className="flex-1">
             {expenseDetails && (
               <VStack className="gap-y-8">
                 <VStack className="w-full gap-y-1 px-4">

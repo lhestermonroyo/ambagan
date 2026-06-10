@@ -78,7 +78,7 @@ export default function AddExpenseStep({
 
   return (
     <>
-      <ScrollView className="flex-1" bounces={false}>
+      <ScrollView className="flex-1">
         <VStack className="px-4 gap-y-4">
           <StepperProgress currentStep={step} steps={3} />
           <VStack>

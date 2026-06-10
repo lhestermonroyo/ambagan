@@ -226,7 +226,7 @@ export default function QuickAddExpenseSheet({
               </VStack>
             ) : (
               <>
-                <ScrollView className="flex-1 px-4" bounces={false}>
+                <ScrollView className="flex-1 px-4">
                   <VStack className="gap-y-6">
                     <FormControl size="md">
                       <FormControlLabel>

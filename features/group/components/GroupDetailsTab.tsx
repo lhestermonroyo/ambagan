@@ -122,7 +122,6 @@ export default function GroupDetailsTab() {
           </HStack>
 
           <FlatList
-            bounces={false}
             scrollEnabled={false}
             data={filteredMemberList}
             keyExtractor={(item) => item.id.toString()}

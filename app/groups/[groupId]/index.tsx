@@ -596,7 +596,6 @@ export default function GroupDetailsScreen() {
             {tab === "Expenses" && (
               <SwipeListView
                 className="flex-1"
-                bounces={false}
                 scrollEnabled={false}
                 useSectionList
                 sections={formattedExpenseList}

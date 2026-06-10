@@ -96,7 +96,7 @@ export default function AccountSettingsScreen() {
 
   return (
     <InnerLayout title="Account Settings" onBack={() => router.back()}>
-      <ScrollView className="flex-1" bounces={false}>
+      <ScrollView className="flex-1">
         <VStack className="gap-y-6 p-4">
           <VStack className="gap-y-4">
             <FormInput
