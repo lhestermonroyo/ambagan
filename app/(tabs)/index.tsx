@@ -279,12 +279,16 @@ export default function HomeScreen() {
           </HStack>
         </Box>
         <ScrollView
-          className="flex-1"
+          className="flex-1 bg-background-0"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
           <VStack className="gap-y-4 bg-background-0 flex-1">
+            <Box
+              className="absolute left-0 right-0 bg-primary-400"
+              style={{ top: -500, height: 500 }}
+            />
             <Box className="bg-primary-400 max-h-40">
               <Card
                 className="m-4 rounded-2xl shadow-lg shadow-primary-400/20"
