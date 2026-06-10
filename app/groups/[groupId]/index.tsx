@@ -5,8 +5,8 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import PressableListItem from "@/components/PressableListItem";
+import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Fab, FabLabel } from "@/components/ui/fab";
@@ -17,11 +17,12 @@ import {
   MenuItemLabel,
   MenuSeparator
 } from "@/components/ui/menu";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { formatAmount } from "@/features/expense/utils/formatAmount";
 import QuickAddExpenseSheet from "@/features/expense/components/QuickAddExpenseSheet";
+import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
 import GroupExportTab from "@/features/group/components/GroupExportTab";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
@@ -48,7 +49,7 @@ import {
   Zap
 } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
-import { Pressable, RefreshControl, useColorScheme, View } from "react-native";
+import { RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 const tabs = ["Settlements", "Expenses", "Group Info", "Export"] as const;
@@ -322,7 +323,10 @@ export default function GroupDetailsScreen() {
                       textValue="Edit"
                       onPress={() => {
                         setMenuOpen(false);
-                        setTimeout(() => router.push(`/groups/${groupId}/edit`), 150);
+                        setTimeout(
+                          () => router.push(`/groups/${groupId}/edit`),
+                          150
+                        );
                       }}
                     >
                       <HStack className="gap-x-2">
@@ -422,99 +426,39 @@ export default function GroupDetailsScreen() {
             <>
               {fabOpen && (
                 <Pressable
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 40
-                  }}
+                  className="absolute inset-0 z-40"
                   onPress={() => setFabOpen(false)}
                 />
               )}
               {fabOpen && (
-                <View
-                  style={{
-                    position: "absolute",
-                    bottom: 80,
-                    right: 16,
-                    zIndex: 50,
-                    gap: 8,
-                    alignItems: "flex-end"
-                  }}
-                >
+                <VStack className="absolute bottom-20 right-4 z-50 gap-2 items-end">
                   <Pressable
+                    className="flex-row items-center gap-x-2 bg-white dark:bg-[#1F1F1F] px-4 py-2.5 rounded-full shadow-sm"
                     onPress={() => {
                       setFabOpen(false);
                       setQuickAddOpen(true);
                     }}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                      backgroundColor:
-                        colorScheme === "dark" ? "#1F1F1F" : "#FFFFFF",
-                      paddingHorizontal: 16,
-                      paddingVertical: 10,
-                      borderRadius: 999,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.15,
-                      shadowRadius: 4,
-                      elevation: 4
-                    }}
                   >
                     <Zap
-                      size={16}
+                      size={18}
                       color={getPrimaryHex("text-primary-400", colorScheme)}
                     />
-                    <Text
-                      style={{
-                        color:
-                          colorScheme === "dark" ? "#F5F5F5" : "#141414",
-                        fontWeight: "600"
-                      }}
-                    >
-                      Quick Add
-                    </Text>
+                    <Text className="font-semibold">Quick Add</Text>
                   </Pressable>
                   <Pressable
+                    className="flex-row items-center gap-x-2 bg-white dark:bg-[#1F1F1F] px-4 py-2.5 rounded-full shadow-sm"
                     onPress={() => {
                       setFabOpen(false);
                       router.push(`/groups/${groupId}/new-expense`);
                     }}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                      backgroundColor:
-                        colorScheme === "dark" ? "#1F1F1F" : "#FFFFFF",
-                      paddingHorizontal: 16,
-                      paddingVertical: 10,
-                      borderRadius: 999,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.15,
-                      shadowRadius: 4,
-                      elevation: 4
-                    }}
                   >
                     <ListPlus
-                      size={16}
+                      size={18}
                       color={getSecondaryHex("text-secondary-950", colorScheme)}
                     />
-                    <Text
-                      style={{
-                        color:
-                          colorScheme === "dark" ? "#F5F5F5" : "#141414",
-                        fontWeight: "600"
-                      }}
-                    >
-                      Custom
-                    </Text>
+                    <Text className="font-semibold">Custom</Text>
                   </Pressable>
-                </View>
+                </VStack>
               )}
               <Fab
                 placement="bottom right"
@@ -526,12 +470,12 @@ export default function GroupDetailsScreen() {
               >
                 {fabOpen ? (
                   <X
-                    size={20}
+                    size={18}
                     color={getSecondaryHex("text-secondary-0", colorScheme)}
                   />
                 ) : (
                   <CirclePlus
-                    size={20}
+                    size={18}
                     color={getSecondaryHex("text-secondary-0", colorScheme)}
                   />
                 )}

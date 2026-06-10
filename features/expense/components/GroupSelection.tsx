@@ -2,7 +2,6 @@ import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
-import ListDivider from "@/components/ListDivider";
 import PressableListItem from "@/components/PressableListItem";
 import {
   Actionsheet,
@@ -12,6 +11,7 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
+import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import {
@@ -155,7 +155,9 @@ export function GroupSelectionActionSheet({
                 />
               )}
               keyExtractor={(item) => item.id.toString()}
-              ItemSeparatorComponent={ListDivider}
+              ItemSeparatorComponent={() => (
+                <Divider className="border-secondary-200" />
+              )}
               ListEmptyComponent={() => <EmptyList type={EmptyType.GROUP} />}
             />
           </RadioGroup>
