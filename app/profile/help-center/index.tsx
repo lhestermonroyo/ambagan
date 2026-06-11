@@ -37,7 +37,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Is Ambagan free to use?",
         answer:
-          "Yes, Ambagan is free. Create groups, track expenses, and settle up with your friends at no cost."
+          "Yes, the core features are free — create up to 3 groups, track expenses, and settle up with friends at no cost. A Pro plan is available for users who need unlimited groups, multi-currency expenses, CSV exports, and offline access."
       }
     ]
   },
@@ -177,7 +177,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is the Pro plan?",
         answer:
-          "The Pro plan unlocks premium features including unlimited groups (free plan is limited to 3), multi-currency expenses, CSV export of settlements, offline access to your data, and a Pro badge on your profile."
+          "The Pro plan unlocks premium features including unlimited groups (free plan is limited to 3), multi-currency expenses across 14 currencies, CSV export of settlements, and offline access to your data."
       },
       {
         question: "How do I upgrade to Pro?",
@@ -185,14 +185,19 @@ const FAQ_SECTIONS: FAQSection[] = [
           "Go to Profile → Subscription and choose a monthly or yearly plan. Upgrading unlocks all Pro features immediately."
       },
       {
-        question: "How do I export settlements to CSV?",
-        answer:
-          "Open a group and go to the Export tab. Select a date range, then tap Export CSV. The file will include all settlements you're involved in for that group and will open your device's share sheet so you can save or send it."
-      },
-      {
         question: "How many groups can I create on the free plan?",
         answer:
           "Free users can create up to 3 active groups. Archived groups do not count toward this limit. Upgrade to Pro for unlimited groups."
+      },
+      {
+        question: "Can group members benefit from my Pro plan?",
+        answer:
+          "Yes. When you are a Pro subscriber, members of your groups gain access to multi-currency expenses and CSV export even if they are on the free plan."
+      },
+      {
+        question: "How do I export settlements to CSV?",
+        answer:
+          "Open a group and go to the Export tab. Select a date range, then tap Export CSV. The file will include all settlements you're involved in for that group and will open your device's share sheet so you can save or send it."
       },
       {
         question: "Can I use Ambagan offline?",
