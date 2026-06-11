@@ -55,25 +55,19 @@ const FEATURES: {
   },
   {
     icon: TrendingUp,
-    label: "Settlement CSV export",
+    label: "Export settlements as CSV",
     free: null,
-    pro: "Included"
+    pro: "CSV export"
   },
   {
     icon: Users,
-    label: "Members inherit Pro features",
+    label: "Members get multi-currency & CSV export",
     free: null,
     pro: "Included"
   },
   {
     icon: WifiOff,
     label: "Offline access",
-    free: null,
-    pro: "Included"
-  },
-  {
-    icon: Crown,
-    label: "Pro badge on your groups",
     free: null,
     pro: "Included"
   }
@@ -280,9 +274,15 @@ export default function SubscriptionScreen() {
           {!isPro && (
             <VStack className="gap-y-2">
               <HStack className="items-center justify-between">
-                <Text bold className="text-xl">
-                  Billing Period
-                </Text>
+                <VStack className="gap-y-0.5">
+                  <Text bold className="text-xl">
+                    Billing Period
+                  </Text>
+                  <Text className="text-secondary-950 text-sm">
+                    More than 3 groups or splitting across currencies? Pro pays
+                    for itself.
+                  </Text>
+                </VStack>
                 {loadingOffering && (
                   <ActivityIndicator
                     size="small"
