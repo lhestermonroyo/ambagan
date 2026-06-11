@@ -90,6 +90,11 @@ export const syncPlanToSupabase = async (
   const plan: UserPlan = isProEntitlementActive(customerInfo) ? "pro" : "free";
   const planExpiresAt = plan === "pro" ? getProExpiresAt(customerInfo) : null;
 
+  console.log("[syncPlanToSupabase] Syncing plan to Supabase", {
+    plan,
+    planExpiresAt
+  });
+
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -98,12 +103,13 @@ export const syncPlanToSupabase = async (
   const payload: { plan: UserPlan; plan_expires_at?: string } = { plan };
   if (planExpiresAt !== null) payload.plan_expires_at = planExpiresAt;
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from(tables.USERS_TBL)
-    .update(payload)
+    .update(payload, { count: "exact" })
     .eq("id", user.id);
 
   if (error) throw error;
+  if (!count) throw new Error("Plan sync failed: no matching user row updated");
 
   return { plan, planExpiresAt };
 };
