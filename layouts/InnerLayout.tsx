@@ -21,7 +21,7 @@ export default function InnerLayout({
   return (
     <SafeAreaView className="flex-1 bg-background-0">
       <KeyboardAvoidingView className="flex-1" behavior="padding">
-        <Box className="p-4">
+        <Box className="px-4 py-2">
           <HStack className="items-center justify-between">
             <HStack className="items-center flex-1">
               <Button variant="link" className="rounded-full" onPress={onBack}>

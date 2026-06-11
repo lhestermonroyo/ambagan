@@ -82,6 +82,9 @@ export default function AddExpenseStep({
         <VStack className="px-4 gap-y-4">
           <StepperProgress currentStep={step} steps={3} />
           <VStack>
+            {isLockedGroup && values.group && (
+              <Text className="text-secondary-950">{values.group.name}</Text>
+            )}
             <Text className="text-2xl" bold>
               Expense Details
             </Text>
@@ -166,26 +169,26 @@ export default function AddExpenseStep({
             </PressableListItem>
           </FormControl>
 
-          <FormControl size="md">
-            <FormControlLabel>
-              <FormControlLabelText>Group</FormControlLabelText>
-            </FormControlLabel>
-            <GroupSelection
-              group={values.group}
-              onChangeGroup={(group) =>
-                setValues((prevValues) => ({ ...prevValues, group }))
-              }
-              isLocked={isLockedGroup}
-            />
-            {!isLockedGroup && (
+          {!isLockedGroup && (
+            <FormControl size="md">
+              <FormControlLabel>
+                <FormControlLabelText>Group</FormControlLabelText>
+              </FormControlLabel>
+              <GroupSelection
+                group={values.group}
+                onChangeGroup={(group) =>
+                  setValues((prevValues) => ({ ...prevValues, group }))
+                }
+                isLocked={false}
+              />
               <FormControlHelper>
                 <FormControlHelperText className="text-secondary-950 text-sm">
                   Latest joined or created group will be selected by default.
                   You can change group by tapping the group card.
                 </FormControlHelperText>
               </FormControlHelper>
-            )}
-          </FormControl>
+            </FormControl>
+          )}
 
           <VStack className="gap-y-1">
             <UploadImage

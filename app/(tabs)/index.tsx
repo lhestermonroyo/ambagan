@@ -1,13 +1,14 @@
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
+import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import PressableListItem from "@/components/PressableListItem";
 import {
   FriendCardListSkeleton,
   GroupListSkeleton,
   SettlementListSkeleton
 } from "@/components/SkeletonLoader";
-import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -31,9 +32,9 @@ import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
 import services from "@/services";
 import states from "@/states";
-import { cacheService } from "@/utils/cacheService";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
+import { cacheService } from "@/utils/cacheService";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -45,7 +46,6 @@ import {
 } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
-import ListDivider from "@/components/ListDivider";
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState({
@@ -151,7 +151,10 @@ export default function HomeScreen() {
 
       if (!response || !response.data) return;
 
-      if (isPro) cacheService.savePayments(userDetails.id, response.data).catch(() => {});
+      if (isPro)
+        cacheService
+          .savePayments(userDetails.id, response.data)
+          .catch(() => {});
 
       states.expense.setState((prev) => ({
         ...prev,
@@ -161,7 +164,11 @@ export default function HomeScreen() {
       console.error("Failed to fetch recent expenses:", error);
       if (isPro) {
         const cached = await cacheService.getPayments(userDetails.id);
-        if (cached) states.expense.setState((prev) => ({ ...prev, activityList: cached }));
+        if (cached)
+          states.expense.setState((prev) => ({
+            ...prev,
+            activityList: cached
+          }));
       }
     } finally {
       setLoading((prev) => ({ ...prev, activities: false }));
@@ -181,7 +188,8 @@ export default function HomeScreen() {
 
       if (!response) return;
 
-      if (isPro) cacheService.saveGroupsList(userDetails.id, response).catch(() => {});
+      if (isPro)
+        cacheService.saveGroupsList(userDetails.id, response).catch(() => {});
 
       states.group.setState((prev) => ({
         ...prev,
@@ -191,7 +199,8 @@ export default function HomeScreen() {
       console.error("Failed to fetch groups:", error);
       if (isPro) {
         const cached = await cacheService.getGroupsList(userDetails.id);
-        if (cached) states.group.setState((prev) => ({ ...prev, list: cached }));
+        if (cached)
+          states.group.setState((prev) => ({ ...prev, list: cached }));
       }
     } finally {
       setLoading((prev) => ({ ...prev, groups: false }));
@@ -237,7 +246,7 @@ export default function HomeScreen() {
         className="flex-1 bg-secondary-0"
         behavior="padding"
       >
-        <Box className="sticky top-0 px-4 pt-20 pb-2 bg-primary-400">
+        <Box className="sticky top-0 px-4 pt-[5rem] pb-2 bg-primary-400">
           <HStack className="items-center justify-center">
             <VStack className="flex-1">
               <Text className="text-background-0 opacity-80 text-lg">
@@ -287,7 +296,7 @@ export default function HomeScreen() {
           <VStack className="gap-y-4 bg-background-0 flex-1">
             <Box className="bg-primary-400 max-h-40">
               <Card
-                className="m-4 rounded-2xl shadow-lg shadow-primary-400/20"
+                className="mx-4 my-2 rounded-2xl shadow-lg shadow-primary-400/20"
                 variant="elevated"
               >
                 <VStack className="gap-y-4">
@@ -345,7 +354,7 @@ export default function HomeScreen() {
               </Card>
             </Box>
 
-            <VStack className="mt-[5.5rem]">
+            <VStack className="mt-[5rem]">
               <HStack className="items-center justify-between px-4">
                 <Text bold className="text-2xl flex-1">
                   Friends

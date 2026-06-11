@@ -19,7 +19,7 @@ export default function TabLayout({
         className="flex-1 bg-background-0"
         behavior="padding"
       >
-        <Box className="sticky top-0 px-4 pt-[5.5rem] pb-4">
+        <Box className="sticky top-0 px-4 pt-[5rem] pb-2">
           <HStack className="items-center">
             <Text bold className="flex-1 text-3xl">
               {title}
