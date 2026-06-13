@@ -14,11 +14,11 @@ import { useState } from "react";
 
 export default function LoginScreen() {
   const [values, setValues] = useState({
-    email: "",
+    emailOrPhone: "",
     password: ""
   });
   const [formErrors, setFormErrors] = useState({
-    email: "",
+    emailOrPhone: "",
     password: ""
   }) as any;
   const [showPassword, setShowPassword] = useState(false);
@@ -30,8 +30,8 @@ export default function LoginScreen() {
   const handleSubmit = async () => {
     let errors: any = {};
 
-    if (!values.email) {
-      errors.email = "Email is required";
+    if (!values.emailOrPhone) {
+      errors.emailOrPhone = "Email or phone number is required";
     }
 
     if (!values.password) {
@@ -46,8 +46,24 @@ export default function LoginScreen() {
     setSubmitting(true);
 
     try {
+      let email = values.emailOrPhone.trim();
+
+      if (services.auth.isPhoneNumber(email)) {
+        const found = await services.auth.getEmailByPhone(email);
+        if (!found) {
+          toast({
+            title: "Login Failed",
+            description: "No account found with that phone number.",
+            type: "error"
+          });
+          setSubmitting(false);
+          return;
+        }
+        email = found;
+      }
+
       const response = await services.auth.loginWithEmail(
-        values.email.trim(),
+        email,
         values.password.trim()
       );
 
@@ -90,14 +106,14 @@ export default function LoginScreen() {
       <VStack className="gap-y-6">
         <FormInput
           type="text"
-          label="Email"
-          placeholder="Enter your email"
-          value={values.email}
-          onChangeText={(text) => setValues({ ...values, email: text })}
+          label="Email or Phone Number"
+          placeholder="Enter your email or phone number"
+          value={values.emailOrPhone}
+          onChangeText={(text) => setValues({ ...values, emailOrPhone: text })}
           autoCapitalize="none"
           autoComplete="email"
-          keyboardType="email-address"
-          errorMessage={formErrors.email}
+          keyboardType="default"
+          errorMessage={formErrors.emailOrPhone}
         />
 
         <FormInput
