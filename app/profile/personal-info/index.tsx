@@ -9,6 +9,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadAvatar from "@/components/UploadAvatar";
 import EditNameSheet from "@/features/profile/components/EditNameSheet";
+import EditPhoneSheet from "@/features/profile/components/EditPhoneSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
@@ -25,6 +26,7 @@ export default function PersonalInfoScreen() {
   const toast = useAppToast();
 
   const [editNameOpen, setEditNameOpen] = useState(false);
+  const [editPhoneOpen, setEditPhoneOpen] = useState(false);
   const [pendingAvatar, setPendingAvatar] =
     useState<ImagePickerSuccessResult | null>(null);
   const [savingAvatar, setSavingAvatar] = useState(false);
@@ -124,8 +126,7 @@ export default function PersonalInfoScreen() {
             <DetailRow
               label="Phone"
               value={formatPhoneDisplay(userDetails?.phone)}
-              readOnly
-              onPress={() => {}}
+              onPress={() => setEditPhoneOpen(true)}
             />
           </Box>
         </VStack>
@@ -134,6 +135,10 @@ export default function PersonalInfoScreen() {
       <EditNameSheet
         isOpen={editNameOpen}
         onClose={() => setEditNameOpen(false)}
+      />
+      <EditPhoneSheet
+        isOpen={editPhoneOpen}
+        onClose={() => setEditPhoneOpen(false)}
       />
     </InnerLayout>
   );

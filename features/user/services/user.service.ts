@@ -108,6 +108,21 @@ export const updateUser = async ({
   };
 };
 
+export const updatePhone = async (phone: string) => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { error, data } = await supabase
+    .from(tables.USERS_TBL)
+    .update({ phone })
+    .eq("id", user.data.user.id)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return { message: "Phone updated successfully", data: data as User };
+};
+
 export const updateAvatar = async (avatar: ImagePickerSuccessResult) => {
   const user = await supabase.auth.getUser();
 
