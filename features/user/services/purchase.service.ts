@@ -19,9 +19,7 @@ export const initializePurchases = (userId: string) => {
   const apiKey = __DEV__
     ? process.env.EXPO_PUBLIC_REVENUE_CAT_API_KEY_TEST!
     : process.env.EXPO_PUBLIC_REVENUE_CAT_API_KEY!;
-  if (__DEV__) {
-    Purchases.setLogLevel(LOG_LEVEL.DEBUG);
-  }
+  Purchases.setLogLevel(LOG_LEVEL.DEBUG);
   Purchases.configure({ apiKey, appUserID: userId });
 };
 
