@@ -49,7 +49,7 @@ export default function ExpenseDetailsScreen() {
     useMemo(
       () => () => {
         if (!expenseId || !groupId) {
-          return router.push(`/groups/${groupId}`);
+          return router.replace(`/groups/${groupId}`);
         }
 
         init(groupId, expenseId);
@@ -78,7 +78,7 @@ export default function ExpenseDetailsScreen() {
       const response = await services.group.getGroupById(groupId);
 
       if (!response) {
-        router.push("/groups");
+        router.replace("/groups");
         return;
       }
 
@@ -88,7 +88,7 @@ export default function ExpenseDetailsScreen() {
       }));
     } catch (error) {
       console.log("Error fetching group details:", error);
-      router.push("/groups");
+      router.replace("/groups");
     }
   };
 
@@ -156,7 +156,7 @@ export default function ExpenseDetailsScreen() {
           memberSplitList: [],
           paymentSplitList: []
         }));
-        router.push(`/groups/${groupId}`);
+        router.back();
       }
     } catch (error) {
       console.log("Error deleting expense:", error);

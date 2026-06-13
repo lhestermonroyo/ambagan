@@ -7,9 +7,8 @@ import { NotificationType } from "@/types/notifications";
 import { tables } from "@/utils/constants";
 import { getDb } from "@/utils/offlineDb";
 import { supabase } from "@/utils/supabase";
-import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import Constants from "expo-constants";
 import { useFonts } from "expo-font";
@@ -17,6 +16,7 @@ import * as Notifications from "expo-notifications";
 import { SplashScreen, Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import {
   configureReanimatedLogger,
@@ -294,7 +294,12 @@ export default function RootLayout() {
         <GluestackUIProvider mode={appearanceMode}>
           <ToastProvider>
             <ThemeProvider value={DefaultTheme}>
-              <Stack screenOptions={{ headerShown: false }} />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  animation: "simple_push"
+                }}
+              />
               <StatusBar style="auto" />
             </ThemeProvider>
           </ToastProvider>

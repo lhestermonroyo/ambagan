@@ -117,8 +117,6 @@ export default function PushNotificationsSheet({
     });
   }, [isOpen]);
 
-  if (!userDetails || !preferences) return null;
-
   const switchColors = {
     false: getSecondaryHex("text-secondary-300", colorScheme),
     true: getPrimaryHex("text-primary-400", colorScheme)
@@ -150,92 +148,97 @@ export default function PushNotificationsSheet({
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full flex-1">
-          <VStack className="p-4">
-            <Text bold className="text-xl">
-              Push Notifications
-            </Text>
-          </VStack>
+        {userDetails && preferences ? (
+          <VStack className="w-full flex-1">
+            <VStack className="p-4">
+              <Text bold className="text-xl">
+                Push Notifications
+              </Text>
+            </VStack>
 
-          <ScrollView className="flex-1 w-full">
-            {permissionStatus === "undetermined" && (
-              <VStack className="mx-4 p-4 bg-primary-50 rounded-xl gap-y-4">
-                <HStack className="gap-x-2 items-start">
-                  <AlertCircle
-                    color={getPrimaryHex("text-primary-500", colorScheme)}
+            <ScrollView className="flex-1 w-full">
+              {permissionStatus === "undetermined" && (
+                <VStack className="mx-4 p-4 bg-primary-50 rounded-xl gap-y-4">
+                  <HStack className="gap-x-2 items-start">
+                    <AlertCircle
+                      color={getPrimaryHex("text-primary-500", colorScheme)}
+                    />
+                    <VStack className="flex-1 gap-y-2">
+                      <Text bold className="text-lg text-primary-600">
+                        Notifications not enabled
+                      </Text>
+                      <Text className="text-primary-500">
+                        You haven't enabled push notifications yet. Enable them
+                        to get real-time updates on settlements, expenses, and
+                        group activity.
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  <FormButton
+                    text="Enable Notifications"
+                    onPress={handleEnableNotifications}
                   />
-                  <VStack className="flex-1 gap-y-2">
-                    <Text bold className="text-lg text-primary-600">
-                      Notifications not enabled
-                    </Text>
-                    <Text className="text-primary-500">
-                      You haven't enabled push notifications yet. Enable them to
-                      get real-time updates on settlements, expenses, and group
-                      activity.
-                    </Text>
-                  </VStack>
-                </HStack>
-                <FormButton
-                  text="Enable Notifications"
-                  onPress={handleEnableNotifications}
-                />
-              </VStack>
-            )}
+                </VStack>
+              )}
 
-            {permissionStatus === "denied" && (
-              <VStack className="mx-4 p-4 bg-error-50 rounded-xl gap-y-4">
-                <HStack className="gap-x-2 items-start">
-                  <BellOff color={getErrorHex("text-error-500", colorScheme)} />
-                  <VStack className="flex-1 gap-y-2">
-                    <Text bold className="text-lg text-error-600">
-                      Notifications are disabled
-                    </Text>
-                    <Text className="text-error-500">
-                      Push notifications are turned off in your device settings.
-                      Go to Settings to allow us to send you notifications.
-                    </Text>
-                  </VStack>
-                </HStack>
-                <FormButton
-                  text="Open Settings"
-                  onPress={() => Linking.openSettings()}
-                />
-              </VStack>
-            )}
+              {permissionStatus === "denied" && (
+                <VStack className="mx-4 p-4 bg-error-50 rounded-xl gap-y-4">
+                  <HStack className="gap-x-2 items-start">
+                    <BellOff
+                      color={getErrorHex("text-error-500", colorScheme)}
+                    />
+                    <VStack className="flex-1 gap-y-2">
+                      <Text bold className="text-lg text-error-600">
+                        Notifications are disabled
+                      </Text>
+                      <Text className="text-error-500">
+                        Push notifications are turned off in your device
+                        settings. Go to Settings to allow us to send you
+                        notifications.
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  <FormButton
+                    text="Open Settings"
+                    onPress={() => Linking.openSettings()}
+                  />
+                </VStack>
+              )}
 
-            {SECTIONS.map((section) => (
-              <VStack key={section.title}>
-                <Box className="px-4 pt-5 pb-2">
-                  <Text bold className="text-xl">
-                    {section.title}
-                  </Text>
-                </Box>
-                <FlatList
-                  data={section.data}
-                  keyExtractor={(item) => item.key}
-                  scrollEnabled={false}
-                  renderItem={({ item }) => (
-                    <HStack className="items-center justify-between px-4 py-3">
-                      <VStack className="flex-1 pr-4">
-                        <Text className="text-lg">{item.label}</Text>
-                        <Text className="text-secondary-950">
-                          {item.description}
-                        </Text>
-                      </VStack>
-                      <Switch
-                        size="sm"
-                        value={preferences[item.key]}
-                        onValueChange={(val) => handleToggle(item.key, val)}
-                        trackColor={switchColors}
-                      />
-                    </HStack>
-                  )}
-                  ItemSeparatorComponent={ListDivider}
-                />
-              </VStack>
-            ))}
-          </ScrollView>
-        </VStack>
+              {SECTIONS.map((section) => (
+                <VStack key={section.title}>
+                  <Box className="px-4 pt-5 pb-2">
+                    <Text bold className="text-xl">
+                      {section.title}
+                    </Text>
+                  </Box>
+                  <FlatList
+                    data={section.data}
+                    keyExtractor={(item) => item.key}
+                    scrollEnabled={false}
+                    renderItem={({ item }) => (
+                      <HStack className="items-center justify-between px-4 py-3">
+                        <VStack className="flex-1 pr-4">
+                          <Text className="text-lg">{item.label}</Text>
+                          <Text className="text-secondary-950">
+                            {item.description}
+                          </Text>
+                        </VStack>
+                        <Switch
+                          size="sm"
+                          value={preferences[item.key]}
+                          onValueChange={(val) => handleToggle(item.key, val)}
+                          trackColor={switchColors}
+                        />
+                      </HStack>
+                    )}
+                    ItemSeparatorComponent={ListDivider}
+                  />
+                </VStack>
+              ))}
+            </ScrollView>
+          </VStack>
+        ) : null}
       </ActionsheetContent>
     </Actionsheet>
   );

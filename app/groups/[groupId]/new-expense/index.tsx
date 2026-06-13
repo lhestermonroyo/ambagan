@@ -270,7 +270,7 @@ export default function NewExpenseScreen() {
         description: "Your expense has been created successfully.",
         type: "success"
       });
-      router.push(`/groups/${values.group.id}`);
+      router.back();
     } catch (error) {
       console.log("Error", error);
       toast({

@@ -43,7 +43,7 @@ export default function EditGroupScreen() {
     useMemo(
       () => () => {
         if (!groupId) {
-          router.push("/groups");
+          router.replace("/groups");
           return;
         }
 

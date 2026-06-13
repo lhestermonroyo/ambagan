@@ -252,7 +252,7 @@ export const avatarColors = {
   q: "bg-stone-500",
   r: "bg-amber-500",
   s: "bg-lavender-500",
-  t: "bg-mauve-500",
+  t: "bg-red-900",
   u: "bg-slate-500",
   v: "bg-zinc-500",
   w: "bg-crimson-500",
@@ -265,16 +265,16 @@ export const introSlideContent = [
   {
     title: "Who paid for what again?",
     description:
-      "Stop the awkward back-and-forth. Ambagan tracks every shared expense so you always know exactly who owes what.",
+      "Stop the awkward back-and-forth. Ambagan tracks every shared expense so you always know exactly who owes what."
   },
   {
     title: "Split it. Settle it. Done.",
     description:
-      "Add expenses, split them your way — equally, by percentage, or custom — and request settlements with one tap.",
+      "Add expenses, split them your way — equally, by percentage, or custom — and request settlements with one tap."
   },
   {
     title: "No more IOUs. Just good vibes.",
     description:
-      "Whether it's a group trip, dinner with friends, or shared bills — Ambagan keeps money from getting in the way.",
+      "Whether it's a group trip, dinner with friends, or shared bills — Ambagan keeps money from getting in the way."
   }
 ];

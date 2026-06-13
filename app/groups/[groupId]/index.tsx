@@ -80,7 +80,7 @@ export default function GroupDetailsScreen() {
     useMemo(
       () => () => {
         if (!groupId) {
-          router.push("/groups");
+          router.replace("/groups");
           return;
         }
 
@@ -107,7 +107,7 @@ export default function GroupDetailsScreen() {
         ]);
 
       if (!groupDetailsResponse || !expensesResponse || !membersResponse) {
-        router.push("/groups");
+        router.replace("/groups");
         return;
       }
 
@@ -137,7 +137,7 @@ export default function GroupDetailsScreen() {
           return;
         }
       }
-      router.push("/groups");
+      router.replace("/groups");
     } finally {
       setLoading(false);
     }
@@ -205,7 +205,7 @@ export default function GroupDetailsScreen() {
       expenseList: [],
       settlementList: []
     }));
-    router.push("/groups");
+    router.back();
   };
 
   const formattedExpenseList = useMemo(() => {
@@ -274,7 +274,7 @@ export default function GroupDetailsScreen() {
         description: "You can find it in the Archived tab.",
         type: "success"
       });
-      router.push("/groups");
+      router.replace("/groups");
     } catch (error) {
       toast({
         title: "Error",
@@ -674,7 +674,7 @@ export default function GroupDetailsScreen() {
             expenseList: [],
             settlementList: []
           }));
-          router.push("/groups");
+          router.replace("/groups");
         }}
       />
       <QuickAddExpenseSheet

@@ -35,7 +35,7 @@ import {
 } from "lucide-react-native";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, useColorScheme } from "react-native";
 
 export default function ProfileScreen() {
@@ -80,6 +80,11 @@ export default function ProfileScreen() {
 
   const isPro = userDetails?.plan === "pro";
 
+  const handleNotificationsOpen = useCallback(
+    () => setNotificationsOpen(true),
+    []
+  );
+
   const menuItems = useMemo(
     () => [
       {
@@ -102,7 +107,7 @@ export default function ProfileScreen() {
         icon: <Bell color={getPrimaryHex("text-primary-400", colorScheme)} />,
         label: "Push Notifications",
         description: "Manage your push notification preferences",
-        onPress: () => setNotificationsOpen(true)
+        onPress: handleNotificationsOpen
       },
       {
         icon: <Coins color={getPrimaryHex("text-primary-400", colorScheme)} />,
@@ -135,13 +140,7 @@ export default function ProfileScreen() {
       //   onPress: () => router.push("/profile/about")
       // }
     ],
-    [
-      appearanceLabel,
-      notificationsEnabled,
-      preferences,
-      currencyLabel,
-      colorScheme
-    ]
+    [appearanceLabel, currencyLabel, colorScheme, handleNotificationsOpen]
   );
 
   const handleSignOut = async () => {

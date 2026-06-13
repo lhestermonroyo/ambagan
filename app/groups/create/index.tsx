@@ -124,7 +124,7 @@ export default function CreateGroupScreen() {
         description: "Group created successfully.",
         type: "success"
       });
-      router.back();
+      router.replace(`/groups/${response.data.groupId}`);
     } catch (error) {
       console.error("Error creating group:", error);
       toast({
