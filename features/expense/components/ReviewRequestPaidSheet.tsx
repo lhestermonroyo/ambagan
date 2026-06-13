@@ -12,7 +12,7 @@ import {
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
-import { Image } from "@/components/ui/image";
+import { Image } from "expo-image";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -279,8 +279,8 @@ export default function ReviewRequestPaidSheet({
                   <Box className="relative w-full bg-background-100 rounded-xl">
                     <Image
                       source={{ uri: payment.proof_of_payment }}
-                      alt="Receipt"
-                      resizeMode="contain"
+                      contentFit="contain"
+                      cachePolicy="memory-disk"
                       className="aspect-square h-auto w-full rounded-xl"
                     />
                   </Box>

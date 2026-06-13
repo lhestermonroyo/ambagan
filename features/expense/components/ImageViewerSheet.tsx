@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
-import { Image } from "@/components/ui/image";
+import { Image } from "expo-image";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -52,8 +52,8 @@ export default function ImageViewerSheet({
             {uri ? (
               <Image
                 source={{ uri }}
-                alt={title}
-                resizeMode="contain"
+                contentFit="contain"
+                cachePolicy="memory-disk"
                 className="w-full h-full rounded-xl"
               />
             ) : (

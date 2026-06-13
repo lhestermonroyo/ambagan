@@ -24,7 +24,7 @@ export default function FormLayout({
         className="bg-background-0 flex-1"
         behavior="padding"
       >
-        <Box className="px-4 py-2">
+        <Box className="px-4 pt-4 pb-2">
           <HStack className="items-center justify-between">
             <Button variant="link" className="rounded-full" onPress={onBack}>
               <Icon as="arrow-back-ios" className="text-secondary-950" />
