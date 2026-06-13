@@ -44,7 +44,11 @@ export default function ReviewRequestPaidSheet({
   isPayer?: boolean;
   readOnly?: boolean;
 }) {
-  const [submitting, setSubmitting] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [undoing, setUndoing] = useState(false);
+  const [reverting, setReverting] = useState(false);
+  const submitting = approving || rejecting || undoing || reverting;
 
   const { details: userDetails } = states.user();
   const toast = useAppToast();
@@ -55,7 +59,7 @@ export default function ReviewRequestPaidSheet({
   }
 
   const handleMarkAsSettled = async () => {
-    setSubmitting(true);
+    setApproving(true);
     try {
       const response = await services.expense.markAsSettled({
         note: "",
@@ -83,12 +87,12 @@ export default function ReviewRequestPaidSheet({
         type: "error"
       });
     } finally {
-      setSubmitting(false);
+      setApproving(false);
     }
   };
 
   const handleRejectRequest = async () => {
-    setSubmitting(true);
+    setRejecting(true);
     try {
       const response = await services.expense.rejectSettledRequest(payment.id);
 
@@ -111,12 +115,12 @@ export default function ReviewRequestPaidSheet({
         type: "error"
       });
     } finally {
-      setSubmitting(false);
+      setRejecting(false);
     }
   };
 
   const handleUndoRequest = async () => {
-    setSubmitting(true);
+    setUndoing(true);
     try {
       const response = await services.expense.undoSettledRequest(payment.id);
 
@@ -139,12 +143,12 @@ export default function ReviewRequestPaidSheet({
         type: "error"
       });
     } finally {
-      setSubmitting(false);
+      setUndoing(false);
     }
   };
 
   const handleRevertSettledRequest = async () => {
-    setSubmitting(true);
+    setReverting(true);
     try {
       const response = await services.expense.revertSettledRequest(payment.id);
 
@@ -167,7 +171,7 @@ export default function ReviewRequestPaidSheet({
         type: "error"
       });
     } finally {
-      setSubmitting(false);
+      setReverting(false);
     }
   };
 
@@ -314,7 +318,8 @@ export default function ReviewRequestPaidSheet({
                           className="flex-1"
                           action="negative"
                           text="Revert"
-                          loading={submitting}
+                          loading={reverting}
+                          disabled={submitting}
                           onPress={handleRevertSettledRequest}
                         />
                       ) : (
@@ -323,7 +328,8 @@ export default function ReviewRequestPaidSheet({
                             className="flex-1"
                             action="negative"
                             text="Reject"
-                            loading={submitting}
+                            loading={rejecting}
+                            disabled={submitting}
                             onConfirm={handleRejectRequest}
                             confirmTitle="Reject Settlement Request"
                             confirmDescription="Are you sure you want to reject this settlement request? This will send it back to pending and remove the submitted proof of payment."
@@ -331,7 +337,8 @@ export default function ReviewRequestPaidSheet({
                           <FormButton
                             className="flex-1"
                             text="Approve"
-                            loading={submitting}
+                            loading={approving}
+                            disabled={submitting}
                             onPress={handleMarkAsSettled}
                           />
                         </Fragment>
@@ -343,7 +350,8 @@ export default function ReviewRequestPaidSheet({
                         className="flex-1"
                         action="negative"
                         text="Undo Request"
-                        loading={submitting}
+                        loading={undoing}
+                        disabled={submitting}
                         onConfirm={handleUndoRequest}
                         confirmTitle="Undo Settlement Request"
                         confirmDescription="Are you sure you want to undo your settlement request? This will change the status back to pending and remove any notes or receipt you added."

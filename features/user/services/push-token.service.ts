@@ -2,6 +2,13 @@ import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 
 export const registerPushToken = async (userId: string, token: string): Promise<void> => {
+  // Remove this token from any other user before registering it to the current user
+  await supabase
+    .from(tables.USER_PUSH_TOKENS_TBL)
+    .delete()
+    .eq("token", token)
+    .neq("user_id", userId);
+
   const { data: existing } = await supabase
     .from(tables.USER_PUSH_TOKENS_TBL)
     .select("id")

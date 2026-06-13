@@ -159,6 +159,17 @@ export default function RootLayout() {
 
       if (!session) {
         unsubscribeNotifications();
+        try {
+          const { status } = await Notifications.getPermissionsAsync();
+          if (status === "granted") {
+            const { data: token } = await Notifications.getExpoPushTokenAsync({
+              projectId: Constants.expoConfig?.extra?.eas?.projectId
+            });
+            await services.pushToken.removePushToken(token);
+          }
+        } catch {
+          // silently ignore — don't block session cleanup if token removal fails
+        }
         return;
       }
 

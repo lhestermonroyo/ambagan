@@ -1,6 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
+import ListDivider from "@/components/ListDivider";
 import StepperProgress from "@/components/StepperProgress";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
@@ -10,13 +11,12 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
-import { Member } from "@/types/groups";
 import { EmptyType } from "@/types/general";
-import { getCurrencySign } from "@/utils/currency";
+import { Member } from "@/types/groups";
 import { splitTypes } from "@/utils/constants";
+import { getCurrencySign } from "@/utils/currency";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import ListDivider from "@/components/ListDivider";
 import { formatAmount } from "../utils/formatAmount";
 import {
   getAmountPerPerson,
@@ -162,10 +162,10 @@ export default function SplitSelection({
             <StepperProgress currentStep={step} steps={3} />
             <VStack>
               <Text className="text-2xl" bold>
-                Member Splits
+                Who owes what?
               </Text>
               <Text className="text-secondary-950">
-                Divide the total amount owed to each payer.
+                Set how the total is divided among each member.
               </Text>
             </VStack>
           </VStack>
@@ -216,7 +216,7 @@ export default function SplitSelection({
           </VStack>
         </VStack>
       </ScrollView>
-      <Box className="p-4 bg-background-50 rounded-lg">
+      <Box className="p-4 bg-background-50">
         {tab === "equal" && (
           <VStack>
             <Text className="text-xl font-medium">

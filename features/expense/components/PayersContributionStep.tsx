@@ -56,10 +56,10 @@ export default function PayersContributionStep({
           <StepperProgress currentStep={step} steps={3} />
           <VStack>
             <Text className="text-2xl" bold>
-              Payer's Contribution
+              Who paid?
             </Text>
             <Text className="text-secondary-950">
-              Enter each payer's contribution to the expense.
+              Enter how much each person contributed to the expense.
             </Text>
           </VStack>
           <FlatList
@@ -80,7 +80,7 @@ export default function PayersContributionStep({
           />
         </VStack>
       </ScrollView>
-      <Box className="p-4 bg-background-50 rounded-lg">
+      <Box className="p-4 bg-background-50">
         <VStack>
           <Text className="text-xl font-medium">
             {formatAmount(parseFloat(amount), currency)}

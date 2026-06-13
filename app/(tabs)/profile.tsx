@@ -14,6 +14,7 @@ import { VStack } from "@/components/ui/vstack";
 import AppearanceSheet from "@/features/profile/components/AppearanceSheet";
 import NotificationsSheet from "@/features/profile/components/PushNotificationsSheet";
 import TabLayout from "@/layouts/TabLayout";
+import services from "@/services";
 import states from "@/states";
 import { currencies } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
@@ -32,6 +33,8 @@ import {
   UserCircle,
   UserLock
 } from "lucide-react-native";
+import Constants from "expo-constants";
+import * as Notifications from "expo-notifications";
 import { useMemo, useState } from "react";
 import { Pressable, useColorScheme } from "react-native";
 
@@ -141,13 +144,23 @@ export default function ProfileScreen() {
     ]
   );
 
-  const handleSignOut = () => {
-    signOut();
+  const handleSignOut = async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status === "granted") {
+        const { data: token } = await Notifications.getExpoPushTokenAsync({
+          projectId: Constants.expoConfig?.extra?.eas?.projectId
+        });
+        await services.pushToken.removePushToken(token);
+      }
+    } catch {
+      // silently ignore — don't block sign out if token removal fails
+    }
 
+    signOut();
     resetExpenseState();
     resetGroupState();
     resetNotificationState();
-
     router.replace("/login");
   };
 

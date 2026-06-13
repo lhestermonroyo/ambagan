@@ -88,9 +88,14 @@ export default function NewExpenseScreen() {
 
   const fetchGroupMembers = async (groupId: string) => {
     try {
-      const members = await services.member.getMembersByGroupId(groupId);
+      const raw = await services.member.getMembersByGroupId(groupId);
 
-      if (!members) return;
+      if (!raw) return;
+
+      const currentUserId = states.user.getState().details?.id;
+      const members = [...raw].sort((a, b) =>
+        a.id === currentUserId ? -1 : b.id === currentUserId ? 1 : 0
+      );
 
       setMembers(members);
 
@@ -237,7 +242,17 @@ export default function NewExpenseScreen() {
           amount: parseFloat(payers[userId].amount)
         }));
       const paymentSplits = generatePaymentSplits(mappedPayers, mappedSplits);
-      console.log(JSON.stringify(paymentSplits, null, 2));
+
+      if (paymentSplits.length === 0) {
+        toast({
+          title: "Invalid Expense",
+          description:
+            "Everyone paid their exact share. There's nothing to split or settle.",
+          type: "error"
+        });
+        setSubmitting(false);
+        return;
+      }
 
       const response = await services.expense.saveExpense(
         expensePayload,
