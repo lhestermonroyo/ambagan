@@ -16,7 +16,9 @@ import Purchases, {
 const PRO_ENTITLEMENT_ID = "Ambagan Pro";
 
 export const initializePurchases = (userId: string) => {
-  const apiKey = process.env.EXPO_PUBLIC_REVENUE_CAT_API_KEY_TEST!;
+  const apiKey = __DEV__
+    ? process.env.EXPO_PUBLIC_REVENUE_CAT_API_KEY_TEST!
+    : process.env.EXPO_PUBLIC_REVENUE_CAT_API_KEY!;
   if (__DEV__) {
     Purchases.setLogLevel(LOG_LEVEL.DEBUG);
   }
