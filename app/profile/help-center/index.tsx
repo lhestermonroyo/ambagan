@@ -253,7 +253,7 @@ export default function HelpCenterScreen() {
             Find answers to common questions below. If you need further help,
             contact us at{" "}
             <Text bold className="text-primary-400">
-              support@ambagan.ph
+              lhester.monroyo.dev@gmail.com
             </Text>
             .
           </Text>
