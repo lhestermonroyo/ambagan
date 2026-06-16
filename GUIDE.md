@@ -14,6 +14,7 @@
 11. [Push Notifications Setup](#11-push-notifications-setup)
 12. [Testing Environments](#12-testing-environments)
 13. [Known Issues & Fixes](#13-known-issues--fixes)
+14. [Marketing Website](#14-marketing-website)
 
 ---
 
@@ -44,7 +45,7 @@ Ambagan is a Filipino group expense splitting app. Members of a group can log sh
 - Friends list
 - Quick-add expense from home screen
 
-### Pro Plan (₱99/mo or ₱799/yr)
+### Pro Plan (₱149/mo or ₱999/yr)
 - Unlimited groups
 - 14 supported currencies with per-expense currency selection
 - CSV export of expenses
@@ -341,8 +342,8 @@ Two subscription products must be created in App Store Connect → your app → 
 
 | Product ID | Type | Price |
 |---|---|---|
-| `ambagan_pro_monthly` | Auto-Renewable Subscription | ₱99/month |
-| `ambagan_pro_yearly` | Auto-Renewable Subscription | ₱799/year |
+| `ambagan_pro_monthly` | Auto-Renewable Subscription | ₱149/month |
+| `ambagan_pro_yearly` | Auto-Renewable Subscription | ₱999/year |
 
 Both must be added to a **Subscription Group** (e.g., "Ambagan Pro") and linked to the app version under the **In-App Purchases** section of the version page. Status must be at least **Ready to Submit** before RevenueCat can load them.
 
@@ -530,7 +531,7 @@ Using `router.push("/some-screen")` for back navigation triggers a **forward sli
 The entitlement identifier in `purchase.service.ts` must exactly match the ID in the RevenueCat dashboard (case-sensitive, not the display name):
 ```ts
 // features/user/services/purchase.service.ts
-const PRO_ENTITLEMENT_ID = "pro"; // must match RevenueCat entitlement ID exactly
+const PRO_ENTITLEMENT_ID = "Ambagan Pro"; // must match RevenueCat entitlement ID exactly
 ```
 If it doesn't match, `isProEntitlementActive()` always returns `false` and Pro features never unlock even after a successful purchase.
 
@@ -565,6 +566,14 @@ TestFlight uses Apple's **Sandbox** environment — no real charges.
 6. **App-Specific Shared Secret** — deprecated in newer App Store Connect; not needed if you're using the App Store Connect API key in RevenueCat.
 7. **Bundle ID in RevenueCat** — must exactly match `com.lhestermonroyo.ambagan`.
 
+**Resolved (2026-06-16):** this was indeed the 12–24h sandbox propagation delay (#2). Purchases now work end-to-end in TestFlight (purchase, restore, manage, Supabase plan sync). RevenueCat dashboard config confirmed:
+
+| Item | Value |
+|---|---|
+| Product IDs | `ambagan_pro_monthly`, `ambagan_pro_yearly` |
+| Entitlement | `Ambagan Pro` |
+| Offering | `default` |
+
 ---
 
 ### W-8BEN (Tax form for Philippines-based developer)
@@ -582,3 +591,28 @@ Required in App Store Connect → Agreements, Tax, and Banking before the Paid A
 | Type of income | Royalties |
 
 Sign Part III and date. Without claiming the treaty benefit (Part II), Apple withholds 30% of all earnings.
+
+---
+
+## 14. Marketing Website
+
+A static marketing site lives in `docs/` and deploys via **GitHub Pages** (Settings → Pages → Source: `main` branch, `/docs` folder).
+
+| Page | Purpose |
+|---|---|
+| `docs/index.html` | Hero, Features, Pricing, Screenshots (placeholders), About, Contact |
+| `docs/privacy-policy.html` | Standalone Privacy Policy — this is the URL to paste into App Store Connect → App Privacy |
+
+**Live URL (once Pages is enabled):** `https://lhestermonroyo.github.io/ambagan-ph/index.html` (and `/privacy-policy.html`)
+
+**Stack:** Plain HTML + Tailwind CSS via CDN (`cdn.tailwindcss.com`, configured inline per-page) + Lucide icons via CDN (`unpkg.com/lucide`). No build step — edit the HTML directly and push.
+
+**Brand assets reused from the app** (kept in sync with `assets/`):
+- Font: Google Sans, subset to Latin-only glyphs and converted to WOFF2 in `docs/assets/fonts/` (full TTFs are ~2MB each; the subset WOFF2 files are ~25KB each — done via `fonttools`'s `pyftsubset --flavor=woff2`)
+- Logo: `assets/images/light-md.png` → `docs/assets/images/logo.png`
+- App icon: `assets/images/icon.png` → `docs/assets/images/icon.png` (also used as favicon)
+- Colors: brand purple `#8B5CF6`/`#7C3AED` map exactly to Tailwind's default `violet-500`/`violet-600` — no custom color config needed, just use `violet-*` and `amber-*` utility classes directly.
+
+**Screenshots:** currently placeholders (dashed phone-frame boxes with Lucide icons). Each placeholder has an HTML comment directly above it showing the exact `<img>` markup to swap in once real screenshots are ready — search `docs/index.html` for `PLACEHOLDER`.
+
+**Pricing source of truth:** ₱149/mo, ₱999/yr (matches `FALLBACK_MONTHLY`/`FALLBACK_YEARLY` in `app/profile/subscription/index.tsx` and the RevenueCat product config in section 10). If the price changes, update it in three places: the subscription screen fallback constants, this website (`docs/index.html` pricing section), and the IAP product table in section 9.

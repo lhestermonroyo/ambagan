@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Set theme before paint to avoid a light/dark flash -->
+  <script>
+    (function () {
+      var stored = localStorage.getItem("theme");
+      var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (stored === "dark" || (!stored && prefersDark)) {
+        document.documentElement.classList.add("dark");
+      }
+    })();
+  </script>
+
+  <title>Ambagan — Split smarter. Settle faster.</title>
+  <meta name="description" content="Ambagan is a Filipino group expense-splitting app. Log shared expenses, track who paid what, and settle balances with friends, family, and barkada — in seconds." />
+
+  <meta property="og:title" content="Ambagan — Split smarter. Settle faster." />
+  <meta property="og:description" content="A Filipino group expense-splitting app for friends, family, and barkada." />
+  <meta property="og:image" content="./assets/images/icon.png" />
+  <meta property="og:type" content="website" />
+
+  <link rel="icon" href="./assets/images/icon.png" />
+  <link rel="apple-touch-icon" href="./assets/images/icon.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ["GoogleSans", "ui-sans-serif", "system-ui", "sans-serif"]
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+  <style>
+    @font-face {
+      font-family: "GoogleSans";
+      src: url("./assets/fonts/GoogleSans-Regular.woff2") format("woff2");
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "GoogleSans";
+      src: url("./assets/fonts/GoogleSans-Medium.woff2") format("woff2");
+      font-weight: 500;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "GoogleSans";
+      src: url("./assets/fonts/GoogleSans-SemiBold.woff2") format("woff2");
+      font-weight: 600;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "GoogleSans";
+      src: url("./assets/fonts/GoogleSans-Bold.woff2") format("woff2");
+      font-weight: 700;
+      font-display: swap;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: "GoogleSans", ui-sans-serif, system-ui, sans-serif; }
+  </style>
+</head>
+<body class="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased transition-colors">
+
+  <!-- ===== Nav ===== -->
+  <header class="sticky top-0 z-50 bg-white/80 dark:bg-gray-950/80 backdrop-blur border-b border-gray-100 dark:border-gray-800">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="#" class="flex items-center">
+        <img src="./assets/images/logo.png" alt="Ambagan" class="h-7 dark:hidden" />
+        <img src="./assets/images/logo-dark.png" alt="Ambagan" class="h-7 hidden dark:block" />
+      </a>
+      <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600 dark:text-gray-400">
+        <a href="#features" class="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">Features</a>
+        <a href="#pricing" class="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">Pricing</a>
+        <a href="#about" class="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">About</a>
+        <a href="#contact" class="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">Contact</a>
+        <a href="./privacy-policy.html" class="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">Privacy</a>
+      </nav>
+      <div class="flex items-center gap-3">
+        <button id="theme-toggle" type="button" aria-label="Toggle dark mode" class="inline-flex items-center justify-center w-9 h-9 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <i data-lucide="sun" class="w-[18px] h-[18px] hidden dark:block"></i>
+          <i data-lucide="moon" class="w-[18px] h-[18px] dark:hidden"></i>
+        </button>
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-medium px-3 py-1.5">
+          <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+          Coming soon
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== Hero ===== -->
+  <section class="max-w-6xl mx-auto px-6 pt-16 pb-20 md:pt-24 md:pb-28 grid md:grid-cols-2 gap-12 items-center">
+    <div>
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-semibold px-3 py-1.5 mb-6">
+        Made for the barkada 🇵🇭
+      </span>
+      <h1 class="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] mb-5">
+        Split smarter.<br />Settle faster.
+      </h1>
+      <p class="text-lg text-gray-500 dark:text-gray-400 leading-relaxed mb-8 max-w-md">
+        Ambagan makes splitting shared expenses with friends, family, and groups
+        effortless — track who paid, who owes, and settle up in seconds.
+      </p>
+      <!--
+        STORE BADGES (currently disabled "coming soon" <span>s since the app
+        isn't published yet). Once live, swap each <span> for an <a> with the
+        real store URL, e.g.:
+          Apple:   <a href="https://apps.apple.com/app/idXXXXXXXXX" ...>
+          Android: <a href="https://play.google.com/store/apps/details?id=com.lhestermonroyo.ambagan" ...>
+        and remove the opacity-60 / cursor-not-allowed classes.
+      -->
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="opacity-60 cursor-not-allowed" aria-disabled="true">
+          <img src="./assets/images/app-store.png" alt="Download on the App Store" class="h-11 w-auto" />
+        </span>
+        <span class="opacity-60 cursor-not-allowed" aria-disabled="true">
+          <img src="./assets/images/google-play.png" alt="Get it on Google Play" class="h-11 w-auto" />
+        </span>
+      </div>
+      <p class="text-sm text-gray-400 dark:text-gray-500 mt-4">Coming soon · Free to start, upgrade anytime.</p>
+    </div>
+
+    <!-- Hero phone screenshots — 3-card fan (images already include the phone mockup frame) -->
+    <div class="flex justify-center md:justify-end py-6">
+      <div class="relative w-[280px] sm:w-[360px] md:w-[460px]">
+        <!-- left card -->
+        <div class="absolute left-0 top-12 sm:top-14 md:top-16 w-[125px] sm:w-[155px] md:w-[195px] -rotate-[10deg] z-10">
+          <img src="./assets/images/groups-portrait.png" alt="Ambagan groups list" class="w-full drop-shadow-xl" />
+        </div>
+        <!-- right card -->
+        <div class="absolute right-0 top-12 sm:top-14 md:top-16 w-[125px] sm:w-[155px] md:w-[195px] rotate-[10deg] z-10">
+          <img src="./assets/images/mark-as-settled-portrait.png" alt="Ambagan settle up screen" class="w-full drop-shadow-xl" />
+        </div>
+        <!-- center card -->
+        <div class="relative mx-auto w-[170px] sm:w-[210px] md:w-[265px] z-20">
+          <img src="./assets/images/landing-portrait.png" alt="Ambagan welcome screen" class="w-full drop-shadow-2xl" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Features ===== -->
+  <section id="features" class="bg-gray-50 dark:bg-gray-900 py-20 md:py-28">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="max-w-xl mb-14">
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">Everything you need to split fairly</h2>
+        <p class="text-gray-500 dark:text-gray-400 leading-relaxed">No spreadsheets, no awkward math, no "I'll just pay you back" that never happens.</p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
+          <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-4">
+            <i data-lucide="house-plus" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
+          </div>
+          <h3 class="font-semibold mb-1.5">Group expenses</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Create groups for trips, households, or events and log shared expenses as you go.</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
+          <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-4">
+            <i data-lucide="split" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
+          </div>
+          <h3 class="font-semibold mb-1.5">Flexible splitting</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Split equally or set custom amounts per person — your call, every time.</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
+          <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-4">
+            <i data-lucide="handshake" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
+          </div>
+          <h3 class="font-semibold mb-1.5">Settle up with proof</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Request, approve, or reject settlements, with proof-of-payment photos attached.</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
+          <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-4">
+            <i data-lucide="bell" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
+          </div>
+          <h3 class="font-semibold mb-1.5">Push notifications</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Get notified the moment someone adds an expense or settles a balance.</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
+          <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-4">
+            <i data-lucide="users" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
+          </div>
+          <h3 class="font-semibold mb-1.5">Friends list</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Keep track of running balances with friends across all your shared groups.</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
+          <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-4">
+            <i data-lucide="zap" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
+          </div>
+          <h3 class="font-semibold mb-1.5">Quick-add expense</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Add a fast, equal-split expense right from the home screen — no extra taps.</p>
+        </div>
+      </div>
+
+      <!-- Pro features strip -->
+      <div class="mt-8 rounded-2xl bg-gray-900 dark:bg-black text-white p-8 md:p-10 grid md:grid-cols-2 gap-8 items-center">
+        <div>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-semibold px-3 py-1.5 mb-4">
+            <i data-lucide="crown" class="w-3.5 h-3.5"></i>
+            Pro
+          </span>
+          <h3 class="text-2xl font-bold mb-2">For frequent splitters and travelers</h3>
+          <p class="text-gray-400 leading-relaxed">Unlock unlimited groups, multi-currency expenses, CSV exports, and offline access.</p>
+        </div>
+        <ul class="grid sm:grid-cols-2 gap-3 text-sm">
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>Unlimited groups</li>
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>14 currencies supported</li>
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>CSV export</li>
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>Offline access</li>
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>Priority support</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Screenshots ===== -->
+  <section class="py-20 md:py-28">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="max-w-xl mb-14">
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">See Ambagan in action</h2>
+        <p class="text-gray-500 dark:text-gray-400 leading-relaxed">A quick look at the app — from your dashboard to settling up.</p>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-5">
+        <figure>
+          <img src="./assets/images/overview-portrait.png" alt="Ambagan home dashboard" class="w-full drop-shadow-md" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Your dashboard</figcaption>
+        </figure>
+        <figure>
+          <img src="./assets/images/groups-portrait.png" alt="Ambagan groups list" class="w-full drop-shadow-md" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Groups overview</figcaption>
+        </figure>
+        <figure>
+          <img src="./assets/images/add-custom-expense-member-splits-portrait.png" alt="Adding an expense and splitting it among members" class="w-full drop-shadow-md" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Add an expense</figcaption>
+        </figure>
+        <figure>
+          <img src="./assets/images/friends-portrait.png" alt="Ambagan friends and balances list" class="w-full drop-shadow-md" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Friends &amp; balances</figcaption>
+        </figure>
+        <figure>
+          <img src="./assets/images/mark-as-settled-portrait.png" alt="Marking a settlement as settled" class="w-full drop-shadow-md" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Settle up</figcaption>
+        </figure>
+        <figure>
+          <img src="./assets/images/subscriptions-portrait.png" alt="Ambagan profile and Pro upgrade screen" class="w-full drop-shadow-md" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Go Pro</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Pricing ===== -->
+  <section id="pricing" class="bg-gray-50 dark:bg-gray-900 py-20 md:py-28">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="max-w-xl mb-10">
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">Simple, fair pricing</h2>
+        <p class="text-gray-500 dark:text-gray-400 leading-relaxed">Free for casual use. Upgrade when you need more.</p>
+      </div>
+
+      <div class="inline-flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-1 mb-10" id="billing-toggle">
+        <button type="button" data-period="monthly" class="billing-tab text-sm font-semibold px-4 py-2 rounded-lg bg-gray-900 text-white transition-colors">Monthly</button>
+        <button type="button" data-period="yearly" class="billing-tab text-sm font-semibold px-4 py-2 rounded-lg text-gray-500 transition-colors">Yearly <span class="text-amber-500">· save 44%</span></button>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6 max-w-3xl">
+        <!-- Free -->
+        <div class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
+          <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Free</h3>
+          <p class="text-4xl font-bold mb-1">₱0</p>
+          <p class="text-sm text-gray-400 dark:text-gray-500 mb-6">forever</p>
+          <ul class="space-y-3 text-sm">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Up to 3 groups</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Equal &amp; custom splits</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Balance tracking</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Settlement requests</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Push notifications</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Friends list</li>
+          </ul>
+        </div>
+
+        <!-- Pro -->
+        <div class="bg-gray-900 dark:bg-black text-white rounded-2xl p-8 relative overflow-hidden">
+          <span class="absolute top-6 right-6 inline-flex items-center gap-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-semibold px-2.5 py-1">
+            <i data-lucide="crown" class="w-3 h-3"></i>
+            Pro
+          </span>
+          <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-400 mb-2">Pro</h3>
+          <p class="text-4xl font-bold mb-1">
+            <span class="price-monthly">₱149<span class="text-lg font-medium text-gray-400">/mo</span></span>
+            <span class="price-yearly hidden">₱999<span class="text-lg font-medium text-gray-400">/yr</span></span>
+          </p>
+          <p class="text-sm text-gray-400 mb-6">
+            <span class="price-monthly">billed monthly</span>
+            <span class="price-yearly hidden">≈₱83/mo, billed annually</span>
+          </p>
+          <ul class="space-y-3 text-sm">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>Everything in Free</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>Unlimited groups</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>14 currencies, per-expense</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>CSV export</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>Offline access</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>Priority support</li>
+          </ul>
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 dark:text-gray-500 mt-6">Prices in PHP. In-app purchase via App Store / Play Store. Cancel anytime.</p>
+    </div>
+  </section>
+
+  <!-- ===== About ===== -->
+  <section id="about" class="py-20 md:py-28">
+    <div class="max-w-3xl mx-auto px-6 text-center">
+      <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-5">About Ambagan</h2>
+      <p class="text-gray-500 dark:text-gray-400 leading-relaxed mb-4">
+        "Ambag" is a Filipino word for contribution — to <em>mag-ambag</em> is to chip in.
+        That's exactly what this app is built around: making it easy for groups of
+        friends, family, or barkada to chip in fairly and keep track of who owes who.
+      </p>
+      <p class="text-gray-500 dark:text-gray-400 leading-relaxed">
+        Ambagan is built and maintained by an independent developer in the
+        Philippines, designed to remove the awkward math and spreadsheets from
+        splitting bills with the people you actually want to spend time with.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===== Download CTA ===== -->
+  <section class="bg-violet-50 dark:bg-violet-500/10 py-16">
+    <div class="max-w-2xl mx-auto px-6 text-center">
+      <h2 class="text-2xl md:text-3xl font-bold tracking-tight mb-3">Ready to split smarter?</h2>
+      <p class="text-gray-500 dark:text-gray-400 leading-relaxed mb-7">Ambagan is launching soon on iOS and Android.</p>
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <span class="opacity-60 cursor-not-allowed" aria-disabled="true">
+          <img src="./assets/images/app-store.png" alt="Download on the App Store" class="h-11 w-auto" />
+        </span>
+        <span class="opacity-60 cursor-not-allowed" aria-disabled="true">
+          <img src="./assets/images/google-play.png" alt="Get it on Google Play" class="h-11 w-auto" />
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Contact ===== -->
+  <section id="contact" class="bg-gray-900 dark:bg-black text-white py-20 md:py-28">
+    <div class="max-w-2xl mx-auto px-6 text-center">
+      <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-4">Get in touch</h2>
+      <p class="text-gray-400 leading-relaxed mb-8">
+        Questions, feedback, or need help with your account? We read every email.
+      </p>
+      <a href="mailto:lhester.monroyo.dev@gmail.com" class="inline-flex items-center gap-2 rounded-xl bg-white text-gray-900 text-sm font-semibold px-6 py-3.5 hover:bg-gray-100 transition-colors">
+        <i data-lucide="mail" class="w-4 h-4"></i>
+        lhester.monroyo.dev@gmail.com
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== Footer ===== -->
+  <footer class="py-10 border-t border-gray-100 dark:border-gray-800">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <img src="./assets/images/logo.png" alt="Ambagan" class="h-5 opacity-70 dark:hidden" />
+      <img src="./assets/images/logo-dark.png" alt="Ambagan" class="h-5 opacity-70 hidden dark:block" />
+      <div class="flex items-center gap-6 text-sm text-gray-400 dark:text-gray-500">
+        <a href="./privacy-policy.html" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Privacy Policy</a>
+        <a href="mailto:lhester.monroyo.dev@gmail.com" class="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Contact</a>
+        <span>© 2026 Ambagan</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+
+    const themeToggle = document.getElementById("theme-toggle");
+    themeToggle.addEventListener("click", () => {
+      const isDark = document.documentElement.classList.toggle("dark");
+      localStorage.setItem("theme", isDark ? "dark" : "light");
+    });
+
+    const tabs = document.querySelectorAll(".billing-tab");
+    const monthlyEls = document.querySelectorAll(".price-monthly");
+    const yearlyEls = document.querySelectorAll(".price-yearly");
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const period = tab.dataset.period;
+
+        tabs.forEach((t) => {
+          t.classList.toggle("bg-gray-900", t === tab);
+          t.classList.toggle("text-white", t === tab);
+          t.classList.toggle("text-gray-500", t !== tab);
+        });
+
+        monthlyEls.forEach((el) => el.classList.toggle("hidden", period !== "monthly"));
+        yearlyEls.forEach((el) => el.classList.toggle("hidden", period !== "yearly"));
+      });
+    });
+  </script>
+</body>
+</html>
