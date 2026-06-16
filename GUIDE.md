@@ -539,9 +539,46 @@ If it doesn't match, `isProEntitlementActive()` always returns `false` and Pro f
 ### Testing RevenueCat purchases in TestFlight
 TestFlight uses Apple's **Sandbox** environment — no real charges.
 
-1. Create a **Sandbox Tester** in App Store Connect → Users & Access → Sandbox Testers (separate Apple ID from your real one)
-2. **Do not** pre-sign in to the sandbox account in iPhone Settings → App Store
-3. In the app, tap a subscription plan to trigger a purchase
-4. iOS will prompt for Apple ID — sign in with the sandbox tester **at that prompt only**
+1. Create a **Sandbox Tester** in App Store Connect → Users & Access → Sandbox Testers
+   - Use a **brand new email** that has never been registered as an Apple ID (e.g. create a fresh Gmail)
+   - Do NOT use your personal Apple ID email — Apple rejects it with `active = false`
+2. Go to **Settings → App Store** on your device → tap your Apple ID → **Sign Out**
+3. Open TestFlight → go to the subscription screen → tap a plan
+4. iOS will prompt for an Apple ID → sign in with the sandbox tester credentials there
 5. Purchase completes instantly; RevenueCat dashboard shows it under the Sandbox toggle
 6. Sandbox subscriptions renew every few minutes (not monthly/yearly)
+7. After testing, go back to Settings → App Store and sign in with your real Apple ID
+
+---
+
+### RevenueCat "no App Store products registered" error (CONFIGURATION_ERROR)
+**Symptom:** `getOfferings()` throws with message *"There is an issue with your configuration... there are no App Store products registered in the RevenueCat dashboard for your offerings."*  
+**Error code:** `CONFIGURATION_ERROR`
+
+**Checklist — work through these in order:**
+
+1. **Paid Applications agreement** — App Store Connect → Agreements, Tax, and Banking → Paid Applications must be **Active** (not pending). Without this, Apple blocks all IAP products from loading in any environment including sandbox.
+2. **Propagation delay** — after activating the Paid Applications agreement, Apple's sandbox takes **12–24 hours** to propagate. This is the most common cause of a persistent CONFIGURATION_ERROR immediately after setup. Wait and retry the next day.
+3. **Subscriptions linked to app version** — App Store Connect → your app version → scroll to "In-App Purchases and Subscriptions" → both subscription products must be listed there.
+4. **RevenueCat offering has packages** — RevenueCat → Offerings → `default` offering must have packages, and each package must be linked to a valid product (`ambagan_pro_monthly`, `ambagan_pro_yearly`).
+5. **Dead products in RevenueCat** — delete any products with "Not found" status in RevenueCat → Products. They don't affect offerings directly but are clutter that can cause confusion.
+6. **App-Specific Shared Secret** — deprecated in newer App Store Connect; not needed if you're using the App Store Connect API key in RevenueCat.
+7. **Bundle ID in RevenueCat** — must exactly match `com.lhestermonroyo.ambagan`.
+
+---
+
+### W-8BEN (Tax form for Philippines-based developer)
+Required in App Store Connect → Agreements, Tax, and Banking before the Paid Applications agreement can be activated.
+
+| Field | Value |
+|---|---|
+| Name | Full legal name |
+| Country of citizenship | Philippines |
+| Permanent residence address | PH address |
+| Foreign tax identifying number | Philippine TIN (BIR 12-digit) |
+| Treaty country | Philippines |
+| Treaty article | Article 13 (Royalties) |
+| Withholding rate | 15% (reduced from 30% via US-PH treaty) |
+| Type of income | Royalties |
+
+Sign Part III and date. Without claiming the treaty benefit (Part II), Apple withholds 30% of all earnings.

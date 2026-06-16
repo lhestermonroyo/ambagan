@@ -440,6 +440,8 @@ export default function NewExpenseScreen() {
           amount={values.amount}
           currency={values.currency}
           step={step}
+          isLockedGroup={isLocked}
+          groupName={values.group.name}
         />
       )}
       {step === 3 && (
@@ -451,6 +453,8 @@ export default function NewExpenseScreen() {
           splits={splits}
           onSetSplits={handleSetSplits}
           step={step}
+          isLockedGroup={isLocked}
+          groupName={values.group.name}
         />
       )}
     </FormLayout>

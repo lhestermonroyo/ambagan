@@ -41,6 +41,8 @@ type SplitExpenseStepProps = {
     splits: Splits,
     tab: (typeof splitTypes)[number]["value"]
   ) => void;
+  isLockedGroup?: boolean;
+  groupName?: string;
 };
 
 export default function SplitSelection({
@@ -49,7 +51,9 @@ export default function SplitSelection({
   currency,
   members,
   splits,
-  onSetSplits
+  onSetSplits,
+  isLockedGroup = false,
+  groupName
 }: SplitExpenseStepProps) {
   const [tab, setTab] = useState<(typeof splitTypes)[number]["value"]>(
     splitTypes[0].value
@@ -161,6 +165,9 @@ export default function SplitSelection({
           <VStack className="px-4 gap-y-4">
             <StepperProgress currentStep={step} steps={3} />
             <VStack>
+              {isLockedGroup && groupName && (
+                <Text className="font-medium text-lg">{groupName}</Text>
+              )}
               <Text className="text-2xl" bold>
                 Who owes what?
               </Text>

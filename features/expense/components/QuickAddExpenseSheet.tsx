@@ -351,7 +351,7 @@ export default function QuickAddExpenseSheet({
                             <HStack className="justify-between items-center gap-x-2 flex-1">
                               <HStack className="gap-x-2 items-center flex-1">
                                 <VStack className="gap-y-2 flex-1">
-                                  <Text className="text-secondary-950 font-medium">
+                                  <Text className="font-medium text-lg">
                                     {selectedGroup?.name}
                                   </Text>
                                   <VStack className="items-start gap-y-1">

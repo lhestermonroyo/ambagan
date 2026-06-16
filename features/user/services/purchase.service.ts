@@ -28,6 +28,10 @@ export const getOfferings = async (): Promise<PurchasesOffering | null> => {
   return offerings.current;
 };
 
+export const getAllOfferings = async () => {
+  return Purchases.getOfferings();
+};
+
 export const getMonthlyPackage = (
   offering: PurchasesOffering
 ): PurchasesPackage | undefined =>

@@ -332,10 +332,7 @@ export default function GroupDetailsScreen() {
                       <HStack className="gap-x-2">
                         <Edit2
                           size={20}
-                          color={getSecondaryHex(
-                            "text-secondary-950",
-                            colorScheme
-                          )}
+                          color={getPrimaryHex("text-primary-500", colorScheme)}
                         />
                         <MenuItemLabel>Edit</MenuItemLabel>
                       </HStack>
@@ -353,10 +350,7 @@ export default function GroupDetailsScreen() {
                     <HStack className="gap-x-2">
                       <LogOut
                         size={20}
-                        color={getSecondaryHex(
-                          "text-secondary-950",
-                          colorScheme
-                        )}
+                        color={getPrimaryHex("text-primary-500", colorScheme)}
                       />
                       <MenuItemLabel>Leave Group</MenuItemLabel>
                     </HStack>
@@ -375,10 +369,7 @@ export default function GroupDetailsScreen() {
                       <HStack className="gap-x-2">
                         <ArchiveRestore
                           size={20}
-                          color={getSecondaryHex(
-                            "text-secondary-950",
-                            colorScheme
-                          )}
+                          color={getPrimaryHex("text-primary-500", colorScheme)}
                         />
                         <MenuItemLabel>Unarchive</MenuItemLabel>
                       </HStack>
@@ -396,10 +387,7 @@ export default function GroupDetailsScreen() {
                       <HStack className="gap-x-2">
                         <Archive
                           size={20}
-                          color={getSecondaryHex(
-                            "text-secondary-950",
-                            colorScheme
-                          )}
+                          color={getPrimaryHex("text-primary-500", colorScheme)}
                         />
                         <MenuItemLabel>Archive</MenuItemLabel>
                       </HStack>

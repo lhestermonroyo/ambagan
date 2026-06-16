@@ -136,8 +136,7 @@ export default function LeaveGroupSheet({
               Leave Group
             </Text>
           </VStack>
-
-          <ScrollView className="flex-1">
+          <ScrollView className="flex-1 px-4">
             <VStack className="gap-y-4">
               <LoadingWrapper isLoading={fetching}>
                 {hasUnsettled ? (

@@ -119,9 +119,53 @@ export default function SubscriptionScreen() {
   const fetchOffering = async () => {
     setLoadingOffering(true);
     try {
-      const current = await services.purchase.getOfferings();
+      toast({
+        title: "[DEBUG] Fetching offerings...",
+        description: "Calling getOfferings()",
+        type: "info"
+      });
+      const all = await services.purchase.getAllOfferings();
+      toast({
+        title: "[DEBUG] Raw offerings",
+        description: JSON.stringify({
+          current: all.current?.identifier ?? null,
+          all: Object.keys(all.all)
+        }),
+        type: "info"
+      });
+      const current = all.current;
+      if (current) {
+        toast({
+          title: "[DEBUG] Offering loaded",
+          description: JSON.stringify({
+            id: current.identifier,
+            packages: current.availablePackages.map((p: any) => ({
+              id: p.identifier,
+              productId: p.product.identifier,
+              price: p.product.price
+            }))
+          }),
+          type: "success"
+        });
+      } else {
+        toast({
+          title: "[DEBUG] No current offering",
+          description:
+            "offerings.current is null — check RevenueCat default offering",
+          type: "error"
+        });
+      }
       setOffering(current);
-    } catch (error) {
+    } catch (error: any) {
+      toast({
+        title: "[DEBUG] getOfferings() threw",
+        description: JSON.stringify({
+          message: error?.message,
+          code: error?.code,
+          underlyingError: error?.userInfo ?? null
+        }),
+        type: "error"
+      });
       console.error("Failed to fetch offerings:", error);
     } finally {
       setLoadingOffering(false);
@@ -141,7 +185,22 @@ export default function SubscriptionScreen() {
 
     setPurchasing(true);
     try {
+      toast({
+        title: "[DEBUG] Purchasing...",
+        description: JSON.stringify({
+          pkg: selectedPkg.identifier,
+          productId: selectedPkg.product.identifier
+        }),
+        type: "info"
+      });
       const customerInfo = await services.purchase.purchasePackage(selectedPkg);
+      toast({
+        title: "[DEBUG] Purchase success",
+        description: JSON.stringify({
+          activeEntitlements: Object.keys(customerInfo.entitlements.active)
+        }),
+        type: "success"
+      });
       const { plan, planExpiresAt } =
         await services.purchase.syncPlanToSupabase(customerInfo);
 
@@ -157,12 +216,15 @@ export default function SubscriptionScreen() {
         description: "Your subscription is now active. Enjoy all Pro features.",
         type: "success"
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Purchase failed:", error);
       if (services.purchase.isPurchaseCancelled(error)) return;
       toast({
-        title: "Purchase Failed",
-        description: "Something went wrong during checkout. Please try again.",
+        title: "[DEBUG] Purchase failed",
+        description: JSON.stringify({
+          message: error?.message,
+          code: error?.code
+        }),
         type: "error"
       });
     } finally {

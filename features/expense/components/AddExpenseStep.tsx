@@ -83,7 +83,7 @@ export default function AddExpenseStep({
           <StepperProgress currentStep={step} steps={3} />
           <VStack>
             {isLockedGroup && values.group && (
-              <Text className="text-secondary-950">{values.group.name}</Text>
+              <Text className="font-medium text-lg">{values.group.name}</Text>
             )}
             <Text className="text-2xl" bold>
               Expense Details

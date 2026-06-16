@@ -22,6 +22,8 @@ type PayersContributionStepProps = {
   members: Member[];
   payers: Record<string, { amount: string }>;
   onPayerAmountChange: (userId: string, amount: string) => void;
+  isLockedGroup?: boolean;
+  groupName?: string;
 };
 export default function PayersContributionStep({
   step,
@@ -29,7 +31,9 @@ export default function PayersContributionStep({
   currency = "PHP",
   members,
   payers,
-  onPayerAmountChange
+  onPayerAmountChange,
+  isLockedGroup = false,
+  groupName
 }: PayersContributionStepProps) {
   const formattedPayers = useMemo(() => {
     return members.map((member) => ({
@@ -55,6 +59,9 @@ export default function PayersContributionStep({
         <VStack className="px-4 gap-y-4">
           <StepperProgress currentStep={step} steps={3} />
           <VStack>
+            {isLockedGroup && groupName && (
+              <Text className="font-medium text-lg">{groupName}</Text>
+            )}
             <Text className="text-2xl" bold>
               Who paid?
             </Text>
