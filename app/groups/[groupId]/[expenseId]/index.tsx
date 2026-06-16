@@ -2,7 +2,10 @@ import AppAvatar from "@/components/AppAvatar";
 import ConfirmIconButton from "@/components/ConfirmIconButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
+import Icon from "@/components/Icon";
+import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
@@ -24,7 +27,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { FileImage } from "lucide-react-native";
 import { Fragment, ReactNode, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
-import ListDivider from "@/components/ListDivider";
 
 export default function ExpenseDetailsScreen() {
   const { details: groupDetails } = states.group();
@@ -377,10 +379,23 @@ function MemberSplitItem({
   payment?: Payment;
 }) {
   const { details: userDetails } = states.user();
+  const router = useRouter();
   const isMe = memberSplit.member.id === userDetails?.id;
 
-  return (
-    <HStack className="p-4 gap-x-2 items-center">
+  const handlePress = () => {
+    router.push({
+      pathname: "/friends/[friendId]",
+      params: {
+        friendId: memberSplit.member.id,
+        name: `${memberSplit.member.first_name} ${memberSplit.member.last_name}`,
+        email: memberSplit.member.email,
+        avatar: memberSplit.member.avatar || ""
+      }
+    });
+  };
+
+  const content = (
+    <HStack className="gap-x-2 items-center">
       <AppAvatar
         name={memberSplit.member.first_name}
         uri={memberSplit.member.avatar!}
@@ -398,16 +413,40 @@ function MemberSplitItem({
           {formatAmount(memberSplit.amount, memberSplit.currency)}
         </Text>
       </VStack>
+      {!isMe && <Icon as="chevron-right" className="text-secondary-950" />}
     </HStack>
+  );
+
+  if (isMe) {
+    return <Box className="p-4">{content}</Box>;
+  }
+
+  return (
+    <PressableListItem className="p-4" onPress={handlePress}>
+      {content}
+    </PressableListItem>
   );
 }
 
 function PayerItem({ payer }: { payer: ExpensePayer }) {
   const { details: userDetails } = states.user();
+  const router = useRouter();
   const isMe = payer.payer.id === userDetails?.id;
 
-  return (
-    <HStack className="p-4 items-center justify-between">
+  const handlePress = () => {
+    router.push({
+      pathname: "/friends/[friendId]",
+      params: {
+        friendId: payer.payer.id,
+        name: `${payer.payer.first_name} ${payer.payer.last_name}`,
+        email: payer.payer.email,
+        avatar: payer.payer.avatar || ""
+      }
+    });
+  };
+
+  const content = (
+    <HStack className="items-center gap-x-2">
       <HStack className="gap-x-2 items-center flex-1">
         <AppAvatar
           name={payer.payer.first_name}
@@ -425,6 +464,17 @@ function PayerItem({ payer }: { payer: ExpensePayer }) {
       <Text className="text-lg">
         {formatAmount(payer.amount, payer.currency)}
       </Text>
+      {!isMe && <Icon as="chevron-right" className="text-secondary-950" />}
     </HStack>
+  );
+
+  if (isMe) {
+    return <Box className="p-4">{content}</Box>;
+  }
+
+  return (
+    <PressableListItem className="p-4" onPress={handlePress}>
+      {content}
+    </PressableListItem>
   );
 }
