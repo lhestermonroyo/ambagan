@@ -19,17 +19,16 @@ export const initializePurchases = (userId: string) => {
   const apiKey = __DEV__
     ? process.env.EXPO_PUBLIC_REVENUE_CAT_API_KEY_TEST!
     : process.env.EXPO_PUBLIC_REVENUE_CAT_API_KEY!;
-  Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+
+  if (__DEV__) {
+    Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+  }
   Purchases.configure({ apiKey, appUserID: userId });
 };
 
 export const getOfferings = async (): Promise<PurchasesOffering | null> => {
   const offerings = await Purchases.getOfferings();
   return offerings.current;
-};
-
-export const getAllOfferings = async () => {
-  return Purchases.getOfferings();
 };
 
 export const getMonthlyPackage = (
