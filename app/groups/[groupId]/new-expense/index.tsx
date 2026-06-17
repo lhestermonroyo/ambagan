@@ -79,10 +79,6 @@ export default function NewExpenseScreen() {
   useEffect(() => {
     if (values.group) {
       fetchGroupMembers(values.group.id);
-
-      if (values.group.admin?.plan !== "pro") {
-        setValues((prev) => ({ ...prev, currency: "PHP" }));
-      }
     }
   }, [values.group?.id]);
 
@@ -310,7 +306,6 @@ export default function NewExpenseScreen() {
     [payers, splits]
   );
 
-  const isGroupPro = values.group?.admin?.plan === "pro";
 
   const isValidMemberSplit = useMemo(() => {
     const totalSplitAmount = Object.keys(splits)
@@ -428,7 +423,6 @@ export default function NewExpenseScreen() {
           setValues={setValues}
           formErrors={formErrors}
           isLockedGroup={isLocked}
-          isGroupPro={isGroupPro}
           step={step}
         />
       )}

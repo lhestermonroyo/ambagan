@@ -68,15 +68,13 @@ export default function QuickAddExpenseSheet({
   const toast = useAppToast();
   const router = useRouter();
 
-  const isGroupPro = selectedGroup?.admin?.plan === "pro";
-
   useEffect(() => {
     if (isOpen) {
       setAmount("");
       setDescription("");
       setSelectedGroup(group);
       setSelectedPayer(null);
-      setCurrency(group?.admin?.plan === "pro" ? defaultCurrency : "PHP");
+      setCurrency(defaultCurrency);
       if (group) fetchMembers(group.id);
     } else {
       setMembers([]);
@@ -86,7 +84,7 @@ export default function QuickAddExpenseSheet({
 
   useEffect(() => {
     if (selectedGroup && isOpen) {
-      setCurrency(isGroupPro ? defaultCurrency : "PHP");
+      setCurrency(defaultCurrency);
       fetchMembers(selectedGroup.id);
     }
   }, [selectedGroup?.id]);
@@ -233,18 +231,10 @@ export default function QuickAddExpenseSheet({
                         <FormControlLabelText>Amount</FormControlLabelText>
                       </FormControlLabel>
                       <HStack className="gap-x-2 items-end h-12">
-                        {isGroupPro ? (
-                          <CurrencySelection
-                            currency={currency}
-                            onCurrencyChange={setCurrency}
-                          />
-                        ) : (
-                          <Box className="border border-secondary-500 bg-secondary-50 items-center justify-center h-full px-2 py-2 rounded-lg">
-                            <Text className="font-semibold text-secondary-950">
-                              PHP (₱)
-                            </Text>
-                          </Box>
-                        )}
+                        <CurrencySelection
+                          currency={currency}
+                          onCurrencyChange={setCurrency}
+                        />
                         <VStack className="flex-1">
                           <AmountInput
                             className="h-full"

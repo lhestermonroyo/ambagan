@@ -45,11 +45,11 @@ Ambagan is a Filipino group expense splitting app. Members of a group can log sh
 - Friends list
 - Quick-add expense from home screen
 
-### Pro Plan (₱149/mo or ₱999/yr)
-- Unlimited groups
+### Pro Plan (₱499 one-time)
+- Unlimited groups (free tier is capped at 3)
 - 14 supported currencies with per-expense currency selection
 - CSV export of expenses
-- Offline access (cached group data via SQLite)
+- All future updates included
 - Priority support
 
 ### Expense Splitting
@@ -342,10 +342,9 @@ Two subscription products must be created in App Store Connect → your app → 
 
 | Product ID | Type | Price |
 |---|---|---|
-| `ambagan_pro_monthly` | Auto-Renewable Subscription | ₱149/month |
-| `ambagan_pro_yearly` | Auto-Renewable Subscription | ₱999/year |
+| `ambagan_pro_lifetime` | Non-Consumable | ₱499 (one-time) |
 
-Both must be added to a **Subscription Group** (e.g., "Ambagan Pro") and linked to the app version under the **In-App Purchases** section of the version page. Status must be at least **Ready to Submit** before RevenueCat can load them.
+Must be linked to the app version under the **In-App Purchases** section of the version page. Status must be at least **Ready to Submit** before RevenueCat can load it.
 
 ### App Review Notes
 ```
@@ -596,23 +595,118 @@ Sign Part III and date. Without claiming the treaty benefit (Part II), Apple wit
 
 ## 14. Marketing Website
 
-A static marketing site lives in `docs/` and deploys via **GitHub Pages** (Settings → Pages → Source: `main` branch, `/docs` folder).
+A static marketing site lives in `docs/` and deploys via **GitHub Pages**.
 
 | Page | Purpose |
 |---|---|
-| `docs/index.html` | Hero, Features, Pricing, Screenshots (placeholders), About, Contact |
-| `docs/privacy-policy.html` | Standalone Privacy Policy — this is the URL to paste into App Store Connect → App Privacy |
+| `docs/index.html` | Hero, Features, Pricing, Screenshots, About, Contact |
+| `docs/privacy-policy.html` | Standalone Privacy Policy — paste this URL into App Store Connect → App Privacy |
 
-**Live URL (once Pages is enabled):** `https://lhestermonroyo.github.io/ambagan-ph/index.html` (and `/privacy-policy.html`)
+**Live URLs:**
+- Home: `https://lhestermonroyo.github.io/ambagan/`
+- Privacy Policy: `https://lhestermonroyo.github.io/ambagan/privacy-policy.html`
 
 **Stack:** Plain HTML + Tailwind CSS via CDN (`cdn.tailwindcss.com`, configured inline per-page) + Lucide icons via CDN (`unpkg.com/lucide`). No build step — edit the HTML directly and push.
 
-**Brand assets reused from the app** (kept in sync with `assets/`):
-- Font: Google Sans, subset to Latin-only glyphs and converted to WOFF2 in `docs/assets/fonts/` (full TTFs are ~2MB each; the subset WOFF2 files are ~25KB each — done via `fonttools`'s `pyftsubset --flavor=woff2`)
-- Logo: `assets/images/light-md.png` → `docs/assets/images/logo.png`
-- App icon: `assets/images/icon.png` → `docs/assets/images/icon.png` (also used as favicon)
-- Colors: brand purple `#8B5CF6`/`#7C3AED` map exactly to Tailwind's default `violet-500`/`violet-600` — no custom color config needed, just use `violet-*` and `amber-*` utility classes directly.
+---
 
-**Screenshots:** currently placeholders (dashed phone-frame boxes with Lucide icons). Each placeholder has an HTML comment directly above it showing the exact `<img>` markup to swap in once real screenshots are ready — search `docs/index.html` for `PLACEHOLDER`.
+### Deploying to GitHub Pages
 
-**Pricing source of truth:** ₱149/mo, ₱999/yr (matches `FALLBACK_MONTHLY`/`FALLBACK_YEARLY` in `app/profile/subscription/index.tsx` and the RevenueCat product config in section 10). If the price changes, update it in three places: the subscription screen fallback constants, this website (`docs/index.html` pricing section), and the IAP product table in section 9.
+#### First-time setup (one-time)
+
+**Prerequisites:**
+- `gh` CLI installed and authenticated (`gh auth status`). If not: `brew install gh && gh auth login`
+- Git remote pointing to `https://github.com/lhestermonroyo/ambagan.git` (already set)
+
+**Enable GitHub Pages via script (recommended):**
+
+```bash
+./scripts/deploy-pages.sh
+```
+
+The script will:
+1. Check you're on `main`
+2. Commit any uncommitted changes in `docs/` automatically
+3. Push `main` to origin
+4. Detect whether GitHub Pages is configured — if not, prompt you to enable it automatically via `gh api`
+
+When prompted, type `y` to enable Pages. GitHub Pages will be set to source from the `main` branch, `/docs` folder.
+
+**Enable GitHub Pages manually (alternative):**
+1. Go to `https://github.com/lhestermonroyo/ambagan/settings/pages`
+2. Under **Source**, select **Deploy from a branch**
+3. Branch: `main` · Folder: `/docs`
+4. Click **Save**
+
+Or via CLI directly:
+```bash
+gh api repos/lhestermonroyo/ambagan/pages \
+  --method POST \
+  --field "source[branch]=main" \
+  --field "source[path]=/docs"
+```
+
+After enabling, the site goes live in **1–2 minutes**.
+
+---
+
+#### Subsequent deploys
+
+Any time you update the website, just run:
+
+```bash
+./scripts/deploy-pages.sh
+```
+
+It auto-commits any `docs/` changes and pushes. No manual steps needed.
+
+Or push manually:
+```bash
+git add docs/
+git commit -m "docs: <describe change>"
+git push origin main
+```
+
+GitHub Pages automatically redeploys on every push to `main` once it's enabled. Check deploy status at:
+`https://github.com/lhestermonroyo/ambagan/actions`
+
+---
+
+### File Structure
+
+```
+docs/
+├── index.html               # Main marketing page
+├── privacy-policy.html      # Standalone privacy policy
+└── assets/
+    ├── fonts/               # Google Sans WOFF2 subsets (~25KB each)
+    │   ├── GoogleSans-Regular.woff2
+    │   ├── GoogleSans-Medium.woff2
+    │   ├── GoogleSans-SemiBold.woff2
+    │   └── GoogleSans-Bold.woff2
+    └── images/
+        ├── logo.png          # Light-mode logo (light-md.png from app assets)
+        ├── logo-dark.png     # Dark-mode logo (dark-md.png from app assets)
+        ├── icon.png          # App icon (also used as favicon)
+        ├── app-store.png     # Official App Store badge
+        ├── google-play.png   # Official Google Play badge
+        └── *-portrait.png   # App screenshots (max 750px wide, sips-resized)
+```
+
+---
+
+### Brand Notes
+
+- **Colors:** brand purple maps to Tailwind `violet-500`/`violet-600` — use `violet-*` and `amber-*` utility classes directly; no custom config needed.
+- **Fonts:** Google Sans TTFs (~2MB each) were subset to Latin-only and converted to WOFF2 via `pyftsubset --flavor=woff2`. Do not commit the full TTFs.
+- **Screenshots:** resized to max 750px wide via `sips -Z 750 filename.png --out filename.png` before committing to keep the repo lean.
+- **Store badges:** currently wrapped in `<span class="opacity-60 cursor-not-allowed">` (app not yet live). Once published, replace each `<span>` with `<a href="...">` pointing to the real store URL and remove the opacity/cursor classes.
+
+---
+
+### Pricing Source of Truth
+
+₱499 one-time — if the price changes, update it in **three places**:
+1. Fallback constant in `app/profile/subscription/index.tsx` (`FALLBACK_PRICE`)
+2. Pricing section in `docs/index.html`
+3. IAP product table in [Section 9](#9-app-store-connect-setup) of this guide

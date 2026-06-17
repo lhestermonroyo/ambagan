@@ -15,24 +15,24 @@ import { useRouter } from "expo-router";
 
 const PRO_FEATURES = [
   {
-    icon: "public",
-    title: "Multi-currency expenses",
-    description: "Add expenses in any currency — PHP, USD, JPY, SGD and more."
+    icon: "groups",
+    title: "Unlimited groups",
+    description: "Create as many groups as you need — no cap, ever."
   },
   {
-    icon: "groups",
-    title: "Unlimited group creation",
-    description: "Create as many groups as you need, no limits."
+    icon: "public",
+    title: "Multi-currency expenses",
+    description: "Add expenses in PHP, USD, JPY, SGD, and more."
   },
   {
     icon: "download",
-    title: "CSV export",
-    description: "Export group settlements by date range for records or reimbursements."
+    title: "Export settlements as CSV",
+    description: "Download settlements by date range for your records."
   },
   {
     icon: "star",
-    title: "Pro badge on your groups",
-    description: "Members in your groups enjoy Pro features automatically."
+    title: "All future updates included",
+    description: "New features as they ship — yours forever."
   }
 ];
 
@@ -71,7 +71,7 @@ export default function UpgradeSheet({
               </Box>
             </HStack>
             <Text className="text-secondary-950">
-              Unlock powerful features for you and your group members.
+              One-time purchase · No subscription · No renewal
             </Text>
           </VStack>
 
@@ -97,7 +97,7 @@ export default function UpgradeSheet({
               ))}
             </VStack>
 
-            <FormButton text="See Plans & Pricing" onPress={handleUpgrade} />
+            <FormButton text="Unlock Pro — ₱499" onPress={handleUpgrade} />
           </VStack>
         </VStack>
       </ActionsheetContent>

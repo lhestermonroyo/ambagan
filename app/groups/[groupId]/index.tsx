@@ -96,8 +96,6 @@ export default function GroupDetailsScreen() {
       setLoading(true);
     }
 
-    const isPro = userDetails?.plan === "pro";
-
     try {
       const [groupDetailsResponse, expensesResponse, membersResponse] =
         await Promise.all([
@@ -111,11 +109,9 @@ export default function GroupDetailsScreen() {
         return;
       }
 
-      if (isPro) {
-        cacheService
-          .saveGroupDetail(groupId, expensesResponse, membersResponse)
-          .catch(() => {});
-      }
+      cacheService
+        .saveGroupDetail(groupId, expensesResponse, membersResponse)
+        .catch(() => {});
 
       states.group.setState((prev) => ({
         ...prev,
@@ -125,17 +121,15 @@ export default function GroupDetailsScreen() {
       }));
     } catch (error) {
       console.log("Error fetching group details:", error);
-      if (isPro) {
-        const cached = await cacheService.getGroupDetail(groupId);
-        if (cached) {
-          states.group.setState((prev) => ({
-            ...prev,
-            expenseList: cached.expenseList,
-            memberList: cached.memberList
-          }));
-          setLoading(false);
-          return;
-        }
+      const cached = await cacheService.getGroupDetail(groupId);
+      if (cached) {
+        states.group.setState((prev) => ({
+          ...prev,
+          expenseList: cached.expenseList,
+          memberList: cached.memberList
+        }));
+        setLoading(false);
+        return;
       }
       router.replace("/groups");
     } finally {
@@ -641,7 +635,6 @@ export default function GroupDetailsScreen() {
                 groupId={groupId}
                 groupName={groupDetails?.name ?? ""}
                 userId={userDetails.id}
-                isPro={userDetails.plan === "pro"}
               />
             )}
           </ScrollView>

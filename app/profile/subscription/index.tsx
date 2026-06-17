@@ -11,8 +11,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import { format } from "date-fns";
+import { getPrimaryHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
 import {
   CheckCircle,
@@ -20,64 +19,39 @@ import {
   Globe,
   HousePlus,
   TrendingUp,
-  Users,
-  WifiOff,
-  XCircle
+  Zap
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, useColorScheme } from "react-native";
+import { ActivityIndicator, useColorScheme } from "react-native";
 import { PurchasesOffering, PurchasesPackage } from "react-native-purchases";
 
-const FALLBACK_MONTHLY = 149;
-const FALLBACK_YEARLY = 999;
-const YEARLY_MONTHLY_EQUIV = Math.round(FALLBACK_YEARLY / 12);
-const YEARLY_SAVINGS_PCT = Math.round(
-  (1 - YEARLY_MONTHLY_EQUIV / FALLBACK_MONTHLY) * 100
-);
+const FALLBACK_PRICE = 499;
 
-const FEATURES: {
-  icon: React.ElementType;
-  label: string;
-  free: string | null;
-  pro: string;
-}[] = [
+const FEATURES: { icon: React.ElementType; label: string; description: string }[] = [
   {
     icon: HousePlus,
-    label: "Groups you can create",
-    free: "Up to 3",
-    pro: "Unlimited"
+    label: "Unlimited groups",
+    description: "Create as many groups as you need — no cap, ever."
   },
   {
     icon: Globe,
     label: "Multi-currency expenses",
-    free: null,
-    pro: "14 currencies"
+    description: "Track expenses in PHP, USD, JPY, SGD, and 10 more currencies."
   },
   {
     icon: TrendingUp,
     label: "Export settlements as CSV",
-    free: null,
-    pro: "CSV export"
+    description: "Download settlements by date range for your records."
   },
   {
-    icon: Users,
-    label: "Members get multi-currency & CSV export",
-    free: null,
-    pro: "Included"
-  },
-  {
-    icon: WifiOff,
-    label: "Offline access",
-    free: null,
-    pro: "Included"
+    icon: Zap,
+    label: "All future updates",
+    description: "New features as they ship — included forever."
   }
 ];
 
-type BillingPeriod = "monthly" | "yearly";
-
 export default function SubscriptionScreen() {
   const { details: userDetails } = states.user();
-  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [loadingOffering, setLoadingOffering] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
@@ -88,29 +62,14 @@ export default function SubscriptionScreen() {
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   const isPro = userDetails?.plan === "pro";
-  const expiresAt = userDetails?.plan_expires_at;
 
-  const monthlyPkg = offering
-    ? services.purchase.getMonthlyPackage(offering)
-    : undefined;
-  const yearlyPkg = offering
-    ? services.purchase.getAnnualPackage(offering)
+  const lifetimePkg: PurchasesPackage | undefined = offering
+    ? services.purchase.getLifetimePackage(offering)
     : undefined;
 
-  const selectedPkg: PurchasesPackage | undefined =
-    billingPeriod === "monthly" ? monthlyPkg : yearlyPkg;
-
-  const monthlyPriceLabel = monthlyPkg
-    ? `₱${Math.round(monthlyPkg.product.price).toLocaleString("en-PH")}`
-    : `₱${FALLBACK_MONTHLY}`;
-  const yearlyPriceLabel = yearlyPkg
-    ? `₱${Math.round(yearlyPkg.product.price).toLocaleString("en-PH")}`
-    : `₱${FALLBACK_YEARLY}`;
-
-  const ctaPriceLabel =
-    billingPeriod === "monthly"
-      ? `${monthlyPriceLabel}/month`
-      : `${yearlyPriceLabel}/year`;
+  const priceLabel = lifetimePkg
+    ? `₱${Math.round(lifetimePkg.product.price).toLocaleString("en-PH")}`
+    : `₱${FALLBACK_PRICE}`;
 
   useEffect(() => {
     fetchOffering();
@@ -129,11 +88,10 @@ export default function SubscriptionScreen() {
   };
 
   const handleUpgrade = async () => {
-    if (!selectedPkg) {
+    if (!lifetimePkg) {
       toast({
-        title: "Products Unavailable",
-        description:
-          "Could not load subscription products. Please try again later.",
+        title: "Product Unavailable",
+        description: "Could not load the purchase product. Please try again later.",
         type: "error"
       });
       return;
@@ -141,20 +99,19 @@ export default function SubscriptionScreen() {
 
     setPurchasing(true);
     try {
-      const customerInfo = await services.purchase.purchasePackage(selectedPkg);
-      const { plan, planExpiresAt } =
-        await services.purchase.syncPlanToSupabase(customerInfo);
+      const customerInfo = await services.purchase.purchasePackage(lifetimePkg);
+      const { plan } = await services.purchase.syncPlanToSupabase(customerInfo);
 
       states.user.setState((prev) => ({
         ...prev,
         details: prev.details
-          ? { ...prev.details, plan, plan_expires_at: planExpiresAt }
+          ? { ...prev.details, plan, plan_expires_at: null }
           : prev.details
       }));
 
       toast({
         title: "Welcome to Pro!",
-        description: "Your subscription is now active. Enjoy all Pro features.",
+        description: "You've unlocked Ambagan Pro. Enjoy unlimited groups and all features.",
         type: "success"
       });
     } catch (error) {
@@ -174,37 +131,32 @@ export default function SubscriptionScreen() {
     setRestoring(true);
     try {
       const customerInfo = await services.purchase.restorePurchases();
-      const { plan, planExpiresAt } =
-        await services.purchase.syncPlanToSupabase(customerInfo);
+      const { plan } = await services.purchase.syncPlanToSupabase(customerInfo);
 
       states.user.setState((prev) => ({
         ...prev,
         details: prev.details
-          ? { ...prev.details, plan, plan_expires_at: planExpiresAt }
+          ? { ...prev.details, plan, plan_expires_at: null }
           : prev.details
       }));
 
       const restored = plan === "pro";
       toast({
-        title: restored ? "Subscription Restored" : "No Active Subscription",
+        title: restored ? "Purchase Restored" : "No Purchase Found",
         description: restored
-          ? "Your Pro subscription has been restored."
-          : "No previous subscription found for this account.",
+          ? "Your Ambagan Pro has been restored."
+          : "No previous purchase found for this account.",
         type: restored ? "success" : "info"
       });
     } catch (error) {
       toast({
         title: "Restore Failed",
-        description: "Could not restore purchases. Please try again.",
+        description: "Could not restore purchase. Please try again.",
         type: "error"
       });
     } finally {
       setRestoring(false);
     }
-  };
-
-  const handleManage = async () => {
-    await services.purchase.showManageSubscriptions();
   };
 
   return (
@@ -249,11 +201,11 @@ export default function SubscriptionScreen() {
                 />
               </HStack>
 
-              {isPro && expiresAt && (
+              {isPro && (
                 <>
                   <Divider className="border-warning-300" />
                   <Text className="text-warning-950">
-                    Renews on {format(new Date(expiresAt), "MMMM dd, yyyy")}
+                    Lifetime access — thank you for your support! 🎉
                   </Text>
                 </>
               )}
@@ -262,25 +214,23 @@ export default function SubscriptionScreen() {
                 <>
                   <Divider className="border-background-200" />
                   <Text className="text-secondary-950">
-                    Upgrade to Pro to unlock multi-currency, CSV exports,
-                    unlimited groups, and offline access.
+                    You can create up to 3 groups. Upgrade to Pro to unlock unlimited groups and the full app.
                   </Text>
                 </>
               )}
             </VStack>
           </Box>
 
-          {/* Billing period toggle — only for free users */}
+          {/* Price + upgrade prompt — only for free users */}
           {!isPro && (
             <VStack className="gap-y-2">
               <HStack className="items-center justify-between">
                 <VStack className="gap-y-0.5">
                   <Text bold className="text-xl">
-                    Billing Period
+                    Unlock Ambagan Pro
                   </Text>
                   <Text className="text-secondary-950 text-sm">
-                    More than 3 groups or splitting across currencies? Pro pays
-                    for itself.
+                    One-time purchase · No subscription · No renewal
                   </Text>
                 </VStack>
                 {loadingOffering && (
@@ -290,109 +240,31 @@ export default function SubscriptionScreen() {
                   />
                 )}
               </HStack>
-              <HStack className="gap-x-2">
-                <Pressable
-                  className="flex-1"
-                  onPress={() => setBillingPeriod("monthly")}
-                >
-                  <Box
-                    className={`rounded-xl p-4 border items-center gap-y-1 ${
-                      billingPeriod === "monthly"
-                        ? "border-primary-400 bg-primary-50 dark:bg-primary-950"
-                        : "border-background-200 bg-background-50"
-                    }`}
-                  >
-                    <Text
-                      bold
-                      className={
-                        billingPeriod === "monthly" ? "text-primary-400" : ""
-                      }
-                    >
-                      Monthly
-                    </Text>
-                    <Text
-                      bold
-                      className={`text-xl ${billingPeriod === "monthly" ? "text-primary-400" : ""}`}
-                    >
-                      {monthlyPriceLabel}
-                    </Text>
-                    <Text className="text-secondary-950 text-sm">
-                      per month
-                    </Text>
-                  </Box>
-                </Pressable>
 
-                <Pressable
-                  className="flex-1"
-                  onPress={() => setBillingPeriod("yearly")}
-                >
-                  <Box
-                    className={`rounded-xl p-4 border items-center gap-y-1 ${
-                      billingPeriod === "yearly"
-                        ? "border-primary-400 bg-primary-50 dark:bg-primary-950"
-                        : "border-background-200 bg-background-50"
-                    }`}
-                  >
-                    <HStack className="items-center gap-x-1">
-                      <Text
-                        bold
-                        className={
-                          billingPeriod === "yearly" ? "text-primary-400" : ""
-                        }
-                      >
-                        Yearly
-                      </Text>
-                      <Box className="bg-primary-400 px-1.5 py-0.5 rounded-full">
-                        <Text className="text-background-0 text-xs font-bold">
-                          -{YEARLY_SAVINGS_PCT}%
-                        </Text>
-                      </Box>
-                    </HStack>
-                    <Text
-                      bold
-                      className={`text-xl ${billingPeriod === "yearly" ? "text-primary-400" : ""}`}
-                    >
-                      {yearlyPriceLabel}
-                    </Text>
-                    <Text className="text-secondary-950 text-sm">
-                      ₱{YEARLY_MONTHLY_EQUIV}/month billed annually
-                    </Text>
-                  </Box>
-                </Pressable>
-              </HStack>
+              <Box className="rounded-2xl border border-primary-400 bg-primary-50 dark:bg-primary-950 p-4 items-center">
+                <Text bold className="text-4xl text-primary-400">
+                  {priceLabel}
+                </Text>
+                <Text className="text-secondary-950 text-sm mt-1">
+                  one-time, yours forever
+                </Text>
+              </Box>
             </VStack>
           )}
 
-          {/* Feature comparison */}
+          {/* Feature list */}
           <VStack className="gap-y-2">
             <Text bold className="text-xl">
-              {isPro ? "Your Pro Features" : "Free vs Pro"}
+              {isPro ? "Your Pro Features" : "What's included"}
             </Text>
 
             <Box className="bg-background-50 rounded-2xl overflow-hidden border border-background-200">
-              {!isPro && (
-                <HStack className="px-4 py-2 bg-background-100 gap-x-2">
-                  <Text className="flex-1 text-secondary-950 font-medium">
-                    Feature
-                  </Text>
-                  <Text className="w-20 text-center text-secondary-950 font-medium">
-                    Free
-                  </Text>
-                  <Text className="w-20 text-center text-warning-500 font-medium">
-                    Pro
-                  </Text>
-                </HStack>
-              )}
               <FlatList
                 scrollEnabled={false}
                 data={FEATURES}
                 keyExtractor={(item) => item.label}
                 renderItem={({ item }) => (
-                  <FeatureRow
-                    item={item}
-                    isPro={isPro}
-                    colorScheme={colorScheme}
-                  />
+                  <FeatureRow item={item} colorScheme={colorScheme} />
                 )}
                 ItemSeparatorComponent={ListDivider}
               />
@@ -400,32 +272,26 @@ export default function SubscriptionScreen() {
           </VStack>
 
           {/* CTA */}
-          {!isPro ? (
+          {!isPro && (
             <VStack className="gap-y-3">
               <FormButton
-                text={`Upgrade to Pro — ${ctaPriceLabel}`}
+                text={`Unlock Pro — ${priceLabel}`}
                 loading={purchasing}
                 disabled={purchasing || restoring || loadingOffering}
                 onPress={handleUpgrade}
               />
               <FormButton
-                text="Restore Purchases"
+                text="Restore Purchase"
                 variant="outline"
                 loading={restoring}
                 disabled={purchasing || restoring}
                 onPress={handleRestore}
               />
               <Text className="text-center text-secondary-950 text-sm leading-relaxed">
-                In-app purchase via App Store / Play Store.{"\n"}Cancel anytime
-                from your subscription settings.
+                In-app purchase via App Store / Play Store.{"\n"}Pay once, use
+                forever — no recurring charges.
               </Text>
             </VStack>
-          ) : (
-            <FormButton
-              text="Manage Subscription"
-              variant="outline"
-              onPress={handleManage}
-            />
           )}
         </VStack>
       </ScrollView>
@@ -435,48 +301,29 @@ export default function SubscriptionScreen() {
 
 function FeatureRow({
   item,
-  isPro,
   colorScheme
 }: {
   item: (typeof FEATURES)[number];
-  isPro: boolean;
   colorScheme: "light" | "dark";
 }) {
-  const { icon: FeatureIcon, label, free, pro } = item;
+  const { icon: FeatureIcon, label, description } = item;
 
   return (
-    <HStack className="p-4 items-center gap-x-2">
+    <HStack className="p-4 items-start gap-x-3">
       <FeatureIcon
+        size={18}
+        color={getPrimaryHex("text-primary-400", colorScheme)}
+        style={{ marginTop: 2 }}
+      />
+      <VStack className="flex-1 gap-y-0.5">
+        <Text className="font-medium">{label}</Text>
+        <Text className="text-sm text-secondary-950">{description}</Text>
+      </VStack>
+      <CheckCircle
         size={16}
         color={getPrimaryHex("text-primary-400", colorScheme)}
+        style={{ marginTop: 3 }}
       />
-      <Text className="flex-1">{label}</Text>
-      {!isPro && (
-        <HStack className="w-20 justify-center">
-          {free ? (
-            <Text className="text-sm text-secondary-950 text-center">
-              {free}
-            </Text>
-          ) : (
-            <XCircle
-              size={16}
-              color={getSecondaryHex("text-secondary-950", colorScheme)}
-            />
-          )}
-        </HStack>
-      )}
-      <HStack className={`${isPro ? "" : "w-20"} justify-center`}>
-        {isPro ? (
-          <CheckCircle
-            size={16}
-            color={getPrimaryHex("text-primary-400", colorScheme)}
-          />
-        ) : (
-          <Text className="text-sm text-warning-500 font-medium text-center">
-            {pro}
-          </Text>
-        )}
-      </HStack>
     </HStack>
   );
 }

@@ -1,5 +1,4 @@
 import FormButton from "@/components/FormButton";
-import UpgradeSheet from "@/components/UpgradeSheet";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
@@ -26,26 +25,18 @@ import { useState } from "react";
 export default function GroupExportTab({
   groupId,
   groupName,
-  userId,
-  isPro
+  userId
 }: {
   groupId: string;
   groupName: string;
   userId: string;
-  isPro: boolean;
 }) {
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
   const [exporting, setExporting] = useState(false);
-  const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
 
   const toast = useAppToast();
 
   const handleExport = async () => {
-    if (!isPro) {
-      setUpgradeSheetOpen(true);
-      return;
-    }
-
     setExporting(true);
     try {
       const cutoff = getDateRangeCutoff(dateRange);
@@ -117,14 +108,9 @@ export default function GroupExportTab({
       </VStack>
 
       <FormButton
-        text={isPro ? "Export CSV" : "Export CSV (Pro)"}
+        text="Export CSV"
         loading={exporting}
         onPress={handleExport}
-      />
-
-      <UpgradeSheet
-        isOpen={upgradeSheetOpen}
-        onClose={() => setUpgradeSheetOpen(false)}
       />
     </VStack>
   );

@@ -255,12 +255,12 @@ export default function RootLayout() {
 
       try {
         const customerInfo = await services.purchase.getCustomerInfo();
-        const { plan, planExpiresAt } =
+        const { plan } =
           await services.purchase.syncPlanToSupabase(customerInfo);
         states.user.setState((prev) => ({
           ...prev,
           details: prev.details
-            ? { ...prev.details, plan, plan_expires_at: planExpiresAt }
+            ? { ...prev.details, plan, plan_expires_at: null }
             : prev.details
         }));
       } catch (error) {

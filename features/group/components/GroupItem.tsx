@@ -2,7 +2,6 @@ import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
-import ProBadge from "@/components/ProBadge";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -17,8 +16,6 @@ export default function GroupItem({
   details: Group & { members: Member[] };
   onOpen: () => void;
 }) {
-  const isGroupPro = details.admin?.plan === "pro";
-
   const appAvatarGroupItems = useMemo(
     () =>
       details.members.map((item) => ({
@@ -42,7 +39,6 @@ export default function GroupItem({
             >
               {details.name}
             </Text>
-            {isGroupPro && <ProBadge />}
           </HStack>
           <HStack className="gap-x-1 items-center">
             <Text className="text-secondary-950">

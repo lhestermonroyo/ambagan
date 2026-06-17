@@ -1,7 +1,6 @@
 import { UserPlan } from "@/types/user";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
-import { Linking, Platform } from "react-native";
 import Purchases, {
   CustomerInfo,
   LOG_LEVEL,
@@ -31,19 +30,12 @@ export const getOfferings = async (): Promise<PurchasesOffering | null> => {
   return offerings.current;
 };
 
-export const getMonthlyPackage = (
+export const getLifetimePackage = (
   offering: PurchasesOffering
 ): PurchasesPackage | undefined =>
   offering.availablePackages.find(
-    (pkg) => pkg.packageType === PACKAGE_TYPE.MONTHLY
-  );
-
-export const getAnnualPackage = (
-  offering: PurchasesOffering
-): PurchasesPackage | undefined =>
-  offering.availablePackages.find(
-    (pkg) => pkg.packageType === PACKAGE_TYPE.ANNUAL
-  );
+    (pkg) => pkg.packageType === PACKAGE_TYPE.LIFETIME
+  ) ?? offering.availablePackages[0]; // fallback to first available package
 
 export const purchasePackage = async (
   pkg: PurchasesPackage
@@ -62,18 +54,6 @@ export const getCustomerInfo = async (): Promise<CustomerInfo> => {
   return info;
 };
 
-export const showManageSubscriptions = async (): Promise<void> => {
-  try {
-    await Purchases.showManageSubscriptions();
-  } catch {
-    const url =
-      Platform.OS === "android"
-        ? "https://play.google.com/store/account/subscriptions"
-        : "itms-apps://apps.apple.com/account/subscriptions";
-    await Linking.openURL(url);
-  }
-};
-
 export const isPurchaseCancelled = (error: unknown): boolean => {
   return (
     (error as PurchasesError)?.code ===
@@ -84,35 +64,25 @@ export const isPurchaseCancelled = (error: unknown): boolean => {
 export const isProEntitlementActive = (customerInfo: CustomerInfo): boolean =>
   PRO_ENTITLEMENT_ID in customerInfo.entitlements.active;
 
-export const getProExpiresAt = (customerInfo: CustomerInfo): string | null =>
-  customerInfo.entitlements.active[PRO_ENTITLEMENT_ID]?.expirationDate ?? null;
-
 export const syncPlanToSupabase = async (
   customerInfo: CustomerInfo
-): Promise<{ plan: UserPlan; planExpiresAt: string | null }> => {
+): Promise<{ plan: UserPlan }> => {
   const plan: UserPlan = isProEntitlementActive(customerInfo) ? "pro" : "free";
-  const planExpiresAt = plan === "pro" ? getProExpiresAt(customerInfo) : null;
 
-  console.log("[syncPlanToSupabase] Syncing plan to Supabase", {
-    plan,
-    planExpiresAt
-  });
+  console.log("[syncPlanToSupabase] Syncing plan to Supabase", { plan });
 
   const {
     data: { user }
   } = await supabase.auth.getUser();
   if (!user) throw new Error("User not authenticated");
 
-  const payload: { plan: UserPlan; plan_expires_at?: string } = { plan };
-  if (planExpiresAt !== null) payload.plan_expires_at = planExpiresAt;
-
   const { error, count } = await supabase
     .from(tables.USERS_TBL)
-    .update(payload, { count: "exact" })
+    .update({ plan, plan_expires_at: null }, { count: "exact" })
     .eq("id", user.id);
 
   if (error) throw error;
   if (!count) throw new Error("Plan sync failed: no matching user row updated");
 
-  return { plan, planExpiresAt };
+  return { plan };
 };

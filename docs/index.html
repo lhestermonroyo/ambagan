@@ -274,13 +274,6 @@
         <p class="text-gray-500 dark:text-gray-400 leading-relaxed">Free for casual use. Upgrade when you need more.</p>
       </div>
 
-      <div class="flex justify-center mb-10">
-        <div class="inline-flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-1" id="billing-toggle">
-          <button type="button" data-period="monthly" class="billing-tab text-sm font-semibold px-4 py-2 rounded-lg bg-gray-900 text-white transition-colors">Monthly</button>
-          <button type="button" data-period="yearly" class="billing-tab text-sm font-semibold px-4 py-2 rounded-lg text-gray-500 transition-colors">Yearly <span class="text-amber-500">· save 44%</span></button>
-        </div>
-      </div>
-
       <div class="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
         <!-- Free -->
         <div class="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
@@ -304,25 +297,18 @@
             Pro
           </span>
           <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-400 mb-2">Pro</h3>
-          <p class="text-4xl font-bold mb-1">
-            <span class="price-monthly">₱149<span class="text-lg font-medium text-gray-400">/mo</span></span>
-            <span class="price-yearly hidden">₱999<span class="text-lg font-medium text-gray-400">/yr</span></span>
-          </p>
-          <p class="text-sm text-gray-400 mb-6">
-            <span class="price-monthly">billed monthly</span>
-            <span class="price-yearly hidden">≈₱83/mo, billed annually</span>
-          </p>
+          <p class="text-4xl font-bold mb-1">₱499</p>
+          <p class="text-sm text-gray-400 mb-6">one-time · yours forever</p>
           <ul class="space-y-3 text-sm">
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>Everything in Free</li>
             <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>Unlimited groups</li>
             <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>14 currencies, per-expense</li>
             <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>CSV export</li>
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>Offline access</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>All future updates</li>
             <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>Priority support</li>
           </ul>
         </div>
       </div>
-      <p class="text-xs text-gray-400 dark:text-gray-500 mt-6 text-center">Prices in PHP. In-app purchase via App Store / Play Store. Cancel anytime.</p>
+      <p class="text-xs text-gray-400 dark:text-gray-500 mt-6 text-center">Prices in PHP. One-time in-app purchase via App Store / Play Store. No subscription, no renewal.</p>
     </div>
   </section>
 
@@ -395,24 +381,6 @@
       localStorage.setItem("theme", isDark ? "dark" : "light");
     });
 
-    const tabs = document.querySelectorAll(".billing-tab");
-    const monthlyEls = document.querySelectorAll(".price-monthly");
-    const yearlyEls = document.querySelectorAll(".price-yearly");
-
-    tabs.forEach((tab) => {
-      tab.addEventListener("click", () => {
-        const period = tab.dataset.period;
-
-        tabs.forEach((t) => {
-          t.classList.toggle("bg-gray-900", t === tab);
-          t.classList.toggle("text-white", t === tab);
-          t.classList.toggle("text-gray-500", t !== tab);
-        });
-
-        monthlyEls.forEach((el) => el.classList.toggle("hidden", period !== "monthly"));
-        yearlyEls.forEach((el) => el.classList.toggle("hidden", period !== "yearly"));
-      });
-    });
   </script>
 </body>
 </html>

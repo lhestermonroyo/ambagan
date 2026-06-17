@@ -3,13 +3,9 @@ import CurrencySelection from "@/components/CurrencySelection";
 import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
-import ProBadge from "@/components/ProBadge";
 import StepperProgress from "@/components/StepperProgress";
-import { Box } from "@/components/ui/box";
 import {
   FormControl,
-  FormControlHelper,
-  FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -59,7 +55,6 @@ type AddExpenseStepProps = {
     description?: string;
   };
   isLockedGroup?: boolean;
-  isGroupPro?: boolean;
   step: number;
 };
 
@@ -68,7 +63,6 @@ export default function AddExpenseStep({
   setValues,
   formErrors,
   isLockedGroup = false,
-  isGroupPro = false,
   step = 1
 }: AddExpenseStepProps) {
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -101,20 +95,12 @@ export default function AddExpenseStep({
               </HStack>
             </FormControlLabel>
             <HStack className="gap-x-2 items-end h-12">
-              {isGroupPro ? (
-                <CurrencySelection
-                  currency={values.currency}
-                  onCurrencyChange={(currency) =>
-                    setValues((prevValues) => ({ ...prevValues, currency }))
-                  }
-                />
-              ) : (
-                <Box className="border border-secondary-500 bg-secondary-50 items-center justify-center h-full px-2 py-2 rounded-lg">
-                  <Text className="font-semibold text-secondary-950">
-                    PHP (₱)
-                  </Text>
-                </Box>
-              )}
+              <CurrencySelection
+                currency={values.currency}
+                onCurrencyChange={(currency) =>
+                  setValues((prevValues) => ({ ...prevValues, currency }))
+                }
+              />
               <VStack className="flex-1">
                 <AmountInput
                   className="h-full"
@@ -127,16 +113,6 @@ export default function AddExpenseStep({
                 />
               </VStack>
             </HStack>
-            {!isGroupPro && (
-              <FormControlHelper>
-                <HStack className="items-center gap-x-1">
-                  <FormControlHelperText className="text-secondary-950 text-sm">
-                    Multi-currency requires
-                  </FormControlHelperText>
-                  <ProBadge />
-                </HStack>
-              </FormControlHelper>
-            )}
           </FormControl>
 
           <FormTextarea
