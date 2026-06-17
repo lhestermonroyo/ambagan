@@ -326,10 +326,78 @@ This uses the most recent production build and submits it to App Store Connect f
 - **Age Rating:** 4+
 - **Content Rights:** Does not use third-party content
 
+### Distribution Copy
+
+These are the exact strings to paste into App Store Connect → App Information / Version Information.
+
+#### App Name
+```
+Ambagan
+```
+
+#### Subtitle *(30 chars max)*
+```
+Split smarter, settle faster
+```
+
+#### Promotional Text *(170 chars max — updatable without a new build)*
+```
+Split expenses and settle balances with your barkada — free to start, one-time upgrade to unlock unlimited groups. No subscription, no renewal.
+```
+
+#### Description *(4000 chars max)*
+```
+Ambagan (Filipino: to chip in) is a group expense-splitting app built for friends, families, and barkada. Log shared expenses, track who paid what, and settle balances — in seconds.
+
+SPLIT WITH EASE
+Add expenses two ways: Quick Add for an instant equal split, or Custom for full control — set the date, split by percentage or custom amounts, choose multiple payers, and attach a proof of payment photo.
+
+TRACK EVERY BALANCE
+The Friends tab shows your net balance with every person you share a group with. See who owes you and who you owe at a glance — across all your groups.
+
+SETTLE UP, FAIRLY
+Request settlements with proof of payment. The other person gets notified instantly and can approve or reject your request. Balances update the moment it's settled.
+
+MULTI-CURRENCY SUPPORT
+Track expenses in PHP, USD, JPY, SGD, EUR, and more — perfect for travel groups and barkada trips abroad. Set your default currency in settings.
+
+PUSH NOTIFICATIONS
+Get notified the moment someone adds an expense, requests a settlement, or takes action on yours. Notification preferences are fully customizable per type.
+
+OFFLINE ACCESS
+Your groups, expenses, and friends are cached automatically so you can browse your data without an internet connection.
+
+AMBAGAN PRO — ₱499, YOURS FOREVER
+Hit the 3-group limit? Upgrade once and unlock unlimited groups. No subscription, no monthly fees — pay once, use forever.
+
+Free plan includes:
+• Up to 3 groups
+• Equal and custom splits
+• Balance tracking
+• Settlement requests with proof of payment
+• Multi-currency expenses
+• CSV export
+• Offline access
+• Push notifications
+• Friends list
+```
+
+#### Keywords *(100 chars max, comma-separated — no spaces)*
+```
+split,settle,bill,dutch,barkada,travel,roommate,household,owe,expense,budget,trip,share,group
+```
+
+#### What's New *(first release)*
+```
+Welcome to Ambagan! Track shared expenses, split bills fairly, and settle up with your barkada. Free to use — upgrade to Pro for ₱499 (one-time) to unlock unlimited groups.
+```
+
+---
+
 ### Capabilities Required
 When registering the App ID in Certificates, Identifiers & Profiles:
 - **Push Notifications** — required for Expo push notifications
-- **In-App Purchase** — required for RevenueCat subscriptions
+- **In-App Purchase** — required for RevenueCat
 
 ### Certificates & Provisioning
 1. Create a **Distribution Certificate** (Software) in Certificates, Identifiers & Profiles
@@ -348,10 +416,18 @@ Must be linked to the app version under the **In-App Purchases** section of the 
 
 ### App Review Notes
 ```
-This app allows users to split shared expenses in a group setting.
-To test Pro features, use the sandbox account provided.
-In-App Purchase testing uses Apple Sandbox — no real charges will occur.
-The app requires an account to use. You may create a new one on the sign-up screen.
+Ambagan is a group expense splitting app. To test the core features, use the following test account:
+
+Email: monica@mailinator.com
+Password: Password1
+
+After logging in, you can:
+- View existing groups and expenses
+- Add a new expense inside a group
+- Request and approve settlements between members
+- View the upgrade screen (Pro — one-time purchase of ₱499, implemented via RevenueCat. Use Apple Sandbox to test the purchase flow.)
+
+Note: Push notifications require a physical device. The app uses Supabase for authentication and data storage.
 ```
 
 ### Screenshots

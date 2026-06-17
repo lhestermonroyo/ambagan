@@ -12,9 +12,9 @@
 - **Friends** — See everyone you share a group with, along with a net balance summary of what you owe or are owed.
 - **Multi-currency** — Each expense supports its own currency. Useful for travel groups across different countries.
 - **CSV Export** — Export settlement history per group to a CSV file for record-keeping.
-- **Offline Access** — Pro users can browse their groups, expenses, and settlements without an internet connection.
+- **Offline Access** — Groups, expenses, and friends are cached automatically so you can browse them without an internet connection.
 - **Push Notifications** — Get notified for settlement requests, approvals, rejections, new expenses, and group activity.
-- **Free & Pro Plans** — Free plan supports up to 3 active groups. Pro unlocks unlimited groups, multi-currency, CSV export, and offline access.
+- **Free & Pro Plans** — Free plan supports up to 3 active groups. Pro is a one-time purchase (₱499) that unlocks unlimited groups — no subscription, no renewal.
 
 ---
 

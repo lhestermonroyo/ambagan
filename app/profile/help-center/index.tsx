@@ -37,7 +37,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Is Ambagan free to use?",
         answer:
-          "Yes, the core features are free — create up to 3 groups, track expenses, and settle up with friends at no cost. A Pro plan is available for users who need unlimited groups, multi-currency expenses, CSV exports, and offline access."
+          "Yes. The core features are free — create up to 3 groups, track expenses, split bills, and settle up with friends at no cost. A Pro plan is available as a one-time purchase (₱499) for users who need unlimited groups."
       }
     ]
   },
@@ -177,22 +177,17 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is the Pro plan?",
         answer:
-          "The Pro plan unlocks premium features including unlimited groups (free plan is limited to 3), multi-currency expenses across 14 currencies, CSV export of settlements, and offline access to your data."
+          "Pro is a one-time purchase of ₱499 that removes the 3-group limit and unlocks unlimited groups. All other features — multi-currency expenses, CSV export, offline access, and push notifications — are available to every user for free."
       },
       {
         question: "How do I upgrade to Pro?",
         answer:
-          "Go to Profile → Subscription and choose a monthly or yearly plan. Upgrading unlocks all Pro features immediately."
+          "Go to Profile → Subscription and tap Unlock Pro. It's a one-time purchase of ₱499 — no subscription, no renewal. Once purchased, unlimited groups are unlocked immediately."
       },
       {
         question: "How many groups can I create on the free plan?",
         answer:
-          "Free users can create up to 3 active groups. Archived groups do not count toward this limit. Upgrade to Pro for unlimited groups."
-      },
-      {
-        question: "Can group members benefit from my Pro plan?",
-        answer:
-          "Yes. When you are a Pro subscriber, members of your groups gain access to multi-currency expenses and CSV export even if they are on the free plan."
+          "Free users can create up to 3 active groups. Archived groups do not count toward this limit. Upgrade to Pro (₱499, one-time) for unlimited groups."
       },
       {
         question: "How do I export settlements to CSV?",
@@ -202,7 +197,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Can I use Ambagan offline?",
         answer:
-          "Pro users can browse their groups, expenses, settlements, and friends while offline. Data is automatically cached when you're connected and shown when you lose signal. A banner will appear at the top of the app to let you know you're viewing cached data. Creating or settling expenses still requires an internet connection."
+          "Yes. Your groups, expenses, settlements, and friends are automatically cached when you're connected, so you can browse them while offline. A banner appears at the top of the app when you're viewing cached data. Creating or settling expenses still requires an internet connection."
+      },
+      {
+        question: "I already paid — how do I restore my Pro access on a new device?",
+        answer:
+          "Go to Profile → Subscription and tap Restore Purchase. Since Pro is a one-time non-consumable purchase, it will be restored automatically through the App Store or Play Store at no additional charge."
       }
     ]
   },
