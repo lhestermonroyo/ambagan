@@ -9,20 +9,26 @@ import {
   GroupListSkeleton,
   SettlementListSkeleton
 } from "@/components/SkeletonLoader";
+import {
+  Actionsheet,
+  ActionsheetBackdrop,
+  ActionsheetContent,
+  ActionsheetDragIndicator,
+  ActionsheetDragIndicatorWrapper
+} from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
+import { Pressable } from "@/components/ui/pressable";
 import {
   ScrollView as HScrollView,
   ScrollView
 } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import NewExpensePickerSheet from "@/features/expense/components/NewExpensePickerSheet";
 import QuickAddExpenseSheet from "@/features/expense/components/QuickAddExpenseSheet";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
@@ -73,6 +79,19 @@ export default function HomeScreen() {
   const { list: groupList } = states.group();
   const { activityList } = states.expense();
   const { unreadCount } = states.notification();
+
+  const netBalance = useMemo(() => {
+    const allCurrencies = new Set([
+      ...stats.toReceive.map((i) => i.currency),
+      ...stats.toPay.map((i) => i.currency)
+    ]);
+    return Array.from(allCurrencies).map((currency) => {
+      const receive =
+        stats.toReceive.find((i) => i.currency === currency)?.amount ?? 0;
+      const pay = stats.toPay.find((i) => i.currency === currency)?.amount ?? 0;
+      return { currency, amount: receive - pay };
+    });
+  }, [stats.toReceive, stats.toPay]);
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
@@ -190,8 +209,7 @@ export default function HomeScreen() {
     } catch (error) {
       console.error("Failed to fetch groups:", error);
       const cached = await cacheService.getGroupsList(userDetails.id);
-      if (cached)
-        states.group.setState((prev) => ({ ...prev, list: cached }));
+      if (cached) states.group.setState((prev) => ({ ...prev, list: cached }));
     } finally {
       setLoading((prev) => ({ ...prev, groups: false }));
     }
@@ -236,9 +254,7 @@ export default function HomeScreen() {
         <Box className="sticky top-0 px-4 pt-[5rem] pb-2 bg-primary-400">
           <HStack className="items-center justify-center">
             <VStack className="flex-1">
-              <Text className="text-background-0 opacity-80 text-lg">
-                Hello,
-              </Text>
+              <Text className="text-background-0 opacity-80">Hello,</Text>
               <Text bold className="text-xl text-background-0">
                 {userDetails?.first_name} {userDetails?.last_name}
               </Text>
@@ -281,67 +297,66 @@ export default function HomeScreen() {
           }
         >
           <VStack className="gap-y-4 bg-background-0 flex-1">
-            <Box className="bg-primary-400 max-h-40">
-              <Card
-                className="mx-4 my-2 rounded-2xl shadow-lg shadow-primary-400/20"
-                variant="elevated"
-              >
-                <VStack className="gap-y-4">
-                  <HStack className="items-center">
-                    <Text className="text-secondary-950 font-semibold uppercase flex-1">
-                      Your Snapshot
-                    </Text>
-                  </HStack>
-                  <HStack className="gap-x-4 items-center">
-                    <StatItem
-                      type="RECEIVE"
-                      isLoading={loading.activities}
-                      items={stats.toReceive}
-                      primaryCurrency={defaultCurrency}
-                    />
-                    <Divider orientation="vertical" />
-                    <StatItem
-                      type="PAY"
-                      isLoading={loading.activities}
-                      items={stats.toPay}
-                      primaryCurrency={defaultCurrency}
-                    />
-                  </HStack>
-                  <HStack className="gap-x-2">
-                    <FormButton
-                      className="flex-1"
-                      icon={
-                        <PlusCircle
-                          size={18}
-                          color={getSecondaryHex(
-                            "text-secondary-0",
-                            colorScheme
-                          )}
-                        />
-                      }
-                      text="New Expense"
-                      onPress={() => setNewExpensePickerOpen(true)}
-                    />
-                    <FormButton
-                      className="flex-1"
-                      text="Create Group"
-                      icon={
-                        <HousePlus
-                          size={18}
-                          color={getSecondaryHex(
-                            "text-secondary-0",
-                            colorScheme
-                          )}
-                        />
-                      }
-                      onPress={() => router.push("/groups/create")}
-                    />
-                  </HStack>
-                </VStack>
-              </Card>
+            <Box className="bg-primary-400">
+              <VStack className="gap-y-4 p-4">
+                {/* Net Balance Hero */}
+                <NetBalanceRow
+                  isLoading={loading.stats}
+                  items={netBalance}
+                  primaryCurrency={defaultCurrency}
+                />
+
+                <Divider className="bg-white/20" />
+
+                {/* Stat Columns */}
+                <HStack className="items-stretch">
+                  <StatItem
+                    type="RECEIVE"
+                    isLoading={loading.stats}
+                    items={stats.toReceive}
+                    primaryCurrency={defaultCurrency}
+                  />
+                  <Divider
+                    orientation="vertical"
+                    className="mx-4 bg-white/20"
+                  />
+                  <StatItem
+                    type="PAY"
+                    isLoading={loading.stats}
+                    items={stats.toPay}
+                    primaryCurrency={defaultCurrency}
+                  />
+                </HStack>
+
+                {/* Action Buttons */}
+                <HStack className="gap-x-2">
+                  <FormButton
+                    className="flex-1"
+                    icon={
+                      <PlusCircle
+                        size={18}
+                        color={getSecondaryHex("text-secondary-0", colorScheme)}
+                      />
+                    }
+                    text="New Expense"
+                    onPress={() => setNewExpensePickerOpen(true)}
+                  />
+                  <FormButton
+                    className="flex-1"
+                    text="Create Group"
+                    icon={
+                      <HousePlus
+                        size={18}
+                        color={getSecondaryHex("text-secondary-0", colorScheme)}
+                      />
+                    }
+                    onPress={() => router.push("/groups/create")}
+                  />
+                </HStack>
+              </VStack>
             </Box>
 
-            <VStack className="mt-[5rem]">
+            <VStack>
               <HStack className="items-center justify-between px-4">
                 <Text bold className="text-2xl flex-1">
                   Friends
@@ -541,21 +556,188 @@ function StatItem({
   isLoading: boolean;
   primaryCurrency?: string;
 }) {
-  const label = type === "PAY" ? "To Pay" : "To Collect";
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const isReceive = type === "RECEIVE";
+  const label = isReceive ? "To Collect" : "To Pay";
+
+  const sorted = [...items].sort((a, b) =>
+    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+  );
+  const [primary, ...secondary] = sorted;
+  const primaryAmount = primary?.amount ?? 0;
 
   return (
-    <VStack className="flex-1 gap-y-2">
-      <SettlementAvatar isPayer={type === "RECEIVE"} />
-      <VStack className="gap-y-1">
-        <CurrencyAmountDisplay
-          isLoading={isLoading}
-          items={items}
-          label={label}
-          type={type === "PAY" ? "pay" : "receive"}
-          primaryCurrency={primaryCurrency}
-        />
-        <Text className="text-secondary-950">{label}</Text>
+    <Fragment>
+      <VStack className="flex-1 gap-y-2">
+        <HStack className="items-center gap-x-2">
+          <SettlementAvatar isPayer={isReceive} light />
+          <Text className="text-background-0">{label}</Text>
+        </HStack>
+        {isLoading ? (
+          <Text bold className="text-2xl text-background-0">
+            —
+          </Text>
+        ) : (
+          <Pressable
+            onPress={
+              secondary.length > 0 ? () => setSheetOpen(true) : undefined
+            }
+          >
+            <HStack className="items-center gap-x-2">
+              <Text bold className="text-2xl text-background-0">
+                {formatAmount(
+                  primaryAmount,
+                  primary?.currency ?? primaryCurrency
+                )}
+              </Text>
+              {secondary.length > 0 && (
+                <Box className="bg-white/20 rounded-full h-5 w-5 items-center justify-center">
+                  <Text className="text-background-0 text-xs font-semibold">
+                    +{secondary.length}
+                  </Text>
+                </Box>
+              )}
+            </HStack>
+          </Pressable>
+        )}
       </VStack>
-    </VStack>
+
+      <Actionsheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)}>
+        <ActionsheetBackdrop />
+        <ActionsheetContent className="p-0">
+          <ActionsheetDragIndicatorWrapper>
+            <ActionsheetDragIndicator />
+          </ActionsheetDragIndicatorWrapper>
+          <VStack className="w-full">
+            <VStack className="p-4">
+              <Text bold className="text-xl">
+                {label}
+              </Text>
+              <Text className="text-secondary-950">Breakdown by currency</Text>
+            </VStack>
+            <FlatList
+              data={sorted}
+              scrollEnabled={false}
+              keyExtractor={(item) => item.currency}
+              renderItem={({ item: { currency, amount } }) => (
+                <HStack className="items-center justify-between p-4">
+                  <Text className="text-secondary-950 font-medium text-lg">
+                    {currency}
+                  </Text>
+                  <Text bold className="text-lg">
+                    {formatAmount(amount, currency)}
+                  </Text>
+                </HStack>
+              )}
+              ItemSeparatorComponent={ListDivider}
+            />
+          </VStack>
+        </ActionsheetContent>
+      </Actionsheet>
+    </Fragment>
+  );
+}
+
+function NetBalanceRow({
+  items,
+  isLoading,
+  primaryCurrency = "PHP"
+}: {
+  items: { currency: string; amount: number }[];
+  isLoading: boolean;
+  primaryCurrency?: string;
+}) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const sorted = [...items].sort((a, b) =>
+    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+  );
+  const [primary, ...secondary] = sorted;
+  const primaryAmount = primary?.amount ?? 0;
+
+  return (
+    <Fragment>
+      <VStack className="gap-y-2">
+        <Text bold className="text-background-0 uppercase text-sm">
+          Net Balance
+        </Text>
+        {isLoading ? (
+          <Text bold className="text-4xl text-background-0">
+            —
+          </Text>
+        ) : (
+          <Pressable
+            onPress={
+              secondary.length > 0 ? () => setSheetOpen(true) : undefined
+            }
+          >
+            <HStack className="items-end gap-x-2">
+              <Text bold className="text-4xl text-background-0">
+                {formatAmount(
+                  primaryAmount,
+                  primary?.currency ?? primaryCurrency
+                )}
+              </Text>
+              <HStack className="items-center gap-x-1 pb-1">
+                <Text className="text-background-0/70 text-base">
+                  {primary?.currency ?? primaryCurrency}
+                </Text>
+                {secondary.length > 0 && (
+                  <Box className="bg-white/20 rounded-full h-5 w-5 items-center justify-center">
+                    <Text className="text-background-0 text-xs font-semibold">
+                      +{secondary.length}
+                    </Text>
+                  </Box>
+                )}
+              </HStack>
+            </HStack>
+          </Pressable>
+        )}
+      </VStack>
+
+      <Actionsheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)}>
+        <ActionsheetBackdrop />
+        <ActionsheetContent className="p-0">
+          <ActionsheetDragIndicatorWrapper>
+            <ActionsheetDragIndicator />
+          </ActionsheetDragIndicatorWrapper>
+          <VStack className="w-full">
+            <VStack className="p-4">
+              <Text bold className="text-xl">
+                Net Balance
+              </Text>
+              <Text className="text-secondary-950">
+                To Collect minus To Pay, per currency
+              </Text>
+            </VStack>
+            <FlatList
+              data={sorted}
+              scrollEnabled={false}
+              keyExtractor={(item) => item.currency}
+              renderItem={({ item: { currency, amount } }) => {
+                const color =
+                  amount > 0
+                    ? "text-success-400"
+                    : amount < 0
+                      ? "text-error-400"
+                      : "text-secondary-950";
+                return (
+                  <HStack className="items-center justify-between p-4">
+                    <Text className="text-secondary-950 font-medium text-lg">
+                      {currency}
+                    </Text>
+                    <Text bold className={cn("text-lg", color)}>
+                      {amount > 0 ? "+" : ""}
+                      {formatAmount(amount, currency)}
+                    </Text>
+                  </HStack>
+                );
+              }}
+              ItemSeparatorComponent={ListDivider}
+            />
+          </VStack>
+        </ActionsheetContent>
+      </Actionsheet>
+    </Fragment>
   );
 }
