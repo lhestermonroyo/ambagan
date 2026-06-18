@@ -38,6 +38,11 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "Is Ambagan free to use?",
         answer:
           "Yes. The core features are free — create up to 3 groups, track expenses, split bills, and settle up with friends at no cost. A Pro plan is available as a one-time purchase (₱499) for users who need unlimited groups."
+      },
+      {
+        question: "What does the Net Balance on the home screen mean?",
+        answer:
+          "The Net Balance on the home screen overview card is your total across all groups — how much you are owed (To Collect) minus how much you owe (To Pay). A positive number means you are owed more than you owe overall; a negative number means the opposite."
       }
     ]
   },
@@ -128,6 +133,11 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "Where can I see my settlement history?",
         answer:
           "Open any friend's detail page and switch to the History tab. You can also view settled payments in the Settlements tab of each group."
+      },
+      {
+        question: "What is the Net Balance shown in the Settlements tab?",
+        answer:
+          "The Net Balance card at the top of the Settlements tab shows your current standing in the group — how much you're owed (To Collect) minus how much you owe (To Pay). A positive balance means you're owed more than you owe; a negative balance means the opposite."
       }
     ]
   },
@@ -137,17 +147,22 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do friends appear in Ambagan?",
         answer:
-          "Anyone who is a member of a group you belong to automatically appears in your Friends tab. You can also mark friends as favorites for quick access."
+          "Anyone who is a member of a group you belong to automatically appears in your Friends tab. People you have added to any group are also saved to your Friends list for quick access when adding members in the future."
       },
       {
         question: "What does the Friends tab show?",
         answer:
-          "The Friends tab shows everyone you share a group with, along with a balance summary of how much they owe you or you owe them. Use the Owes Me, I Owe, and Favorites filters to quickly find who you need."
+          "The Friends tab shows everyone you share a group with, along with a balance summary. Use the All, To Collect, To Pay, Friends, and Favorites filters to find who you need. The Friends filter shows people you have previously added to groups."
       },
       {
         question: "How do I add someone as a favorite?",
         answer:
-          "Open the Friends tab, find the person, and tap the star icon next to their name. Favorites appear first and are accessible from the Home screen carousel."
+          "Tap the heart icon on any person in the Friends or Favorites tab to add or remove them as a favorite. You can also tap the heart icon in the top-right corner of a friend's detail page. Favorites appear in the dedicated Favorites tab."
+      },
+      {
+        question: "What is the net balance shown on a friend's detail page?",
+        answer:
+          "The net balance at the top of a friend's detail page is the total amount you're owed by that person minus what you owe them, across all shared groups. It gives you a quick single-number summary of your overall standing with that friend."
       },
       {
         question: "How do I view payment history with a friend?",
@@ -162,12 +177,17 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What notifications will I receive?",
         answer:
-          "You can receive alerts for settlement requests, approvals, rejections, completions, new expense inclusions, and group member changes. Each category can be toggled individually in Profile → Push Notifications."
+          "You can receive alerts for settlement requests, approvals, rejections, completions, new expense inclusions, and group member changes. You can also enable a daily reminder that nudges you at 9 AM when you have unpaid settlements. Each type can be toggled individually in Profile → Push Notifications."
       },
       {
         question: "How do I turn off notifications?",
         answer:
           "Go to Profile → Push Notifications. You can toggle individual notification types on or off depending on your preference."
+      },
+      {
+        question: "What is the daily settlement reminder?",
+        answer:
+          "The daily settlement reminder is a local notification that fires every day at 9 AM if you have outstanding unpaid settlements. It is automatically cancelled once all your settlements are cleared. You can enable or disable it in Profile → Push Notifications → Reminders."
       }
     ]
   },
@@ -192,7 +212,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I export settlements to CSV?",
         answer:
-          "Open a group and go to the Export tab. Select a date range, then tap Export CSV. The file will include all settlements you're involved in for that group and will open your device's share sheet so you can save or send it."
+          "Open a group and go to the Stats tab. Select a date range, then tap Export CSV at the bottom. The file includes all settlements you're involved in for that group within the selected range and will open your device's share sheet so you can save or send it."
+      },
+      {
+        question: "What does the Stats tab show?",
+        answer:
+          "The Stats tab in a group shows your net balance (To Collect minus To Pay), total group spendings, and the CSV export button — all filtered by your selected date range. Use the date pills at the top to switch between 1D, 1W, 1M, 3M, 1Y, and All time."
       },
       {
         question: "Can I use Ambagan offline?",
