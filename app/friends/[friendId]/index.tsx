@@ -1,12 +1,14 @@
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
+import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { SettlementListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Divider } from "@/components/ui/divider";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
 import {
@@ -25,12 +27,15 @@ import {
 import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import ListDivider from "@/components/ListDivider";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
-import { groupByDate, groupByExpenseId } from "@/features/expense/utils/grouping.util";
+import { formatAmount } from "@/features/expense/utils/formatAmount";
+import {
+  groupByDate,
+  groupByExpenseId
+} from "@/features/expense/utils/grouping.util";
 import DateRangeSheet, {
   DateRangeOption,
   dateRangeLabels,
@@ -96,7 +101,7 @@ export default function FriendDetailScreen() {
   );
   const initializedRef = useRef(false);
 
-  const { details: userDetails } = states.user();
+  const { details: userDetails, defaultCurrency } = states.user();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
@@ -232,15 +237,32 @@ export default function FriendDetailScreen() {
 
   const toCollect = useMemo(
     () =>
-      groupByCurrency(activeSettlements.filter((s) => s.payer.id === userDetails?.id)),
+      groupByCurrency(
+        activeSettlements.filter((s) => s.payer.id === userDetails?.id)
+      ),
     [activeSettlements, userDetails]
   );
 
   const toPay = useMemo(
     () =>
-      groupByCurrency(activeSettlements.filter((s) => s.member.id === userDetails?.id)),
+      groupByCurrency(
+        activeSettlements.filter((s) => s.member.id === userDetails?.id)
+      ),
     [activeSettlements, userDetails]
   );
+
+  const netBalance = useMemo(() => {
+    const allCurrencies = new Set([
+      ...toCollect.map((i) => i.currency),
+      ...toPay.map((i) => i.currency)
+    ]);
+    return Array.from(allCurrencies).map((currency) => {
+      const receive =
+        toCollect.find((i) => i.currency === currency)?.amount ?? 0;
+      const pay = toPay.find((i) => i.currency === currency)?.amount ?? 0;
+      return { currency, amount: receive - pay };
+    });
+  }, [toCollect, toPay]);
 
   const filteredSettlements = useMemo(() => {
     if (settlementTab === "History") return settledSettlements;
@@ -304,36 +326,50 @@ export default function FriendDetailScreen() {
               </HStack>
 
               <VStack className="gap-y-4">
-                <HStack className="gap-x-2">
-                  <Card className="flex-1 rounded-lg bg-secondary-100">
-                    <VStack className="gap-y-2">
-                      <SettlementAvatar isPayer={true} />
-                      <VStack className="justify-between">
+                <Card className="rounded-xl bg-secondary-100">
+                  <VStack className="gap-y-4">
+                    {/* Net Balance Hero */}
+                    <NetBalanceHero
+                      isLoading={loading}
+                      items={netBalance}
+                      primaryCurrency={defaultCurrency}
+                    />
+
+                    <Divider />
+
+                    {/* Stat Columns */}
+                    <HStack className="items-stretch">
+                      <VStack className="flex-1 gap-y-2">
+                        <HStack className="items-center gap-x-2">
+                          <SettlementAvatar isPayer={true} />
+                          <Text className="text-secondary-950">To Collect</Text>
+                        </HStack>
                         <CurrencyAmountDisplay
                           isLoading={loading}
                           items={toCollect}
                           label="To Collect"
                           type="receive"
+                          primaryCurrency={defaultCurrency}
                         />
-                        <Text className="text-secondary-950">To Collect</Text>
                       </VStack>
-                    </VStack>
-                  </Card>
-                  <Card className="flex-1 rounded-lg bg-secondary-100">
-                    <VStack className="gap-y-2">
-                      <SettlementAvatar isPayer={false} />
-                      <VStack className="justify-between">
+                      <Divider orientation="vertical" className="mx-4" />
+                      <VStack className="flex-1 gap-y-2">
+                        <HStack className="items-center gap-x-2">
+                          <SettlementAvatar isPayer={false} />
+                          <Text className="text-secondary-950">To Pay</Text>
+                        </HStack>
                         <CurrencyAmountDisplay
                           isLoading={loading}
                           items={toPay}
                           label="To Pay"
                           type="pay"
+                          primaryCurrency={defaultCurrency}
                         />
-                        <Text className="text-secondary-950">To Pay</Text>
                       </VStack>
-                    </VStack>
-                  </Card>
-                </HStack>
+                    </HStack>
+                  </VStack>
+                </Card>
+
                 <VStack className="gap-y-2">
                   {canSettle && (
                     <FormButton
@@ -553,5 +589,52 @@ export default function FriendDetailScreen() {
         </ModalContent>
       </Modal>
     </>
+  );
+}
+
+function NetBalanceHero({
+  items,
+  isLoading,
+  primaryCurrency = "PHP"
+}: {
+  items: { currency: string; amount: number }[];
+  isLoading: boolean;
+  primaryCurrency?: string;
+}) {
+  const sorted = [...items].sort((a, b) =>
+    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+  );
+  const [primary, ...secondary] = sorted;
+  const primaryAmount = primary?.amount ?? 0;
+
+  const amountColor = primaryAmount < 0 ? "text-error-400" : undefined;
+
+  return (
+    <VStack className="gap-y-2">
+      <Text bold className="text-secondary-950 uppercase text-sm">
+        Net Balance
+      </Text>
+      {isLoading ? (
+        <Text bold className="text-4xl text-secondary-950">
+          —
+        </Text>
+      ) : (
+        <HStack className="items-end gap-x-2">
+          <Text bold className={`text-4xl ${amountColor}`}>
+            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
+          </Text>
+          <HStack className="items-center gap-x-1 pb-1">
+            <Text className="text-secondary-500 text-base">
+              {primary?.currency ?? primaryCurrency}
+            </Text>
+            {secondary.length > 0 && (
+              <Text className="text-secondary-500 text-sm">
+                +{secondary.length} more
+              </Text>
+            )}
+          </HStack>
+        </HStack>
+      )}
+    </VStack>
   );
 }
