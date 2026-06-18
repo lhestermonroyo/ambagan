@@ -4,9 +4,9 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import { FriendListSkeleton } from "@/components/SkeletonLoader";
 import PressableListItem from "@/components/PressableListItem";
 import SearchInput from "@/components/SearchInput";
+import { FriendListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
@@ -231,7 +231,10 @@ export default function FriendsScreen() {
               <>
                 {activeTab === "all" && filteredFavorites.length > 0 && (
                   <VStack className="gap-y-2">
-                    <Text className="px-4 font-semibold text-secondary-950">
+                    <Text
+                      bold
+                      className="text-secondary-950 uppercase text-sm px-4"
+                    >
                       Favorites
                     </Text>
                     <ScrollView
@@ -269,7 +272,10 @@ export default function FriendsScreen() {
                   filteredFriends.length > 0 ? (
                     <VStack className="gap-y-2">
                       {filteredFavorites.length > 0 && (
-                        <Text className="px-4 font-semibold text-secondary-950">
+                        <Text
+                          bold
+                          className="text-secondary-950 uppercase text-sm px-4"
+                        >
                           Settlements
                         </Text>
                       )}
@@ -290,7 +296,10 @@ export default function FriendsScreen() {
                 ) : (
                   <VStack className="gap-y-2">
                     {activeTab === "all" && (
-                      <Text className="px-4 font-semibold text-secondary-950">
+                      <Text
+                        bold
+                        className="text-secondary-950 uppercase text-sm px-4"
+                      >
                         Settlements
                       </Text>
                     )}
