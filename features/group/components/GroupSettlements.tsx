@@ -1,26 +1,30 @@
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
+import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { SettlementListSkeleton } from "@/components/SkeletonLoader";
-import { Avatar } from "@/components/ui/avatar";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import ListDivider from "@/components/ListDivider";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import MarkAsSettledSheet from "@/features/expense/components/MarkAsSettledSheet";
 import RequestSettledSheet from "@/features/expense/components/RequestSettledSheet";
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
-import { groupByDate, groupByExpenseId } from "@/features/expense/utils/grouping.util";
+import { formatAmount } from "@/features/expense/utils/formatAmount";
+import {
+  groupByDate,
+  groupByExpenseId
+} from "@/features/expense/utils/grouping.util";
 import { sortPaymentsByStatus } from "@/features/expense/utils/payment.util";
 import DateRangeSheet, {
   DateRangeOption,
@@ -37,7 +41,7 @@ import { EmptyType } from "@/types/general";
 import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { useFocusEffect } from "expo-router";
-import { CalendarRange, HouseHeart, LayoutList, X } from "lucide-react-native";
+import { CalendarRange, LayoutList, X } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -48,7 +52,7 @@ export default function GroupSettlements({
 }: {
   refreshTrigger?: number;
 }) {
-  const { details, expenseList, settlementRefreshToken } = states.group();
+  const { details, settlementRefreshToken } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
   const colorScheme = useColorScheme() ?? "light";
 
@@ -163,11 +167,6 @@ export default function GroupSettlements({
     }
   };
 
-  const totalGroupSpendingsByCurrency = useMemo(
-    () => groupByCurrency(expenseList),
-    [expenseList]
-  );
-
   const yourTotalUnpaidByCurrency = useMemo(() => {
     if (!userDetails) return [];
     return groupByCurrency(
@@ -181,6 +180,22 @@ export default function GroupSettlements({
       activePayments.filter((p) => p.payer.id === userDetails.id)
     );
   }, [activePayments, userDetails]);
+
+  const netBalance = useMemo(() => {
+    const allCurrencies = new Set([
+      ...yourToCollectTotalByCurrency.map((i) => i.currency),
+      ...yourTotalUnpaidByCurrency.map((i) => i.currency)
+    ]);
+    return Array.from(allCurrencies).map((currency) => {
+      const receive =
+        yourToCollectTotalByCurrency.find((i) => i.currency === currency)
+          ?.amount ?? 0;
+      const pay =
+        yourTotalUnpaidByCurrency.find((i) => i.currency === currency)
+          ?.amount ?? 0;
+      return { currency, amount: receive - pay };
+    });
+  }, [yourToCollectTotalByCurrency, yourTotalUnpaidByCurrency]);
 
   const settlementSections = useMemo(() => {
     const cutoff = getDateRangeCutoff(dateRange);
@@ -279,40 +294,23 @@ export default function GroupSettlements({
   return (
     <Fragment>
       <VStack className="gap-y-8">
-        <VStack className="gap-y-2">
-          <HStack className="gap-x-2 px-4">
-            <Card className="flex-1 rounded-lg bg-secondary-100">
-              <VStack className="gap-y-2">
-                <Avatar
-                  size="sm"
-                  className="bg-primary-100 border border-primary-200"
-                >
-                  <HouseHeart
-                    size={16}
-                    color={getPrimaryHex("text-primary-600", colorScheme)}
-                  />
-                </Avatar>
-                <VStack className="gap-y-1">
-                  <CurrencyAmountDisplay
-                    isLoading={loading}
-                    items={totalGroupSpendingsByCurrency}
-                    label="Total Group Spendings"
-                    type="neutral"
-                    primaryCurrency={defaultCurrency}
-                  />
-                  <Text className="text-secondary-950">
-                    Total Group Spendings
-                  </Text>
-                </VStack>
-              </VStack>
-            </Card>
-          </HStack>
+        <VStack className="px-4">
+          <Card className="rounded-xl bg-secondary-100">
+            <VStack className="gap-y-4">
+              <NetBalanceHero
+                isLoading={loading}
+                items={netBalance}
+                primaryCurrency={defaultCurrency}
+              />
 
-          <HStack className="gap-x-2 px-4">
-            <Card className="flex-1 rounded-lg bg-secondary-100">
-              <VStack className="gap-y-2">
-                <SettlementAvatar isPayer={true} />
-                <VStack className="justify-between">
+              <Divider />
+
+              <HStack className="items-stretch">
+                <VStack className="flex-1 gap-y-2">
+                  <HStack className="items-center gap-x-2">
+                    <SettlementAvatar isPayer={true} />
+                    <Text className="text-secondary-950">To Collect</Text>
+                  </HStack>
                   <CurrencyAmountDisplay
                     isLoading={loading}
                     items={yourToCollectTotalByCurrency}
@@ -320,15 +318,13 @@ export default function GroupSettlements({
                     type="receive"
                     primaryCurrency={defaultCurrency}
                   />
-                  <Text className="text-secondary-950">To Collect</Text>
                 </VStack>
-              </VStack>
-            </Card>
-
-            <Card className="flex-1 rounded-lg bg-secondary-100">
-              <VStack className="gap-y-2">
-                <SettlementAvatar isPayer={false} />
-                <VStack className="justify-between">
+                <Divider orientation="vertical" className="mx-4" />
+                <VStack className="flex-1 gap-y-2">
+                  <HStack className="items-center gap-x-2">
+                    <SettlementAvatar isPayer={false} />
+                    <Text className="text-secondary-950">To Pay</Text>
+                  </HStack>
                   <CurrencyAmountDisplay
                     isLoading={loading}
                     items={yourTotalUnpaidByCurrency}
@@ -336,11 +332,10 @@ export default function GroupSettlements({
                     type="pay"
                     primaryCurrency={defaultCurrency}
                   />
-                  <Text className="text-secondary-950">To Pay</Text>
                 </VStack>
-              </VStack>
-            </Card>
-          </HStack>
+              </HStack>
+            </VStack>
+          </Card>
         </VStack>
 
         <VStack className="gap-y-4">
@@ -423,7 +418,10 @@ export default function GroupSettlements({
             </HStack>
           )}
 
-          <LoadingWrapper isLoading={loading} skeleton={<SettlementListSkeleton />}>
+          <LoadingWrapper
+            isLoading={loading}
+            skeleton={<SettlementListSkeleton />}
+          >
             <SectionList
               scrollEnabled={false}
               sections={settlementSections}
@@ -522,5 +520,52 @@ export default function GroupSettlements({
         />
       )}
     </Fragment>
+  );
+}
+
+function NetBalanceHero({
+  items,
+  isLoading,
+  primaryCurrency = "PHP"
+}: {
+  items: { currency: string; amount: number }[];
+  isLoading: boolean;
+  primaryCurrency?: string;
+}) {
+  const sorted = [...items].sort((a, b) =>
+    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+  );
+  const [primary, ...secondary] = sorted;
+  const primaryAmount = primary?.amount ?? 0;
+
+  const amountColor = primaryAmount < 0 && "text-error-400";
+
+  return (
+    <VStack className="gap-y-2">
+      <Text bold className="text-secondary-950 uppercase text-sm">
+        Net Balance
+      </Text>
+      {isLoading ? (
+        <Text bold className="text-3xl text-secondary-950">
+          —
+        </Text>
+      ) : (
+        <HStack className="items-end gap-x-2">
+          <Text bold className={`text-3xl ${amountColor}`}>
+            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
+          </Text>
+          <HStack className="items-center gap-x-1 pb-1">
+            <Text className="text-secondary-950 text-base">
+              {primary?.currency ?? primaryCurrency}
+            </Text>
+            {secondary.length > 0 && (
+              <Text className="text-secondary-950 text-sm">
+                +{secondary.length} more
+              </Text>
+            )}
+          </HStack>
+        </HStack>
+      )}
+    </VStack>
   );
 }

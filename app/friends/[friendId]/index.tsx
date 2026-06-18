@@ -607,7 +607,7 @@ function NetBalanceHero({
   const [primary, ...secondary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
 
-  const amountColor = primaryAmount < 0 ? "text-error-400" : undefined;
+  const amountColor = primaryAmount < 0 && "text-error-400";
 
   return (
     <VStack className="gap-y-2">
@@ -615,20 +615,20 @@ function NetBalanceHero({
         Net Balance
       </Text>
       {isLoading ? (
-        <Text bold className="text-4xl text-secondary-950">
+        <Text bold className="text-3xl text-secondary-950">
           —
         </Text>
       ) : (
         <HStack className="items-end gap-x-2">
-          <Text bold className={`text-4xl ${amountColor}`}>
+          <Text bold className={`text-3xl ${amountColor}`}>
             {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
           </Text>
           <HStack className="items-center gap-x-1 pb-1">
-            <Text className="text-secondary-500 text-base">
+            <Text className="text-secondary-950 text-base">
               {primary?.currency ?? primaryCurrency}
             </Text>
             {secondary.length > 0 && (
-              <Text className="text-secondary-500 text-sm">
+              <Text className="text-secondary-950 text-sm">
                 +{secondary.length} more
               </Text>
             )}
