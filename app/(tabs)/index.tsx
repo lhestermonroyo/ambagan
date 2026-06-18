@@ -298,35 +298,37 @@ export default function HomeScreen() {
         >
           <VStack className="gap-y-4 bg-background-0 flex-1">
             <Box className="bg-primary-400">
-              <VStack className="gap-y-4 p-4">
-                {/* Net Balance Hero */}
-                <NetBalanceRow
-                  isLoading={loading.stats}
-                  items={netBalance}
-                  primaryCurrency={defaultCurrency}
-                />
-
-                <Divider className="bg-white/20" />
-
-                {/* Stat Columns */}
-                <HStack className="items-stretch">
-                  <StatItem
-                    type="RECEIVE"
+              <VStack className="p-4 gap-y-6">
+                <VStack className="gap-y-4">
+                  {/* Net Balance Hero */}
+                  <NetBalanceRow
                     isLoading={loading.stats}
-                    items={stats.toReceive}
+                    items={netBalance}
                     primaryCurrency={defaultCurrency}
                   />
-                  <Divider
-                    orientation="vertical"
-                    className="mx-4 bg-white/20"
-                  />
-                  <StatItem
-                    type="PAY"
-                    isLoading={loading.stats}
-                    items={stats.toPay}
-                    primaryCurrency={defaultCurrency}
-                  />
-                </HStack>
+
+                  <Divider className="bg-white/20" />
+
+                  {/* Stat Columns */}
+                  <HStack className="items-stretch">
+                    <StatItem
+                      type="RECEIVE"
+                      isLoading={loading.stats}
+                      items={stats.toReceive}
+                      primaryCurrency={defaultCurrency}
+                    />
+                    <Divider
+                      orientation="vertical"
+                      className="mx-4 bg-white/20"
+                    />
+                    <StatItem
+                      type="PAY"
+                      isLoading={loading.stats}
+                      items={stats.toPay}
+                      primaryCurrency={defaultCurrency}
+                    />
+                  </HStack>
+                </VStack>
 
                 {/* Action Buttons */}
                 <HStack className="gap-x-2">
