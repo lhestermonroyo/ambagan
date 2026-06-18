@@ -44,6 +44,7 @@ import DateRangeSheet, {
 import ViewBySheet, {
   ViewOption
 } from "@/features/group/components/ViewBySheet";
+import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
@@ -57,6 +58,7 @@ import {
   CalendarRange,
   CheckCheck,
   FileCheckCorner,
+  Heart,
   LayoutList,
   X
 } from "lucide-react-native";
@@ -106,6 +108,10 @@ export default function FriendDetailScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
 
+  const { favoriteIds, loadFavorites, handleToggleFavorite } =
+    useFavoriteToggle(userDetails?.id);
+  const isFavorite = favoriteIds.has(friendId ?? "");
+
   const decodedName = decodeURIComponent(name || "");
   const decodedEmail = decodeURIComponent(email || "");
   const decodedAvatar = decodeURIComponent(avatar || "");
@@ -115,6 +121,7 @@ export default function FriendDetailScreen() {
       () => () => {
         if (!userDetails?.id || !friendId) return;
         fetchAll(!initialized);
+        loadFavorites();
       },
       [userDetails?.id, friendId, initialized]
     )
@@ -302,7 +309,42 @@ export default function FriendDetailScreen() {
 
   return (
     <>
-      <InnerLayout title="Friend Details" onBack={() => router.back()}>
+      <InnerLayout
+        title="Friend Details"
+        onBack={() => router.back()}
+        actions={[
+          <Button
+            key="favorite"
+            variant="link"
+            className="rounded-full"
+            onPress={() =>
+              handleToggleFavorite({
+                id: friendId!,
+                first_name: decodedName.split(" ")[0] ?? "",
+                last_name: decodedName.split(" ").slice(1).join(" ") ?? "",
+                email: decodedEmail,
+                avatar: decodedAvatar || null,
+                phone: null,
+                plan: "free"
+              })
+            }
+          >
+            <Heart
+              size={20}
+              color={
+                isFavorite
+                  ? getPrimaryHex("text-primary-400", colorScheme)
+                  : getSecondaryHex("text-secondary-950", colorScheme)
+              }
+              fill={
+                isFavorite
+                  ? getPrimaryHex("text-primary-400", colorScheme)
+                  : "none"
+              }
+            />
+          </Button>
+        ]}
+      >
         <ScrollView
           className="flex-1"
           refreshControl={
