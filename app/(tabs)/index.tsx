@@ -44,6 +44,7 @@ import { cacheService } from "@/utils/cacheService";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect, useRouter } from "expo-router";
+import * as Notifications from "expo-notifications";
 import {
   Bell,
   CircleQuestionMark,
@@ -52,6 +53,8 @@ import {
 } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
+
+const SETTLEMENT_REMINDER_ID = "daily-settlement-reminder";
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState({
@@ -145,10 +148,41 @@ export default function HomeScreen() {
         toPay: response.toPay,
         toReceive: response.toReceive
       });
+      syncSettlementReminder(response.toPay);
     } catch (error) {
       console.error("Failed to fetch expense statistics:", error);
     } finally {
       setLoading((prev) => ({ ...prev, stats: false }));
+    }
+  };
+
+  const syncSettlementReminder = async (
+    toPay: { currency: string; amount: number }[]
+  ) => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== "granted") return;
+
+      if (toPay.length > 0) {
+        await Notifications.scheduleNotificationAsync({
+          identifier: SETTLEMENT_REMINDER_ID,
+          content: {
+            title: "You have unpaid settlements",
+            body: "Don't forget to settle up with your group members."
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DAILY,
+            hour: 9,
+            minute: 0
+          }
+        });
+      } else {
+        await Notifications.cancelScheduledNotificationAsync(
+          SETTLEMENT_REMINDER_ID
+        );
+      }
+    } catch (error) {
+      console.error("Failed to sync settlement reminder:", error);
     }
   };
 
