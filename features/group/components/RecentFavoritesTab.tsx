@@ -5,17 +5,17 @@ export default function RecentFavoritesTab({
   tab,
   onTabChange
 }: {
-  tab: "recent" | "favorites";
-  onTabChange: (tab: "recent" | "favorites") => void;
+  tab: "friends" | "favorites";
+  onTabChange: (tab: "friends" | "favorites") => void;
 }) {
   return (
     <HStack className="gap-x-2 px-4">
       <FormButton
         size="sm"
-        variant={tab === "recent" ? "solid" : "outline"}
+        variant={tab === "friends" ? "solid" : "outline"}
         className="flex-1 h-10"
-        text="Recent"
-        onPress={() => onTabChange("recent")}
+        text="Friends"
+        onPress={() => onTabChange("friends")}
       />
       <FormButton
         size="sm"

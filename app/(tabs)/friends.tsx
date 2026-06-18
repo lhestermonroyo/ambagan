@@ -23,17 +23,19 @@ import { FriendSummary } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
 import { getSecondaryHex } from "@/utils/getColorHex";
+import { getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
 import { HeartPlus } from "lucide-react-native";
 import { Fragment, useMemo, useRef, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 
-type FriendsTab = "all" | "owes-me" | "i-owe" | "favorites";
+type FriendsTab = "all" | "owes-me" | "i-owe" | "friends" | "favorites";
 
 const TABS: { key: FriendsTab; label: string }[] = [
   { key: "all", label: "All" },
   { key: "owes-me", label: "To Collect" },
   { key: "i-owe", label: "To Pay" },
+  { key: "friends", label: "Friends" },
   { key: "favorites", label: "Favorites" }
 ];
 
@@ -42,6 +44,7 @@ export default function FriendsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [favorites, setFavorites] = useState<UserPreview[]>([]);
+  const [recentFriends, setRecentFriends] = useState<UserPreview[]>([]);
   const [favoritesInitialized, setFavoritesInitialized] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [searching, setSearching] = useState(false);
@@ -61,6 +64,7 @@ export default function FriendsScreen() {
         if (!userDetails?.id) return;
         fetchFriends(initialized);
         fetchFavorites(true);
+        loadRecentFriends();
       },
       [userDetails?.id, initialized]
     )
@@ -94,6 +98,16 @@ export default function FriendsScreen() {
     }
   };
 
+  const loadRecentFriends = async () => {
+    if (!userDetails?.id) return;
+    try {
+      const data = await getRecentUsers(userDetails.id);
+      setRecentFriends(data.filter((u) => u.id !== userDetails.id));
+    } catch (error) {
+      console.error("Failed to load recent friends:", error);
+    }
+  };
+
   const handleTabChange = (tab: FriendsTab) => {
     if (tab === activeTabRef.current) return;
     activeTabRef.current = tab;
@@ -102,7 +116,7 @@ export default function FriendsScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchFriends(true), fetchFavorites(true)]);
+    await Promise.all([fetchFriends(true), fetchFavorites(true), loadRecentFriends()]);
     setRefreshing(false);
   };
 
@@ -176,6 +190,16 @@ export default function FriendsScreen() {
     );
   }, [searchInput, favorites]);
 
+  const filteredRecentFriends = useMemo(() => {
+    if (!searchInput) return recentFriends;
+    const q = searchInput.toLowerCase();
+    return recentFriends.filter(
+      (u) =>
+        `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q)
+    );
+  }, [searchInput, recentFriends]);
+
   const emptyType = searching ? EmptyType.SEARCH : EmptyType.FRIEND;
 
   return (
@@ -227,7 +251,23 @@ export default function FriendsScreen() {
           }
         >
           <LoadingWrapper isLoading={loading} skeleton={<FriendListSkeleton />}>
-            {activeTab !== "favorites" ? (
+            {activeTab === "friends" ? (
+              <FlatList
+                data={filteredRecentFriends}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+                renderItem={({ item }) => (
+                  <FavoriteListItem item={item} onPress={handleFavoritePress} />
+                )}
+                ItemSeparatorComponent={ListDivider}
+                ListEmptyComponent={() => (
+                  <EmptyList
+                    type={searching ? EmptyType.SEARCH : EmptyType.FRIEND}
+                  />
+                )}
+                ListFooterComponent={() => <Box className="h-16" />}
+              />
+            ) : activeTab !== "favorites" ? (
               <>
                 {activeTab === "all" && filteredFavorites.length > 0 && (
                   <VStack className="gap-y-2">
@@ -333,7 +373,8 @@ export default function FriendsScreen() {
                 )}
                 ListFooterComponent={() => <Box className="h-16" />}
               />
-            )}
+            )
+            }
           </LoadingWrapper>
         </ScrollView>
       </TabLayout>

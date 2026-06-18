@@ -8,8 +8,8 @@ import {
   ActionsheetDragIndicator,
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
-import { FlatList } from "@/components/ui/flat-list";
 import { Box } from "@/components/ui/box";
+import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -38,7 +38,7 @@ export default function FavoritesSheet({
 
   const [searchInput, setSearchInput] = useState("");
   const [searching, setSearching] = useState(false);
-  const [tab, setTab] = useState<"recent" | "favorites">("recent");
+  const [tab, setTab] = useState<"friends" | "favorites">("friends");
   const [searchResults, setSearchResults] = useState<UserPreview[]>([]);
   const [recentUsers, setRecentUsers] = useState<UserPreview[]>([]);
 
@@ -93,7 +93,7 @@ export default function FavoritesSheet({
   const handleClose = () => {
     setSearchInput("");
     setSearching(false);
-    setTab("recent");
+    setTab("friends");
     onClose();
   };
 
@@ -101,7 +101,7 @@ export default function FavoritesSheet({
     ? "No results found."
     : tab === "favorites"
       ? "No favorites yet."
-      : "No recent users.";
+      : "No friends yet.";
 
   return (
     <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[90]}>
@@ -116,7 +116,8 @@ export default function FavoritesSheet({
               Manage Favorites
             </Text>
             <Text className="text-secondary-950">
-              Search users and add them to your favorites.
+              Search users or select from your friends to manage your favorite
+              list.
             </Text>
           </VStack>
 

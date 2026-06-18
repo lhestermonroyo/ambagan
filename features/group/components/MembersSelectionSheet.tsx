@@ -20,7 +20,7 @@ import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import services from "@/services";
 import states from "@/states";
 import { UserPreview } from "@/types/user";
-import { addRecentUser, getRecentUsers } from "@/utils/recentUsers";
+import { addRecentUser, addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import RecentFavoritesTab from "./RecentFavoritesTab";
 import SelectedMemberItem from "./SelectedMemberItem";
@@ -39,7 +39,7 @@ export default function MembersSelectionSheet({
 }) {
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
-  const [tab, setTab] = useState<"recent" | "favorites">("recent");
+  const [tab, setTab] = useState<"friends" | "favorites">("friends");
   const [selected, setSelected] = useState<UserPreview[]>([]);
   const [users, setUsers] = useState<UserPreview[]>([]);
   const [recentUsers, setRecentUsers] = useState<UserPreview[]>([]);
@@ -92,6 +92,7 @@ export default function MembersSelectionSheet({
     return tab === "favorites" ? favoriteUsers : recentUsers;
   }, [searching, tab, users, favoriteUsers, recentUsers]);
 
+
   const handleChangeMembers = (newSelectedIds: (string | number)[]) => {
     const selectedUsers = displayUsers.filter((u) =>
       newSelectedIds.includes(u.id)
@@ -125,12 +126,16 @@ export default function MembersSelectionSheet({
   };
 
   const handleClearStates = () => {
-    setTab("recent");
+    setTab("friends");
     setSearchInput("");
     setSearching(false);
   };
 
   const handleSaveMembers = () => {
+    const others = selected.filter((m) => m.id !== userDetails?.id);
+    if (others.length > 0) {
+      addRecentUsers(others, userDetails!.id);
+    }
     onSaveMembers(selected);
     handleClearStates();
     onClose();
@@ -145,7 +150,7 @@ export default function MembersSelectionSheet({
     ? "No results found on your search."
     : tab === "favorites"
       ? "No favorites added yet."
-      : "No recent users.";
+      : "No friends yet. Add members to a group to see them here.";
 
   return (
     <Fragment>
