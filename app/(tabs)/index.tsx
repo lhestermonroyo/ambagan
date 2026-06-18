@@ -44,16 +44,16 @@ import { cacheService } from "@/utils/cacheService";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { getReminderEnabled } from "@/utils/reminderPreference";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import { useFocusEffect, useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   Bell,
   CircleQuestionMark,
   HousePlus,
   PlusCircle
 } from "lucide-react-native";
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { RefreshControl, useColorScheme } from "react-native";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, RefreshControl, useColorScheme } from "react-native";
 
 const SETTLEMENT_REMINDER_ID = "daily-settlement-reminder";
 
@@ -99,6 +99,58 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const primaryNet = useMemo(() => {
+    const sorted = [...netBalance].sort((a, b) =>
+      a.currency === defaultCurrency
+        ? -1
+        : b.currency === defaultCurrency
+          ? 1
+          : 0
+    );
+    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
+  }, [netBalance, defaultCurrency]);
+
+  const primaryReceive = useMemo(() => {
+    const sorted = [...stats.toReceive].sort((a, b) =>
+      a.currency === defaultCurrency
+        ? -1
+        : b.currency === defaultCurrency
+          ? 1
+          : 0
+    );
+    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
+  }, [stats.toReceive, defaultCurrency]);
+
+  const primaryPay = useMemo(() => {
+    const sorted = [...stats.toPay].sort((a, b) =>
+      a.currency === defaultCurrency
+        ? -1
+        : b.currency === defaultCurrency
+          ? 1
+          : 0
+    );
+    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
+  }, [stats.toPay, defaultCurrency]);
+
+  const COMPACT_THRESHOLD = 180;
+  const compactOpacity = scrollY.interpolate({
+    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
+    outputRange: [0, 1],
+    extrapolate: "clamp"
+  });
+  const compactTranslateY = scrollY.interpolate({
+    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
+    outputRange: [-16, 0],
+    extrapolate: "clamp"
+  });
+  const compactHeight = scrollY.interpolate({
+    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
+    outputRange: [0, 60],
+    extrapolate: "clamp"
+  });
 
   useEffect(() => {
     setInitialized(false);
@@ -298,10 +350,10 @@ export default function HomeScreen() {
         className="flex-1 bg-secondary-0"
         behavior="padding"
       >
-        <Box className="sticky top-0 px-4 pt-[5rem] pb-2 bg-primary-400">
-          <HStack className="items-center justify-center">
+        <Box className="sticky top-0 bg-primary-400">
+          <HStack className="items-center justify-center px-4 pt-[5rem] pb-2">
             <VStack className="flex-1">
-              <Text className="text-background-0 opacity-80">Hello,</Text>
+              <Text className="text-background-0/70">Hello,</Text>
               <Text bold className="text-xl text-background-0">
                 {userDetails?.first_name} {userDetails?.last_name}
               </Text>
@@ -327,7 +379,7 @@ export default function HomeScreen() {
                   />
                   {unreadCount > 0 && (
                     <Box className="absolute -top-1 -right-1 bg-error-400 rounded-full flex w-4 h-4 items-center justify-center">
-                      <Text className="text-background-0 text-2xs font-semibold">
+                      <Text className="text-white text-2xs font-semibold">
                         {unreadCount > 9 ? "9+" : unreadCount}
                       </Text>
                     </Box>
@@ -336,9 +388,53 @@ export default function HomeScreen() {
               </Button>
             </HStack>
           </HStack>
+
+          {/* Compact sticky stats — fades in as card scrolls out */}
+          <Animated.View
+            style={{
+              height: compactHeight,
+              opacity: compactOpacity,
+              overflow: "hidden",
+              transform: [{ translateY: compactTranslateY }]
+            }}
+          >
+            <HStack className="px-6 pt-2 gap-x-4 items-center justify-center">
+              <VStack className="items-center flex-1">
+                <Text className="text-background-0/70 text-sm uppercase tracking-widest">
+                  Net
+                </Text>
+                <Text bold className="text-background-0 text-lg">
+                  {formatAmount(primaryNet.amount, primaryNet.currency)}
+                </Text>
+              </VStack>
+              <Text className="text-white/20">|</Text>
+              <VStack className="items-center flex-1">
+                <Text className="text-background-0/70 text-sm uppercase tracking-widest">
+                  Collect
+                </Text>
+                <Text bold className="text-background-0 text-lg">
+                  {formatAmount(primaryReceive.amount, primaryReceive.currency)}
+                </Text>
+              </VStack>
+              <Text className="text-white/20">|</Text>
+              <VStack className="items-center flex-1">
+                <Text className="text-background-0/70 text-sm uppercase tracking-widest">
+                  Pay
+                </Text>
+                <Text bold className="text-background-0 text-lg">
+                  {formatAmount(primaryPay.amount, primaryPay.currency)}
+                </Text>
+              </VStack>
+            </HStack>
+          </Animated.View>
         </Box>
         <ScrollView
           className="flex-1 bg-primary-400"
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+          )}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }

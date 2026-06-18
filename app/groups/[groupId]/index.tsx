@@ -33,6 +33,7 @@ import services from "@/services";
 import states from "@/states";
 import { ExpensePreview } from "@/types/expenses";
 import { cacheService } from "@/utils/cacheService";
+import { groupByCurrency } from "@/utils/currency";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
@@ -48,8 +49,8 @@ import {
   X,
   Zap
 } from "lucide-react-native";
-import { Fragment, useMemo, useState } from "react";
-import { RefreshControl, useColorScheme } from "react-native";
+import { Fragment, useMemo, useRef, useState } from "react";
+import { Animated, RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 const tabs = ["Settlements", "Expenses", "Stats", "Group Info"] as const;
@@ -67,10 +68,97 @@ export default function GroupDetailsScreen() {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
   const { details: groupDetails, expenseList, settlementList } = states.group();
-  const { details: userDetails } = states.user();
+  const { details: userDetails, defaultCurrency } = states.user();
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const activeSettlements = useMemo(
+    () => settlementList.filter((p) => p.status !== "settled"),
+    [settlementList]
+  );
+
+  const compactToCollect = useMemo(
+    () =>
+      groupByCurrency(
+        activeSettlements.filter((p) => p.payer.id === userDetails?.id)
+      ),
+    [activeSettlements, userDetails?.id]
+  );
+
+  const compactToPay = useMemo(
+    () =>
+      groupByCurrency(
+        activeSettlements.filter((p) => p.member.id === userDetails?.id)
+      ),
+    [activeSettlements, userDetails?.id]
+  );
+
+  const compactNetBalance = useMemo(() => {
+    const allCurrencies = new Set([
+      ...compactToCollect.map((i) => i.currency),
+      ...compactToPay.map((i) => i.currency)
+    ]);
+    return Array.from(allCurrencies).map((currency) => {
+      const receive =
+        compactToCollect.find((i) => i.currency === currency)?.amount ?? 0;
+      const pay =
+        compactToPay.find((i) => i.currency === currency)?.amount ?? 0;
+      return { currency, amount: receive - pay };
+    });
+  }, [compactToCollect, compactToPay]);
+
+  const primaryCompactNet = useMemo(() => {
+    const sorted = [...compactNetBalance].sort((a, b) =>
+      a.currency === defaultCurrency
+        ? -1
+        : b.currency === defaultCurrency
+          ? 1
+          : 0
+    );
+    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
+  }, [compactNetBalance, defaultCurrency]);
+
+  const primaryCompactCollect = useMemo(() => {
+    const sorted = [...compactToCollect].sort((a, b) =>
+      a.currency === defaultCurrency
+        ? -1
+        : b.currency === defaultCurrency
+          ? 1
+          : 0
+    );
+    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
+  }, [compactToCollect, defaultCurrency]);
+
+  const primaryCompactPay = useMemo(() => {
+    const sorted = [...compactToPay].sort((a, b) =>
+      a.currency === defaultCurrency
+        ? -1
+        : b.currency === defaultCurrency
+          ? 1
+          : 0
+    );
+    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
+  }, [compactToPay, defaultCurrency]);
+
+  const COMPACT_THRESHOLD = 280;
+  const compactOpacity = scrollY.interpolate({
+    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
+    outputRange: [0, 1],
+    extrapolate: "clamp"
+  });
+  const compactTranslateY = scrollY.interpolate({
+    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
+    outputRange: [-16, 0],
+    extrapolate: "clamp"
+  });
+  const compactHeight = scrollY.interpolate({
+    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
+    outputRange: [0, 60],
+    extrapolate: "clamp"
+  });
   const params = useLocalSearchParams();
   const groupId = params.groupId as string | undefined;
 
@@ -467,9 +555,71 @@ export default function GroupDetailsScreen() {
               </Fab>
             </>
           )}
+        {/* Compact sticky stats — Settlements tab only */}
+        {tab === "Settlements" && (
+          <Animated.View
+            style={{
+              height: compactHeight,
+              opacity: compactOpacity,
+              overflow: "hidden",
+              transform: [{ translateY: compactTranslateY }],
+              borderBottomWidth: 1,
+              borderBottomColor: "rgba(0,0,0,0.06)"
+            }}
+          >
+            <HStack className="px-6 pt-2 gap-x-4 items-center justify-center bg-background-0">
+              <VStack className="items-center flex-1">
+                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                  Net
+                </Text>
+                <Text
+                  bold
+                  className={`text-lg ${
+                    primaryCompactNet.amount < 0 ? "text-error-400" : ""
+                  }`}
+                >
+                  {formatAmount(
+                    primaryCompactNet.amount,
+                    primaryCompactNet.currency
+                  )}
+                </Text>
+              </VStack>
+              <Text className="text-secondary-200">|</Text>
+              <VStack className="items-center flex-1">
+                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                  Collect
+                </Text>
+                <Text bold className="text-lg">
+                  {formatAmount(
+                    primaryCompactCollect.amount,
+                    primaryCompactCollect.currency
+                  )}
+                </Text>
+              </VStack>
+              <Text className="text-secondary-200">|</Text>
+              <VStack className="items-center flex-1">
+                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                  Pay
+                </Text>
+                <Text bold className="text-lg text-error-400">
+                  {formatAmount(
+                    primaryCompactPay.amount,
+                    primaryCompactPay.currency
+                  )}
+                </Text>
+              </VStack>
+            </HStack>
+          </Animated.View>
+        )}
+
         <LoadingWrapper isLoading={loading} skeleton={<ExpenseListSkeleton />}>
           <ScrollView
             className="flex-1"
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: false }
+            )}
+            scrollEventThrottle={16}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}

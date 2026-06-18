@@ -63,7 +63,7 @@ import {
   X
 } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { RefreshControl, useColorScheme } from "react-native";
+import { Animated, RefreshControl, useColorScheme } from "react-native";
 
 export default function FriendDetailScreen() {
   const { friendId, name, email, avatar, tab } = useLocalSearchParams<{
@@ -271,6 +271,58 @@ export default function FriendDetailScreen() {
     });
   }, [toCollect, toPay]);
 
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const primaryNet = useMemo(() => {
+    const sorted = [...netBalance].sort((a, b) =>
+      a.currency === defaultCurrency
+        ? -1
+        : b.currency === defaultCurrency
+          ? 1
+          : 0
+    );
+    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
+  }, [netBalance, defaultCurrency]);
+
+  const primaryCollect = useMemo(() => {
+    const sorted = [...toCollect].sort((a, b) =>
+      a.currency === defaultCurrency
+        ? -1
+        : b.currency === defaultCurrency
+          ? 1
+          : 0
+    );
+    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
+  }, [toCollect, defaultCurrency]);
+
+  const primaryPay = useMemo(() => {
+    const sorted = [...toPay].sort((a, b) =>
+      a.currency === defaultCurrency
+        ? -1
+        : b.currency === defaultCurrency
+          ? 1
+          : 0
+    );
+    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
+  }, [toPay, defaultCurrency]);
+
+  const COMPACT_THRESHOLD = 290;
+  const compactOpacity = scrollY.interpolate({
+    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
+    outputRange: [0, 1],
+    extrapolate: "clamp"
+  });
+  const compactTranslateY = scrollY.interpolate({
+    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
+    outputRange: [-16, 0],
+    extrapolate: "clamp"
+  });
+  const compactHeight = scrollY.interpolate({
+    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
+    outputRange: [0, 60],
+    extrapolate: "clamp"
+  });
+
   const filteredSettlements = useMemo(() => {
     if (settlementTab === "History") return settledSettlements;
     const cutoff = getDateRangeCutoff(dateRange);
@@ -345,8 +397,59 @@ export default function FriendDetailScreen() {
           </Button>
         ]}
       >
+        {/* Compact sticky stats */}
+        <Animated.View
+          style={{
+            height: compactHeight,
+            opacity: compactOpacity,
+            overflow: "hidden",
+            transform: [{ translateY: compactTranslateY }],
+            borderBottomWidth: 1,
+            borderBottomColor: "rgba(0,0,0,0.06)"
+          }}
+        >
+          <HStack className="px-6 pt-2 gap-x-4 items-center justify-center bg-background-0">
+            <VStack className="items-center flex-1">
+              <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                Net
+              </Text>
+              <Text
+                bold
+                className={`text-lg ${
+                  primaryNet.amount < 0 ? "text-error-400" : ""
+                }`}
+              >
+                {formatAmount(primaryNet.amount, primaryNet.currency)}
+              </Text>
+            </VStack>
+            <Text className="text-secondary-200">|</Text>
+            <VStack className="items-center flex-1">
+              <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                Collect
+              </Text>
+              <Text bold className="text-lg">
+                {formatAmount(primaryCollect.amount, primaryCollect.currency)}
+              </Text>
+            </VStack>
+            <Text className="text-secondary-200">|</Text>
+            <VStack className="items-center flex-1">
+              <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                Pay
+              </Text>
+              <Text bold className="text-lg text-error-400">
+                {formatAmount(primaryPay.amount, primaryPay.currency)}
+              </Text>
+            </VStack>
+          </HStack>
+        </Animated.View>
+
         <ScrollView
           className="flex-1"
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+          )}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
