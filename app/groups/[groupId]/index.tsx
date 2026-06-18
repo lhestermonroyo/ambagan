@@ -24,8 +24,8 @@ import { VStack } from "@/components/ui/vstack";
 import QuickAddExpenseSheet from "@/features/expense/components/QuickAddExpenseSheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
-import GroupStatsTab from "@/features/group/components/GroupStatsTab";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
+import GroupStatsTab from "@/features/group/components/GroupStatsTab";
 import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
@@ -52,7 +52,7 @@ import { Fragment, useMemo, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
-const tabs = ["Settlements", "Expenses", "Group Info", "Stats"] as const;
+const tabs = ["Settlements", "Expenses", "Stats", "Group Info"] as const;
 
 export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);

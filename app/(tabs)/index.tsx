@@ -42,6 +42,7 @@ import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { getSecondaryHex } from "@/utils/getColorHex";
+import { getReminderEnabled } from "@/utils/reminderPreference";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
@@ -162,6 +163,14 @@ export default function HomeScreen() {
     try {
       const { status } = await Notifications.getPermissionsAsync();
       if (status !== "granted") return;
+
+      const reminderEnabled = await getReminderEnabled();
+      if (!reminderEnabled) {
+        await Notifications.cancelScheduledNotificationAsync(
+          SETTLEMENT_REMINDER_ID
+        );
+        return;
+      }
 
       if (toPay.length > 0) {
         await Notifications.scheduleNotificationAsync({

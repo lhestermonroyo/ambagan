@@ -22,6 +22,10 @@ import {
   getPrimaryHex,
   getSecondaryHex
 } from "@/utils/getColorHex";
+import {
+  getReminderEnabled,
+  setReminderEnabled
+} from "@/utils/reminderPreference";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { AlertCircle, BellOff } from "lucide-react-native";
@@ -109,12 +113,14 @@ export default function PushNotificationsSheet({
 
   const colorScheme = useColorScheme() ?? "light";
   const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
+  const [reminderEnabled, setReminderEnabledState] = useState(true);
 
   useEffect(() => {
     if (!isOpen) return;
     Notifications.getPermissionsAsync().then(({ status }) => {
       setPermissionStatus(status);
     });
+    getReminderEnabled().then(setReminderEnabledState);
   }, [isOpen]);
 
   const switchColors = {
@@ -124,6 +130,16 @@ export default function PushNotificationsSheet({
 
   const handleToggle = async (key: NotifKey, value: boolean) => {
     await updatePreferences({ [key]: value });
+  };
+
+  const handleReminderToggle = async (value: boolean) => {
+    setReminderEnabledState(value);
+    await setReminderEnabled(value);
+    if (!value) {
+      await Notifications.cancelScheduledNotificationAsync(
+        "daily-settlement-reminder"
+      );
+    }
   };
 
   const handleEnableNotifications = async () => {
@@ -208,7 +224,7 @@ export default function PushNotificationsSheet({
               {SECTIONS.map((section) => (
                 <VStack key={section.title}>
                   <Box className="px-4 pt-5 pb-2">
-                    <Text bold className="text-xl">
+                    <Text bold className="text-secondary-950 uppercase text-sm">
                       {section.title}
                     </Text>
                   </Box>
@@ -236,6 +252,29 @@ export default function PushNotificationsSheet({
                   />
                 </VStack>
               ))}
+
+              <VStack>
+                <Box className="px-4 pt-5 pb-2">
+                  <Text bold className="text-secondary-950 uppercase text-sm">
+                    Reminders
+                  </Text>
+                </Box>
+                <HStack className="items-center justify-between px-4 py-3">
+                  <VStack className="flex-1 pr-4">
+                    <Text className="text-lg">Daily Unpaid Reminder</Text>
+                    <Text className="text-secondary-950">
+                      Get a daily nudge at 9 AM when you have unpaid
+                      settlements
+                    </Text>
+                  </VStack>
+                  <Switch
+                    size="sm"
+                    value={reminderEnabled}
+                    onValueChange={handleReminderToggle}
+                    trackColor={switchColors}
+                  />
+                </HStack>
+              </VStack>
             </ScrollView>
           </VStack>
         ) : null}
