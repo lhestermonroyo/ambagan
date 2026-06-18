@@ -27,7 +27,11 @@ import { PurchasesOffering, PurchasesPackage } from "react-native-purchases";
 
 const FALLBACK_PRICE = 499;
 
-const FEATURES: { icon: React.ElementType; label: string; description: string }[] = [
+const FEATURES: {
+  icon: React.ElementType;
+  label: string;
+  description: string;
+}[] = [
   {
     icon: HousePlus,
     label: "Unlimited groups",
@@ -91,7 +95,8 @@ export default function SubscriptionScreen() {
     if (!lifetimePkg) {
       toast({
         title: "Product Unavailable",
-        description: "Could not load the purchase product. Please try again later.",
+        description:
+          "Could not load the purchase product. Please try again later.",
         type: "error"
       });
       return;
@@ -111,7 +116,8 @@ export default function SubscriptionScreen() {
 
       toast({
         title: "Welcome to Pro!",
-        description: "You've unlocked Ambagan Pro. Enjoy unlimited groups and all features.",
+        description:
+          "You've unlocked Ambagan Pro. Enjoy unlimited groups and all features.",
         type: "success"
       });
     } catch (error) {
@@ -214,7 +220,8 @@ export default function SubscriptionScreen() {
                 <>
                   <Divider className="border-background-200" />
                   <Text className="text-secondary-950">
-                    You can create up to 3 groups. Upgrade to Pro to unlock unlimited groups and the full app.
+                    You can create up to 3 groups. Upgrade to Pro to unlock
+                    unlimited groups and the full app.
                   </Text>
                 </>
               )}

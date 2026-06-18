@@ -14,18 +14,18 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import FavoritesSheet from "@/features/friends/components/FavoritesSheet";
 import FriendItem from "@/features/friends/components/FriendItem";
+import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
 import { FriendSummary } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
-import { getSecondaryHex } from "@/utils/getColorHex";
+import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
-import { HeartPlus } from "lucide-react-native";
+import { Heart } from "lucide-react-native";
 import { Fragment, useMemo, useRef, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 
@@ -43,14 +43,11 @@ export default function FriendsScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [friends, setFriends] = useState<FriendSummary[]>([]);
-  const [favorites, setFavorites] = useState<UserPreview[]>([]);
   const [recentFriends, setRecentFriends] = useState<UserPreview[]>([]);
-  const [favoritesInitialized, setFavoritesInitialized] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [searching, setSearching] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<FriendsTab>("all");
-  const [favoritesSheetOpen, setFavoritesSheetOpen] = useState(false);
 
   const activeTabRef = useRef<FriendsTab>("all");
 
@@ -58,12 +55,15 @@ export default function FriendsScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
 
+  const { favoriteIds, favoriteUsers, loadFavorites, handleToggleFavorite } =
+    useFavoriteToggle(userDetails?.id);
+
   useFocusEffect(
     useMemo(
       () => () => {
         if (!userDetails?.id) return;
         fetchFriends(initialized);
-        fetchFavorites(true);
+        loadFavorites();
         loadRecentFriends();
       },
       [userDetails?.id, initialized]
@@ -81,20 +81,6 @@ export default function FriendsScreen() {
     } finally {
       if (!isInitialized) setLoading(false);
       setInitialized(true);
-    }
-  };
-
-  const fetchFavorites = async (isInitialized = false) => {
-    if (!userDetails?.id) return;
-    if (!isInitialized) setLoading(true);
-    try {
-      const data = await services.friend.getFavorites(userDetails.id);
-      setFavorites(data);
-    } catch (error) {
-      console.error("Failed to fetch favorites:", error);
-    } finally {
-      if (!isInitialized) setLoading(false);
-      setFavoritesInitialized(true);
     }
   };
 
@@ -116,7 +102,7 @@ export default function FriendsScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchFriends(true), fetchFavorites(true), loadRecentFriends()]);
+    await Promise.all([fetchFriends(true), loadFavorites(), loadRecentFriends()]);
     setRefreshing(false);
   };
 
@@ -181,14 +167,14 @@ export default function FriendsScreen() {
   }, [searchInput, activeTab, allList, owesMeList, iOweList]);
 
   const filteredFavorites = useMemo(() => {
-    if (!searchInput) return favorites;
+    if (!searchInput) return favoriteUsers;
     const q = searchInput.toLowerCase();
-    return favorites.filter(
+    return favoriteUsers.filter(
       (u) =>
         `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q)
     );
-  }, [searchInput, favorites]);
+  }, [searchInput, favoriteUsers]);
 
   const filteredRecentFriends = useMemo(() => {
     if (!searchInput) return recentFriends;
@@ -206,16 +192,7 @@ export default function FriendsScreen() {
     <Fragment>
       <TabLayout
         title="Friends"
-        actions={[
-          <Pressable
-            key="favorites"
-            onPress={() => setFavoritesSheetOpen(true)}
-          >
-            <HeartPlus
-              color={getSecondaryHex("text-secondary-950", colorScheme)}
-            />
-          </Pressable>
-        ]}
+        actions={[]}
       >
         <VStack className="bg-background-0 pb-3 gap-y-3">
           <Box className="px-4">
@@ -257,7 +234,12 @@ export default function FriendsScreen() {
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <FavoriteListItem item={item} onPress={handleFavoritePress} />
+                  <FavoriteListItem
+                    item={item}
+                    isFavorite={favoriteIds.has(item.id)}
+                    onPress={handleFavoritePress}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
                 )}
                 ItemSeparatorComponent={ListDivider}
                 ListEmptyComponent={() => (
@@ -363,7 +345,12 @@ export default function FriendsScreen() {
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <FavoriteListItem item={item} onPress={handleFavoritePress} />
+                  <FavoriteListItem
+                    item={item}
+                    isFavorite={favoriteIds.has(item.id)}
+                    onPress={handleFavoritePress}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
                 )}
                 ItemSeparatorComponent={ListDivider}
                 ListEmptyComponent={() => (
@@ -379,24 +366,23 @@ export default function FriendsScreen() {
         </ScrollView>
       </TabLayout>
 
-      <FavoritesSheet
-        isOpen={favoritesSheetOpen}
-        onClose={() => {
-          setFavoritesSheetOpen(false);
-          fetchFavorites(true);
-        }}
-      />
     </Fragment>
   );
 }
 
 function FavoriteListItem({
   item,
-  onPress
+  isFavorite = false,
+  onPress,
+  onToggleFavorite
 }: {
   item: UserPreview;
+  isFavorite?: boolean;
   onPress: (item: UserPreview) => void;
+  onToggleFavorite?: (item: UserPreview) => void;
 }) {
+  const colorScheme = useColorScheme() ?? "light";
+
   return (
     <PressableListItem className="p-4" onPress={() => onPress(item)}>
       <HStack className="gap-x-3 items-center">
@@ -407,7 +393,26 @@ function FavoriteListItem({
           </Text>
           <Text className="text-secondary-950">{item.email}</Text>
         </VStack>
-        <Icon as="chevron-right" className="text-secondary-950" />
+        <HStack className="gap-x-3 items-center">
+          {onToggleFavorite && (
+            <Pressable onPress={() => onToggleFavorite(item)}>
+              <Heart
+                size={18}
+                color={
+                  isFavorite
+                    ? getPrimaryHex("text-primary-400", colorScheme)
+                    : getSecondaryHex("text-secondary-950", colorScheme)
+                }
+                fill={
+                  isFavorite
+                    ? getPrimaryHex("text-primary-400", colorScheme)
+                    : "none"
+                }
+              />
+            </Pressable>
+          )}
+          <Icon as="chevron-right" className="text-secondary-950" />
+        </HStack>
       </HStack>
     </PressableListItem>
   );
