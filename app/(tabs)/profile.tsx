@@ -156,10 +156,10 @@ export default function ProfileScreen() {
       // silently ignore — don't block sign out if token removal fails
     }
 
-    signOut();
     resetExpenseState();
     resetGroupState();
     resetNotificationState();
+    await signOut();
     router.replace("/login");
   };
 

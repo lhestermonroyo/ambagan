@@ -34,8 +34,8 @@ const USER_STATE = create<UserState>((set, get) => ({
   defaultCurrency: "PHP",
 
   signOut: async () => {
+    set({ session: null, details: null, preferences: null, defaultCurrency: "PHP" });
     await supabase.auth.signOut();
-    set({ session: null, details: null, preferences: null });
   },
 
   setAppearanceMode: async (mode: AppearanceMode) => {

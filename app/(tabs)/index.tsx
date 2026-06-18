@@ -52,7 +52,7 @@ import {
   HousePlus,
   PlusCircle
 } from "lucide-react-native";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 
 const SETTLEMENT_REMINDER_ID = "daily-settlement-reminder";
@@ -99,6 +99,10 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
+
+  useEffect(() => {
+    setInitialized(false);
+  }, [userDetails?.id]);
 
   useFocusEffect(
     useMemo(
