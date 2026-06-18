@@ -197,6 +197,26 @@ export default function ExpenseDetailsScreen() {
     return map;
   }, [paymentSplitList]);
 
+  const sortedMemberSplits = useMemo(
+    () =>
+      [...memberSplitList].sort((a, b) => {
+        if (a.member.id === userDetails?.id) return -1;
+        if (b.member.id === userDetails?.id) return 1;
+        return 0;
+      }),
+    [memberSplitList, userDetails?.id]
+  );
+
+  const sortedPayerList = useMemo(
+    () =>
+      [...payerList].sort((a, b) => {
+        if (a.payer.id === userDetails?.id) return -1;
+        if (b.payer.id === userDetails?.id) return 1;
+        return 0;
+      }),
+    [payerList, userDetails?.id]
+  );
+
   return (
     <Fragment>
       <InnerLayout
@@ -315,7 +335,7 @@ export default function ExpenseDetailsScreen() {
                   <FlatList
                     className="flex-1"
                     scrollEnabled={false}
-                    data={memberSplitList}
+                    data={sortedMemberSplits}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => (
                       <MemberSplitItem
@@ -337,7 +357,7 @@ export default function ExpenseDetailsScreen() {
                   <FlatList
                     className="flex-1"
                     scrollEnabled={false}
-                    data={payerList}
+                    data={sortedPayerList}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => <PayerItem payer={item} />}
                     ItemSeparatorComponent={ListDivider}
