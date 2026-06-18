@@ -1,4 +1,5 @@
 import Icon from "@/components/Icon";
+import ListDivider from "@/components/ListDivider";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -15,7 +16,6 @@ import { VStack } from "@/components/ui/vstack";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
-import ListDivider from "@/components/ListDivider";
 
 export default function CurrencyAmountDisplay({
   items,
@@ -41,7 +41,7 @@ export default function CurrencyAmountDisplay({
 
   if (isLoading) {
     return (
-      <Text bold className={cn("text-2xl", amountColor)}>
+      <Text bold className={cn("text-3xl", amountColor)}>
         -
       </Text>
     );
@@ -54,7 +54,10 @@ export default function CurrencyAmountDisplay({
       >
         <HStack className="items-center gap-x-2">
           <Text bold className={cn("text-2xl", amountColor)}>
-            {formatAmount(primary?.amount ?? 0, primary?.currency ?? primaryCurrency)}
+            {formatAmount(
+              primary?.amount ?? 0,
+              primary?.currency ?? primaryCurrency
+            )}
           </Text>
           {secondary.length > 0 && (
             <HStack className="items-center">
