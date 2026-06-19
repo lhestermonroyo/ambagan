@@ -42,6 +42,7 @@ import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { getSecondaryHex } from "@/utils/getColorHex";
+import { addRecentUsers } from "@/utils/recentUsers";
 import { getReminderEnabled } from "@/utils/reminderPreference";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import * as Notifications from "expo-notifications";
@@ -321,6 +322,7 @@ export default function HomeScreen() {
       const data = await services.friend.getFriendsSummary(userDetails.id);
       cacheService.saveFriends(userDetails.id, data).catch(() => {});
       setFriends(data);
+      addRecentUsers(data.map((f) => f.friend), userDetails.id).catch(() => {});
     } catch (error) {
       console.error("Failed to fetch friends:", error);
       const cached = await cacheService.getFriends(userDetails.id);

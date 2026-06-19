@@ -23,7 +23,7 @@ import { FriendSummary } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import { getRecentUsers } from "@/utils/recentUsers";
+import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Heart } from "lucide-react-native";
 import { Fragment, useMemo, useRef, useState } from "react";
@@ -76,6 +76,7 @@ export default function FriendsScreen() {
     try {
       const data = await services.friend.getFriendsSummary(userDetails.id);
       setFriends(data);
+      addRecentUsers(data.map((f) => f.friend), userDetails.id).catch(() => {});
     } catch (error) {
       console.error("Failed to fetch friends:", error);
     } finally {

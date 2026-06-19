@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserPreview } from "@/types/user";
 
-const MAX_RECENT = 10;
+const MAX_RECENT = 50;
 
 const key = (userId: string) => `recent_users_${userId}`;
 
