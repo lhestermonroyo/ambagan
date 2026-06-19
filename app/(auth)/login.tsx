@@ -14,8 +14,8 @@ import { useState } from "react";
 
 export default function LoginScreen() {
   const [values, setValues] = useState({
-    emailOrPhone: "chandler@mailinator.com",
-    password: "Password1"
+    emailOrPhone: "",
+    password: ""
   });
   const [formErrors, setFormErrors] = useState({
     emailOrPhone: "",
@@ -69,8 +69,6 @@ export default function LoginScreen() {
         values.password.trim()
       );
 
-      console.log("Login response:", JSON.stringify(response, null, 2));
-
       if (!response?.session) {
         throw new Error("Login failed");
       }
@@ -80,7 +78,7 @@ export default function LoginScreen() {
         session: response.session
       }));
 
-      router.push("/(tabs)");
+      router.replace("/(tabs)");
     } catch (error) {
       console.log("Error logging in:", error);
       toast({

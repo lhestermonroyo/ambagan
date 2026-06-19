@@ -80,7 +80,10 @@ export default function HomeScreen() {
   const [newExpensePickerOpen, setNewExpensePickerOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
 
-  const { details: userDetails, defaultCurrency } = states.user();
+  const { details: userDetails, session, defaultCurrency } = states.user();
+  // Use session.user.id as fallback — it's available immediately after login
+  // without waiting for fetchDetails to complete
+  const userId = userDetails?.id ?? session?.user?.id;
   const { list: groupList } = states.group();
   const { activityList } = states.expense();
   const { unreadCount } = states.notification();
@@ -154,23 +157,21 @@ export default function HomeScreen() {
   });
 
   useEffect(() => {
-    if (!userDetails?.id) {
+    if (!userId) {
       setInitialized(false);
       return;
     }
-    // User changed — reset and immediately fetch for the new user
     setInitialized(false);
     init(false);
-  }, [userDetails?.id]);
+  }, [userId]);
 
   useFocusEffect(
     useMemo(
       () => () => {
-        if (!userDetails?.id) return;
-
+        if (!userId) return;
         init(initialized);
       },
-      [userDetails?.id, initialized]
+      [userId, initialized]
     )
   );
 
@@ -187,9 +188,9 @@ export default function HomeScreen() {
   };
 
   const fetchUnreadCount = async () => {
-    if (!userDetails?.id) return;
+    if (!userId) return;
     try {
-      const count = await services.notification.getUnreadCount(userDetails.id);
+      const count = await services.notification.getUnreadCount(userId);
       states.notification.setState((prev) => ({ ...prev, unreadCount: count }));
     } catch (error) {
       console.error("Failed to fetch unread count:", error);
@@ -197,14 +198,14 @@ export default function HomeScreen() {
   };
 
   const fetchStats = async (isInitialized = false) => {
-    if (!userDetails?.id) return;
+    if (!userId) return;
 
     if (!isInitialized) {
       setLoading((prev) => ({ ...prev, stats: true }));
     }
 
     try {
-      const response = await services.expense.getStatsByUserId(userDetails.id);
+      const response = await services.expense.getStatsByUserId(userId);
 
       if (!response) return;
 
@@ -259,7 +260,7 @@ export default function HomeScreen() {
   };
 
   const fetchActivities = async (isInitialized = false) => {
-    if (!userDetails?.id) return;
+    if (!userId) return;
 
     if (!isInitialized) {
       setLoading((prev) => ({ ...prev, activities: true }));
@@ -267,7 +268,7 @@ export default function HomeScreen() {
 
     try {
       const response = await services.expense.getPaymentsByUserId(
-        userDetails.id,
+        userId,
         0,
         20,
         false
@@ -275,7 +276,7 @@ export default function HomeScreen() {
 
       if (!response || !response.data) return;
 
-      cacheService.savePayments(userDetails.id, response.data).catch(() => {});
+      cacheService.savePayments(userId, response.data).catch(() => {});
 
       states.expense.setState((prev) => ({
         ...prev,
@@ -283,7 +284,7 @@ export default function HomeScreen() {
       }));
     } catch (error) {
       console.error("Failed to fetch recent expenses:", error);
-      const cached = await cacheService.getPayments(userDetails.id);
+      const cached = await cacheService.getPayments(userId);
       if (cached)
         states.expense.setState((prev) => ({
           ...prev,
@@ -295,18 +296,18 @@ export default function HomeScreen() {
   };
 
   const fetchGroups = async (isInitialized = false) => {
-    if (!userDetails?.id) return;
+    if (!userId) return;
 
     if (!isInitialized) {
       setLoading((prev) => ({ ...prev, groups: true }));
     }
 
     try {
-      const response = await services.group.getGroupsByUserId(userDetails.id);
+      const response = await services.group.getGroupsByUserId(userId);
 
       if (!response) return;
 
-      cacheService.saveGroupsList(userDetails.id, response).catch(() => {});
+      cacheService.saveGroupsList(userId, response).catch(() => {});
 
       states.group.setState((prev) => ({
         ...prev,
@@ -314,7 +315,7 @@ export default function HomeScreen() {
       }));
     } catch (error) {
       console.error("Failed to fetch groups:", error);
-      const cached = await cacheService.getGroupsList(userDetails.id);
+      const cached = await cacheService.getGroupsList(userId);
       if (cached) states.group.setState((prev) => ({ ...prev, list: cached }));
     } finally {
       setLoading((prev) => ({ ...prev, groups: false }));
@@ -322,19 +323,19 @@ export default function HomeScreen() {
   };
 
   const fetchFriends = async (isInitialized = false) => {
-    if (!userDetails?.id) return;
+    if (!userId) return;
     if (!isInitialized) setLoading((prev) => ({ ...prev, friends: true }));
     try {
-      const data = await services.friend.getFriendsSummary(userDetails.id);
-      cacheService.saveFriends(userDetails.id, data).catch(() => {});
+      const data = await services.friend.getFriendsSummary(userId);
+      cacheService.saveFriends(userId, data).catch(() => {});
       setFriends(data);
       addRecentUsers(
         data.map((f) => f.friend),
-        userDetails.id
+        userId
       ).catch(() => {});
     } catch (error) {
       console.error("Failed to fetch friends:", error);
-      const cached = await cacheService.getFriends(userDetails.id);
+      const cached = await cacheService.getFriends(userId);
       if (cached) setFriends(cached);
     } finally {
       setLoading((prev) => ({ ...prev, friends: false }));

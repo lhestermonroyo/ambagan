@@ -152,7 +152,7 @@ export default function ProfileScreen() {
     }
 
     signOut();
-    router.replace("/(auth)/welcome");
+    router.replace("/(auth)/login");
   };
 
   return (

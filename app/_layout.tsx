@@ -153,6 +153,10 @@ export default function RootLayout() {
       }
 
       if (!session) {
+        // If a new user already signed in, skip cleanup to avoid
+        // stomping on their session
+        if (states.user.getState().session) return;
+
         unsubscribeNotifications();
         try {
           const { status } = await Notifications.getPermissionsAsync();

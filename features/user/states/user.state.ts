@@ -1,13 +1,12 @@
+import EXPENSE_STATE from "@/features/expense/states/expense.state";
+import GROUP_STATE from "@/features/group/states/group.state";
+import NOTIFICATION_STATE from "@/features/notifications/states/notification.state";
 import {
   createPreferences,
   getPreferences,
   updatePreferences as updatePreferencesInDB
 } from "@/features/user/services/preferences.service";
-import EXPENSE_STATE from "@/features/expense/states/expense.state";
-import GROUP_STATE from "@/features/group/states/group.state";
-import NOTIFICATION_STATE from "@/features/notifications/states/notification.state";
 import { AppearanceMode, UserPreferences, UserState } from "@/types/user";
-import { supabase } from "@/utils/supabase";
 import { create } from "zustand";
 
 const NOTIF_ALL_ON = {
@@ -37,11 +36,16 @@ const USER_STATE = create<UserState>((set, get) => ({
   defaultCurrency: "PHP",
 
   signOut: () => {
-    set({ session: null, details: null, preferences: null, defaultCurrency: "PHP" });
+    set({
+      session: null,
+      details: null,
+      preferences: null,
+      defaultCurrency: "PHP"
+    });
     EXPENSE_STATE.getState().reset();
     GROUP_STATE.getState().reset();
     NOTIFICATION_STATE.getState().reset();
-    supabase.auth.signOut(); // fire-and-forget — don't block navigation
+    // supabase.auth.signOut();
   },
 
   setAppearanceMode: async (mode: AppearanceMode) => {
@@ -71,8 +75,12 @@ const USER_STATE = create<UserState>((set, get) => ({
     set({
       preferences: updated,
       notificationsEnabled: isAnyNotifEnabled(updated),
-      ...(prefs.appearance !== undefined && { appearanceMode: prefs.appearance }),
-      ...(prefs.default_currency !== undefined && { defaultCurrency: prefs.default_currency })
+      ...(prefs.appearance !== undefined && {
+        appearanceMode: prefs.appearance
+      }),
+      ...(prefs.default_currency !== undefined && {
+        defaultCurrency: prefs.default_currency
+      })
     });
   },
 
