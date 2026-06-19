@@ -21,7 +21,6 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
-  useAnimatedStyle,
   useSharedValue,
   withSequence,
   withTiming
@@ -58,10 +57,6 @@ export default function RootLayout() {
   const notifResponseListener = useRef<Notifications.EventSubscription | null>(
     null
   );
-
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: overlayOpacity.value
-  }));
 
   useEffect(() => {
     loadPreferences();

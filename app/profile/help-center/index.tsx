@@ -113,6 +113,11 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "Can I use different currencies?",
         answer:
           "Yes. Each expense can be set to a different currency, which is useful for travel groups. Your default currency can be changed in Profile → Default Currency."
+      },
+      {
+        question: "How are members shown in the expense detail?",
+        answer:
+          "When you open an expense, you are always listed first in both the Members Split and Payers' Contribution sections so your share and contribution are immediately visible without scrolling."
       }
     ]
   },
@@ -138,6 +143,11 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "What is the Net Balance shown in the Settlements tab?",
         answer:
           "The Net Balance card at the top of the Settlements tab shows your current standing in the group — how much you're owed (To Collect) minus how much you owe (To Pay). A positive balance means you're owed more than you owe; a negative balance means the opposite."
+      },
+      {
+        question: "What is the compact bar that appears when I scroll down?",
+        answer:
+          "When you scroll past the main balance card on the home screen, a group's Settlements tab, or a friend's detail page, a compact sticky bar appears at the top showing your Net Balance, To Collect, and To Pay amounts at a glance without having to scroll back up."
       }
     ]
   },
@@ -147,12 +157,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do friends appear in Ambagan?",
         answer:
-          "Anyone who is a member of a group you belong to automatically appears in your Friends tab. People you have added to any group are also saved to your Friends list for quick access when adding members in the future."
+          "Anyone who is a member of a group you belong to automatically appears in your Friends tab. All group members are also silently saved to your Friends contact list so they are available when adding members to future groups — even if you didn't create the group."
       },
       {
         question: "What does the Friends tab show?",
         answer:
-          "The Friends tab shows everyone you share a group with, along with a balance summary. Use the All, To Collect, To Pay, Friends, and Favorites filters to find who you need. The Friends filter shows people you have previously added to groups."
+          "The Friends tab shows everyone you share a group with, along with a balance summary. Use the All, To Collect, To Pay, Friends, and Favorites filters to find who you need. The Friends filter shows everyone saved from your group history as a quick contact list."
       },
       {
         question: "How do I add someone as a favorite?",
@@ -178,6 +188,11 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "What notifications will I receive?",
         answer:
           "You can receive alerts for settlement requests, approvals, rejections, completions, new expense inclusions, and group member changes. You can also enable a daily reminder that nudges you at 9 AM when you have unpaid settlements. Each type can be toggled individually in Profile → Push Notifications."
+      },
+      {
+        question: "How are notifications organised?",
+        answer:
+          "Notifications are grouped by date — Today, Yesterday, and earlier dates — so it is easy to see what is recent and what is older at a glance."
       },
       {
         question: "How do I turn off notifications?",

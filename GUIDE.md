@@ -38,26 +38,36 @@ Ambagan is a Filipino group expense splitting app. Members of a group can log sh
 
 ### Free Plan
 - Create up to 3 groups
-- Add and split expenses equally or by custom amount
-- Track balances per group
+- Add and split expenses equally, by percentage, or custom amount per person
+- Net balance card on home screen (To Collect − To Pay across all groups)
+- Track balances per group with net balance card in Settlements tab
 - Request and approve settlements
-- Push notifications
-- Friends list
+- Push notifications grouped by date
+- Daily settlement reminder at 9 AM (toggleable in Profile → Push Notifications)
+- Friends list with auto-populated group members as contacts
+- Inline favorite toggle on friend items and friend detail page
 - Quick-add expense from home screen
+- Compact sticky stats bar on home, group settlements, and friend detail screens
 
 ### Pro Plan (₱499 one-time)
 - Unlimited groups (free tier is capped at 3)
 - 14 supported currencies with per-expense currency selection
-- CSV export of expenses
 - All future updates included
-- Priority support
+
+### Group Stats Tab
+- Per-group Stats tab (replaces the old Export tab) with horizontal date range pills (1D / 1W / 1M / 3M / 1Y / All)
+- Total Group Spendings card filtered by selected date range
+- Net balance card (To Collect / To Pay) filtered by selected date range
+- CSV export of settlements for the selected date range at the bottom
 
 ### Expense Splitting
 - Custom expense form: choose payers, split amounts, attach receipt photo
 - Quick-add: fast single-payer equal-split from home
-- Equal split and custom split modes
+- Equal, percentage, and custom split modes
 - Settlement request flow: request → approve/reject → mark complete
 - Proof of payment upload for settlement requests
+- Expense description shown prominently in all settlement action sheets
+- Current user shown first in member split and payers' contribution lists in expense detail
 
 ---
 
