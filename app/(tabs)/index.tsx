@@ -154,7 +154,13 @@ export default function HomeScreen() {
   });
 
   useEffect(() => {
+    if (!userDetails?.id) {
+      setInitialized(false);
+      return;
+    }
+    // User changed — reset and immediately fetch for the new user
     setInitialized(false);
+    init(false);
   }, [userDetails?.id]);
 
   useFocusEffect(
@@ -322,7 +328,10 @@ export default function HomeScreen() {
       const data = await services.friend.getFriendsSummary(userDetails.id);
       cacheService.saveFriends(userDetails.id, data).catch(() => {});
       setFriends(data);
-      addRecentUsers(data.map((f) => f.friend), userDetails.id).catch(() => {});
+      addRecentUsers(
+        data.map((f) => f.friend),
+        userDetails.id
+      ).catch(() => {});
     } catch (error) {
       console.error("Failed to fetch friends:", error);
       const cached = await cacheService.getFriends(userDetails.id);

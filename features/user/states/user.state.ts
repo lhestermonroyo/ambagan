@@ -3,6 +3,9 @@ import {
   getPreferences,
   updatePreferences as updatePreferencesInDB
 } from "@/features/user/services/preferences.service";
+import EXPENSE_STATE from "@/features/expense/states/expense.state";
+import GROUP_STATE from "@/features/group/states/group.state";
+import NOTIFICATION_STATE from "@/features/notifications/states/notification.state";
 import { AppearanceMode, UserPreferences, UserState } from "@/types/user";
 import { supabase } from "@/utils/supabase";
 import { create } from "zustand";
@@ -33,9 +36,12 @@ const USER_STATE = create<UserState>((set, get) => ({
   notificationsEnabled: true,
   defaultCurrency: "PHP",
 
-  signOut: async () => {
+  signOut: () => {
     set({ session: null, details: null, preferences: null, defaultCurrency: "PHP" });
-    await supabase.auth.signOut();
+    EXPENSE_STATE.getState().reset();
+    GROUP_STATE.getState().reset();
+    NOTIFICATION_STATE.getState().reset();
+    supabase.auth.signOut(); // fire-and-forget — don't block navigation
   },
 
   setAppearanceMode: async (mode: AppearanceMode) => {

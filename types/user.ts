@@ -25,7 +25,7 @@ export type UserState = {
   appearanceMode: AppearanceMode;
   notificationsEnabled: boolean;
   defaultCurrency: string;
-  signOut: () => Promise<void>;
+  signOut: () => void;
   setAppearanceMode: (mode: AppearanceMode) => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   setDefaultCurrency: (userId: string, currency: string) => Promise<void>;

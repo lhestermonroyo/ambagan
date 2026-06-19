@@ -19,6 +19,8 @@ import states from "@/states";
 import { currencies } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
+import Constants from "expo-constants";
+import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import {
   Bell,
@@ -33,8 +35,6 @@ import {
   UserCircle,
   UserLock
 } from "lucide-react-native";
-import Constants from "expo-constants";
-import * as Notifications from "expo-notifications";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, useColorScheme } from "react-native";
 
@@ -43,14 +43,9 @@ export default function ProfileScreen() {
     details: userDetails,
     signOut,
     appearanceMode,
-    preferences,
-    notificationsEnabled,
     defaultCurrency,
     setDefaultCurrency
   } = states.user();
-  const { reset: resetExpenseState } = states.expense();
-  const { reset: resetGroupState } = states.group();
-  const { reset: resetNotificationState } = states.notification();
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
@@ -156,11 +151,8 @@ export default function ProfileScreen() {
       // silently ignore — don't block sign out if token removal fails
     }
 
-    resetExpenseState();
-    resetGroupState();
-    resetNotificationState();
-    await signOut();
-    router.replace("/login");
+    signOut();
+    router.replace("/(auth)/welcome");
   };
 
   return (
