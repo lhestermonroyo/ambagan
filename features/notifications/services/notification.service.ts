@@ -148,6 +148,13 @@ export const getNotificationRoute = async (
       type === NotificationType.GROUP_JOIN ||
       type === NotificationType.GROUP_LEAVE
     ) {
+      const { data, error } = await supabase
+        .from(tables.GROUPS_TBL)
+        .select("id")
+        .eq("id", referenceId)
+        .single();
+
+      if (error || !data) return null;
       return `/groups/${referenceId}`;
     }
 

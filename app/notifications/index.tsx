@@ -17,6 +17,7 @@ import { EmptyType } from "@/types/general";
 import { Notification, NotificationType } from "@/types/notifications";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import useAppToast from "@/hooks/use-app-toast";
 import { RefreshControl } from "react-native";
 
 export default function NotificationsScreen() {
@@ -31,6 +32,7 @@ export default function NotificationsScreen() {
   const { details: userDetails } = states.user();
 
   const router = useRouter();
+  const toast = useAppToast();
 
   const sections = useMemo(() => groupByDate(list), [list]);
 
@@ -121,6 +123,13 @@ export default function NotificationsScreen() {
 
       if (route) {
         router.push(route as any);
+      } else {
+        toast({
+          title: "No longer available",
+          description:
+            "The group or expense linked to this notification no longer exists.",
+          type: "info"
+        });
       }
     }
 

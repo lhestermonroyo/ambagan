@@ -249,7 +249,7 @@ export default function LeaveGroupSheet({
                     </VStack>
                   </>
                 ) : (
-                  <Text>
+                  <Text className="px-4">
                     Are you sure you want to leave{" "}
                     <Text bold>{groupDetails?.name}</Text>? You will no longer
                     have access to this group's expenses and settlements.

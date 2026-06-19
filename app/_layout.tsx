@@ -1,6 +1,6 @@
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
-import { ToastProvider } from "@/hooks/use-app-toast";
+import useAppToast, { ToastProvider } from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
 import { NotificationType } from "@/types/notifications";
@@ -46,11 +46,13 @@ export default function RootLayout() {
     "GoogleSans-BoldItalic": require("@/assets/fonts/GoogleSans-BoldItalic.ttf")
   });
   const router = useRouter();
-  const { loading, appearanceMode, loadPreferences } = states.user();
+  const { loading, appearanceMode, loadPreferences, session } = states.user();
+  const toast = useAppToast();
   const overlayOpacity = useSharedValue(0);
   const isFirstRender = useRef(true);
   const notificationChannel = useRef<RealtimeChannel | null>(null);
   const subscribedUserId = useRef<string | null>(null);
+  const fetchedForUser = useRef<string | null>(null);
   const notifReceivedListener = useRef<Notifications.EventSubscription | null>(
     null
   );
@@ -62,6 +64,20 @@ export default function RootLayout() {
     loadPreferences();
     getDb().catch(() => {});
   }, []);
+
+  // Call fetchDetails from a React effect — NOT from inside a Supabase callback.
+  // Supabase holds an internal lock during onAuthStateChange which causes any
+  // DB queries made inside the listener to hang indefinitely (known issue #41968).
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) {
+      fetchedForUser.current = null;
+      return;
+    }
+    if (fetchedForUser.current === uid) return; // already fetched for this user
+    fetchedForUser.current = uid;
+    fetchDetails(uid);
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -111,7 +127,16 @@ export default function RootLayout() {
               data.type,
               data.referenceId
             );
-            if (route) router.push(route as any);
+            if (route) {
+              router.push(route as any);
+            } else {
+              toast({
+                title: "No longer available",
+                description:
+                  "The group or expense linked to this notification no longer exists.",
+                type: "info"
+              });
+            }
           } catch {
             // silently ignore — don't crash on a bad tap
           }
@@ -127,15 +152,10 @@ export default function RootLayout() {
   useEffect(() => {
     supabase.auth
       .getSession()
-      .then(async ({ data: { session } }) => {
+      .then(({ data: { session } }) => {
         if (!session) return;
-
-        states.user.setState((prev) => ({
-          ...prev,
-          session
-        }));
-
-        await fetchDetails(session.user.id);
+        states.user.setState((prev) => ({ ...prev, session }));
+        // fetchDetails is called by the useEffect([session?.user?.id]) above
       })
       .finally(() => {
         states.user.setState((prev) => ({
@@ -172,12 +192,8 @@ export default function RootLayout() {
         return;
       }
 
-      states.user.setState((prev) => ({
-        ...prev,
-        session
-      }));
-
-      fetchDetails(session.user.id);
+      states.user.setState((prev) => ({ ...prev, session }));
+      // fetchDetails is called by the useEffect([session?.user?.id]) above
     });
 
     return () => {
