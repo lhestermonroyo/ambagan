@@ -4,8 +4,11 @@ import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { NotificationListSkeleton } from "@/components/SkeletonLoader";
-import { FlatList } from "@/components/ui/flat-list";
+import { Box } from "@/components/ui/box";
+import { SectionList } from "@/components/ui/section-list";
+import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { groupByDate } from "@/features/expense/utils/grouping.util";
 import NotificationItem from "@/features/notifications/components/NotificationItem";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
@@ -13,7 +16,7 @@ import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { Notification, NotificationType } from "@/types/notifications";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RefreshControl } from "react-native";
 
 export default function NotificationsScreen() {
@@ -28,6 +31,8 @@ export default function NotificationsScreen() {
   const { details: userDetails } = states.user();
 
   const router = useRouter();
+
+  const sections = useMemo(() => groupByDate(list), [list]);
 
   useEffect(() => {
     if (userDetails?.id) {
@@ -171,8 +176,8 @@ export default function NotificationsScreen() {
       }
     >
       <LoadingWrapper isLoading={loading} skeleton={<NotificationListSkeleton />}>
-        <FlatList
-          data={list}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
@@ -180,7 +185,13 @@ export default function NotificationsScreen() {
           renderItem={({ item }) => (
             <NotificationItem item={item} onPress={handlePress} />
           )}
+          renderSectionHeader={({ section: { title } }) => (
+            <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
+              <Text className="text-sm text-secondary-950">{title}</Text>
+            </Box>
+          )}
           ItemSeparatorComponent={ListDivider}
+          stickySectionHeadersEnabled={true}
           ListEmptyComponent={() => (
             <VStack className="flex-1 items-center justify-center p-8">
               <EmptyList type={EmptyType.NOTIFICATION} />

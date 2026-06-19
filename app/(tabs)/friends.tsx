@@ -53,7 +53,6 @@ export default function FriendsScreen() {
 
   const { details: userDetails } = states.user();
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? "light";
 
   const { favoriteIds, favoriteUsers, loadFavorites, handleToggleFavorite } =
     useFavoriteToggle(userDetails?.id);
