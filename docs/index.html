@@ -128,23 +128,26 @@
           <img src="./assets/images/google-play.png" alt="Get it on Google Play" class="h-11 w-auto" />
         </span>
       </div>
-      <p class="text-sm text-gray-400 dark:text-gray-500 mt-4">Coming soon · Free to start, upgrade anytime.</p>
+      <p class="text-sm text-gray-400 dark:text-gray-500 mt-4">Coming soon · Free to start · Pro is ₱499 one-time, no subscription.</p>
     </div>
 
-    <!-- Hero phone screenshots — 3-card fan (images already include the phone mockup frame) -->
+    <!-- Hero phone screenshots — 3-card fan -->
     <div class="flex justify-center md:justify-end py-6">
       <div class="relative w-[280px] sm:w-[360px] md:w-[460px]">
-        <!-- left card -->
-        <div class="absolute left-0 top-12 sm:top-14 md:top-16 w-[125px] sm:w-[155px] md:w-[195px] -rotate-[10deg] z-10">
-          <img src="./assets/images/groups-portrait.png" alt="Ambagan groups list" class="w-full drop-shadow-xl" />
+        <!-- left card: Quick Expense -->
+        <div class="absolute left-0 top-12 sm:top-14 md:top-16 w-[145px] sm:w-[175px] md:w-[220px] -rotate-[10deg] z-10">
+          <img src="./assets/images/light/light-quick-expense-portrait.png" alt="Ambagan quick-add expense" class="w-full drop-shadow-xl dark:hidden" />
+          <img src="./assets/images/dark/dark-quick-add-portrait.png" alt="Ambagan quick-add expense" class="w-full drop-shadow-xl hidden dark:block" />
         </div>
-        <!-- right card -->
-        <div class="absolute right-0 top-12 sm:top-14 md:top-16 w-[125px] sm:w-[155px] md:w-[195px] rotate-[10deg] z-10">
-          <img src="./assets/images/mark-as-settled-portrait.png" alt="Ambagan settle up screen" class="w-full drop-shadow-xl" />
+        <!-- right card: Group Details Settlements -->
+        <div class="absolute right-0 top-12 sm:top-14 md:top-16 w-[145px] sm:w-[175px] md:w-[220px] rotate-[10deg] z-10">
+          <img src="./assets/images/light/light-group-details-settlements-portrait.png" alt="Ambagan group settlements" class="w-full drop-shadow-xl dark:hidden" />
+          <img src="./assets/images/dark/dark-group-details-settlements-portrait.png" alt="Ambagan group settlements" class="w-full drop-shadow-xl hidden dark:block" />
         </div>
-        <!-- center card -->
+        <!-- center card: Overview -->
         <div class="relative mx-auto w-[170px] sm:w-[210px] md:w-[265px] z-20">
-          <img src="./assets/images/landing-portrait.png" alt="Ambagan welcome screen" class="w-full drop-shadow-2xl" />
+          <img src="./assets/images/light/light-overview-portrait.png" alt="Ambagan home overview" class="w-full drop-shadow-2xl dark:hidden" />
+          <img src="./assets/images/dark/dark-overview-portrait.png" alt="Ambagan home overview" class="w-full drop-shadow-2xl hidden dark:block" />
         </div>
       </div>
     </div>
@@ -164,7 +167,7 @@
             <i data-lucide="house-plus" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
           </div>
           <h3 class="font-semibold mb-1.5">Group expenses</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Create groups for trips, households, or events and log shared expenses as you go.</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Create groups for trips, households, or events and log shared expenses as you go. Archive when done.</p>
         </div>
 
         <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
@@ -172,7 +175,7 @@
             <i data-lucide="split" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
           </div>
           <h3 class="font-semibold mb-1.5">Flexible splitting</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Split equally or set custom amounts per person — your call, every time.</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Split equally, by percentage, or with fully custom amounts per person — your call, every time.</p>
         </div>
 
         <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
@@ -180,23 +183,23 @@
             <i data-lucide="handshake" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
           </div>
           <h3 class="font-semibold mb-1.5">Settle up with proof</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Request, approve, or reject settlements, with proof-of-payment photos attached.</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Request, approve, or reject settlements with proof-of-payment photos. Bulk settle across groups at once.</p>
         </div>
 
         <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
           <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-4">
-            <i data-lucide="bell" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
+            <i data-lucide="chart-no-axes-combined" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
           </div>
-          <h3 class="font-semibold mb-1.5">Push notifications</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Get notified the moment someone adds an expense or settles a balance.</p>
+          <h3 class="font-semibold mb-1.5">Net balance at a glance</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">See your total net balance across all groups on the home screen — who owes you vs. what you owe, always visible.</p>
         </div>
 
         <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
           <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-4">
             <i data-lucide="users" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
           </div>
-          <h3 class="font-semibold mb-1.5">Friends list</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Keep track of running balances with friends across all your shared groups.</p>
+          <h3 class="font-semibold mb-1.5">Friends &amp; contacts</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Track balances with each friend across all groups. Everyone you've grouped with is auto-saved as a contact.</p>
         </div>
 
         <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
@@ -204,26 +207,49 @@
             <i data-lucide="zap" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
           </div>
           <h3 class="font-semibold mb-1.5">Quick-add expense</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Add a fast, equal-split expense right from the home screen — no extra taps.</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Log a fast equal-split expense right from the home screen. No extra taps, no extra screens.</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
+          <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-4">
+            <i data-lucide="globe" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
+          </div>
+          <h3 class="font-semibold mb-1.5">Multi-currency</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Each expense can be set to its own currency — perfect for group trips across different countries.</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
+          <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-4">
+            <i data-lucide="bell" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
+          </div>
+          <h3 class="font-semibold mb-1.5">Reminders &amp; notifications</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Get push notifications for every settlement update, plus an optional daily nudge if you have unpaid balances.</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
+          <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center mb-4">
+            <i data-lucide="file-spreadsheet" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
+          </div>
+          <h3 class="font-semibold mb-1.5">Group stats &amp; CSV export</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">Filter group spendings and balances by date range. Export your settlements as a CSV anytime.</p>
         </div>
       </div>
 
-      <!-- Pro features strip -->
+      <!-- Pro upgrade strip -->
       <div class="mt-8 rounded-2xl bg-gray-900 dark:bg-black text-white p-8 md:p-10 grid md:grid-cols-2 gap-8 items-center">
         <div>
           <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-semibold px-3 py-1.5 mb-4">
             <i data-lucide="crown" class="w-3.5 h-3.5"></i>
             Pro
           </span>
-          <h3 class="text-2xl font-bold mb-2">For frequent splitters and travelers</h3>
-          <p class="text-gray-400 leading-relaxed">Unlock unlimited groups, multi-currency expenses, CSV exports, and offline access.</p>
+          <h3 class="text-2xl font-bold mb-2">Need more groups? Go Pro.</h3>
+          <p class="text-gray-400 leading-relaxed">The free plan lets you create up to 3 groups. Upgrade once for ₱499 and remove that limit forever — no subscription, no renewal.</p>
         </div>
         <ul class="grid sm:grid-cols-2 gap-3 text-sm">
           <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>Unlimited groups</li>
-          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>14 currencies supported</li>
-          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>CSV export</li>
-          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>Offline access</li>
-          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>Priority support</li>
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>One-time purchase</li>
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>No subscription</li>
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>All future updates</li>
         </ul>
       </div>
     </div>
@@ -234,33 +260,54 @@
     <div class="max-w-6xl mx-auto px-6">
       <div class="max-w-xl mb-14">
         <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-3">See Ambagan in action</h2>
-        <p class="text-gray-500 dark:text-gray-400 leading-relaxed">A quick look at the app — from your dashboard to settling up.</p>
+        <p class="text-gray-500 dark:text-gray-400 leading-relaxed">A quick look at the app — from your net balance dashboard to settling up with your group.</p>
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-3 gap-5">
         <figure>
-          <img src="./assets/images/overview-portrait.png" alt="Ambagan home dashboard" class="w-full drop-shadow-md" />
-          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Your dashboard</figcaption>
+          <img src="./assets/images/light/light-overview-portrait.png" alt="Ambagan home dashboard" class="w-full drop-shadow-md dark:hidden" />
+          <img src="./assets/images/dark/dark-overview-portrait.png" alt="Ambagan home dashboard" class="w-full drop-shadow-md hidden dark:block" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Net balance overview</figcaption>
         </figure>
         <figure>
-          <img src="./assets/images/groups-portrait.png" alt="Ambagan groups list" class="w-full drop-shadow-md" />
-          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Groups overview</figcaption>
+          <img src="./assets/images/light/light-group-details-settlements-portrait.png" alt="Ambagan group settlements tab" class="w-full drop-shadow-md dark:hidden" />
+          <img src="./assets/images/dark/dark-group-details-settlements-portrait.png" alt="Ambagan group settlements tab" class="w-full drop-shadow-md hidden dark:block" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Group settlements</figcaption>
         </figure>
         <figure>
-          <img src="./assets/images/add-custom-expense-member-splits-portrait.png" alt="Adding an expense and splitting it among members" class="w-full drop-shadow-md" />
-          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Add an expense</figcaption>
+          <img src="./assets/images/light/light-quick-expense-portrait.png" alt="Ambagan quick-add expense" class="w-full drop-shadow-md dark:hidden" />
+          <img src="./assets/images/dark/dark-quick-add-portrait.png" alt="Ambagan quick-add expense" class="w-full drop-shadow-md hidden dark:block" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Quick-add expense</figcaption>
         </figure>
         <figure>
-          <img src="./assets/images/friends-portrait.png" alt="Ambagan friends and balances list" class="w-full drop-shadow-md" />
+          <img src="./assets/images/light/light-friend-details-portrait.png" alt="Ambagan friend balance detail" class="w-full drop-shadow-md dark:hidden" />
+          <img src="./assets/images/dark/dark-friend-details-portrait.png" alt="Ambagan friend balance detail" class="w-full drop-shadow-md hidden dark:block" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Friend detail &amp; balance</figcaption>
+        </figure>
+        <figure>
+          <img src="./assets/images/light/light-custom-expense-splits-portrait.png" alt="Ambagan custom expense member splits" class="w-full drop-shadow-md dark:hidden" />
+          <img src="./assets/images/dark/dark-custom-expense-splits-portrait.png" alt="Ambagan custom expense member splits" class="w-full drop-shadow-md hidden dark:block" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Custom expense splits</figcaption>
+        </figure>
+        <figure>
+          <img src="./assets/images/light/light-request-as-settled-portrait.png" alt="Ambagan request settlement screen" class="w-full drop-shadow-md dark:hidden" />
+          <img src="./assets/images/dark/dark-request-as-settled-portrait.png" alt="Ambagan request settlement screen" class="w-full drop-shadow-md hidden dark:block" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Request as settled</figcaption>
+        </figure>
+        <figure>
+          <img src="./assets/images/light/light-groups-portrait.png" alt="Ambagan groups list" class="w-full drop-shadow-md dark:hidden" />
+          <img src="./assets/images/dark/dark-groups-portrait.png" alt="Ambagan groups list" class="w-full drop-shadow-md hidden dark:block" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Groups list</figcaption>
+        </figure>
+        <figure>
+          <img src="./assets/images/light/light-friends-portrait.png" alt="Ambagan friends and balances" class="w-full drop-shadow-md dark:hidden" />
+          <img src="./assets/images/dark/dark-friends-portrait.png" alt="Ambagan friends and balances" class="w-full drop-shadow-md hidden dark:block" />
           <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Friends &amp; balances</figcaption>
         </figure>
         <figure>
-          <img src="./assets/images/mark-as-settled-portrait.png" alt="Marking a settlement as settled" class="w-full drop-shadow-md" />
-          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Settle up</figcaption>
-        </figure>
-        <figure>
-          <img src="./assets/images/subscriptions-portrait.png" alt="Ambagan profile and Pro upgrade screen" class="w-full drop-shadow-md" />
-          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Go Pro</figcaption>
+          <img src="./assets/images/light/light-profile-portrait.png" alt="Ambagan profile and settings" class="w-full drop-shadow-md dark:hidden" />
+          <img src="./assets/images/dark/dark-profile-portrait.png" alt="Ambagan profile and settings" class="w-full drop-shadow-md hidden dark:block" />
+          <figcaption class="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">Profile &amp; settings</figcaption>
         </figure>
       </div>
     </div>
@@ -281,12 +328,16 @@
           <p class="text-4xl font-bold mb-1">₱0</p>
           <p class="text-sm text-gray-400 dark:text-gray-500 mb-6">forever</p>
           <ul class="space-y-3 text-sm">
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Up to 3 groups</li>
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Equal &amp; custom splits</li>
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Balance tracking</li>
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Settlement requests</li>
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Push notifications</li>
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Friends list</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Up to 3 active groups</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Equal, percentage &amp; custom splits</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Net balance overview</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Settlement requests with proof</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Multi-currency expenses</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>CSV export</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Offline access</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Push notifications &amp; daily reminders</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Friends contact list</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"></i>Group stats &amp; date filtering</li>
           </ul>
         </div>
 
@@ -300,11 +351,10 @@
           <p class="text-4xl font-bold mb-1">₱499</p>
           <p class="text-sm text-gray-400 mb-6">one-time · yours forever</p>
           <ul class="space-y-3 text-sm">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>Everything in Free</li>
             <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>Unlimited groups</li>
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>14 currencies, per-expense</li>
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>CSV export</li>
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>All future updates</li>
-            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>Priority support</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>All future updates included</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400 shrink-0"></i>No subscription, no renewal</li>
           </ul>
         </div>
       </div>
