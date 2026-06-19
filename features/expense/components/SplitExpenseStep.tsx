@@ -164,16 +164,24 @@ export default function SplitSelection({
         <VStack className="gap-y-4">
           <VStack className="px-4 gap-y-4">
             <StepperProgress currentStep={step} steps={3} />
-            <VStack>
+            <VStack className="gap-y-1">
               {isLockedGroup && groupName && (
-                <Text className="font-medium text-lg">{groupName}</Text>
+                <Text
+                  className="text-secondary-950 uppercase flex-1"
+                  bold
+                  numberOfLines={1}
+                >
+                  {groupName}
+                </Text>
               )}
-              <Text className="text-2xl" bold>
-                Who owes what?
-              </Text>
-              <Text className="text-secondary-950">
-                Set how the total is divided among each member.
-              </Text>
+              <VStack>
+                <Text className="text-2xl" bold>
+                  Who owes what?
+                </Text>
+                <Text className="text-secondary-950">
+                  Set how the total is divided among each member.
+                </Text>
+              </VStack>
             </VStack>
           </VStack>
 

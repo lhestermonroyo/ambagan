@@ -198,11 +198,22 @@ export default function ReviewRequestPaidSheet({
 
             <ScrollView className="flex-1 px-4">
               <VStack className="gap-y-6">
-                <VStack className="flex-1">
-                  <Text className="text-3xl" bold>
-                    {formatAmount(payment.amount || 0, payment.currency)}
-                  </Text>
-                  <Text className="text-secondary-950">Amount paid</Text>
+                <VStack className="gap-y-1">
+                  {payment.expense_description && (
+                    <Text
+                      className="text-secondary-950 uppercase flex-1"
+                      bold
+                      numberOfLines={1}
+                    >
+                      {payment.expense_description}
+                    </Text>
+                  )}
+                  <VStack>
+                    <Text className="text-3xl" bold>
+                      {formatAmount(payment.amount || 0, payment.currency)}
+                    </Text>
+                    <Text className="text-secondary-950">Amount paid</Text>
+                  </VStack>
                 </VStack>
 
                 <Box className="bg-secondary-100 rounded-xl">

@@ -6,6 +6,8 @@ import PressableListItem from "@/components/PressableListItem";
 import StepperProgress from "@/components/StepperProgress";
 import {
   FormControl,
+  FormControlHelper,
+  FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -75,16 +77,24 @@ export default function AddExpenseStep({
       <ScrollView className="flex-1">
         <VStack className="px-4 gap-y-4">
           <StepperProgress currentStep={step} steps={3} />
-          <VStack>
+          <VStack className="gap-y-1">
             {isLockedGroup && values.group && (
-              <Text className="font-medium text-lg">{values.group.name}</Text>
+              <Text
+                className="text-secondary-950 uppercase flex-1"
+                bold
+                numberOfLines={1}
+              >
+                {values.group.name}
+              </Text>
             )}
-            <Text className="text-2xl" bold>
-              Expense Details
-            </Text>
-            <Text className="text-secondary-950">
-              Fill-in your expense details.
-            </Text>
+            <VStack>
+              <Text className="text-2xl" bold>
+                Expense Details
+              </Text>
+              <Text className="text-secondary-950">
+                Fill-in your expense details.
+              </Text>
+            </VStack>
           </VStack>
         </VStack>
         <VStack className="gap-y-6 p-4">

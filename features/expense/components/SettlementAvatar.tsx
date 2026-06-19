@@ -19,6 +19,7 @@ export default function SettlementAvatar({
 
   if (light) {
     return (
+      
       <Avatar size="sm" className="bg-white/20">
         {isPayer ? (
           <BanknoteArrowUp

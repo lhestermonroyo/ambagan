@@ -25,7 +25,7 @@ import services from "@/services";
 import { Payment } from "@/types/expenses";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
-import { Pressable, useColorScheme } from "react-native";
+import { Pressable } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
 
 export default function RequestSettledSheet({
@@ -46,7 +46,6 @@ export default function RequestSettledSheet({
   });
 
   const toast = useAppToast();
-  const colorScheme = useColorScheme() ?? "light";
 
   if (!payment) {
     return null;
@@ -104,11 +103,20 @@ export default function RequestSettledSheet({
           </Pressable>
           <ScrollView className="flex-1 px-4">
             <VStack className="gap-y-6">
-              <VStack className="flex-1">
-                <Text className="text-3xl" bold>
-                  {formatAmount(payment.amount || 0, payment.currency)}
+              <VStack className="gap-y-1">
+                <Text
+                  className="text-secondary-950 uppercase flex-1"
+                  bold
+                  numberOfLines={1}
+                >
+                  {payment.expense_description}
                 </Text>
-                <Text className="text-secondary-950">Amount settled</Text>
+                <VStack>
+                  <Text className="text-3xl" bold>
+                    {formatAmount(payment.amount || 0, payment.currency)}
+                  </Text>
+                  <Text className="text-secondary-950">Amount settled</Text>
+                </VStack>
               </VStack>
 
               <FormControl size="md">

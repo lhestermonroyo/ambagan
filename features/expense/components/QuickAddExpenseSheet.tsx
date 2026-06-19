@@ -186,7 +186,7 @@ export default function QuickAddExpenseSheet({
           </ActionsheetDragIndicatorWrapper>
           <VStack className="w-full flex-1">
             <Pressable onPress={onClose}>
-              <HStack className="p-4 items-start gap-x-1">
+              <HStack className="p-4 items-start">
                 <Icon as="arrow-back-ios" className="text-secondary-950" />
                 <VStack>
                   <Text bold className="text-xl">
@@ -303,7 +303,11 @@ export default function QuickAddExpenseSheet({
                             <HStack className="justify-between items-center gap-x-2">
                               <HStack className="gap-x-2 items-center flex-1">
                                 <VStack className="gap-y-2 flex-1">
-                                  <Text className="text-secondary-950 font-medium">
+                                  <Text
+                                    bold
+                                    className="text-secondary-950 uppercase"
+                                    numberOfLines={1}
+                                  >
                                     {selectedGroup?.name}
                                   </Text>
                                   <VStack className="items-start gap-y-1">
@@ -341,7 +345,11 @@ export default function QuickAddExpenseSheet({
                             <HStack className="justify-between items-center gap-x-2 flex-1">
                               <HStack className="gap-x-2 items-center flex-1">
                                 <VStack className="gap-y-2 flex-1">
-                                  <Text className="font-medium text-lg">
+                                  <Text
+                                    bold
+                                    className="text-secondary-950 uppercase"
+                                    numberOfLines={1}
+                                  >
                                     {selectedGroup?.name}
                                   </Text>
                                   <VStack className="items-start gap-y-1">

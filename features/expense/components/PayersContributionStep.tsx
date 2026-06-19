@@ -58,16 +58,24 @@ export default function PayersContributionStep({
       <ScrollView className="flex-1">
         <VStack className="px-4 gap-y-4">
           <StepperProgress currentStep={step} steps={3} />
-          <VStack>
+          <VStack className="gap-y-1">
             {isLockedGroup && groupName && (
-              <Text className="font-medium text-lg">{groupName}</Text>
+              <Text
+                className="text-secondary-950 uppercase flex-1"
+                bold
+                numberOfLines={1}
+              >
+                {groupName}
+              </Text>
             )}
-            <Text className="text-2xl" bold>
-              Who paid?
-            </Text>
-            <Text className="text-secondary-950">
-              Enter how much each person contributed to the expense.
-            </Text>
+            <VStack>
+              <Text className="text-2xl" bold>
+                Who paid?
+              </Text>
+              <Text className="text-secondary-950">
+                Enter how much each person contributed to the expense.
+              </Text>
+            </VStack>
           </VStack>
           <FlatList
             className="flex-1 h-full"

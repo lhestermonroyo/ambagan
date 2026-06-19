@@ -1,6 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
+import Icon from "@/components/Icon";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -24,9 +25,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
-import { getSecondaryHex } from "@/utils/getColorHex";
 import { ImagePickerSuccessResult } from "expo-image-picker";
-import { ChevronLeft } from "lucide-react-native";
 import { useState } from "react";
 import { useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
@@ -100,12 +99,11 @@ export default function MarkAsSettledSheet({
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full flex-1 gap-y-4">
+        <VStack className="w-full flex-1">
           <Pressable onPress={onClose}>
-            <HStack className="p-4 items-center gap-x-2">
-              <ChevronLeft
-                color={getSecondaryHex("text-secondary-950", colorScheme)}
-              />
+            <HStack className="p-4 items-center">
+              <Icon as="arrow-back-ios" className="text-secondary-950" />
+
               <Text bold className="text-xl">
                 Mark as Settled
               </Text>
@@ -114,11 +112,22 @@ export default function MarkAsSettledSheet({
 
           <ScrollView className="flex-1 px-4">
             <VStack className="gap-y-6">
-              <VStack className="flex-1">
-                <Text className="text-3xl" bold>
-                  {formatAmount(payment.amount || 0, payment.currency)}
-                </Text>
-                <Text className="text-secondary-950">Amount paid</Text>
+              <VStack className="gap-y-1">
+                {payment.expense_description && (
+                  <Text
+                    className="text-secondary-950 uppercase flex-1"
+                    bold
+                    numberOfLines={1}
+                  >
+                    {payment.expense_description}
+                  </Text>
+                )}
+                <VStack>
+                  <Text className="text-3xl" bold>
+                    {formatAmount(payment.amount || 0, payment.currency)}
+                  </Text>
+                  <Text className="text-secondary-950">Amount paid</Text>
+                </VStack>
               </VStack>
 
               <FormControl size="md">
