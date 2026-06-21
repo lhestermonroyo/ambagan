@@ -5,7 +5,9 @@ import { HStack } from "@/components/ui/hstack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
 import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { Text } from "@/components/ui/text";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment } from "react";
+import { Platform } from "react-native";
 
 export default function FormLayout({
   children,
@@ -24,7 +26,12 @@ export default function FormLayout({
         className="bg-background-0 flex-1"
         behavior="padding"
       >
-        <Box className="px-4 pt-4 pb-2">
+        <Box
+          className={cn(
+            "px-4 pb-2",
+            Platform.OS === "android" ? "pt-[2rem]" : "pt-[1rem]"
+          )}
+        >
           <HStack className="items-center justify-between">
             <Button variant="link" className="rounded-full" onPress={onBack}>
               <Icon as="arrow-back-ios" className="text-secondary-950" />

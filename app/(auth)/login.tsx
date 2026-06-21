@@ -14,8 +14,8 @@ import { useState } from "react";
 
 export default function LoginScreen() {
   const [values, setValues] = useState({
-    emailOrPhone: "",
-    password: ""
+    emailOrPhone: "chandler@mailinator.com",
+    password: "Password1"
   });
   const [formErrors, setFormErrors] = useState({
     emailOrPhone: "",

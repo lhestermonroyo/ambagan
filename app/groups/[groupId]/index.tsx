@@ -667,14 +667,14 @@ export default function GroupDetailsScreen() {
             {groupDetails?.archived ? (
               <HStack className="mx-4 mb-4 p-4 rounded-xl bg-secondary-100 dark:bg-secondary-900 border border-secondary-200 dark:border-secondary-800 gap-x-2 items-start">
                 <Archive
-                  color={getSecondaryHex("text-secondary-950", colorScheme)}
+                  color={getPrimaryHex("text-primary-500", colorScheme)}
                 />
                 <VStack className="flex-1 gap-y-4">
                   <VStack className="gap-y-1">
                     <Text className="text-lg font-semibold">
                       This group is archived
                     </Text>
-                    <Text className="text-secondary-950">
+                    <Text>
                       New expenses are disabled. Unarchive to continue adding
                       expenses.
                     </Text>

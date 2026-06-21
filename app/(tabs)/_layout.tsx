@@ -22,11 +22,14 @@ export default function TabLayout() {
   // Safety net: if we have a session but no user details yet, refetch
   useEffect(() => {
     if (!session?.user?.id || userDetails?.id) return;
-    services.user.getUserById(session.user.id).then((res) => {
-      if (res.data) {
-        states.user.setState((prev) => ({ ...prev, details: res.data }));
-      }
-    }).catch(() => {});
+    services.user
+      .getUserById(session.user.id)
+      .then((res) => {
+        if (res.data) {
+          states.user.setState((prev) => ({ ...prev, details: res.data }));
+        }
+      })
+      .catch(() => {});
   }, [session?.user?.id, userDetails?.id]);
 
   useEffect(() => {

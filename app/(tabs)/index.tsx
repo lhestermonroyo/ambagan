@@ -54,7 +54,12 @@ import {
   PlusCircle
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, RefreshControl, useColorScheme } from "react-native";
+import {
+  Animated,
+  Platform,
+  RefreshControl,
+  useColorScheme
+} from "react-native";
 
 const SETTLEMENT_REMINDER_ID = "daily-settlement-reminder";
 
@@ -363,7 +368,12 @@ export default function HomeScreen() {
         behavior="padding"
       >
         <Box className="sticky top-0 bg-primary-400">
-          <HStack className="items-center justify-center px-4 pt-[5rem] pb-2">
+          <HStack
+            className={cn(
+              "items-center justify-center px-4 pb-2",
+              Platform.OS === "android" ? "pt-[3.5rem]" : "pt-[5rem]"
+            )}
+          >
             <VStack className="flex-1">
               <Text className="text-background-0/70">Hello,</Text>
               <Text bold className="text-xl text-background-0">

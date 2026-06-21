@@ -184,7 +184,7 @@ export default function LeaveGroupSheet({
                     </Text>
                   </HStack>
                 ) : isAdmin ? (
-                  <>
+                  <VStack className="px-4 gap-y-4">
                     <HStack className="bg-primary-50 rounded-xl gap-x-3 p-4 items-start">
                       <AlertTriangle
                         size={18}
@@ -247,7 +247,7 @@ export default function LeaveGroupSheet({
                         />
                       </RadioGroup>
                     </VStack>
-                  </>
+                  </VStack>
                 ) : (
                   <Text className="px-4">
                     Are you sure you want to leave{" "}
