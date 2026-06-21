@@ -48,6 +48,7 @@ Ambagan is a Filipino group expense splitting app. Members of a group can log sh
 - Inline favorite toggle on friend items and friend detail page
 - Quick-add expense from home screen
 - Compact sticky stats bar on home, group settlements, and friend detail screens
+- Offline indicator banner (floating, non-intrusive) when internet is unavailable
 
 ### Pro Plan (₱499 one-time)
 - Unlimited groups (free tier is capped at 3)
@@ -82,7 +83,6 @@ Ambagan is a Filipino group expense splitting app. Members of a group can log sh
 | Backend / DB | Supabase (Postgres, Auth, Storage, Realtime) |
 | In-App Purchases | RevenueCat (`react-native-purchases` v10) |
 | Push Notifications | Expo Notifications + Supabase Realtime |
-| Offline Storage | expo-sqlite |
 | Image Handling | expo-image (caching), expo-image-manipulator (compression) |
 | Animations | react-native-reanimated v4, @legendapp/motion |
 | Build & Deploy | EAS Build + EAS Submit |
@@ -374,9 +374,6 @@ Track expenses in PHP, USD, JPY, SGD, EUR, and more — perfect for travel group
 PUSH NOTIFICATIONS
 Get notified the moment someone adds an expense, requests a settlement, or takes action on yours. Notification preferences are fully customizable per type.
 
-OFFLINE ACCESS
-Your groups, expenses, and friends are cached automatically so you can browse your data without an internet connection.
-
 AMBAGAN PRO — ₱499, YOURS FOREVER
 Hit the 3-group limit? Upgrade once and unlock unlimited groups. No subscription, no monthly fees — pay once, use forever.
 
@@ -387,7 +384,6 @@ Free plan includes:
 • Settlement requests with proof of payment
 • Multi-currency expenses
 • CSV export
-• Offline access
 • Push notifications
 • Friends list
 ```

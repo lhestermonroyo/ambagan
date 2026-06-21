@@ -212,7 +212,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is the Pro plan?",
         answer:
-          "Pro is a one-time purchase of ₱499 that removes the 3-group limit and unlocks unlimited groups. All other features — multi-currency expenses, CSV export, offline access, and push notifications — are available to every user for free."
+          "Pro is a one-time purchase of ₱499 that removes the 3-group limit and unlocks unlimited groups. All other features — multi-currency expenses, CSV export, and push notifications — are available to every user for free."
       },
       {
         question: "How do I upgrade to Pro?",
@@ -235,9 +235,9 @@ const FAQ_SECTIONS: FAQSection[] = [
           "The Stats tab in a group shows your net balance (To Collect minus To Pay), total group spendings, and the CSV export button — all filtered by your selected date range. Use the date pills at the top to switch between 1D, 1W, 1M, 3M, 1Y, and All time."
       },
       {
-        question: "Can I use Ambagan offline?",
+        question: "What happens when I lose internet connection?",
         answer:
-          "Yes. Your groups, expenses, settlements, and friends are automatically cached when you're connected, so you can browse them while offline. A banner appears at the top of the app when you're viewing cached data. Creating or settling expenses still requires an internet connection."
+          "A red banner appears at the top of the screen informing you that you're offline. Creating or updating expenses and settlements requires an internet connection."
       },
       {
         question: "I already paid — how do I restore my Pro access on a new device?",

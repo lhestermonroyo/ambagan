@@ -40,7 +40,6 @@ import services from "@/services";
 import states from "@/states";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
-import { cacheService } from "@/utils/cacheService";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { getReminderEnabled } from "@/utils/reminderPreference";
@@ -281,20 +280,12 @@ export default function HomeScreen() {
 
       if (!response || !response.data) return;
 
-      cacheService.savePayments(userId, response.data).catch(() => {});
-
       states.expense.setState((prev) => ({
         ...prev,
         activityList: response.data
       }));
     } catch (error) {
       console.error("Failed to fetch recent expenses:", error);
-      const cached = await cacheService.getPayments(userId);
-      if (cached)
-        states.expense.setState((prev) => ({
-          ...prev,
-          activityList: cached
-        }));
     } finally {
       setLoading((prev) => ({ ...prev, activities: false }));
     }
@@ -312,16 +303,12 @@ export default function HomeScreen() {
 
       if (!response) return;
 
-      cacheService.saveGroupsList(userId, response).catch(() => {});
-
       states.group.setState((prev) => ({
         ...prev,
         list: response
       }));
     } catch (error) {
       console.error("Failed to fetch groups:", error);
-      const cached = await cacheService.getGroupsList(userId);
-      if (cached) states.group.setState((prev) => ({ ...prev, list: cached }));
     } finally {
       setLoading((prev) => ({ ...prev, groups: false }));
     }
@@ -332,7 +319,6 @@ export default function HomeScreen() {
     if (!isInitialized) setLoading((prev) => ({ ...prev, friends: true }));
     try {
       const data = await services.friend.getFriendsSummary(userId);
-      cacheService.saveFriends(userId, data).catch(() => {});
       setFriends(data);
       addRecentUsers(
         data.map((f) => f.friend),
@@ -340,8 +326,6 @@ export default function HomeScreen() {
       ).catch(() => {});
     } catch (error) {
       console.error("Failed to fetch friends:", error);
-      const cached = await cacheService.getFriends(userId);
-      if (cached) setFriends(cached);
     } finally {
       setLoading((prev) => ({ ...prev, friends: false }));
     }

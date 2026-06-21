@@ -1,8 +1,6 @@
 import CustomTabBar from "@/components/CustomTabBar";
-import OfflineBanner from "@/components/OfflineBanner";
 import { View } from "@/components/ui/view";
 import PushNotificationPermissionSheet from "@/features/user/components/PushNotificationPermissionSheet";
-import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,9 +13,6 @@ const PUSH_ASKED_KEY = "@push_permission_asked";
 export default function TabLayout() {
   const [permissionSheetOpen, setPermissionSheetOpen] = useState(false);
   const { details: userDetails, session } = states.user();
-  const { isOnline } = useNetwork();
-  const isPro = userDetails?.plan === "pro";
-  const showOfflineBanner = !isOnline && isPro;
 
   // Safety net: if we have a session but no user details yet, refetch
   useEffect(() => {
@@ -60,7 +55,6 @@ export default function TabLayout() {
 
   return (
     <View style={{ flex: 1 }}>
-      {showOfflineBanner && <OfflineBanner />}
       <Tabs
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{

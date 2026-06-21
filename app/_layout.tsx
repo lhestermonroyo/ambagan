@@ -1,6 +1,8 @@
+import OfflineBanner from "@/components/OfflineBanner";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
 import useAppToast, { ToastProvider } from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import { NotificationType } from "@/types/notifications";
@@ -47,6 +49,7 @@ export default function RootLayout() {
   });
   const router = useRouter();
   const { loading, appearanceMode, loadPreferences, session } = states.user();
+  const { isOnline } = useNetwork();
   const toast = useAppToast();
   const overlayOpacity = useSharedValue(0);
   const isFirstRender = useRef(true);
@@ -316,6 +319,7 @@ export default function RootLayout() {
                 }}
               />
               <StatusBar style="auto" />
+              {!isOnline && <OfflineBanner />}
             </ThemeProvider>
           </ToastProvider>
         </GluestackUIProvider>
