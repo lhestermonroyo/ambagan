@@ -52,7 +52,7 @@ import {
   HousePlus,
   PlusCircle
 } from "lucide-react-native";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Platform,
@@ -170,13 +170,10 @@ export default function HomeScreen() {
   }, [userId]);
 
   useFocusEffect(
-    useMemo(
-      () => () => {
-        if (!userId) return;
-        init(initialized);
-      },
-      [userId, initialized]
-    )
+    useCallback(() => {
+      if (!userId) return;
+      init(initialized);
+    }, [userId, initialized])
   );
 
   const init = async (isInitialized = false) => {
@@ -337,13 +334,49 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const groupsPreview = useMemo(() => {
-    return groupList.slice(0, 5);
-  }, [groupList]);
+  const groupsPreview = useMemo(() => groupList.slice(0, 5), [groupList]);
+  const activitiesPreview = useMemo(() => activityList.slice(0, 5), [activityList]);
+  const friendsPreview = useMemo(() => friends.slice(0, 5), [friends]);
 
-  const activitiesPreview = useMemo(() => {
-    return activityList.slice(0, 5);
-  }, [activityList]);
+  const handleOpenActionSheet = useCallback((item: PaymentPreview) => {
+    setSelectedPayment(item);
+    setActionSheetOpen(true);
+  }, []);
+
+  const handleCloseActionSheet = useCallback(() => setActionSheetOpen(false), []);
+  const handleRefetch = useCallback(() => init(true), [userId]);
+
+  const handleOpenNewExpense = useCallback(() => setNewExpensePickerOpen(true), []);
+  const handleCloseNewExpense = useCallback(() => setNewExpensePickerOpen(false), []);
+  const handleOpenQuickAdd = useCallback(() => setQuickAddOpen(true), []);
+  const handleCloseQuickAdd = useCallback(() => setQuickAddOpen(false), []);
+
+  const handleQuickAddSuccess = useCallback(() => {
+    init(true);
+    states.group.setState((prev) => ({
+      ...prev,
+      settlementRefreshToken: prev.settlementRefreshToken + 1
+    }));
+  }, [userId]);
+
+  const handleCustomExpense = useCallback(() => {
+    setNewExpensePickerOpen(false);
+    router.push("/groups/[groupId]/new-expense");
+  }, [router]);
+
+  const renderActivityItem = useCallback(
+    ({ item }: { item: PaymentPreview }) => (
+      <SettlementItem item={item} onPress={() => handleOpenActionSheet(item)} />
+    ),
+    [handleOpenActionSheet]
+  );
+
+  const renderGroupItem = useCallback(
+    ({ item }: { item: (typeof groupList)[0] }) => (
+      <GroupItem details={item} onOpen={() => router.push(`/groups/${item.id}`)} />
+    ),
+    [router]
+  );
 
   return (
     <Fragment>
@@ -490,7 +523,7 @@ export default function HomeScreen() {
                       />
                     }
                     text="New Expense"
-                    onPress={() => setNewExpensePickerOpen(true)}
+                    onPress={handleOpenNewExpense}
                   />
                   <FormButton
                     className="flex-1"
@@ -528,21 +561,11 @@ export default function HomeScreen() {
                     showsHorizontalScrollIndicator={false}
                   >
                     <HStack className="gap-x-2 px-4">
-                      {friends.slice(0, 5).map((item) => (
+                      {friendsPreview.map((item) => (
                         <FriendCard
                           key={item.friend.id}
                           item={item}
-                          onPress={() =>
-                            router.push({
-                              pathname: "/friends/[friendId]",
-                              params: {
-                                friendId: item.friend.id,
-                                name: `${item.friend.first_name} ${item.friend.last_name}`,
-                                email: item.friend.email,
-                                avatar: item.friend.avatar || ""
-                              }
-                            })
-                          }
+                          router={router}
                         />
                       ))}
                     </HStack>
@@ -567,15 +590,7 @@ export default function HomeScreen() {
                   data={activitiesPreview}
                   scrollEnabled={false}
                   keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <SettlementItem
-                      item={item}
-                      onPress={() => {
-                        setSelectedPayment(item);
-                        setActionSheetOpen(true);
-                      }}
-                    />
-                  )}
+                  renderItem={renderActivityItem}
                   ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
                     <EmptyList type={EmptyType.ACTIVITY} />
@@ -603,12 +618,7 @@ export default function HomeScreen() {
                   data={groupsPreview}
                   scrollEnabled={false}
                   keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <GroupItem
-                      details={item}
-                      onOpen={() => router.push(`/groups/${item.id}`)}
-                    />
-                  )}
+                  renderItem={renderGroupItem}
                   ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
                     <EmptyList type={EmptyType.GROUP} />
@@ -625,51 +635,54 @@ export default function HomeScreen() {
       </KeyboardAvoidingView>
       <SettlementActionSheet
         isOpen={actionSheetOpen}
-        onClose={() => setActionSheetOpen(false)}
+        onClose={handleCloseActionSheet}
         item={selectedPayment}
-        onRefetch={() => init(true)}
+        onRefetch={handleRefetch}
       />
       <NewExpensePickerSheet
         isOpen={newExpensePickerOpen}
-        onClose={() => setNewExpensePickerOpen(false)}
-        onQuickAdd={() => setQuickAddOpen(true)}
-        onCustom={() => {
-          setNewExpensePickerOpen(false);
-          router.push("/groups/[groupId]/new-expense");
-        }}
+        onClose={handleCloseNewExpense}
+        onQuickAdd={handleOpenQuickAdd}
+        onCustom={handleCustomExpense}
       />
       <QuickAddExpenseSheet
         isOpen={quickAddOpen}
         group={groupList[0] ?? null}
         allowGroupChange
-        onClose={() => setQuickAddOpen(false)}
-        onSuccess={() => {
-          init(true);
-          states.group.setState((prev) => ({
-            ...prev,
-            settlementRefreshToken: prev.settlementRefreshToken + 1
-          }));
-        }}
+        onClose={handleCloseQuickAdd}
+        onSuccess={handleQuickAddSuccess}
       />
     </Fragment>
   );
 }
 
-function FriendCard({
+const FriendCard = React.memo(function FriendCard({
   item,
-  onPress
+  router
 }: {
   item: FriendSummary;
-  onPress: () => void;
+  router: ReturnType<typeof useRouter>;
 }) {
   const { friend, balances } = item;
   const [primary] = balances;
   const isNegative = (primary?.amount ?? 0) < 0;
   const name = `${friend.first_name} ${friend.last_name}`;
 
+  const handlePress = useCallback(() => {
+    router.push({
+      pathname: "/friends/[friendId]",
+      params: {
+        friendId: friend.id,
+        name,
+        email: friend.email,
+        avatar: friend.avatar || ""
+      }
+    });
+  }, [friend.id, friend.email, friend.avatar, name, router]);
+
   return (
     <PressableListItem
-      onPress={onPress}
+      onPress={handlePress}
       className="border min-w-40 border-secondary-500 rounded-lg p-4"
     >
       <VStack className="gap-y-2">
@@ -694,7 +707,7 @@ function FriendCard({
       </VStack>
     </PressableListItem>
   );
-}
+});
 
 function StatItem({
   type,
@@ -711,8 +724,12 @@ function StatItem({
   const isReceive = type === "RECEIVE";
   const label = isReceive ? "To Collect" : "To Pay";
 
-  const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+  const sorted = useMemo(
+    () =>
+      [...items].sort((a, b) =>
+        a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+      ),
+    [items, primaryCurrency]
   );
   const [primary, ...secondary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
@@ -800,8 +817,12 @@ function NetBalanceRow({
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+  const sorted = useMemo(
+    () =>
+      [...items].sort((a, b) =>
+        a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+      ),
+    [items, primaryCurrency]
   );
   const [primary, ...secondary] = sorted;
   const primaryAmount = primary?.amount ?? 0;

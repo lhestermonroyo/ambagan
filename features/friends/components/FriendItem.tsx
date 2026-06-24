@@ -12,9 +12,10 @@ import { UserPreview } from "@/types/user";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { Heart } from "lucide-react-native";
+import React, { useCallback } from "react";
 import { useColorScheme } from "react-native";
 
-export default function FriendItem({
+const FriendItem = React.memo(function FriendItem({
   item,
   isFavorite = false,
   onPress,
@@ -30,8 +31,14 @@ export default function FriendItem({
   const isNegative = (primary?.amount ?? 0) < 0;
   const colorScheme = useColorScheme() ?? "light";
 
+  const handlePress = useCallback(() => onPress(item), [item, onPress]);
+  const handleToggle = useCallback(
+    () => onToggleFavorite?.(friend),
+    [friend, onToggleFavorite]
+  );
+
   return (
-    <PressableListItem className="p-4" onPress={() => onPress(item)}>
+    <PressableListItem className="p-4" onPress={handlePress}>
       <HStack className="gap-x-3 items-center">
         <AppAvatar name={friend.first_name} uri={friend.avatar || undefined} />
         <VStack className="flex-1">
@@ -56,7 +63,7 @@ export default function FriendItem({
             )}
           </HStack>
           {onToggleFavorite && (
-            <Pressable onPress={() => onToggleFavorite(friend)}>
+            <Pressable onPress={handleToggle}>
               <Heart
                 size={18}
                 color={
@@ -77,4 +84,6 @@ export default function FriendItem({
       </HStack>
     </PressableListItem>
   );
-}
+});
+
+export default FriendItem;

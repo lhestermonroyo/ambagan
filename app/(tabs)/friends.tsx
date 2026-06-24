@@ -26,7 +26,7 @@ import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Heart } from "lucide-react-native";
-import { Fragment, useMemo, useRef, useState } from "react";
+import React, { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 
 type FriendsTab = "all" | "owes-me" | "i-owe" | "friends" | "favorites";
@@ -58,15 +58,12 @@ export default function FriendsScreen() {
     useFavoriteToggle(userDetails?.id);
 
   useFocusEffect(
-    useMemo(
-      () => () => {
-        if (!userDetails?.id) return;
-        fetchFriends(initialized);
-        loadFavorites();
-        loadRecentFriends();
-      },
-      [userDetails?.id, initialized]
-    )
+    useCallback(() => {
+      if (!userDetails?.id) return;
+      fetchFriends(initialized);
+      loadFavorites();
+      loadRecentFriends();
+    }, [userDetails?.id, initialized])
   );
 
   const fetchFriends = async (isInitialized = false) => {
@@ -106,7 +103,7 @@ export default function FriendsScreen() {
     setRefreshing(false);
   };
 
-  const handleFriendPress = (item: FriendSummary) => {
+  const handleFriendPress = useCallback((item: FriendSummary) => {
     router.push({
       pathname: "/friends/[friendId]",
       params: {
@@ -116,9 +113,9 @@ export default function FriendsScreen() {
         avatar: item.friend.avatar || ""
       }
     });
-  };
+  }, [router]);
 
-  const handleFavoritePress = (user: UserPreview) => {
+  const handleFavoritePress = useCallback((user: UserPreview) => {
     router.push({
       pathname: "/friends/[friendId]",
       params: {
@@ -128,7 +125,7 @@ export default function FriendsScreen() {
         avatar: user.avatar || ""
       }
     });
-  };
+  }, [router]);
 
   const allList = useMemo(
     () =>
@@ -188,6 +185,25 @@ export default function FriendsScreen() {
 
   const emptyType = searching ? EmptyType.SEARCH : EmptyType.FRIEND;
 
+  const renderFriendItem = useCallback(
+    ({ item }: { item: FriendSummary }) => (
+      <FriendItem item={item} onPress={handleFriendPress} />
+    ),
+    [handleFriendPress]
+  );
+
+  const renderFavoriteListItem = useCallback(
+    ({ item }: { item: UserPreview }) => (
+      <FavoriteListItem
+        item={item}
+        isFavorite={favoriteIds.has(item.id)}
+        onPress={handleFavoritePress}
+        onToggleFavorite={handleToggleFavorite}
+      />
+    ),
+    [favoriteIds, handleFavoritePress, handleToggleFavorite]
+  );
+
   return (
     <Fragment>
       <TabLayout
@@ -233,14 +249,7 @@ export default function FriendsScreen() {
                 data={filteredRecentFriends}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <FavoriteListItem
-                    item={item}
-                    isFavorite={favoriteIds.has(item.id)}
-                    onPress={handleFavoritePress}
-                    onToggleFavorite={handleToggleFavorite}
-                  />
-                )}
+                renderItem={renderFavoriteListItem}
                 ItemSeparatorComponent={ListDivider}
                 ListEmptyComponent={() => (
                   <EmptyList
@@ -305,9 +314,7 @@ export default function FriendsScreen() {
                         data={filteredFriends}
                         keyExtractor={(item) => item.friend.id}
                         scrollEnabled={false}
-                        renderItem={({ item }) => (
-                          <FriendItem item={item} onPress={handleFriendPress} />
-                        )}
+                        renderItem={renderFriendItem}
                         ItemSeparatorComponent={ListDivider}
                         ListFooterComponent={() => <Box className="h-16" />}
                       />
@@ -329,9 +336,7 @@ export default function FriendsScreen() {
                       data={filteredFriends}
                       keyExtractor={(item) => item.friend.id}
                       scrollEnabled={false}
-                      renderItem={({ item }) => (
-                        <FriendItem item={item} onPress={handleFriendPress} />
-                      )}
+                      renderItem={renderFriendItem}
                       ItemSeparatorComponent={ListDivider}
                       ListEmptyComponent={() => <EmptyList type={emptyType} />}
                       ListFooterComponent={() => <Box className="h-16" />}
@@ -344,14 +349,7 @@ export default function FriendsScreen() {
                 data={filteredFavorites}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <FavoriteListItem
-                    item={item}
-                    isFavorite={favoriteIds.has(item.id)}
-                    onPress={handleFavoritePress}
-                    onToggleFavorite={handleToggleFavorite}
-                  />
-                )}
+                renderItem={renderFavoriteListItem}
                 ItemSeparatorComponent={ListDivider}
                 ListEmptyComponent={() => (
                   <EmptyList
@@ -370,7 +368,7 @@ export default function FriendsScreen() {
   );
 }
 
-function FavoriteListItem({
+const FavoriteListItem = React.memo(function FavoriteListItem({
   item,
   isFavorite = false,
   onPress,
@@ -383,8 +381,14 @@ function FavoriteListItem({
 }) {
   const colorScheme = useColorScheme() ?? "light";
 
+  const handlePress = useCallback(() => onPress(item), [item, onPress]);
+  const handleToggle = useCallback(
+    () => onToggleFavorite?.(item),
+    [item, onToggleFavorite]
+  );
+
   return (
-    <PressableListItem className="p-4" onPress={() => onPress(item)}>
+    <PressableListItem className="p-4" onPress={handlePress}>
       <HStack className="gap-x-3 items-center">
         <AppAvatar name={item.first_name} uri={item.avatar || undefined} />
         <VStack className="flex-1">
@@ -395,7 +399,7 @@ function FavoriteListItem({
         </VStack>
         <HStack className="gap-x-3 items-center">
           {onToggleFavorite && (
-            <Pressable onPress={() => onToggleFavorite(item)}>
+            <Pressable onPress={handleToggle}>
               <Heart
                 size={18}
                 color={
@@ -416,4 +420,4 @@ function FavoriteListItem({
       </HStack>
     </PressableListItem>
   );
-}
+});
