@@ -36,8 +36,25 @@ import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
+import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetView
+} from "@gorhom/bottom-sheet";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { format } from "date-fns";
 import { useRouter } from "expo-router";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { CalendarDays } from "lucide-react-native";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
+import { useColorScheme } from "react-native";
 
 type QuickAddExpenseSheetProps = {
   isOpen: boolean;
@@ -58,6 +75,7 @@ export default function QuickAddExpenseSheet({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [currency, setCurrency] = useState("PHP");
+  const [expenseDate, setExpenseDate] = useState(new Date());
   const [submitting, setSubmitting] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedPayer, setSelectedPayer] = useState<Member | null>(null);
@@ -67,11 +85,17 @@ export default function QuickAddExpenseSheet({
   const { details: currentUser, defaultCurrency } = states.user();
   const toast = useAppToast();
   const router = useRouter();
+  const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
+  const dateSheetRef = useRef<BottomSheetModal>(null);
+
+  const openDateSheet = useCallback(() => dateSheetRef.current?.present(), []);
+  const closeDateSheet = useCallback(() => dateSheetRef.current?.dismiss(), []);
 
   useEffect(() => {
     if (isOpen) {
       setAmount("");
       setDescription("");
+      setExpenseDate(new Date());
       setSelectedGroup(group);
       setSelectedPayer(null);
       setCurrency(defaultCurrency);
@@ -151,7 +175,8 @@ export default function QuickAddExpenseSheet({
           group_id: selectedGroup.id,
           proof_of_payment: null,
           split_type: "equal",
-          currency
+          currency,
+          expense_date: expenseDate
         },
         payers,
         memberSplits,
@@ -193,9 +218,7 @@ export default function QuickAddExpenseSheet({
                     Quick Add
                   </Text>
                   <Text className="text-secondary-950">
-                    {selectedPayer && selectedPayer.id !== currentUser?.id
-                      ? `Paid by ${selectedPayer.first_name} · Equal split · Dated today`
-                      : "Paid by you · Equal split · Dated today"}
+                    Paid by you · Equal split · Dated today
                   </Text>
                 </VStack>
               </HStack>
@@ -254,6 +277,34 @@ export default function QuickAddExpenseSheet({
                       autoCapitalize="none"
                       size="sm"
                     />
+
+                    <FormControl size="md">
+                      <FormControlLabel>
+                        <FormControlLabelText>
+                          Expense Date
+                        </FormControlLabelText>
+                      </FormControlLabel>
+                      <PressableListItem
+                        onPress={openDateSheet}
+                        className="p-4 border border-background-200 rounded-lg"
+                      >
+                        <HStack className="items-center flex-1 gap-x-2">
+                          <CalendarDays
+                            color={getSecondaryHex(
+                              "text-secondary-950",
+                              colorScheme
+                            )}
+                          />
+                          <Text className="flex-1 text-lg">
+                            {format(expenseDate, "MMMM dd, yyyy")}
+                          </Text>
+                          <Icon
+                            as="unfold-more"
+                            className="text-secondary-950"
+                          />
+                        </HStack>
+                      </PressableListItem>
+                    </FormControl>
 
                     {selectedPayer && (
                       <FormControl size="md">
@@ -416,6 +467,55 @@ export default function QuickAddExpenseSheet({
         onClose={() => setPayerPickerOpen(false)}
         onSave={(payer) => setSelectedPayer(payer)}
       />
+
+      <BottomSheetModal
+        ref={dateSheetRef}
+        snapPoints={["60%"]}
+        backgroundStyle={{
+          backgroundColor: getSecondaryHex("text-secondary-0", colorScheme)
+        }}
+        handleIndicatorStyle={{
+          backgroundColor: getSecondaryHex("text-secondary-500", colorScheme)
+        }}
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop
+            {...props}
+            appearsOnIndex={0}
+            disappearsOnIndex={-1}
+          />
+        )}
+      >
+        <BottomSheetView>
+          <VStack className="gap-y-2 items-center">
+            <VStack className="self-start px-4">
+              <Text
+                bold
+                className="text-xl"
+                style={{
+                  color: colorScheme === "dark" ? "#F5F5F5" : "#141414"
+                }}
+              >
+                Select Expense Date
+              </Text>
+            </VStack>
+            <VStack className="pb-4">
+              <DateTimePicker
+                value={expenseDate}
+                mode="date"
+                display="inline"
+                themeVariant={colorScheme}
+                accentColor={getPrimaryHex("text-primary-400", colorScheme)}
+                onChange={(_, date) => {
+                  if (date) {
+                    setExpenseDate(date);
+                    closeDateSheet();
+                  }
+                }}
+              />
+            </VStack>
+          </VStack>
+        </BottomSheetView>
+      </BottomSheetModal>
     </>
   );
 }

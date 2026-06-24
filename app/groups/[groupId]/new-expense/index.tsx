@@ -218,7 +218,8 @@ export default function NewExpenseScreen() {
         group_id: values.group.id,
         proof_of_payment: values.proof_of_payment,
         split_type: values.split_type,
-        currency: values.currency
+        currency: values.currency,
+        expense_date: values.expense_date
       };
       const mappedSplits = Object.keys(splits)
         .filter(

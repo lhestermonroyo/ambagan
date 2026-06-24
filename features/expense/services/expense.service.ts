@@ -23,6 +23,7 @@ export const saveExpense = async (
     group_id: string;
     split_type: (typeof splitTypes)[number]["value"];
     currency: string;
+    expense_date?: Date;
   },
   payers: { userId: string; amount: number }[],
   memberSplits: { userId: string; amount: number; percentage: number }[],
@@ -43,7 +44,8 @@ export const saveExpense = async (
     proof_of_payment,
     group_id,
     split_type,
-    currency
+    currency,
+    expense_date
   } = expensePayload;
 
   if (proof_of_payment) {
@@ -66,7 +68,8 @@ export const saveExpense = async (
       description,
       proof_of_payment: proofUrl,
       split_type,
-      currency: currency || "PHP"
+      currency: currency || "PHP",
+      expense_date: expense_date ? expense_date.toISOString() : new Date().toISOString()
     }
   ]);
 
