@@ -9,6 +9,20 @@ import {
 } from "@/types/expenses";
 import { NotificationType } from "@/types/notifications";
 import { splitTypes, tables } from "@/utils/constants";
+
+export const getDailyExpenseCount = async (userId: string): Promise<number> => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { count, error } = await supabase
+    .from(tables.EXPENSES_TBL)
+    .select("*", { count: "exact", head: true })
+    .eq("creator_id", userId)
+    .gte("created_at", today.toISOString());
+
+  if (error) throw error;
+  return count ?? 0;
+};
 import { supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
 import { sendPushNotification } from "@/utils/sendPushNotifications";

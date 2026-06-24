@@ -1,4 +1,5 @@
 import FormButton from "@/components/FormButton";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
@@ -30,11 +31,13 @@ export default function GroupStatsTab({
   userId: string;
 }) {
   const { expenseList, settlementList } = states.group();
-  const { defaultCurrency } = states.user();
+  const { defaultCurrency, details: userDetails } = states.user();
+  const isPro = userDetails?.plan === "pro";
   const toast = useAppToast();
 
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
   const [exporting, setExporting] = useState(false);
+  const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
 
   const cutoff = useMemo(() => getDateRangeCutoff(dateRange), [dateRange]);
 
@@ -84,6 +87,10 @@ export default function GroupStatsTab({
   }, [toCollect, toPay]);
 
   const handleExport = async () => {
+    if (!isPro) {
+      setUpgradeSheetOpen(true);
+      return;
+    }
     setExporting(true);
     try {
       const payments = await services.expense.getPaymentsForExport(
@@ -115,6 +122,12 @@ export default function GroupStatsTab({
   };
 
   return (
+    <>
+    <UpgradeSheet
+      isOpen={upgradeSheetOpen}
+      onClose={() => setUpgradeSheetOpen(false)}
+      description="CSV export is a Pro feature. Upgrade once to export settlements anytime."
+    />
     <VStack className="gap-y-6 pb-6">
       {/* Date range pill tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -193,13 +206,14 @@ export default function GroupStatsTab({
             </Text>
           </VStack>
           <FormButton
-            text="Export CSV"
+            text={isPro ? "Export CSV" : "Export CSV — Pro"}
             loading={exporting}
             onPress={handleExport}
           />
         </VStack>
       </VStack>
     </VStack>
+    </>
   );
 }
 

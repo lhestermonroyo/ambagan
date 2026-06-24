@@ -15,14 +15,9 @@ import { useRouter } from "expo-router";
 
 const PRO_FEATURES = [
   {
-    icon: "groups",
-    title: "Unlimited groups",
-    description: "Create as many groups as you need — no cap, ever."
-  },
-  {
-    icon: "public",
-    title: "Multi-currency expenses",
-    description: "Add expenses in PHP, USD, JPY, SGD, and more."
+    icon: "bolt",
+    title: "No daily expense limit",
+    description: "Add as many expenses as you need — no daily cap, ever."
   },
   {
     icon: "download",
@@ -30,18 +25,30 @@ const PRO_FEATURES = [
     description: "Download settlements by date range for your records."
   },
   {
+    icon: "trending-up",
+    title: "Spending analytics",
+    description: "See where your money goes — by group, by month, by friend."
+  },
+  {
+    icon: "autorenew",
+    title: "Recurring expenses",
+    description: "Auto-generate monthly expenses like rent and subscriptions."
+  },
+  {
     icon: "star",
     title: "All future updates included",
-    description: "New features as they ship — yours forever."
+    description: "New Pro features as they ship — yours forever."
   }
 ];
 
 export default function UpgradeSheet({
   isOpen,
-  onClose
+  onClose,
+  description
 }: {
   isOpen: boolean;
   onClose: () => void;
+  description?: string;
 }) {
   const router = useRouter();
 
@@ -51,7 +58,7 @@ export default function UpgradeSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[70]}>
+    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[75]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
         <ActionsheetDragIndicatorWrapper>
@@ -71,7 +78,7 @@ export default function UpgradeSheet({
               </Box>
             </HStack>
             <Text className="text-secondary-950">
-              One-time purchase · No subscription · No renewal
+              {description ?? "One-time purchase · No subscription · No renewal"}
             </Text>
           </VStack>
 

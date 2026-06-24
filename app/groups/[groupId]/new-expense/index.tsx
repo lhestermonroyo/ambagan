@@ -1,5 +1,6 @@
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import AddExpenseStep from "@/features/expense/components/AddExpenseStep";
@@ -11,7 +12,7 @@ import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
-import { splitTypes } from "@/utils/constants";
+import { DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -23,10 +24,12 @@ export default function NewExpenseScreen() {
   const isLocked = groupId !== "[groupId]";
 
   const { list: groupList } = states.group();
-  const { defaultCurrency } = states.user();
+  const { defaultCurrency, details: userDetails } = states.user();
+  const isPro = userDetails?.plan === "pro";
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
   const [values, setValues] = useState({
     currency: defaultCurrency,
     amount: "",
@@ -209,6 +212,16 @@ export default function NewExpenseScreen() {
       return;
     }
 
+    if (!isPro) {
+      const count = await services.expense.getDailyExpenseCount(
+        userDetails!.id
+      );
+      if (count >= DAILY_EXPENSE_LIMIT) {
+        setUpgradeSheetOpen(true);
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
@@ -368,6 +381,7 @@ export default function NewExpenseScreen() {
   }
 
   return (
+    <>
     <FormLayout
       title="Custom Expense"
       onBack={() => router.back()}
@@ -453,5 +467,12 @@ export default function NewExpenseScreen() {
         />
       )}
     </FormLayout>
+
+    <UpgradeSheet
+      isOpen={upgradeSheetOpen}
+      onClose={() => setUpgradeSheetOpen(false)}
+      description="You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
+    />
+    </>
   );
 }

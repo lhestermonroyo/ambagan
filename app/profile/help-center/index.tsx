@@ -37,7 +37,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Is Ambagan free to use?",
         answer:
-          "Yes. The core features are free — create up to 3 groups, track expenses, split bills, and settle up with friends at no cost. A Pro plan is available as a one-time purchase (₱499) for users who need unlimited groups."
+          "Yes. The core features are free — add up to 5 expenses per day, track balances, split bills, and settle up with friends at no cost. A Pro plan is available as a one-time purchase (₱499) for unlimited daily expenses, CSV export, spending analytics, and more."
       },
       {
         question: "What does the Net Balance on the home screen mean?",
@@ -212,22 +212,22 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is the Pro plan?",
         answer:
-          "Pro is a one-time purchase of ₱499 that removes the 3-group limit and unlocks unlimited groups. All other features — multi-currency expenses, CSV export, and push notifications — are available to every user for free."
+          "Pro is a one-time purchase of ₱499 that removes the daily expense limit and unlocks premium features: unlimited expenses per day, CSV export, spending analytics, and recurring expenses. Multi-currency expenses and push notifications are free for everyone."
       },
       {
         question: "How do I upgrade to Pro?",
         answer:
-          "Go to Profile → Subscription and tap Unlock Pro. It's a one-time purchase of ₱499 — no subscription, no renewal. Once purchased, unlimited groups are unlocked immediately."
+          "Go to Profile → Subscription and tap Unlock Pro. It's a one-time purchase of ₱499 — no subscription, no renewal. Once purchased, all Pro features are unlocked immediately."
       },
       {
-        question: "How many groups can I create on the free plan?",
+        question: "How many expenses can I add per day on the free plan?",
         answer:
-          "Free users can create up to 3 active groups. Archived groups do not count toward this limit. Upgrade to Pro (₱499, one-time) for unlimited groups."
+          "Free users can add up to 5 expenses per day, counted across all your groups combined. The counter resets at midnight. Upgrade to Pro (₱499, one-time) for unlimited daily expenses."
       },
       {
         question: "How do I export settlements to CSV?",
         answer:
-          "Open a group and go to the Stats tab. Select a date range, then tap Export CSV at the bottom. The file includes all settlements you're involved in for that group within the selected range and will open your device's share sheet so you can save or send it."
+          "CSV export is a Pro feature. After upgrading, open a group and go to the Stats tab. Select a date range, then tap Export CSV. The file includes all settlements you're involved in for that group within the selected range and will open your device's share sheet so you can save or send it."
       },
       {
         question: "What does the Stats tab show?",

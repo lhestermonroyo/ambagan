@@ -24,6 +24,7 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import { GroupSelectionActionSheet } from "@/features/expense/components/GroupSelection";
 import { PayerSelectionActionSheet } from "@/features/expense/components/PayerSelection";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
@@ -36,6 +37,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
+import { DAILY_EXPENSE_LIMIT } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import {
   BottomSheetBackdrop,
@@ -81,8 +83,10 @@ export default function QuickAddExpenseSheet({
   const [selectedPayer, setSelectedPayer] = useState<Member | null>(null);
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   const [payerPickerOpen, setPayerPickerOpen] = useState(false);
+  const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
 
   const { details: currentUser, defaultCurrency } = states.user();
+  const isPro = currentUser?.plan === "pro";
   const toast = useAppToast();
   const router = useRouter();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -151,6 +155,15 @@ export default function QuickAddExpenseSheet({
 
   const handleSubmit = async () => {
     if (!currentUser || !selectedGroup || !canSubmit) return;
+
+    if (!isPro) {
+      const count = await services.expense.getDailyExpenseCount(currentUser.id);
+      if (count >= DAILY_EXPENSE_LIMIT) {
+        setUpgradeSheetOpen(true);
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
@@ -466,6 +479,12 @@ export default function QuickAddExpenseSheet({
         currentPayer={selectedPayer}
         onClose={() => setPayerPickerOpen(false)}
         onSave={(payer) => setSelectedPayer(payer)}
+      />
+
+      <UpgradeSheet
+        isOpen={upgradeSheetOpen}
+        onClose={() => setUpgradeSheetOpen(false)}
+        description="You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
       />
 
       <BottomSheetModal

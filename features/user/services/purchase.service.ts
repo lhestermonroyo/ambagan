@@ -35,7 +35,32 @@ export const getLifetimePackage = (
 ): PurchasesPackage | undefined =>
   offering.availablePackages.find(
     (pkg) => pkg.packageType === PACKAGE_TYPE.LIFETIME
-  ) ?? offering.availablePackages[0]; // fallback to first available package
+  );
+
+export const getTwoWeekPackage = (
+  offering: PurchasesOffering
+): PurchasesPackage | undefined =>
+  offering.availablePackages.find(
+    (pkg) => pkg.packageType === PACKAGE_TYPE.TWO_WEEK
+  );
+
+export const getMonthlyPackage = (
+  offering: PurchasesOffering
+): PurchasesPackage | undefined =>
+  offering.availablePackages.find(
+    (pkg) => pkg.packageType === PACKAGE_TYPE.MONTHLY
+  );
+
+export const getYearlyPackage = (
+  offering: PurchasesOffering
+): PurchasesPackage | undefined =>
+  offering.availablePackages.find(
+    (pkg) => pkg.packageType === PACKAGE_TYPE.ANNUAL
+  );
+
+export const showManageSubscriptions = async (): Promise<void> => {
+  await Purchases.showManageSubscriptions();
+};
 
 export const purchasePackage = async (
   pkg: PurchasesPackage
@@ -68,8 +93,9 @@ export const syncPlanToSupabase = async (
   customerInfo: CustomerInfo
 ): Promise<{ plan: UserPlan }> => {
   const plan: UserPlan = isProEntitlementActive(customerInfo) ? "pro" : "free";
+  const plan_expires_at = customerInfo.latestExpirationDate ?? null;
 
-  console.log("[syncPlanToSupabase] Syncing plan to Supabase", { plan });
+  console.log("[syncPlanToSupabase] Syncing plan to Supabase", { plan, plan_expires_at });
 
   const {
     data: { user }
@@ -78,7 +104,7 @@ export const syncPlanToSupabase = async (
 
   const { error, count } = await supabase
     .from(tables.USERS_TBL)
-    .update({ plan, plan_expires_at: null }, { count: "exact" })
+    .update({ plan, plan_expires_at }, { count: "exact" })
     .eq("id", user.id);
 
   if (error) throw error;

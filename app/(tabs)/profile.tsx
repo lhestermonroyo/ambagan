@@ -207,7 +207,7 @@ export default function ProfileScreen() {
                   <Text className="text-background-0 opacity-80">
                     {isPro
                       ? "Manage your active subscription"
-                      : "Unlock multi-currency, exports & more"}
+                      : "No daily limits, CSV exports & more"}
                   </Text>
                 </VStack>
                 <Icon as="chevron-right" className="text-background-0" />

@@ -7,7 +7,6 @@ import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { GroupListSkeleton } from "@/components/SkeletonLoader";
 import SearchInput from "@/components/SearchInput";
-import UpgradeSheet from "@/components/UpgradeSheet";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Fab, FabLabel } from "@/components/ui/fab";
@@ -28,7 +27,6 @@ import { Fragment, useMemo, useRef, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
-const FREE_GROUP_LIMIT = 3;
 
 const TABS: { key: GroupFilter; label: string }[] = [
   { key: "all", label: "All" },
@@ -48,7 +46,6 @@ export default function GroupsScreen() {
   const [groups, setGroups] = useState<any[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
   const [activeTab, setActiveTab] = useState<GroupFilter>("all");
 
   const activeTabRef = useRef<GroupFilter>("all");
@@ -173,22 +170,8 @@ export default function GroupsScreen() {
     setRefreshing(false);
   };
 
-  const handleAddGroup = async () => {
-    if (!userDetails?.id) return;
-
-    if (userDetails.plan === "pro") {
-      router.push("/groups/create");
-      return;
-    }
-
-    const count = await services.group.getActiveAdminGroupsCount(
-      userDetails.id
-    );
-    if (count >= FREE_GROUP_LIMIT) {
-      setShowUpgradeSheet(true);
-    } else {
-      router.push("/groups/create");
-    }
+  const handleAddGroup = () => {
+    router.push("/groups/create");
   };
 
   const handleSearchChange = (text: string) => {
@@ -205,10 +188,6 @@ export default function GroupsScreen() {
 
   return (
     <Fragment>
-      <UpgradeSheet
-        isOpen={showUpgradeSheet}
-        onClose={() => setShowUpgradeSheet(false)}
-      />
       <Fab
         placement="bottom right"
         className="px-6"
