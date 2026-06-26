@@ -352,7 +352,7 @@ export default function SubscriptionScreen() {
                       <Box
                         className={`rounded-2xl p-4 ${
                           isSelected
-                            ? "bg-primary-50 dark:bg-primary-950"
+                            ? "bg-primary-50 border border-primary-400 dark:bg-primary-950"
                             : "bg-background-50"
                         }`}
                       >
