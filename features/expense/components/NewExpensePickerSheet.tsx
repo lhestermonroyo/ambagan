@@ -99,7 +99,7 @@ export default function NewExpensePickerSheet({
                       <ActionsheetItemText className="text-lg font-semibold">
                         {label}
                       </ActionsheetItemText>
-                      <Text className="text-secondary-950">{description}</Text>
+                      <Text className="text-sm text-secondary-950">{description}</Text>
                     </VStack>
                   </HStack>
                 </ActionsheetItem>

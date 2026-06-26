@@ -36,7 +36,7 @@ export default function MemberItem({
               {isMe && " (You)"}
             </Text>
           </HStack>
-          <Text className="text-secondary-950">{item?.email}</Text>
+          <Text className="text-sm text-secondary-950">{item?.email}</Text>
         </VStack>
       </HStack>
       {!isMe && (

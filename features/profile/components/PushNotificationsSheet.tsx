@@ -236,7 +236,7 @@ export default function PushNotificationsSheet({
                       <HStack className="items-center justify-between px-4 py-3">
                         <VStack className="flex-1 pr-4">
                           <Text className="text-lg">{item.label}</Text>
-                          <Text className="text-secondary-950">
+                          <Text className="text-sm text-secondary-950">
                             {item.description}
                           </Text>
                         </VStack>
@@ -262,7 +262,7 @@ export default function PushNotificationsSheet({
                 <HStack className="items-center justify-between px-4 py-3">
                   <VStack className="flex-1 pr-4">
                     <Text className="text-lg">Daily Unpaid Reminder</Text>
-                    <Text className="text-secondary-950">
+                    <Text className="text-sm text-secondary-950">
                       Get a daily nudge at 9 AM when you have unpaid
                       settlements
                     </Text>

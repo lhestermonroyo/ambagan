@@ -9,7 +9,7 @@ const EmptyList = ({ type }: { type: EmptyType }) => {
   return (
     <VStack className="w-full justify-center items-center gap-y-2 h-32">
       <Text className="text-3xl">{empty?.icon}</Text>
-      <Text className="text-center text-secondary-950">{empty?.content}</Text>
+      <Text className="text-center text-sm text-secondary-950">{empty?.content}</Text>
     </VStack>
   );
 };

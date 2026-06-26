@@ -265,7 +265,7 @@ export default function EditMembersSheet({
             <VStack className="w-full gap-y-4 py-4">
               <VStack>
                 <HStack className="px-4">
-                  <Text className="text-secondary-950 flex-1">
+                  <Text className="text-sm text-secondary-950 flex-1">
                     {formattedMembers.length} member
                     {formattedMembers.length > 1 ? "s" : ""} selected
                   </Text>
@@ -314,7 +314,7 @@ export default function EditMembersSheet({
             <ScrollView className="flex-1 w-full">
               {displayUsers.length === 0 && (
                 <VStack className="p-4 justify-center items-center">
-                  <Text className="text-secondary-950">
+                  <Text className="text-sm text-secondary-950">
                     {searching
                       ? "No results found on your search."
                       : tab === "favorites"

@@ -272,7 +272,7 @@ export default function FriendsScreen() {
               <>
                 {activeTab === "all" && filteredFavorites.length > 0 && (
                   <VStack className="gap-y-2">
-                    <Text bold className="text-secondary-950 uppercase px-4">
+                    <Text bold className="text-sm text-secondary-950 uppercase px-4">
                       Favorites
                     </Text>
                     <ScrollView
@@ -312,7 +312,7 @@ export default function FriendsScreen() {
                       {filteredFavorites.length > 0 && (
                         <Text
                           bold
-                          className="text-secondary-950 uppercase px-4"
+                          className="text-sm text-secondary-950 uppercase px-4"
                         >
                           Settlements
                         </Text>
@@ -332,7 +332,7 @@ export default function FriendsScreen() {
                 ) : (
                   <VStack className="gap-y-2">
                     {activeTab === "all" && (
-                      <Text bold className="text-secondary-950 uppercase px-4">
+                      <Text bold className="text-sm text-secondary-950 uppercase px-4">
                         Settlements
                       </Text>
                     )}
@@ -397,7 +397,7 @@ const FavoriteListItem = React.memo(function FavoriteListItem({
           <Text className="text-lg">
             {item.first_name} {item.last_name}
           </Text>
-          <Text className="text-secondary-950">{item.email}</Text>
+          <Text className="text-sm text-secondary-950">{item.email}</Text>
         </VStack>
         <HStack className="gap-x-3 items-center">
           {onToggleFavorite && (

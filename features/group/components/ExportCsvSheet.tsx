@@ -92,7 +92,7 @@ export default function ExportCsvSheet({
             <Text bold className="text-xl">
               Export Settlements
             </Text>
-            <Text className="text-secondary-950">
+            <Text className="text-sm text-secondary-950">
               Select a date range to include in the CSV export.
             </Text>
           </VStack>

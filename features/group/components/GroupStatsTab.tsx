@@ -123,96 +123,96 @@ export default function GroupStatsTab({
 
   return (
     <>
-    <UpgradeSheet
-      isOpen={upgradeSheetOpen}
-      onClose={() => setUpgradeSheetOpen(false)}
-      description="CSV export is a Pro feature. Upgrade once to export settlements anytime."
-    />
-    <VStack className="gap-y-6 pb-6">
-      {/* Date range pill tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <HStack className="gap-x-2 px-4">
-          {dateRangeOptions.map((option) => (
-            <FormButton
-              key={option}
-              size="sm"
-              variant={option === dateRange ? "solid" : "outline"}
-              text={option}
-              onPress={() => setDateRange(option)}
-            />
-          ))}
-        </HStack>
-      </ScrollView>
+      <UpgradeSheet
+        isOpen={upgradeSheetOpen}
+        onClose={() => setUpgradeSheetOpen(false)}
+        description="CSV export is a Pro feature. Upgrade once to export settlements anytime."
+      />
+      <VStack className="gap-y-6 pb-6">
+        {/* Date range pill tabs */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <HStack className="gap-x-2 px-4">
+            {dateRangeOptions.map((option) => (
+              <FormButton
+                key={option}
+                size="sm"
+                variant={option === dateRange ? "solid" : "outline"}
+                text={option}
+                onPress={() => setDateRange(option)}
+              />
+            ))}
+          </HStack>
+        </ScrollView>
 
-      <VStack className="px-4 gap-y-4">
-        {/* Total Group Spendings */}
-        <Card className="rounded-xl bg-secondary-100">
-          <SpendingHero
-            items={totalSpendingsByCurrency}
-            primaryCurrency={defaultCurrency}
-          />
-        </Card>
-
-        {/* Net Balance */}
-        <Card className="rounded-xl bg-secondary-100">
-          <VStack className="gap-y-4">
-            <NetBalanceHero
-              items={netBalance}
+        <VStack className="px-4 gap-y-4">
+          {/* Total Group Spendings */}
+          <Card className="rounded-xl bg-secondary-100">
+            <SpendingHero
+              items={totalSpendingsByCurrency}
               primaryCurrency={defaultCurrency}
             />
-            <Divider />
-            <HStack className="items-stretch">
-              <VStack className="flex-1 gap-y-2">
-                <HStack className="items-center gap-x-2">
-                  <SettlementAvatar isPayer={true} />
-                  <Text className="text-secondary-950">To Collect</Text>
-                </HStack>
-                <CurrencyAmountDisplay
-                  isLoading={false}
-                  items={toCollect}
-                  label="To Collect"
-                  type="receive"
-                  primaryCurrency={defaultCurrency}
-                />
-              </VStack>
-              <Divider orientation="vertical" className="mx-4" />
-              <VStack className="flex-1 gap-y-2">
-                <HStack className="items-center gap-x-2">
-                  <SettlementAvatar isPayer={false} />
-                  <Text className="text-secondary-950">To Pay</Text>
-                </HStack>
-                <CurrencyAmountDisplay
-                  isLoading={false}
-                  items={toPay}
-                  label="To Pay"
-                  type="pay"
-                  primaryCurrency={defaultCurrency}
-                />
-              </VStack>
-            </HStack>
-          </VStack>
-        </Card>
+          </Card>
 
-        {/* Export */}
-        <VStack className="gap-y-3">
-          <VStack className="gap-y-1">
-            <Text bold className="text-secondary-950 uppercase text-sm">
-              Export Settlements
-            </Text>
-            <Text className="text-secondary-950">
-              The CSV includes all settlements you're involved in for this group
-              within the selected date range — settlement ID, date, payer,
-              member, amount, currency, and status.
-            </Text>
+          {/* Net Balance */}
+          <Card className="rounded-xl bg-secondary-100">
+            <VStack className="gap-y-4">
+              <NetBalanceHero
+                items={netBalance}
+                primaryCurrency={defaultCurrency}
+              />
+              <Divider />
+              <HStack className="items-stretch">
+                <VStack className="flex-1 gap-y-2">
+                  <HStack className="items-center gap-x-2">
+                    <SettlementAvatar isPayer={true} />
+                    <Text className="text-secondary-950">To Collect</Text>
+                  </HStack>
+                  <CurrencyAmountDisplay
+                    isLoading={false}
+                    items={toCollect}
+                    label="To Collect"
+                    type="receive"
+                    primaryCurrency={defaultCurrency}
+                  />
+                </VStack>
+                <Divider orientation="vertical" className="mx-4" />
+                <VStack className="flex-1 gap-y-2">
+                  <HStack className="items-center gap-x-2">
+                    <SettlementAvatar isPayer={false} />
+                    <Text className="text-secondary-950">To Pay</Text>
+                  </HStack>
+                  <CurrencyAmountDisplay
+                    isLoading={false}
+                    items={toPay}
+                    label="To Pay"
+                    type="pay"
+                    primaryCurrency={defaultCurrency}
+                  />
+                </VStack>
+              </HStack>
+            </VStack>
+          </Card>
+
+          {/* Export */}
+          <VStack className="gap-y-4">
+            <VStack className="gap-y-2">
+              <Text bold className="text-secondary-950 uppercase">
+                Export Settlements
+              </Text>
+              <Text className="text-sm text-secondary-950">
+                The CSV includes all settlements you're involved in for this
+                group within the selected date range — settlement ID, date,
+                payer, member, amount, currency, and status.
+              </Text>
+            </VStack>
+            <FormButton
+              text={isPro ? "Export CSV" : "Export CSV — Pro"}
+              loading={exporting}
+              onPress={handleExport}
+            />
           </VStack>
-          <FormButton
-            text={isPro ? "Export CSV" : "Export CSV — Pro"}
-            loading={exporting}
-            onPress={handleExport}
-          />
         </VStack>
       </VStack>
-    </VStack>
     </>
   );
 }

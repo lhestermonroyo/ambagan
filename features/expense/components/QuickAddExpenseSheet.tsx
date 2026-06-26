@@ -239,7 +239,7 @@ export default function QuickAddExpenseSheet({
                     <Text bold className="text-xl">
                       Quick Add
                     </Text>
-                    <Text className="text-secondary-950">
+                    <Text className="text-sm text-secondary-950">
                       Paid by you · Equal split · Dated today
                     </Text>
                   </VStack>
@@ -331,7 +331,7 @@ export default function QuickAddExpenseSheet({
                           </Text>
                           <Icon
                             as="unfold-more"
-                            className="text-secondary-950"
+                            className="text-sm text-secondary-950"
                           />
                         </HStack>
                       </PressableListItem>
@@ -361,14 +361,14 @@ export default function QuickAddExpenseSheet({
                                       "(You)"}
                                   </Text>
                                 </HStack>
-                                <Text className="text-secondary-950">
+                                <Text className="text-sm text-secondary-950">
                                   {selectedPayer.email}
                                 </Text>
                               </VStack>
                             </HStack>
                             <Icon
                               as="unfold-more"
-                              className="text-secondary-950"
+                              className="text-sm text-secondary-950"
                             />
                           </HStack>
                         </PressableListItem>
@@ -387,7 +387,7 @@ export default function QuickAddExpenseSheet({
                                 <VStack className="gap-y-2 flex-1">
                                   <Text
                                     bold
-                                    className="text-secondary-950 uppercase"
+                                    className="text-sm text-secondary-950 uppercase"
                                     numberOfLines={1}
                                   >
                                     {selectedGroup?.name}
@@ -418,7 +418,7 @@ export default function QuickAddExpenseSheet({
                               </HStack>
                               <Icon
                                 as="unfold-more"
-                                className="text-secondary-950"
+                                className="text-sm text-secondary-950"
                               />
                             </HStack>
                           </PressableListItem>
@@ -429,7 +429,7 @@ export default function QuickAddExpenseSheet({
                                 <VStack className="gap-y-2 flex-1">
                                   <Text
                                     bold
-                                    className="text-secondary-950 uppercase"
+                                    className="text-sm text-secondary-950 uppercase"
                                     numberOfLines={1}
                                   >
                                     {selectedGroup?.name}

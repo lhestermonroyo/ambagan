@@ -248,14 +248,14 @@ export default function CreateGroupScreen() {
                   ListEmptyComponent={() =>
                     tab === "members" ? (
                       <VStack className="p-4 justify-center items-center">
-                        <Text className="text-secondary-950 text-center">
+                        <Text className="text-sm text-secondary-950 text-center">
                           No members added yet. Click "Add Member" to include
                           members in your group.
                         </Text>
                       </VStack>
                     ) : (
                       <VStack className="p-4 justify-center items-center">
-                        <Text className="text-secondary-950">
+                        <Text className="text-sm text-secondary-950">
                           An admin is required to create a group.
                         </Text>
                       </VStack>

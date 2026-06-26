@@ -294,7 +294,7 @@ export default function SubscriptionScreen() {
                   />
                 )}
               </HStack>
-              <Text className="text-secondary-950">
+              <Text className="text-sm text-secondary-950">
                 One subscription, all features — cancel anytime.
               </Text>
             </VStack>

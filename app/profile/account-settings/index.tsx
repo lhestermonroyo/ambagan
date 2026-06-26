@@ -174,7 +174,7 @@ export default function AccountSettingsScreen() {
               <Text bold className="text-xl">
                 Delete Account
               </Text>
-              <Text className="text-secondary-950">
+              <Text className="text-sm text-secondary-950">
                 Permanently delete your account and all associated data. This
                 action cannot be undone.
               </Text>

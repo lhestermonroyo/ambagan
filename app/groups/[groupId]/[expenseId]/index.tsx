@@ -247,14 +247,18 @@ export default function ExpenseDetailsScreen() {
             {expenseDetails && (
               <VStack className="gap-y-8">
                 <VStack className="w-full gap-y-1 px-4">
+                  <Text
+                    className="text-sm text-secondary-950 uppercase flex-1"
+                    bold
+                    numberOfLines={1}
+                  >
+                    {expenseDetails.description}
+                  </Text>
                   <Text className="text-3xl" bold>
                     {formatAmount(
                       expenseDetails.amount,
                       expenseDetails.currency
                     )}
-                  </Text>
-                  <Text className="text-lg text-secondary-950">
-                    {expenseDetails.description}
                   </Text>
                 </VStack>
 
@@ -321,7 +325,9 @@ export default function ExpenseDetailsScreen() {
                             onPress={() => setImageViewerOpen(true)}
                           />
                         ) : (
-                          <Text className="text-secondary-950">N/A</Text>
+                          <Text className="text-sm text-secondary-950">
+                            N/A
+                          </Text>
                         )
                       }
                     />
@@ -426,7 +432,9 @@ function MemberSplitItem({
           {memberSplit.member.first_name} {memberSplit.member.last_name}
           {isMe && " (You)"}
         </Text>
-        <Text className="text-secondary-950">{memberSplit.member.email}</Text>
+        <Text className="text-sm text-secondary-950">
+          {memberSplit.member.email}
+        </Text>
       </VStack>
       <VStack className="items-end gap-y-1">
         <Text className="text-lg">
@@ -478,7 +486,9 @@ function PayerItem({ payer }: { payer: ExpensePayer }) {
             {payer.payer.first_name} {payer.payer.last_name}
             {isMe && " (You)"}
           </Text>
-          <Text className="text-secondary-950">{payer.payer.email}</Text>
+          <Text className="text-sm text-secondary-950">
+            {payer.payer.email}
+          </Text>
         </VStack>
       </HStack>
       <Text className="text-lg">

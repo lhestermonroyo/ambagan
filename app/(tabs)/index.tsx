@@ -807,7 +807,9 @@ function StatItem({
               <Text bold className="text-xl">
                 {label}
               </Text>
-              <Text className="text-secondary-950">Breakdown by currency</Text>
+              <Text className="text-sm text-secondary-950">
+                Breakdown by currency
+              </Text>
             </VStack>
             <FlatList
               data={sorted}
@@ -860,7 +862,7 @@ function NetBalanceRow({
   return (
     <Fragment>
       <VStack className="gap-y-2">
-        <Text bold className="text-background-0 uppercase">
+        <Text bold className="text-sm text-background-0 uppercase">
           Net Balance
         </Text>
         {isLoading ? (
@@ -908,7 +910,7 @@ function NetBalanceRow({
               <Text bold className="text-xl">
                 Net Balance
               </Text>
-              <Text className="text-secondary-950">
+              <Text className="text-sm text-secondary-950">
                 To Collect minus To Pay, per currency
               </Text>
             </VStack>

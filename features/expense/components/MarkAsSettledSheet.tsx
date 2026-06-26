@@ -115,7 +115,7 @@ export default function MarkAsSettledSheet({
               <VStack className="gap-y-1">
                 {payment.expense_description && (
                   <Text
-                    className="text-secondary-950 uppercase flex-1"
+                    className="text-sm text-secondary-950 uppercase flex-1"
                     bold
                     numberOfLines={1}
                   >
@@ -148,7 +148,7 @@ export default function MarkAsSettledSheet({
                           {isMe && " (You)"}
                         </Text>
                       </HStack>
-                      <Text className="text-secondary-950">
+                      <Text className="text-sm text-secondary-950">
                         {payment.member.email}
                       </Text>
                     </VStack>

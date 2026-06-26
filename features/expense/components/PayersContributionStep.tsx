@@ -61,7 +61,7 @@ export default function PayersContributionStep({
           <VStack className="gap-y-1">
             {isLockedGroup && groupName && (
               <Text
-                className="text-secondary-950 uppercase flex-1"
+                className="text-sm text-secondary-950 uppercase flex-1"
                 bold
                 numberOfLines={1}
               >
@@ -72,7 +72,7 @@ export default function PayersContributionStep({
               <Text className="text-2xl" bold>
                 Who paid?
               </Text>
-              <Text className="text-secondary-950">
+              <Text className="text-sm text-secondary-950">
                 Enter how much each person contributed to the expense.
               </Text>
             </VStack>
@@ -137,7 +137,7 @@ function PayerItem({
                 {isMe && " (You)"}
               </Text>
             </HStack>
-            <Text className="text-secondary-950">{payer.email}</Text>
+            <Text className="text-sm text-secondary-950">{payer.email}</Text>
           </VStack>
         </HStack>
 

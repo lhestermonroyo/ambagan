@@ -41,7 +41,7 @@ export default function GroupItem({
             </Text>
           </HStack>
           <HStack className="gap-x-1 items-center">
-            <Text className="text-secondary-950">
+            <Text className="text-sm text-secondary-950">
               {formatDate(details.created_at)} &bull;{" "}
               {details.expense_count ?? 0} expense
               {(details.expense_count ?? 0) !== 1 ? "s" : ""}

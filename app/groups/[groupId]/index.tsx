@@ -685,7 +685,7 @@ export default function GroupDetailsScreen() {
                       <Text className="text-lg font-semibold">
                         Ready to archive?
                       </Text>
-                      <Text className="text-secondary-950">
+                      <Text className="text-sm text-secondary-950">
                         All settled up with no activity for 30+ days.
                       </Text>
                     </VStack>
@@ -756,7 +756,7 @@ export default function GroupDetailsScreen() {
                 stickySectionHeadersEnabled={true}
                 ListEmptyComponent={() => (
                   <VStack className="flex-1 justify-center items-center py-4">
-                    <Text className="text-secondary-950">
+                    <Text className="text-sm text-secondary-950">
                       No expenses recorded yet.
                     </Text>
                   </VStack>
@@ -847,7 +847,7 @@ function ExpenseItem({
             {expense.description}
           </Text>
           <HStack className="gap-x-1 items-center">
-            <Text className="text-secondary-950">Paid by</Text>
+            <Text className="text-sm text-secondary-950">Paid by</Text>
             <AppAvatarGroup items={formattedPayers} size="xs" />
           </HStack>
         </VStack>

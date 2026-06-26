@@ -125,7 +125,7 @@ function CurrencyItem({
         <VStack className="gap-y-4 py-4">
           <VStack>
             <Text className="text-lg">{title}</Text>
-            <Text className="text text-secondary-950">{subtitle}</Text>
+            <Text className="text text-sm text-secondary-950">{subtitle}</Text>
           </VStack>
         </VStack>
       </HStack>

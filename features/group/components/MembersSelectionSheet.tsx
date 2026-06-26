@@ -163,7 +163,7 @@ export default function MembersSelectionSheet({
           <VStack className="w-full gap-y-4 py-4">
             <VStack>
               <HStack className="px-4">
-                <Text className="text-secondary-950 flex-1">
+                <Text className="text-sm text-secondary-950 flex-1">
                   {selected.length} member
                   {selected.length > 1 ? "s" : ""} selected
                 </Text>
@@ -212,7 +212,7 @@ export default function MembersSelectionSheet({
           <ScrollView className="flex-1 w-full">
             {displayUsers.length === 0 && (
               <VStack className="p-4 justify-center items-center">
-                <Text className="text-secondary-950">{emptyText}</Text>
+                <Text className="text-sm text-secondary-950">{emptyText}</Text>
               </VStack>
             )}
             <CheckboxGroup

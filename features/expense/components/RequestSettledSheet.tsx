@@ -105,7 +105,7 @@ export default function RequestSettledSheet({
             <VStack className="gap-y-6">
               <VStack className="gap-y-1">
                 <Text
-                  className="text-secondary-950 uppercase flex-1"
+                  className="text-sm text-secondary-950 uppercase flex-1"
                   bold
                   numberOfLines={1}
                 >
@@ -136,7 +136,7 @@ export default function RequestSettledSheet({
                           {payment.payer.first_name} {payment.payer.last_name}
                         </Text>
                       </HStack>
-                      <Text className="text-secondary-950">
+                      <Text className="text-sm text-secondary-950">
                         {payment.payer.email}
                       </Text>
                     </VStack>

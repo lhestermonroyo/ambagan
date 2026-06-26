@@ -1,5 +1,6 @@
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
+import ListDivider from "@/components/ListDivider";
 import { Box } from "@/components/ui/box";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
@@ -7,22 +8,27 @@ import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { AnalyticsData } from "@/features/analytics/services/analytics.service";
+import { formatAmount } from "@/features/expense/utils/formatAmount";
 import {
   DateRangeOption,
-  dateRangeOptions,
   getDateRangeCutoff
 } from "@/features/group/components/DateRangeSheet";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
-import { AnalyticsData } from "@/features/analytics/services/analytics.service";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
-import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator } from "react-native";
 
-const ANALYTICS_DATE_RANGES: DateRangeOption[] = ["1M", "3M", "6M", "1Y", "All"];
+const ANALYTICS_DATE_RANGES: DateRangeOption[] = [
+  "1M",
+  "3M",
+  "6M",
+  "1Y",
+  "All"
+];
 const BAR_MAX_HEIGHT = 72;
 
 export default function AnalyticsScreen() {
@@ -68,7 +74,6 @@ export default function AnalyticsScreen() {
     <InnerLayout title="Spending Analytics" onBack={() => router.back()}>
       <ScrollView className="flex-1">
         <VStack className="gap-y-6 p-4 pb-10">
-
           {/* Date range pills */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <HStack className="gap-x-2">
@@ -83,7 +88,11 @@ export default function AnalyticsScreen() {
                 >
                   <Text
                     bold={dateRange === option}
-                    className={dateRange === option ? "text-background-0" : "text-secondary-950"}
+                    className={
+                      dateRange === option
+                        ? "text-background-0"
+                        : "text-secondary-950"
+                    }
                     onPress={() => setDateRange(option)}
                   >
                     {option === "All" ? "All Time" : option}
@@ -104,7 +113,10 @@ export default function AnalyticsScreen() {
               {/* Summary card */}
               <Card className="rounded-2xl bg-secondary-100">
                 <VStack className="gap-y-4">
-                  <Text bold className="text-base uppercase text-secondary-950 tracking-widest">
+                  <Text
+                    bold
+                    className="text-base uppercase text-secondary-950 tracking-widest"
+                  >
                     Overview
                   </Text>
                   <HStack className="items-stretch">
@@ -119,7 +131,10 @@ export default function AnalyticsScreen() {
                     <Divider orientation="vertical" className="mx-2" />
                     <VStack className="flex-1 items-center gap-y-1">
                       <Text bold className="text-2xl">
-                        {formatAmount(data.summary.totalInvolved, defaultCurrency)}
+                        {formatAmount(
+                          data.summary.totalInvolved,
+                          defaultCurrency
+                        )}
                       </Text>
                       <Text className="text-secondary-950 text-sm text-center">
                         Involved
@@ -147,9 +162,10 @@ export default function AnalyticsScreen() {
                   <Card className="rounded-2xl bg-secondary-100">
                     <VStack className="gap-y-4">
                       {data.byGroup.map((group) => {
-                        const pct = maxGroupAmount > 0
-                          ? group.amount / maxGroupAmount
-                          : 0;
+                        const pct =
+                          maxGroupAmount > 0
+                            ? group.amount / maxGroupAmount
+                            : 0;
                         return (
                           <VStack key={group.groupId} className="gap-y-1">
                             <HStack className="justify-between items-center">
@@ -189,9 +205,14 @@ export default function AnalyticsScreen() {
                       style={{ height: BAR_MAX_HEIGHT + 24 }}
                     >
                       {data.monthlyTrend.map((month) => {
-                        const barH = maxMonthAmount > 0
-                          ? Math.max((month.amount / maxMonthAmount) * BAR_MAX_HEIGHT, month.amount > 0 ? 4 : 0)
-                          : 0;
+                        const barH =
+                          maxMonthAmount > 0
+                            ? Math.max(
+                                (month.amount / maxMonthAmount) *
+                                  BAR_MAX_HEIGHT,
+                                month.amount > 0 ? 4 : 0
+                              )
+                            : 0;
                         return (
                           <VStack
                             key={month.key}
@@ -229,11 +250,12 @@ export default function AnalyticsScreen() {
                               uri={partner.avatar ?? undefined}
                             />
                             <VStack className="flex-1">
-                              <Text bold className="text-base">
+                              <Text className="text-lg">
                                 {partner.firstName} {partner.lastName}
                               </Text>
                               <Text className="text-secondary-950 text-sm">
-                                {partner.count} shared expense{partner.count !== 1 ? "s" : ""}
+                                {partner.count} shared expense
+                                {partner.count !== 1 ? "s" : ""}
                               </Text>
                             </VStack>
                             <Box className="bg-primary-50 dark:bg-primary-900 px-3 py-1 rounded-full">
@@ -243,7 +265,7 @@ export default function AnalyticsScreen() {
                             </Box>
                           </HStack>
                           {index < data.topPartners.length - 1 && (
-                            <Divider className="border-background-200" />
+                            <ListDivider />
                           )}
                         </Box>
                       ))}

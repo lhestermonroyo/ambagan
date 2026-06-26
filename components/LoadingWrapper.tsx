@@ -13,10 +13,12 @@ export default function LoadingWrapper({
   children: React.ReactNode;
 }) {
   if (isLoading) {
-    return skeleton ?? (
-      <Box className="p-4">
-        <Text className="text-center text-secondary-950">{text}</Text>
-      </Box>
+    return (
+      skeleton ?? (
+        <Box className="p-4">
+          <Text className="text-center text-secondary-950">{text}</Text>
+        </Box>
+      )
     );
   }
 

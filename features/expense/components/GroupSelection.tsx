@@ -203,7 +203,7 @@ function GroupItem({ group, onPress }: { group: Group; onPress: () => void }) {
         <VStack className="gap-y-4 py-4">
           <VStack>
             <Text className="text-lg">{group?.name}</Text>
-            <Text className="text-secondary-950">
+            <Text className="text-sm text-secondary-950">
               {formatDate(group?.created_at)}
             </Text>
           </VStack>

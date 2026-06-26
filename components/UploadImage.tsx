@@ -41,7 +41,7 @@ const UploadImage = ({
               size={36}
               color={getSecondaryHex("text-secondary-950", colorScheme)}
             />
-            <Text className="text-secondary-950">{title}</Text>
+            <Text className="text-sm text-secondary-950">{title}</Text>
             {subtitle && (
               <Text className="text-secondary-950 text-sm">{subtitle}</Text>
             )}

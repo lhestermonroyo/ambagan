@@ -59,7 +59,7 @@ export default function PushNotificationPermissionSheet({
               <Text bold className="text-2xl text-center">
                 Stay in the loop!
               </Text>
-              <Text className="text-secondary-950 text-center px-4">
+              <Text className="text-sm text-secondary-950 text-center px-4">
                 Enable push notifications to get updates on settlements,
                 expenses, and group activity.
               </Text>

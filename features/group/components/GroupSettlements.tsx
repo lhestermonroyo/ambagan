@@ -542,7 +542,7 @@ function NetBalanceHero({
 
   return (
     <VStack className="gap-y-2">
-      <Text bold className="text-secondary-950 uppercase">
+      <Text bold className="text-sm text-secondary-950 uppercase">
         Net Balance
       </Text>
       {isLoading ? (

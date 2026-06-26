@@ -307,13 +307,13 @@ const SettlementItem = ({ item }: { item: Payment }) => {
         {item.expense_description && (
           <HStack className="gap-x-4 items-center flex-1">
             <Text
-              className="text-secondary-950 uppercase flex-1"
+              className="text-sm text-secondary-950 uppercase flex-1"
               bold
               numberOfLines={1}
             >
               {item.expense_description}
             </Text>
-            <Text className="text-secondary-950">
+            <Text className="text-sm text-secondary-950">
               {formatDate(item.created_at)}
             </Text>
           </HStack>

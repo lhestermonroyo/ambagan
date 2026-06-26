@@ -89,7 +89,7 @@ const FormInput: FC<IFormInputProps> = ({
 
       {helperText && (
         <FormControlHelper>
-          <FormControlHelperText className="text-secondary-950">
+          <FormControlHelperText className="text-sm text-secondary-950">
             {helperText}
           </FormControlHelperText>
         </FormControlHelper>

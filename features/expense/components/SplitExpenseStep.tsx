@@ -167,7 +167,7 @@ export default function SplitSelection({
             <VStack className="gap-y-1">
               {isLockedGroup && groupName && (
                 <Text
-                  className="text-secondary-950 uppercase flex-1"
+                  className="text-sm text-secondary-950 uppercase flex-1"
                   bold
                   numberOfLines={1}
                 >
@@ -178,7 +178,7 @@ export default function SplitSelection({
                 <Text className="text-2xl" bold>
                   Who owes what?
                 </Text>
-                <Text className="text-secondary-950">
+                <Text className="text-sm text-secondary-950">
                   Set how the total is divided among each member.
                 </Text>
               </VStack>
@@ -237,7 +237,7 @@ export default function SplitSelection({
             <Text className="text-xl font-medium">
               {formatAmount(totalAmount, currency)}
             </Text>
-            <Text className="text-secondary-950">
+            <Text className="text-sm text-secondary-950">
               {formatAmount(equalSplits[0] || 0, currency)} per person
             </Text>
           </VStack>
@@ -318,7 +318,7 @@ function MemberSplitItem({
             <Text className="text-lg">
               {member?.first_name} {member?.last_name} {isMe && "(You)"}
             </Text>
-            <Text className="text-secondary-950">{member?.email}</Text>
+            <Text className="text-sm text-secondary-950">{member?.email}</Text>
           </VStack>
         </HStack>
 
@@ -328,7 +328,7 @@ function MemberSplitItem({
               <Text className="text-lg">
                 {formatAmount(Number(split.amount) || 0, currency)}
               </Text>
-              <Text className="text-secondary-950">{split.percentage}%</Text>
+              <Text className="text-sm text-secondary-950">{split.percentage}%</Text>
             </VStack>
           )}
 
@@ -347,7 +347,7 @@ function MemberSplitItem({
                   <Text className="text-lg font-medium">%</Text>
                 </InputSlot>
               </Input>
-              <Text className="text-secondary-950">
+              <Text className="text-sm text-secondary-950">
                 {formatAmount(Number(split.amount) || 0, currency)}
               </Text>
             </VStack>
@@ -372,7 +372,7 @@ function MemberSplitItem({
                 />
               </Input>
 
-              <Text className="text-secondary-950">
+              <Text className="text-sm text-secondary-950">
                 {split.percentage || 0}%
               </Text>
             </VStack>

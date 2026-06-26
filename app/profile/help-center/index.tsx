@@ -240,7 +240,8 @@ const FAQ_SECTIONS: FAQSection[] = [
           "A red banner appears at the top of the screen informing you that you're offline. Creating or updating expenses and settlements requires an internet connection."
       },
       {
-        question: "I already paid — how do I restore my Pro access on a new device?",
+        question:
+          "I already paid — how do I restore my Pro access on a new device?",
         answer:
           "Go to Profile → Subscription and tap Restore Purchase. Since Pro is a one-time non-consumable purchase, it will be restored automatically through the App Store or Play Store at no additional charge."
       }
@@ -289,7 +290,7 @@ export default function HelpCenterScreen() {
     <InnerLayout title="Help Center" onBack={() => router.back()}>
       <ScrollView className="flex-1">
         <VStack className="p-4 gap-y-6 pb-10">
-          <Text className="text-secondary-950">
+          <Text className="text-sm text-secondary-950">
             Find answers to common questions below. If you need further help,
             contact us at{" "}
             <Text bold className="text-primary-400">
@@ -300,7 +301,7 @@ export default function HelpCenterScreen() {
 
           {FAQ_SECTIONS.map((section) => (
             <VStack key={section.title} className="gap-y-2">
-              <Text bold className="text-lg">
+              <Text bold className="text-secondary-950 uppercase text-sm">
                 {section.title}
               </Text>
               <Box className="rounded-xl overflow-hidden border border-secondary-500">
@@ -323,14 +324,14 @@ export default function HelpCenterScreen() {
                                 as={
                                   isExpanded ? ChevronUpIcon : ChevronDownIcon
                                 }
-                                className="text-secondary-950"
+                                className="text-sm text-secondary-950"
                               />
                             </>
                           )}
                         </AccordionTrigger>
                       </AccordionHeader>
                       <AccordionContent>
-                        <AccordionContentText className="text-secondary-950 leading-relaxed">
+                        <AccordionContentText className="text-secondary-950 text-base">
                           {item.answer}
                         </AccordionContentText>
                       </AccordionContent>

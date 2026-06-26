@@ -77,7 +77,7 @@ export default function UpgradeSheet({
                 </Text>
               </Box>
             </HStack>
-            <Text className="text-secondary-950">
+            <Text className="text-sm text-secondary-950">
               {description ?? "One-time purchase · No subscription · No renewal"}
             </Text>
           </VStack>
@@ -96,7 +96,7 @@ export default function UpgradeSheet({
                     <Text bold className="text-lg">
                       {feature.title}
                     </Text>
-                    <Text className="text-secondary-950">
+                    <Text className="text-sm text-secondary-950">
                       {feature.description}
                     </Text>
                   </VStack>

@@ -115,7 +115,7 @@ export default function FavoritesSheet({
             <Text bold className="text-xl">
               Manage Favorites
             </Text>
-            <Text className="text-secondary-950">
+            <Text className="text-sm text-secondary-950">
               Search users or select from your friends to manage your favorite
               list.
             </Text>
@@ -138,7 +138,7 @@ export default function FavoritesSheet({
             <ScrollView className="w-full">
               {displayUsers.length === 0 && (
                 <VStack className="p-4 justify-center items-center">
-                  <Text className="text-secondary-950">{emptyLabel}</Text>
+                  <Text className="text-sm text-secondary-950">{emptyLabel}</Text>
                 </VStack>
               )}
               <FlatList
@@ -181,7 +181,7 @@ function UserFavoriteItem({
         <Text className="text-lg">
           {item.first_name} {item.last_name}
         </Text>
-        <Text className="text-secondary-950">{item.email}</Text>
+        <Text className="text-sm text-secondary-950">{item.email}</Text>
       </VStack>
       <Pressable hitSlop={8} onPress={() => onToggle(item)}>
         <Heart

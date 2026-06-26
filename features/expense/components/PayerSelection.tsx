@@ -129,7 +129,7 @@ function PayerItem({
                 {fullName} {isCurrentUser && "(You)"}
               </Text>
             </HStack>
-            <Text className="text-secondary-950">{member.email}</Text>
+            <Text className="text-sm text-secondary-950">{member.email}</Text>
           </VStack>
         </VStack>
       </HStack>
