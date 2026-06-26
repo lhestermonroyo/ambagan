@@ -43,6 +43,8 @@ export type ExpensePreview = Pick<
   | "status"
 > & {
   payer_list: ExpensePayer[];
+  /** True for an expense created offline and not yet synced to the server. */
+  pending?: boolean;
 };
 
 export type MemberSplit = {

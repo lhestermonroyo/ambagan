@@ -1,6 +1,7 @@
 import { createNotification } from "@/features/notifications/services/notification.service";
 import { NotificationType } from "@/types/notifications";
 import { Group, Member } from "@/types/groups";
+import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
@@ -15,13 +16,16 @@ export const saveGroup = async ({
   avatar,
   category,
   admin_id,
-  member_ids
+  member_ids,
+  id
 }: {
   name: string;
   category: string;
   avatar: ImagePickerSuccessResult | null;
   admin_id: string;
   member_ids: string[];
+  /** Optional pre-generated id — used so offline-queued groups keep a stable id on sync. */
+  id?: string;
 }) => {
   const user = await supabase.auth.getUser();
 
@@ -33,7 +37,7 @@ export const saveGroup = async ({
     throw new Error("Admin ID must be the same as the authenticated user");
   }
 
-  const groupId = uuid();
+  const groupId = id ?? uuid();
   let avatarUrl: string | null = null;
 
   if (avatar) {
@@ -247,53 +251,67 @@ export const deleteGroup = async (groupId: string) => {
 };
 
 export const getGroupsByUserId = async (userId: string) => {
-  const user = await supabase.auth.getUser();
+  try {
+    const user = await supabase.auth.getUser();
 
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
-  }
+    if (!user.data.user) {
+      throw new Error("User not authenticated");
+    }
 
-  const { data, error } = await supabase
-    .from(tables.GROUP_MEMBERS_TBL)
-    .select(
-      `${tables.GROUPS_TBL} (
-        id,
-        created_at,
-        name,
-        category,
-        avatar,
-        admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
-        archived,
-        expenses:${tables.EXPENSES_TBL}(count)
-      )`
-    )
-    .eq("member_id", userId);
+    const { data, error } = await supabase
+      .from(tables.GROUP_MEMBERS_TBL)
+      .select(
+        `${tables.GROUPS_TBL} (
+          id,
+          created_at,
+          name,
+          category,
+          avatar,
+          admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
+          archived,
+          expenses:${tables.EXPENSES_TBL}(count)
+        )`
+      )
+      .eq("member_id", userId);
 
-  if (error) {
+    if (error) {
+      throw error;
+    }
+
+    const groups = (data as any[])
+      .map((item) => {
+        const { expenses: expData, ...group } = item[tables.GROUPS_TBL];
+        return {
+          ...group,
+          expense_count: (expData as any[])?.[0]?.count ?? 0
+        };
+      })
+      .filter((group) => group.archived === false)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ) as Group[];
+    const groupIds = groups.map((g) => g.id);
+
+    const members = await getMembersByGroupIds(groupIds);
+
+    const result = groups.map((group) => ({
+      ...group,
+      members: members.filter((m) => m.group_id === group.id)
+    })) as (Group & { members: Member[] })[];
+
+    // Persist the fresh snapshot so the list is viewable offline.
+    cacheService.saveGroupsList(userId, result).catch(() => {});
+
+    return result;
+  } catch (error) {
+    // Offline / fetch failure — fall back to the last cached snapshot.
+    const cached = await cacheService.getGroupsList(userId);
+    if (cached) {
+      return cached as (Group & { members: Member[] })[];
+    }
     throw error;
   }
-
-  const groups = (data as any[])
-    .map((item) => {
-      const { expenses: expData, ...group } = item[tables.GROUPS_TBL];
-      return {
-        ...group,
-        expense_count: (expData as any[])?.[0]?.count ?? 0
-      };
-    })
-    .filter((group) => group.archived === false)
-    .sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    ) as Group[];
-  const groupIds = groups.map((g) => g.id);
-
-  const members = await getMembersByGroupIds(groupIds);
-
-  return groups.map((group) => ({
-    ...group,
-    members: members.filter((m) => m.group_id === group.id)
-  })) as (Group & { members: Member[] })[];
 };
 
 const GROUPS_PAGE_SIZE = 15;

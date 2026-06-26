@@ -2,27 +2,42 @@ import { createNotification } from "@/features/notifications/services/notificati
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { NotificationType } from "@/types/notifications";
 import { UserPreview } from "@/types/user";
+import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 
 export const getFavorites = async (userId: string): Promise<UserPreview[]> => {
-  const user = await supabase.auth.getUser();
-  if (!user.data.user) throw new Error("User not authenticated");
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error("User not authenticated");
 
-  const { data, error } = await supabase
-    .from(tables.USER_FAVORITES_TBL)
-    .select(
-      `favorite:favorite_id(id, email, phone, first_name, last_name, avatar, plan)`
-    )
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from(tables.USER_FAVORITES_TBL)
+      .select(
+        `favorite:favorite_id(id, email, phone, first_name, last_name, avatar, plan)`
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
-  if (error) throw error;
+    if (error) throw error;
 
-  return data.map((item) => {
-    const fav = Array.isArray(item.favorite) ? item.favorite[0] : item.favorite;
-    return fav;
-  }) as UserPreview[];
+    const result = data.map((item) => {
+      const fav = Array.isArray(item.favorite)
+        ? item.favorite[0]
+        : item.favorite;
+      return fav;
+    }) as UserPreview[];
+
+    cacheService.saveFavorites(userId, result).catch(() => {});
+
+    return result;
+  } catch (error) {
+    const cached = await cacheService.getFavorites(userId);
+    if (cached) {
+      return cached as UserPreview[];
+    }
+    throw error;
+  }
 };
 
 export const addFavorite = async (
@@ -58,47 +73,63 @@ export const removeFavorite = async (
 export const getFriendsSummary = async (
   userId: string
 ): Promise<FriendSummary[]> => {
-  const user = await supabase.auth.getUser();
-  if (!user.data.user) throw new Error("User not authenticated");
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error("User not authenticated");
 
-  const { data, error } = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .select(
-      `amount, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), expense:expense_id(currency)`
-    )
-    .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
-    .or(`status.eq.pending,status.eq.requested`);
+    const { data, error } = await supabase
+      .from(tables.PAYMENT_SPLITS_TBL)
+      .select(
+        `amount, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), expense:expense_id(currency)`
+      )
+      .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
+      .or(`status.eq.pending,status.eq.requested`);
 
-  if (error) throw error;
+    if (error) throw error;
 
-  const friendMap: Record<
-    string,
-    { friend: UserPreview; balances: Record<string, number> }
-  > = {};
+    const friendMap: Record<
+      string,
+      { friend: UserPreview; balances: Record<string, number> }
+    > = {};
 
-  data.forEach((item) => {
-    const member = Array.isArray(item.member) ? item.member[0] : item.member;
-    const payer = Array.isArray(item.payer) ? item.payer[0] : item.payer;
-    const expense = Array.isArray(item.expense) ? item.expense[0] : item.expense;
-    const currency = expense?.currency ?? "PHP";
+    data.forEach((item) => {
+      const member = Array.isArray(item.member) ? item.member[0] : item.member;
+      const payer = Array.isArray(item.payer) ? item.payer[0] : item.payer;
+      const expense = Array.isArray(item.expense)
+        ? item.expense[0]
+        : item.expense;
+      const currency = expense?.currency ?? "PHP";
 
-    const isUserPayer = payer.id === userId;
-    const other = isUserPayer ? member : payer;
-    const amount = isUserPayer ? item.amount : -item.amount;
+      const isUserPayer = payer.id === userId;
+      const other = isUserPayer ? member : payer;
+      const amount = isUserPayer ? item.amount : -item.amount;
 
-    if (!friendMap[other.id]) {
-      friendMap[other.id] = { friend: other, balances: {} };
+      if (!friendMap[other.id]) {
+        friendMap[other.id] = { friend: other, balances: {} };
+      }
+      friendMap[other.id].balances[currency] =
+        (friendMap[other.id].balances[currency] ?? 0) + amount;
+    });
+
+    const result = Object.values(friendMap).map(({ friend, balances }) => ({
+      friend,
+      balances: Object.entries(balances)
+        .map(([currency, amount]) => ({ currency, amount }))
+        .sort((a, b) =>
+          a.currency === "PHP" ? -1 : b.currency === "PHP" ? 1 : 0
+        )
+    }));
+
+    cacheService.saveFriends(userId, result).catch(() => {});
+
+    return result;
+  } catch (error) {
+    const cached = await cacheService.getFriends(userId);
+    if (cached) {
+      return cached as FriendSummary[];
     }
-    friendMap[other.id].balances[currency] =
-      (friendMap[other.id].balances[currency] ?? 0) + amount;
-  });
-
-  return Object.values(friendMap).map(({ friend, balances }) => ({
-    friend,
-    balances: Object.entries(balances)
-      .map(([currency, amount]) => ({ currency, amount }))
-      .sort((a, b) => (a.currency === "PHP" ? -1 : b.currency === "PHP" ? 1 : 0))
-  }));
+    throw error;
+  }
 };
 
 const FRIEND_SETTLEMENT_FIELDS = `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), amount, status, expense:expense_id(description, currency)`;

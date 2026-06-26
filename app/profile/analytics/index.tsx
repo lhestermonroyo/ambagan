@@ -1,5 +1,6 @@
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
+import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
 import { Box } from "@/components/ui/box";
 import { Card } from "@/components/ui/card";
@@ -73,31 +74,18 @@ export default function AnalyticsScreen() {
   return (
     <InnerLayout title="Spending Analytics" onBack={() => router.back()}>
       <ScrollView className="flex-1">
-        <VStack className="gap-y-6 p-4 pb-10">
-          {/* Date range pills */}
+        <VStack className="gap-y-6 p-4">
+          {/* Date range tabs */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <HStack className="gap-x-2">
               {ANALYTICS_DATE_RANGES.map((option) => (
-                <Box
+                <FormButton
                   key={option}
-                  className={`px-4 py-2 rounded-full border ${
-                    dateRange === option
-                      ? "bg-primary-400 border-primary-400"
-                      : "border-background-200 bg-background-50"
-                  }`}
-                >
-                  <Text
-                    bold={dateRange === option}
-                    className={
-                      dateRange === option
-                        ? "text-background-0"
-                        : "text-secondary-950"
-                    }
-                    onPress={() => setDateRange(option)}
-                  >
-                    {option === "All" ? "All Time" : option}
-                  </Text>
-                </Box>
+                  size="sm"
+                  variant={dateRange === option ? "solid" : "outline"}
+                  text={option === "All" ? "All Time" : option}
+                  onPress={() => setDateRange(option)}
+                />
               ))}
             </HStack>
           </ScrollView>
@@ -113,54 +101,44 @@ export default function AnalyticsScreen() {
               {/* Summary card */}
               <Card className="rounded-2xl bg-secondary-100">
                 <VStack className="gap-y-4">
-                  <Text
-                    bold
-                    className="text-base uppercase text-secondary-950 tracking-widest"
-                  >
+                  <Text bold className="uppercase text-secondary-950 text-sm">
                     Overview
                   </Text>
-                  <HStack className="items-stretch">
-                    <VStack className="flex-1 items-center gap-y-1">
-                      <Text bold className="text-2xl text-primary-400">
-                        {data.summary.expenseCount}
-                      </Text>
-                      <Text className="text-secondary-950 text-sm text-center">
-                        Expenses
-                      </Text>
-                    </VStack>
-                    <Divider orientation="vertical" className="mx-2" />
-                    <VStack className="flex-1 items-center gap-y-1">
-                      <Text bold className="text-2xl">
-                        {formatAmount(
-                          data.summary.totalInvolved,
-                          defaultCurrency
-                        )}
-                      </Text>
-                      <Text className="text-secondary-950 text-sm text-center">
-                        Involved
-                      </Text>
-                    </VStack>
-                    <Divider orientation="vertical" className="mx-2" />
-                    <VStack className="flex-1 items-center gap-y-1">
-                      <Text bold className="text-2xl text-success-600">
-                        {formatAmount(data.summary.totalPaid, defaultCurrency)}
-                      </Text>
-                      <Text className="text-secondary-950 text-sm text-center">
-                        You Paid
-                      </Text>
-                    </VStack>
+                  <HStack className="items-center gap-x-2">
+                    <Text bold className="text-3xl text-primary-400">
+                      {data.summary.expenseCount}
+                    </Text>
+                    <Text className="text-secondary-950">
+                      Expense{data.summary.expenseCount !== 1 ? "s" : ""}
+                    </Text>
+                  </HStack>
+                  <Divider />
+                  <HStack className="items-center justify-between gap-x-4">
+                    <Text className="text-secondary-950">Involved</Text>
+                    <Text bold className="text-xl">
+                      {formatAmount(
+                        data.summary.totalInvolved,
+                        defaultCurrency
+                      )}
+                    </Text>
+                  </HStack>
+                  <HStack className="items-center justify-between gap-x-4">
+                    <Text className="text-secondary-950">You Paid</Text>
+                    <Text bold className="text-xl">
+                      {formatAmount(data.summary.totalPaid, defaultCurrency)}
+                    </Text>
                   </HStack>
                 </VStack>
               </Card>
 
               {/* Spending by group */}
               {data.byGroup.length > 0 && (
-                <VStack className="gap-y-3">
-                  <Text bold className="text-lg">
+                <VStack className="gap-y-2">
+                  <Text bold className="text-2xl">
                     Spending by Group
                   </Text>
-                  <Card className="rounded-2xl bg-secondary-100">
-                    <VStack className="gap-y-4">
+                  <Card className="rounded-2xl bg-secondary-100 py-6">
+                    <VStack className="gap-y-6">
                       {data.byGroup.map((group) => {
                         const pct =
                           maxGroupAmount > 0
@@ -170,12 +148,12 @@ export default function AnalyticsScreen() {
                           <VStack key={group.groupId} className="gap-y-1">
                             <HStack className="justify-between items-center">
                               <Text
-                                className="flex-1 text-base"
+                                className="flex-1 text-lg"
                                 numberOfLines={1}
                               >
                                 {group.groupName}
                               </Text>
-                              <Text bold className="text-base">
+                              <Text bold className="text-lg">
                                 {formatAmount(group.amount, defaultCurrency)}
                               </Text>
                             </HStack>
@@ -194,8 +172,8 @@ export default function AnalyticsScreen() {
               )}
 
               {/* Monthly trend */}
-              <VStack className="gap-y-3">
-                <Text bold className="text-lg">
+              <VStack className="gap-y-2">
+                <Text bold className="text-2xl">
                   Monthly Trend
                 </Text>
                 <Card className="rounded-2xl bg-secondary-100">
@@ -236,8 +214,8 @@ export default function AnalyticsScreen() {
 
               {/* Top split partners */}
               {data.topPartners.length > 0 && (
-                <VStack className="gap-y-3">
-                  <Text bold className="text-lg">
+                <VStack className="gap-y-2">
+                  <Text bold className="text-2xl">
                     Top Split Partners
                   </Text>
                   <Card className="rounded-2xl bg-secondary-100 p-0 overflow-hidden">

@@ -17,9 +17,11 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
+import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import { UserPreview } from "@/types/user";
+import { filterContacts, getSavedContacts } from "@/utils/offlineContacts";
 import { addRecentUser, addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import RecentFavoritesTab from "./RecentFavoritesTab";
@@ -46,6 +48,7 @@ export default function MembersSelectionSheet({
 
   const user = states.user();
   const { details: userDetails } = user;
+  const { isOnline } = useNetwork();
 
   const { favoriteIds, favoriteUsers, loadFavorites, handleToggleFavorite } =
     useFavoriteToggle(userDetails?.id);
@@ -63,7 +66,7 @@ export default function MembersSelectionSheet({
 
   useEffect(() => {
     fetchUsers();
-  }, [searchInput]);
+  }, [searchInput, isOnline]);
 
   const loadRecentUsers = async () => {
     try {
@@ -78,6 +81,12 @@ export default function MembersSelectionSheet({
     try {
       if (!searching) {
         setUsers([]);
+        return;
+      }
+      // Offline → filter the cached friends/favorites/recents pool; no DB search.
+      if (!isOnline) {
+        const contacts = await getSavedContacts(userDetails!.id);
+        setUsers(filterContacts(contacts, searchInput));
         return;
       }
       const data = await services.user.searchUsers(searchInput);
@@ -205,6 +214,13 @@ export default function MembersSelectionSheet({
                 onSetSearching={setSearching}
               />
             </Box>
+            {!isOnline && (
+              <Box className="px-4">
+                <Text className="text-xs text-secondary-950">
+                  You're offline — showing saved contacts only
+                </Text>
+              </Box>
+            )}
             {!searching && (
               <RecentFavoritesTab tab={tab} onTabChange={setTab} />
             )}

@@ -80,5 +80,66 @@ export const cacheService = {
       [userId]
     );
     return row ? JSON.parse(row.data) : null;
+  },
+
+  async saveFavorites(userId: string, data: any[]): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_favorites (user_id, data, cached_at) VALUES (?, ?, ?)",
+      [userId, JSON.stringify(data), Date.now()]
+    );
+  },
+
+  async getFavorites(userId: string): Promise<any[] | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{ data: string }>(
+      "SELECT data FROM cache_favorites WHERE user_id = ?",
+      [userId]
+    );
+    return row ? JSON.parse(row.data) : null;
+  },
+
+  async saveStats(userId: string, data: any): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_user_stats (user_id, data, cached_at) VALUES (?, ?, ?)",
+      [userId, JSON.stringify(data), Date.now()]
+    );
+  },
+
+  async getStats(userId: string): Promise<any | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{ data: string }>(
+      "SELECT data FROM cache_user_stats WHERE user_id = ?",
+      [userId]
+    );
+    return row ? JSON.parse(row.data) : null;
+  },
+
+  async saveGroupSettlements(
+    groupId: string,
+    active: any[],
+    settled: any[]
+  ): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_group_settlements (group_id, active, settled, cached_at) VALUES (?, ?, ?, ?)",
+      [groupId, JSON.stringify(active), JSON.stringify(settled), Date.now()]
+    );
+  },
+
+  async getGroupSettlements(
+    groupId: string
+  ): Promise<{ active: any[]; settled: any[] } | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{ active: string; settled: string }>(
+      "SELECT active, settled FROM cache_group_settlements WHERE group_id = ?",
+      [groupId]
+    );
+    if (!row) return null;
+    return {
+      active: JSON.parse(row.active),
+      settled: JSON.parse(row.settled)
+    };
   }
 };

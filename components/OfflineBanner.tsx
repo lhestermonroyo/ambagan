@@ -7,8 +7,8 @@ export default function OfflineBanner() {
   const { top } = useSafeAreaInsets();
 
   return (
-    <View style={[styles.banner, { paddingTop: top + 4 }]}>
-      <WifiOff size={13} color="white" />
+    <View style={[styles.banner, { paddingTop: top }]}>
+      <WifiOff size={14} color="white" />
       <Text style={styles.text}>No internet connection.</Text>
     </View>
   );

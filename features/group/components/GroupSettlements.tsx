@@ -38,6 +38,7 @@ import services from "@/services";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
+import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { useFocusEffect } from "expo-router";
@@ -133,8 +134,35 @@ export default function GroupSettlements({
         settlementList: sortPaymentsByStatus([...active, ...settled.data])
       }));
       initializedRef.current = true;
+
+      // Cache for offline viewing of the Settlements tab.
+      cacheService
+        .saveGroupSettlements(details.id, active, settled.data)
+        .catch(() => {});
     } catch (error) {
-      console.error("Error fetching group payments:", error);
+      // Offline / fetch failure — hydrate from the cached snapshot.
+      const cached = await cacheService
+        .getGroupSettlements(details.id)
+        .catch(() => null);
+
+      if (cached) {
+        const cachedActive = cached.active as Payment[];
+        const cachedSettled = cached.settled as Payment[];
+        setActivePayments(sortPaymentsByStatus(cachedActive));
+        setSettledPayments(cachedSettled);
+        setSettledPage(0);
+        setHasMoreSettled(false);
+        states.group.setState((prev) => ({
+          ...prev,
+          settlementList: sortPaymentsByStatus([
+            ...cachedActive,
+            ...cachedSettled
+          ])
+        }));
+        initializedRef.current = true;
+      } else {
+        console.error("Error fetching group payments:", error);
+      }
     } finally {
       setLoading(false);
     }

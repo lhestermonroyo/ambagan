@@ -1,4 +1,5 @@
 import OfflineBanner from "@/components/OfflineBanner";
+import OfflineSync from "@/components/OfflineSync";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
 import useAppToast, { ToastProvider } from "@/hooks/use-app-toast";
@@ -319,6 +320,7 @@ export default function RootLayout() {
                 }}
               />
               <StatusBar style="auto" />
+              <OfflineSync />
               {!isOnline && <OfflineBanner />}
             </ThemeProvider>
           </ToastProvider>

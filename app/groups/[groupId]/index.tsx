@@ -32,6 +32,7 @@ import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { ExpensePreview } from "@/types/expenses";
+import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
@@ -202,9 +203,29 @@ export default function GroupDetailsScreen() {
         expenseList: expensesResponse,
         memberList: membersResponse
       }));
+
+      // Cache the detail so it stays viewable offline.
+      cacheService
+        .saveGroupDetail(groupId, expensesResponse, membersResponse)
+        .catch(() => {});
     } catch (error) {
-      console.log("Error fetching group details:", error);
-      router.replace("/groups");
+      // Offline / fetch failure — hydrate from cache rather than bailing out.
+      const cached = await cacheService.getGroupDetail(groupId).catch(() => null);
+      const cachedGroup = states.group
+        .getState()
+        .list.find((g) => g.id === groupId);
+
+      if (cached && cachedGroup) {
+        states.group.setState((prev) => ({
+          ...prev,
+          details: cachedGroup,
+          expenseList: cached.expenseList,
+          memberList: cached.memberList
+        }));
+      } else {
+        console.log("Error fetching group details:", error);
+        router.replace("/groups");
+      }
     } finally {
       setLoading(false);
     }
@@ -846,6 +867,13 @@ function ExpenseItem({
           <Text className="text-lg" numberOfLines={2} ellipsizeMode="tail">
             {expense.description}
           </Text>
+          {expense.pending && (
+            <Box className="self-start bg-warning-50 dark:bg-warning-900 rounded-full px-2 py-0.5 my-0.5">
+              <Text className="text-warning-600 text-2xs font-semibold uppercase">
+                Syncing…
+              </Text>
+            </Box>
+          )}
           <HStack className="gap-x-1 items-center">
             <Text className="text-sm text-secondary-950">Paid by</Text>
             <AppAvatarGroup items={formattedPayers} size="xs" />

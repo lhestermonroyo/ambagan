@@ -2,6 +2,7 @@ import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
+import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -39,6 +40,13 @@ export default function GroupItem({
             >
               {details.name}
             </Text>
+            {details.pending && (
+              <Box className="bg-warning-50 dark:bg-warning-900 rounded-full px-2 py-0.5">
+                <Text className="text-warning-600 text-2xs font-semibold uppercase">
+                  Syncing…
+                </Text>
+              </Box>
+            )}
           </HStack>
           <HStack className="gap-x-1 items-center">
             <Text className="text-sm text-secondary-950">

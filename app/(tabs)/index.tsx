@@ -36,11 +36,13 @@ import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
+import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { getSecondaryHex } from "@/utils/getColorHex";
+import { prefetchGroupDetails } from "@/utils/offlinePrefetch";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { getReminderEnabled } from "@/utils/reminderPreference";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
@@ -62,6 +64,7 @@ import React, {
 } from "react";
 import {
   Animated,
+  InteractionManager,
   Platform,
   RefreshControl,
   useColorScheme
@@ -114,6 +117,7 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
+  const { isOnline } = useNetwork();
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -311,6 +315,15 @@ export default function HomeScreen() {
         ...prev,
         list: response
       }));
+
+      // On first load, quietly warm each group's offline cache in the
+      // background — deferred until interactions settle so it never competes
+      // with rendering or navigation.
+      if (!isInitialized && userId) {
+        InteractionManager.runAfterInteractions(() => {
+          prefetchGroupDetails(userId, response).catch(() => {});
+        });
+      }
     } catch (error) {
       console.error("Failed to fetch groups:", error);
     } finally {
@@ -406,6 +419,7 @@ export default function HomeScreen() {
         className="flex-1 bg-secondary-0"
         behavior="padding"
       >
+        {!isOnline && <Box className="h-6" />}
         <Box className="sticky top-0 bg-primary-400">
           <HStack
             className={cn(
@@ -920,11 +934,7 @@ function NetBalanceRow({
               keyExtractor={(item) => item.currency}
               renderItem={({ item: { currency, amount } }) => {
                 const color =
-                  amount > 0
-                    ? "text-success-400"
-                    : amount < 0
-                      ? "text-error-400"
-                      : "text-secondary-950";
+                  amount < 0 ? "text-error-400" : "text-secondary-950";
                 return (
                   <HStack className="items-center justify-between p-4">
                     <Text className="text-secondary-950 font-medium text-lg">

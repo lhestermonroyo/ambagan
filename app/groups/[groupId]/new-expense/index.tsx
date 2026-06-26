@@ -14,9 +14,12 @@ import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
 import { DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
+import * as offlineQueue from "@/utils/offlineQueue";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import "react-native-get-random-values";
+import { v4 as uuid } from "uuid";
 
 export default function NewExpenseScreen() {
   const router = useRouter();
@@ -150,6 +153,83 @@ export default function NewExpenseScreen() {
     setSplits(splits);
   };
 
+  const handleOfflineSave = async () => {
+    if (!values.group || !userDetails) return;
+
+    const mappedSplits = Object.keys(splits)
+      .filter(
+        (userId) =>
+          parseFloat(splits[userId].amount) > 0 &&
+          parseFloat(splits[userId].percentage) > 0
+      )
+      .map((userId) => ({
+        userId,
+        amount: parseFloat(splits[userId].amount),
+        percentage: parseFloat(splits[userId].percentage)
+      }));
+    const mappedPayers = Object.keys(payers)
+      .filter((userId) => parseFloat(payers[userId].amount) > 0)
+      .map((userId) => ({ userId, amount: parseFloat(payers[userId].amount) }));
+    const paymentSplits = generatePaymentSplits(mappedPayers, mappedSplits);
+
+    if (paymentSplits.length === 0) {
+      toast({
+        title: "Invalid Expense",
+        description:
+          "Everyone paid their exact share. There's nothing to split or settle.",
+        type: "error"
+      });
+      return;
+    }
+
+    const clientId = uuid();
+    const optimistic = offlineQueue.buildOptimisticExpense({
+      clientId,
+      groupId: values.group.id,
+      amount: parseFloat(values.amount),
+      description: values.description,
+      currency: values.currency,
+      creator: {
+        id: userDetails.id,
+        email: userDetails.email,
+        phone: userDetails.phone,
+        first_name: userDetails.first_name,
+        last_name: userDetails.last_name,
+        avatar: userDetails.avatar,
+        plan: userDetails.plan
+      },
+      payers: mappedPayers,
+      members
+    });
+
+    await offlineQueue.queueAddExpense(
+      values.group.id,
+      {
+        expensePayload: {
+          amount: parseFloat(values.amount),
+          description: values.description,
+          proof_of_payment: null,
+          group_id: values.group.id,
+          split_type: values.split_type,
+          currency: values.currency,
+          expense_date: values.expense_date.toISOString()
+        },
+        payers: mappedPayers,
+        memberSplits: mappedSplits,
+        paymentSplits
+      },
+      optimistic
+    );
+
+    toast({
+      title: "Saved offline",
+      description:
+        "This expense will sync automatically when you're back online.",
+      type: "info"
+    });
+    router.back();
+  };
+
   const handleSubmit = async () => {
     let errors: any = {};
 
@@ -223,6 +303,14 @@ export default function NewExpenseScreen() {
           "An expense must involve at least two different members as payers or splits.",
         type: "error"
       });
+      return;
+    }
+
+    // Offline → queue the expense and show it optimistically. The daily limit
+    // can't be enforced without the server, so we skip that check offline.
+    const online = await offlineQueue.isOnline();
+    if (!online) {
+      await handleOfflineSave();
       return;
     }
 

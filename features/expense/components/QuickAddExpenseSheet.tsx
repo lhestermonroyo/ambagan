@@ -40,6 +40,9 @@ import states from "@/states";
 import { Group, Member } from "@/types/groups";
 import { DAILY_EXPENSE_LIMIT } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import * as offlineQueue from "@/utils/offlineQueue";
+import "react-native-get-random-values";
+import { v4 as uuid } from "uuid";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -166,6 +169,71 @@ export default function QuickAddExpenseSheet({
 
   const handleSubmit = async () => {
     if (!currentUser || !selectedGroup || !canSubmit) return;
+
+    // Offline → queue the expense optimistically and skip the daily-limit
+    // check (it can't be enforced without the server).
+    const online = await offlineQueue.isOnline();
+    if (!online) {
+      const amounts = getAmountPerPerson(parsedAmount, memberCount);
+      const percentages = getPercentagePerPerson(memberCount);
+      const memberSplits = members.map((m, i) => ({
+        userId: m.id,
+        amount: amounts[i],
+        percentage: percentages[i]
+      }));
+      const payersArr = [
+        { userId: selectedPayer?.id ?? currentUser.id, amount: parsedAmount }
+      ];
+      const paymentSplits = generatePaymentSplits(payersArr, memberSplits);
+
+      const clientId = uuid();
+      const optimistic = offlineQueue.buildOptimisticExpense({
+        clientId,
+        groupId: selectedGroup.id,
+        amount: parsedAmount,
+        description: description.trim(),
+        currency,
+        creator: {
+          id: currentUser.id,
+          email: currentUser.email,
+          phone: currentUser.phone,
+          first_name: currentUser.first_name,
+          last_name: currentUser.last_name,
+          avatar: currentUser.avatar,
+          plan: currentUser.plan
+        },
+        payers: payersArr,
+        members
+      });
+
+      await offlineQueue.queueAddExpense(
+        selectedGroup.id,
+        {
+          expensePayload: {
+            amount: parsedAmount,
+            description: description.trim(),
+            proof_of_payment: null,
+            group_id: selectedGroup.id,
+            split_type: "equal",
+            currency,
+            expense_date: expenseDate.toISOString()
+          },
+          payers: payersArr,
+          memberSplits,
+          paymentSplits
+        },
+        optimistic
+      );
+
+      toast({
+        title: "Saved offline",
+        description:
+          "This expense will sync automatically when you're back online.",
+        type: "info"
+      });
+      onClose();
+      return;
+    }
 
     if (!isPro) {
       const count = await services.expense.getDailyExpenseCount(currentUser.id);

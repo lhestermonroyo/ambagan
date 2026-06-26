@@ -8,6 +8,7 @@ import {
   PaymentPreview
 } from "@/types/expenses";
 import { NotificationType } from "@/types/notifications";
+import { cacheService } from "@/utils/cacheService";
 import { splitTypes, tables } from "@/utils/constants";
 
 export const getDailyExpenseCount = async (userId: string): Promise<number> => {
@@ -38,6 +39,8 @@ export const saveExpense = async (
     split_type: (typeof splitTypes)[number]["value"];
     currency: string;
     expense_date?: Date;
+    /** Optional pre-generated id — used so offline-queued expenses keep a stable id on sync. */
+    id?: string;
   },
   payers: { userId: string; amount: number }[],
   memberSplits: { userId: string; amount: number; percentage: number }[],
@@ -49,7 +52,7 @@ export const saveExpense = async (
     throw new Error("User not authenticated");
   }
 
-  const expenseId = uuid();
+  const expenseId = expensePayload.id ?? uuid();
   let proofUrl: string | null = null;
 
   const {
@@ -228,35 +231,12 @@ export const getPaymentsByUserId = async (
     throw new Error("User not authenticated");
   }
 
+  // Only the unfiltered first page powers the offline "recent activity" feed.
+  const canCache =
+    page === 0 && !withMetadata && !filters?.role && !filters?.status;
+
   const from = page * limit;
   const to = from + limit - 1;
-
-  let query = supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .select(
-      `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), amount, status, expense:expense_id(description, currency)`,
-      { count: withMetadata ? "exact" : undefined }
-    )
-    .order("created_at", { ascending: false })
-    .range(from, to);
-
-  if (filters?.role === "collects") {
-    query = query.eq("payer_id", userId);
-  } else if (filters?.role === "pays") {
-    query = query.eq("member_id", userId);
-  } else {
-    query = query.or(`member_id.eq.${userId},payer_id.eq.${userId}`);
-  }
-
-  if (filters?.status) {
-    query = query.eq("status", filters.status);
-  }
-
-  const expenseSplitResponse = await query;
-
-  if (expenseSplitResponse.error) {
-    throw expenseSplitResponse.error;
-  }
 
   const normalize = (data: any[]) =>
     data.map((item) => {
@@ -273,28 +253,71 @@ export const getPaymentsByUserId = async (
       };
     });
 
-  if (withMetadata) {
-    const totalCount = expenseSplitResponse.count || 0;
-    const totalPages = Math.ceil(totalCount / limit);
-    const hasNext = page < totalPages - 1;
-    const hasPrevious = page > 0;
+  try {
+    let query = supabase
+      .from(tables.PAYMENT_SPLITS_TBL)
+      .select(
+        `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), amount, status, expense:expense_id(description, currency)`,
+        { count: withMetadata ? "exact" : undefined }
+      )
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
-    return {
-      data: normalize(expenseSplitResponse.data) as PaymentPreview[],
-      pagination: {
-        page,
-        limit,
-        totalCount,
-        totalPages,
-        hasNext,
-        hasPrevious
-      }
+    if (filters?.role === "collects") {
+      query = query.eq("payer_id", userId);
+    } else if (filters?.role === "pays") {
+      query = query.eq("member_id", userId);
+    } else {
+      query = query.or(`member_id.eq.${userId},payer_id.eq.${userId}`);
+    }
+
+    if (filters?.status) {
+      query = query.eq("status", filters.status);
+    }
+
+    const expenseSplitResponse = await query;
+
+    if (expenseSplitResponse.error) {
+      throw expenseSplitResponse.error;
+    }
+
+    if (withMetadata) {
+      const totalCount = expenseSplitResponse.count || 0;
+      const totalPages = Math.ceil(totalCount / limit);
+      const hasNext = page < totalPages - 1;
+      const hasPrevious = page > 0;
+
+      return {
+        data: normalize(expenseSplitResponse.data) as PaymentPreview[],
+        pagination: {
+          page,
+          limit,
+          totalCount,
+          totalPages,
+          hasNext,
+          hasPrevious
+        }
+      };
+    }
+
+    const result = {
+      data: normalize(expenseSplitResponse.data) as PaymentPreview[]
     };
-  }
 
-  return {
-    data: normalize(expenseSplitResponse.data) as PaymentPreview[]
-  };
+    if (canCache) {
+      cacheService.savePayments(userId, result.data).catch(() => {});
+    }
+
+    return result;
+  } catch (error) {
+    if (canCache) {
+      const cached = await cacheService.getPayments(userId);
+      if (cached) {
+        return { data: cached as PaymentPreview[] };
+      }
+    }
+    throw error;
+  }
 };
 
 export const getPaymentsByExpenseId = async (expenseId: string) => {
@@ -331,32 +354,6 @@ export const getPaymentsByExpenseId = async (expenseId: string) => {
 };
 
 export const getStatsByUserId = async (userId: string) => {
-  const user = await supabase.auth.getUser();
-
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
-  }
-
-  const toPayResponse = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .select("amount, expense:expense_id(currency)")
-    .eq("member_id", userId)
-    .or(`status.eq.pending,status.eq.requested`);
-
-  if (toPayResponse.error) {
-    throw toPayResponse.error;
-  }
-
-  const toReceiveResponse = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .select("amount, expense:expense_id(currency)")
-    .eq("payer_id", userId)
-    .or(`status.eq.pending,status.eq.requested`);
-
-  if (toReceiveResponse.error) {
-    throw toReceiveResponse.error;
-  }
-
   const groupByCurrency = (data: { amount: number; expense: any }[]) => {
     const map: Record<string, number> = {};
     data.forEach((item) => {
@@ -372,10 +369,51 @@ export const getStatsByUserId = async (userId: string) => {
     }));
   };
 
-  return {
-    toPay: groupByCurrency(toPayResponse.data ?? []),
-    toReceive: groupByCurrency(toReceiveResponse.data ?? [])
-  };
+  try {
+    const user = await supabase.auth.getUser();
+
+    if (!user.data.user) {
+      throw new Error("User not authenticated");
+    }
+
+    const toPayResponse = await supabase
+      .from(tables.PAYMENT_SPLITS_TBL)
+      .select("amount, expense:expense_id(currency)")
+      .eq("member_id", userId)
+      .or(`status.eq.pending,status.eq.requested`);
+
+    if (toPayResponse.error) {
+      throw toPayResponse.error;
+    }
+
+    const toReceiveResponse = await supabase
+      .from(tables.PAYMENT_SPLITS_TBL)
+      .select("amount, expense:expense_id(currency)")
+      .eq("payer_id", userId)
+      .or(`status.eq.pending,status.eq.requested`);
+
+    if (toReceiveResponse.error) {
+      throw toReceiveResponse.error;
+    }
+
+    const result = {
+      toPay: groupByCurrency(toPayResponse.data ?? []),
+      toReceive: groupByCurrency(toReceiveResponse.data ?? [])
+    };
+
+    cacheService.saveStats(userId, result).catch(() => {});
+
+    return result;
+  } catch (error) {
+    const cached = await cacheService.getStats(userId);
+    if (cached) {
+      return cached as {
+        toPay: { currency: string; amount: number }[];
+        toReceive: { currency: string; amount: number }[];
+      };
+    }
+    throw error;
+  }
 };
 
 export const getExpensesByGroupId = async (groupId: string) => {
