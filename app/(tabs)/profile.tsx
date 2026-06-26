@@ -245,7 +245,7 @@ export default function ProfileScreen() {
                       : "No daily limits, CSV exports & more"}
                   </Text>
                 </VStack>
-                <Icon as="chevron-right" className="text-background-0" />
+                <Icon as="chevron-right" className="text-secondary-0" />
               </Box>
             </Pressable>
           </VStack>

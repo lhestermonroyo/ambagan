@@ -251,7 +251,7 @@ export default function SubscriptionScreen() {
               <VStack className="gap-y-4">
                 <HStack className="items-center justify-between">
                   <VStack className="gap-y-1">
-                    <Text className="font-semibold uppercase text-warning-900">
+                    <Text className="font-semibold uppercase text-warning-50">
                       Current Plan
                     </Text>
                     <HStack className="items-center gap-x-2">
@@ -267,8 +267,8 @@ export default function SubscriptionScreen() {
                   </VStack>
                   <Crown size={36} color="rgba(255,255,255,0.8)" />
                 </HStack>
-                <Divider className="border-warning-300" />
-                <Text className="text-warning-950">
+                <Divider className="border-warning-50" />
+                <Text className="text-warning-50">
                   Thank you for your support! 🎉
                 </Text>
               </VStack>
