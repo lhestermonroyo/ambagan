@@ -31,9 +31,12 @@ export default function NewExpenseScreen() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
+  const [upgradeDescription, setUpgradeDescription] = useState<
+    string | undefined
+  >(undefined);
   const [dailyCount, setDailyCount] = useState(0);
   const [values, setValues] = useState({
-    currency: defaultCurrency,
+    currency: isPro ? defaultCurrency : "PHP",
     amount: "",
     description: "",
     expense_date: new Date(),
@@ -228,6 +231,9 @@ export default function NewExpenseScreen() {
         userDetails!.id
       );
       if (count >= DAILY_EXPENSE_LIMIT) {
+        setUpgradeDescription(
+          "You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
+        );
         setUpgradeSheetOpen(true);
         return;
       }
@@ -450,6 +456,13 @@ export default function NewExpenseScreen() {
           setValues={setValues}
           formErrors={formErrors}
           isLockedGroup={isLocked}
+          currencyLocked={!isPro}
+          onCurrencyLockedPress={() => {
+            setUpgradeDescription(
+              "Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
+            );
+            setUpgradeSheetOpen(true);
+          }}
           step={step}
         />
       )}
@@ -483,7 +496,7 @@ export default function NewExpenseScreen() {
     <UpgradeSheet
       isOpen={upgradeSheetOpen}
       onClose={() => setUpgradeSheetOpen(false)}
-      description="You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
+      description={upgradeDescription}
     />
     </>
   );

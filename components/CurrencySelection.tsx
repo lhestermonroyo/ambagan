@@ -1,7 +1,7 @@
 import ListDivider from "@/components/ListDivider";
 import { currencies } from "@/utils/constants";
 import { getSecondaryHex } from "@/utils/getColorHex";
-import { ChevronDown, CircleIcon } from "lucide-react-native";
+import { ChevronDown, CircleIcon, Lock } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 import PressableListItem from "./PressableListItem";
@@ -74,10 +74,14 @@ export const CurrencySelectionSheet = ({
 
 const CurrencySelection = ({
   currency,
-  onCurrencyChange
+  onCurrencyChange,
+  locked = false,
+  onLockedPress
 }: {
   currency: string;
   onCurrencyChange: (currency: string) => void;
+  locked?: boolean;
+  onLockedPress?: () => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const colorScheme = useColorScheme() ?? "light";
@@ -89,23 +93,32 @@ const CurrencySelection = ({
   return (
     <Fragment>
       <PressableListItem
-        onPress={() => setIsOpen(true)}
+        onPress={() => (locked ? onLockedPress?.() : setIsOpen(true))}
         className="border border-secondary-500 items-center justify-center h-full px-2 py-2 rounded-lg"
       >
         <HStack className="items-center justify-center gap-x-1">
           <Text className="font-semibold">{currencyLabel}</Text>
-          <ChevronDown
-            size={18}
-            color={getSecondaryHex("text-secondary-950", colorScheme)}
-          />
+          {locked ? (
+            <Lock
+              size={16}
+              color={getSecondaryHex("text-secondary-950", colorScheme)}
+            />
+          ) : (
+            <ChevronDown
+              size={18}
+              color={getSecondaryHex("text-secondary-950", colorScheme)}
+            />
+          )}
         </HStack>
       </PressableListItem>
-      <CurrencySelectionSheet
-        isOpen={isOpen}
-        currency={currency}
-        onClose={() => setIsOpen(false)}
-        onCurrencyChange={onCurrencyChange}
-      />
+      {!locked && (
+        <CurrencySelectionSheet
+          isOpen={isOpen}
+          currency={currency}
+          onClose={() => setIsOpen(false)}
+          onCurrencyChange={onCurrencyChange}
+        />
+      )}
     </Fragment>
   );
 };

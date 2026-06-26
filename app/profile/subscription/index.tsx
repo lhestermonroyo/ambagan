@@ -46,6 +46,11 @@ const FEATURES = [
     description: "See where your money goes — by group, by month, by friend."
   },
   {
+    icon: "currency-exchange",
+    title: "Multi-currency expenses",
+    description: "Split bills in any currency — PHP, USD, JPY, and more."
+  },
+  {
     icon: "star",
     title: "All future updates included",
     description: "New Pro features as they ship — yours forever."

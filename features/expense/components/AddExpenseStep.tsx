@@ -57,6 +57,8 @@ type AddExpenseStepProps = {
     description?: string;
   };
   isLockedGroup?: boolean;
+  currencyLocked?: boolean;
+  onCurrencyLockedPress?: () => void;
   step: number;
 };
 
@@ -65,6 +67,8 @@ export default function AddExpenseStep({
   setValues,
   formErrors,
   isLockedGroup = false,
+  currencyLocked = false,
+  onCurrencyLockedPress,
   step = 1
 }: AddExpenseStepProps) {
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -110,6 +114,8 @@ export default function AddExpenseStep({
                 onCurrencyChange={(currency) =>
                   setValues((prevValues) => ({ ...prevValues, currency }))
                 }
+                locked={currencyLocked}
+                onLockedPress={onCurrencyLockedPress}
               />
               <VStack className="flex-1">
                 <AmountInput

@@ -85,6 +85,9 @@ export default function QuickAddExpenseSheet({
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   const [payerPickerOpen, setPayerPickerOpen] = useState(false);
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
+  const [upgradeDescription, setUpgradeDescription] = useState<
+    string | undefined
+  >(undefined);
   const [dailyCount, setDailyCount] = useState(0);
 
   const { details: currentUser, defaultCurrency } = states.user();
@@ -104,7 +107,7 @@ export default function QuickAddExpenseSheet({
       setExpenseDate(new Date());
       setSelectedGroup(group);
       setSelectedPayer(null);
-      setCurrency(defaultCurrency);
+      setCurrency(isPro ? defaultCurrency : "PHP");
       if (group) fetchMembers(group.id);
       if (!isPro && currentUser?.id) {
         services.expense
@@ -120,7 +123,7 @@ export default function QuickAddExpenseSheet({
 
   useEffect(() => {
     if (selectedGroup && isOpen) {
-      setCurrency(defaultCurrency);
+      setCurrency(isPro ? defaultCurrency : "PHP");
       fetchMembers(selectedGroup.id);
     }
   }, [selectedGroup?.id]);
@@ -167,6 +170,9 @@ export default function QuickAddExpenseSheet({
     if (!isPro) {
       const count = await services.expense.getDailyExpenseCount(currentUser.id);
       if (count >= DAILY_EXPENSE_LIMIT) {
+        setUpgradeDescription(
+          "You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
+        );
         setUpgradeSheetOpen(true);
         return;
       }
@@ -288,6 +294,13 @@ export default function QuickAddExpenseSheet({
                         <CurrencySelection
                           currency={currency}
                           onCurrencyChange={setCurrency}
+                          locked={!isPro}
+                          onLockedPress={() => {
+                            setUpgradeDescription(
+                              "Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
+                            );
+                            setUpgradeSheetOpen(true);
+                          }}
                         />
                         <VStack className="flex-1">
                           <AmountInput
@@ -502,7 +515,7 @@ export default function QuickAddExpenseSheet({
       <UpgradeSheet
         isOpen={upgradeSheetOpen}
         onClose={() => setUpgradeSheetOpen(false)}
-        description="You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
+        description={upgradeDescription}
       />
 
       <BottomSheetModal

@@ -112,7 +112,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Can I use different currencies?",
         answer:
-          "Yes. Each expense can be set to a different currency, which is useful for travel groups. Your default currency can be changed in Profile → Default Currency."
+          "Multi-currency is a Pro feature. With Pro, each expense can be set to a different currency — useful for travel groups — and you can set a default currency in Profile → Default Currency. Free expenses are in Philippine Peso (PHP)."
       },
       {
         question: "How are members shown in the expense detail?",
@@ -212,7 +212,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is the Pro plan?",
         answer:
-          "Pro is a one-time purchase of ₱499 that removes the daily expense limit and unlocks premium features: unlimited expenses per day, CSV export, and spending analytics. Multi-currency expenses and push notifications are free for everyone."
+          "Pro is a one-time purchase of ₱499 that removes the daily expense limit and unlocks premium features: unlimited expenses per day, CSV export, spending analytics, and multi-currency expenses. Push notifications are free for everyone."
       },
       {
         question: "How do I upgrade to Pro?",
@@ -253,7 +253,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I change my default currency?",
         answer:
-          "Go to Profile → Default Currency and select your preferred currency. This will be pre-selected when you create new expenses."
+          "Default currency is a Pro feature. After upgrading, go to Profile → Default Currency and select your preferred currency — it will be pre-selected when you create new expenses. Free accounts use Philippine Peso (PHP)."
       },
       {
         question: "How do I change the app appearance?",

@@ -56,6 +56,7 @@ export default function ProfileScreen() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [analyticsUpgradeOpen, setAnalyticsUpgradeOpen] = useState(false);
+  const [currencyUpgradeOpen, setCurrencyUpgradeOpen] = useState(false);
 
   const currencyLabel = useMemo(() => {
     return currencies.find((c) => c.value === defaultCurrency)?.label;
@@ -128,7 +129,8 @@ export default function ProfileScreen() {
             label: "Default Currency",
             description: "Manage your default currency",
             value: <Text className="text-lg">{currencyLabel}</Text>,
-            onPress: () => setCurrencyOpen(true)
+            onPress: () =>
+              isPro ? setCurrencyOpen(true) : setCurrencyUpgradeOpen(true)
           },
           {
             icon: (
@@ -291,6 +293,12 @@ export default function ProfileScreen() {
         isOpen={analyticsUpgradeOpen}
         onClose={() => setAnalyticsUpgradeOpen(false)}
         description="Spending Analytics is a Pro feature. Upgrade to see where your money goes."
+      />
+
+      <UpgradeSheet
+        isOpen={currencyUpgradeOpen}
+        onClose={() => setCurrencyUpgradeOpen(false)}
+        description="Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
       />
 
       <AppearanceSheet
