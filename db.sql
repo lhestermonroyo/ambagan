@@ -136,3 +136,16 @@ CREATE TABLE public.users_tbl (
   plan_expires_at timestamp with time zone,
   CONSTRAINT users_tbl_pkey PRIMARY KEY (id)
 );
+-- Required for account deletion (called via supabase.rpc('delete_user'))
+-- Run this in your Supabase SQL Editor.
+CREATE OR REPLACE FUNCTION delete_user()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  DELETE FROM public.users_tbl WHERE id = auth.uid();
+  DELETE FROM auth.users WHERE id = auth.uid();
+END;
+$$;

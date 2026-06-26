@@ -72,7 +72,10 @@ export default function FriendsScreen() {
     try {
       const data = await services.friend.getFriendsSummary(userDetails.id);
       setFriends(data);
-      addRecentUsers(data.map((f) => f.friend), userDetails.id).catch(() => {});
+      addRecentUsers(
+        data.map((f) => f.friend),
+        userDetails.id
+      ).catch(() => {});
     } catch (error) {
       console.error("Failed to fetch friends:", error);
     } finally {
@@ -99,33 +102,43 @@ export default function FriendsScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchFriends(true), loadFavorites(), loadRecentFriends()]);
+    await Promise.all([
+      fetchFriends(true),
+      loadFavorites(),
+      loadRecentFriends()
+    ]);
     setRefreshing(false);
   };
 
-  const handleFriendPress = useCallback((item: FriendSummary) => {
-    router.push({
-      pathname: "/friends/[friendId]",
-      params: {
-        friendId: item.friend.id,
-        name: `${item.friend.first_name} ${item.friend.last_name}`,
-        email: item.friend.email,
-        avatar: item.friend.avatar || ""
-      }
-    });
-  }, [router]);
+  const handleFriendPress = useCallback(
+    (item: FriendSummary) => {
+      router.push({
+        pathname: "/friends/[friendId]",
+        params: {
+          friendId: item.friend.id,
+          name: `${item.friend.first_name} ${item.friend.last_name}`,
+          email: item.friend.email,
+          avatar: item.friend.avatar || ""
+        }
+      });
+    },
+    [router]
+  );
 
-  const handleFavoritePress = useCallback((user: UserPreview) => {
-    router.push({
-      pathname: "/friends/[friendId]",
-      params: {
-        friendId: user.id,
-        name: `${user.first_name} ${user.last_name}`,
-        email: user.email,
-        avatar: user.avatar || ""
-      }
-    });
-  }, [router]);
+  const handleFavoritePress = useCallback(
+    (user: UserPreview) => {
+      router.push({
+        pathname: "/friends/[friendId]",
+        params: {
+          friendId: user.id,
+          name: `${user.first_name} ${user.last_name}`,
+          email: user.email,
+          avatar: user.avatar || ""
+        }
+      });
+    },
+    [router]
+  );
 
   const allList = useMemo(
     () =>
@@ -206,10 +219,7 @@ export default function FriendsScreen() {
 
   return (
     <Fragment>
-      <TabLayout
-        title="Friends"
-        actions={[]}
-      >
+      <TabLayout title="Friends" actions={[]}>
         <VStack className="bg-background-0 pb-3 gap-y-3">
           <Box className="px-4">
             <SearchInput
@@ -358,12 +368,10 @@ export default function FriendsScreen() {
                 )}
                 ListFooterComponent={() => <Box className="h-16" />}
               />
-            )
-            }
+            )}
           </LoadingWrapper>
         </ScrollView>
       </TabLayout>
-
     </Fragment>
   );
 }

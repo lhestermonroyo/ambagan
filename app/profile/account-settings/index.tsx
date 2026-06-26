@@ -1,10 +1,22 @@
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
+import {
+  AlertDialog,
+  AlertDialogBackdrop,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader
+} from "@/components/ui/alert-dialog";
+import { Button, ButtonText } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { ScrollView } from "@/components/ui/scroll-view";
+import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
+import states from "@/states";
 import { useRouter } from "expo-router";
 import { Eye, EyeOff } from "lucide-react-native";
 import { useState } from "react";
@@ -12,8 +24,11 @@ import { useState } from "react";
 export default function AccountSettingsScreen() {
   const router = useRouter();
   const toast = useAppToast();
+  const { signOut } = states.user();
 
   const [submitting, setSubmitting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -94,6 +109,24 @@ export default function AccountSettingsScreen() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await services.auth.deleteAccount();
+      signOut();
+      router.replace("/(auth)/login");
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to delete account. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   return (
     <InnerLayout title="Account Settings" onBack={() => router.back()}>
       <ScrollView className="flex-1">
@@ -147,8 +180,54 @@ export default function AccountSettingsScreen() {
             loading={submitting}
             onPress={handleSubmit}
           />
+
+          <VStack className="gap-y-2 pt-4 border-t border-background-200">
+            <Text bold className="text-lg">
+              Delete Account
+            </Text>
+            <Text className="text-secondary-950">
+              Permanently delete your account and all associated data. This
+              action cannot be undone.
+            </Text>
+            <FormButton
+              text="Delete My Account"
+              action="negative"
+              onPress={() => setDeleteDialogOpen(true)}
+            />
+          </VStack>
         </VStack>
       </ScrollView>
+
+      <AlertDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <AlertDialogBackdrop />
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <Heading size="md">Delete Account</Heading>
+          </AlertDialogHeader>
+          <AlertDialogBody>
+            <Text>
+              Are you sure you want to delete your account? All your data —
+              groups, expenses, and settlements — will be permanently removed.
+              This cannot be undone.
+            </Text>
+          </AlertDialogBody>
+          <AlertDialogFooter className="gap-x-2">
+            <Button
+              variant="outline"
+              onPress={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+            >
+              <ButtonText>Cancel</ButtonText>
+            </Button>
+            <Button action="negative" onPress={handleDeleteAccount} disabled={deleting}>
+              <ButtonText>{deleting ? "Deleting..." : "Delete"}</ButtonText>
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </InnerLayout>
   );
 }

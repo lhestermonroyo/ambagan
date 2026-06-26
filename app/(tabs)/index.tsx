@@ -52,7 +52,14 @@ import {
   HousePlus,
   PlusCircle
 } from "lucide-react-native";
-import React, { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import {
   Animated,
   Platform,
@@ -335,7 +342,10 @@ export default function HomeScreen() {
   };
 
   const groupsPreview = useMemo(() => groupList.slice(0, 5), [groupList]);
-  const activitiesPreview = useMemo(() => activityList.slice(0, 5), [activityList]);
+  const activitiesPreview = useMemo(
+    () => activityList.slice(0, 5),
+    [activityList]
+  );
   const friendsPreview = useMemo(() => friends.slice(0, 5), [friends]);
 
   const handleOpenActionSheet = useCallback((item: PaymentPreview) => {
@@ -343,11 +353,20 @@ export default function HomeScreen() {
     setActionSheetOpen(true);
   }, []);
 
-  const handleCloseActionSheet = useCallback(() => setActionSheetOpen(false), []);
+  const handleCloseActionSheet = useCallback(
+    () => setActionSheetOpen(false),
+    []
+  );
   const handleRefetch = useCallback(() => init(true), [userId]);
 
-  const handleOpenNewExpense = useCallback(() => setNewExpensePickerOpen(true), []);
-  const handleCloseNewExpense = useCallback(() => setNewExpensePickerOpen(false), []);
+  const handleOpenNewExpense = useCallback(
+    () => setNewExpensePickerOpen(true),
+    []
+  );
+  const handleCloseNewExpense = useCallback(
+    () => setNewExpensePickerOpen(false),
+    []
+  );
   const handleOpenQuickAdd = useCallback(() => setQuickAddOpen(true), []);
   const handleCloseQuickAdd = useCallback(() => setQuickAddOpen(false), []);
 
@@ -373,7 +392,10 @@ export default function HomeScreen() {
 
   const renderGroupItem = useCallback(
     ({ item }: { item: (typeof groupList)[0] }) => (
-      <GroupItem details={item} onOpen={() => router.push(`/groups/${item.id}`)} />
+      <GroupItem
+        details={item}
+        onOpen={() => router.push(`/groups/${item.id}`)}
+      />
     ),
     [router]
   );
@@ -727,7 +749,11 @@ function StatItem({
   const sorted = useMemo(
     () =>
       [...items].sort((a, b) =>
-        a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+        a.currency === primaryCurrency
+          ? -1
+          : b.currency === primaryCurrency
+            ? 1
+            : 0
       ),
     [items, primaryCurrency]
   );
@@ -820,7 +846,11 @@ function NetBalanceRow({
   const sorted = useMemo(
     () =>
       [...items].sort((a, b) =>
-        a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+        a.currency === primaryCurrency
+          ? -1
+          : b.currency === primaryCurrency
+            ? 1
+            : 0
       ),
     [items, primaryCurrency]
   );
@@ -830,7 +860,7 @@ function NetBalanceRow({
   return (
     <Fragment>
       <VStack className="gap-y-2">
-        <Text bold className="text-background-0 uppercase text-sm">
+        <Text bold className="text-background-0 uppercase">
           Net Balance
         </Text>
         {isLoading ? (
