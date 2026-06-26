@@ -339,6 +339,8 @@ export default function ReviewRequestPaidSheet({
                             className="flex-1"
                             action="negative"
                             text="Reject"
+                            isDelete
+                            confirmText="Reject"
                             loading={rejecting}
                             disabled={submitting}
                             onConfirm={handleRejectRequest}
@@ -361,6 +363,8 @@ export default function ReviewRequestPaidSheet({
                         className="flex-1"
                         action="negative"
                         text="Undo Request"
+                        isDelete
+                        confirmText="Undo Request"
                         loading={undoing}
                         disabled={submitting}
                         onConfirm={handleUndoRequest}

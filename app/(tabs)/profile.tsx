@@ -335,7 +335,7 @@ function MenuItem({
         {icon}
         <VStack className="flex-1">
           <Text className="text-lg flex-1">{label}</Text>
-          <Text className="text-secondary-950">{description}</Text>
+          <Text className="text-secondary-950 text-sm">{description}</Text>
         </VStack>
         <HStack className="gap-x-2 items-center self-center">
           {value}

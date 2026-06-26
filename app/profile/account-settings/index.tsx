@@ -1,15 +1,7 @@
+import ConfirmButton from "@/components/ConfirmButton";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
-import {
-  AlertDialog,
-  AlertDialogBackdrop,
-  AlertDialogBody,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader
-} from "@/components/ui/alert-dialog";
-import { Button, ButtonText } from "@/components/ui/button";
-import { Heading } from "@/components/ui/heading";
+import { Divider } from "@/components/ui/divider";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -27,8 +19,6 @@ export default function AccountSettingsScreen() {
   const { signOut } = states.user();
 
   const [submitting, setSubmitting] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -110,7 +100,6 @@ export default function AccountSettingsScreen() {
   };
 
   const handleDeleteAccount = async () => {
-    setDeleting(true);
     try {
       await services.auth.deleteAccount();
       signOut();
@@ -121,9 +110,6 @@ export default function AccountSettingsScreen() {
         description: "Failed to delete account. Please try again.",
         type: "error"
       });
-    } finally {
-      setDeleting(false);
-      setDeleteDialogOpen(false);
     }
   };
 
@@ -181,53 +167,29 @@ export default function AccountSettingsScreen() {
             onPress={handleSubmit}
           />
 
-          <VStack className="gap-y-2 pt-4 border-t border-background-200">
-            <Text bold className="text-lg">
-              Delete Account
-            </Text>
-            <Text className="text-secondary-950">
-              Permanently delete your account and all associated data. This
-              action cannot be undone.
-            </Text>
-            <FormButton
+          <Divider className="border-background-200" />
+
+          <VStack className="gap-y-4">
+            <VStack className="gap-y-2">
+              <Text bold className="text-xl">
+                Delete Account
+              </Text>
+              <Text className="text-secondary-950">
+                Permanently delete your account and all associated data. This
+                action cannot be undone.
+              </Text>
+            </VStack>
+            <ConfirmButton
               text="Delete My Account"
               action="negative"
-              onPress={() => setDeleteDialogOpen(true)}
+              isDelete
+              confirmTitle="Delete Account"
+              confirmDescription="Are you sure you want to delete your account? All your data — groups, expenses, and settlements — will be permanently removed. This cannot be undone."
+              onConfirm={handleDeleteAccount}
             />
           </VStack>
         </VStack>
       </ScrollView>
-
-      <AlertDialog
-        isOpen={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-      >
-        <AlertDialogBackdrop />
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <Heading size="md">Delete Account</Heading>
-          </AlertDialogHeader>
-          <AlertDialogBody>
-            <Text>
-              Are you sure you want to delete your account? All your data —
-              groups, expenses, and settlements — will be permanently removed.
-              This cannot be undone.
-            </Text>
-          </AlertDialogBody>
-          <AlertDialogFooter className="gap-x-2">
-            <Button
-              variant="outline"
-              onPress={() => setDeleteDialogOpen(false)}
-              disabled={deleting}
-            >
-              <ButtonText>Cancel</ButtonText>
-            </Button>
-            <Button action="negative" onPress={handleDeleteAccount} disabled={deleting}>
-              <ButtonText>{deleting ? "Deleting..." : "Delete"}</ButtonText>
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </InnerLayout>
   );
 }

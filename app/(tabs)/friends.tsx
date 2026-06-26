@@ -272,10 +272,7 @@ export default function FriendsScreen() {
               <>
                 {activeTab === "all" && filteredFavorites.length > 0 && (
                   <VStack className="gap-y-2">
-                    <Text
-                      bold
-                      className="text-secondary-950 uppercase text-sm px-4"
-                    >
+                    <Text bold className="text-secondary-950 uppercase px-4">
                       Favorites
                     </Text>
                     <ScrollView
@@ -315,7 +312,7 @@ export default function FriendsScreen() {
                       {filteredFavorites.length > 0 && (
                         <Text
                           bold
-                          className="text-secondary-950 uppercase text-sm px-4"
+                          className="text-secondary-950 uppercase px-4"
                         >
                           Settlements
                         </Text>
@@ -335,10 +332,7 @@ export default function FriendsScreen() {
                 ) : (
                   <VStack className="gap-y-2">
                     {activeTab === "all" && (
-                      <Text
-                        bold
-                        className="text-secondary-950 uppercase text-sm px-4"
-                      >
+                      <Text bold className="text-secondary-950 uppercase px-4">
                         Settlements
                       </Text>
                     )}

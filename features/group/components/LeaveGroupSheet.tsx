@@ -272,6 +272,8 @@ export default function LeaveGroupSheet({
                 className="flex-1"
                 action="negative"
                 text="Leave Group"
+                isDelete
+                confirmText={isSoleAdmin ? "Delete Group" : "Leave Group"}
                 loading={loading}
                 disabled={!canLeave}
                 onConfirm={handleLeave}
