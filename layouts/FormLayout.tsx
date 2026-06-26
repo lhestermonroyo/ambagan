@@ -12,11 +12,13 @@ import { Platform } from "react-native";
 export default function FormLayout({
   children,
   title,
+  titleRight,
   onBack,
   footer
 }: {
   children: React.ReactNode;
   title: string;
+  titleRight?: React.ReactNode;
   onBack: () => void;
   footer: React.ReactNode[];
 }) {
@@ -39,6 +41,7 @@ export default function FormLayout({
             <Text bold className="flex-1 text-xl">
               {title}
             </Text>
+            {titleRight}
           </HStack>
         </Box>
         {children}

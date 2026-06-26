@@ -1,5 +1,6 @@
 import AppAvatar from "@/components/AppAvatar";
 import { CurrencySelectionSheet } from "@/components/CurrencySelection";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
@@ -32,6 +33,7 @@ import {
   MonitorCog,
   Moon,
   Sun,
+  TrendingUp,
   UserCircle,
   UserLock
 } from "lucide-react-native";
@@ -53,6 +55,7 @@ export default function ProfileScreen() {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [analyticsUpgradeOpen, setAnalyticsUpgradeOpen] = useState(false);
 
   const currencyLabel = useMemo(() => {
     return currencies.find((c) => c.value === defaultCurrency)?.label;
@@ -117,6 +120,19 @@ export default function ProfileScreen() {
         description: "Customize the look and feel of the app",
         value: <Text className="text-lg">{appearanceLabel}</Text>,
         onPress: () => setAppearanceOpen(true)
+      },
+      {
+        icon: (
+          <TrendingUp
+            color={getPrimaryHex("text-primary-400", colorScheme)}
+          />
+        ),
+        label: "Spending Analytics",
+        description: "See where your money goes — by group, by month, by friend",
+        onPress: () =>
+          isPro
+            ? router.push("/profile/analytics")
+            : setAnalyticsUpgradeOpen(true)
       },
       {
         icon: (
@@ -239,6 +255,12 @@ export default function ProfileScreen() {
         </VStack>
         <Box className="h-16" />
       </ScrollView>
+
+      <UpgradeSheet
+        isOpen={analyticsUpgradeOpen}
+        onClose={() => setAnalyticsUpgradeOpen(false)}
+        description="Spending Analytics is a Pro feature. Upgrade to see where your money goes."
+      />
 
       <AppearanceSheet
         isOpen={appearanceOpen}

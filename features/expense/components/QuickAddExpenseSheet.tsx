@@ -13,6 +13,7 @@ import {
   ActionsheetDragIndicator,
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
+import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -84,6 +85,7 @@ export default function QuickAddExpenseSheet({
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   const [payerPickerOpen, setPayerPickerOpen] = useState(false);
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
+  const [dailyCount, setDailyCount] = useState(0);
 
   const { details: currentUser, defaultCurrency } = states.user();
   const isPro = currentUser?.plan === "pro";
@@ -104,6 +106,12 @@ export default function QuickAddExpenseSheet({
       setSelectedPayer(null);
       setCurrency(defaultCurrency);
       if (group) fetchMembers(group.id);
+      if (!isPro && currentUser?.id) {
+        services.expense
+          .getDailyExpenseCount(currentUser.id)
+          .then(setDailyCount)
+          .catch(() => {});
+      }
     } else {
       setMembers([]);
       setSelectedPayer(null);
@@ -223,19 +231,29 @@ export default function QuickAddExpenseSheet({
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
           <VStack className="w-full flex-1">
-            <Pressable onPress={onClose}>
-              <HStack className="p-4 items-start">
-                <Icon as="arrow-back-ios" className="text-secondary-950" />
-                <VStack>
-                  <Text bold className="text-xl">
-                    Quick Add
-                  </Text>
-                  <Text className="text-secondary-950">
-                    Paid by you · Equal split · Dated today
-                  </Text>
+            <HStack className="align-items justify-between">
+              <Pressable onPress={onClose}>
+                <HStack className="p-4 items-start">
+                  <Icon as="arrow-back-ios" className="text-secondary-950" />
+                  <VStack>
+                    <Text bold className="text-xl">
+                      Quick Add
+                    </Text>
+                    <Text className="text-secondary-950">
+                      Paid by you · Equal split · Dated today
+                    </Text>
+                  </VStack>
+                </HStack>
+              </Pressable>
+              {!isPro && (
+                <VStack className="px-4 pt-4">
+                  <DailyLimitText
+                    count={dailyCount}
+                    limit={DAILY_EXPENSE_LIMIT}
+                  />
                 </VStack>
-              </HStack>
-            </Pressable>
+              )}
+            </HStack>
 
             {!group ? (
               <VStack className="flex-1 p-4">
@@ -536,5 +554,24 @@ export default function QuickAddExpenseSheet({
         </BottomSheetView>
       </BottomSheetModal>
     </>
+  );
+}
+
+function DailyLimitText({ count, limit }: { count: number; limit: number }) {
+  const remaining = limit - count;
+  const isLimitReached = remaining <= 0;
+
+  return (
+    <Badge
+      size="md"
+      variant="solid"
+      className={`rounded-full px-3 py-2 ${isLimitReached ? "bg-error-50" : "bg-primary-50"}`}
+    >
+      <BadgeText
+        className={`font-bold text-xs uppercase ${isLimitReached ? "text-error-600" : "text-primary-400"}`}
+      >
+        {isLimitReached ? "LIMIT REACHED" : `${remaining} / ${limit} LEFT`}
+      </BadgeText>
+    </Badge>
   );
 }

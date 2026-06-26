@@ -1,6 +1,7 @@
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import UpgradeSheet from "@/components/UpgradeSheet";
+import { Badge, BadgeText } from "@/components/ui/badge";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import AddExpenseStep from "@/features/expense/components/AddExpenseStep";
@@ -30,6 +31,7 @@ export default function NewExpenseScreen() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
+  const [dailyCount, setDailyCount] = useState(0);
   const [values, setValues] = useState({
     currency: defaultCurrency,
     amount: "",
@@ -84,6 +86,15 @@ export default function NewExpenseScreen() {
       fetchGroupMembers(values.group.id);
     }
   }, [values.group?.id]);
+
+  useEffect(() => {
+    if (!isPro && userDetails?.id) {
+      services.expense
+        .getDailyExpenseCount(userDetails.id)
+        .then(setDailyCount)
+        .catch(() => {});
+    }
+  }, []);
 
   const fetchGroupMembers = async (groupId: string) => {
     try {
@@ -384,6 +395,7 @@ export default function NewExpenseScreen() {
     <>
     <FormLayout
       title="Custom Expense"
+      titleRight={!isPro ? <DailyLimitBadge count={dailyCount} limit={DAILY_EXPENSE_LIMIT} /> : undefined}
       onBack={() => router.back()}
       footer={[
         step === 1 && (
@@ -474,5 +486,25 @@ export default function NewExpenseScreen() {
       description="You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
     />
     </>
+  );
+}
+
+
+function DailyLimitBadge({ count, limit }: { count: number; limit: number }) {
+  const remaining = limit - count;
+  const isLimitReached = remaining <= 0;
+
+  return (
+    <Badge
+      size="md"
+      variant="solid"
+      className={`rounded-full px-4 py-2 ${isLimitReached ? "bg-error-50" : "bg-primary-50"}`}
+    >
+      <BadgeText
+        className={`font-bold text-sm uppercase ${isLimitReached ? "text-error-600" : "text-primary-400"}`}
+      >
+        {isLimitReached ? "LIMIT REACHED" : `${remaining} / ${limit} LEFT`}
+      </BadgeText>
+    </Badge>
   );
 }
