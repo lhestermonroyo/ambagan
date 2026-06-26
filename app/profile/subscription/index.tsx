@@ -46,11 +46,6 @@ const FEATURES = [
     description: "See where your money goes — by group, by month, by friend."
   },
   {
-    icon: "autorenew",
-    title: "Recurring expenses",
-    description: "Auto-generate monthly expenses like rent and subscriptions."
-  },
-  {
     icon: "star",
     title: "All future updates included",
     description: "New Pro features as they ship — yours forever."

@@ -212,7 +212,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is the Pro plan?",
         answer:
-          "Pro is a one-time purchase of ₱499 that removes the daily expense limit and unlocks premium features: unlimited expenses per day, CSV export, spending analytics, and recurring expenses. Multi-currency expenses and push notifications are free for everyone."
+          "Pro is a one-time purchase of ₱499 that removes the daily expense limit and unlocks premium features: unlimited expenses per day, CSV export, and spending analytics. Multi-currency expenses and push notifications are free for everyone."
       },
       {
         question: "How do I upgrade to Pro?",
