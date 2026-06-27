@@ -52,6 +52,15 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       cached_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS cache_expense_detail (
+      expense_id TEXT PRIMARY KEY,
+      expense_json TEXT NOT NULL,
+      payer_list_json TEXT NOT NULL,
+      member_splits_json TEXT NOT NULL,
+      payment_splits_json TEXT NOT NULL,
+      cached_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS pending_queue (
       id TEXT PRIMARY KEY,
       type TEXT NOT NULL,

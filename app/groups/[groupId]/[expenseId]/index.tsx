@@ -19,7 +19,8 @@ import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
-import { ExpensePayer, MemberSplit, Payment } from "@/types/expenses";
+import { Expense, ExpensePayer, MemberSplit, Payment } from "@/types/expenses";
+import { cacheService } from "@/utils/cacheService";
 import { EmptyType } from "@/types/general";
 import { formatDate } from "@/utils/formatDate";
 import { getPrimaryHex } from "@/utils/getColorHex";
@@ -73,6 +74,34 @@ export default function ExpenseDetailsScreen() {
     }
 
     await Promise.all(requests);
+
+    const state = states.expense.getState();
+    if (state.details?.id === expenseId) {
+      // Online fetch succeeded — warm the cache for offline use.
+      cacheService
+        .saveExpenseDetail(
+          expenseId,
+          state.details,
+          state.payerList,
+          state.memberSplitList,
+          state.paymentSplitList
+        )
+        .catch(() => {});
+    } else {
+      // Online fetch failed (offline) — hydrate from cache.
+      try {
+        const cached = await cacheService.getExpenseDetail(expenseId);
+        if (cached) {
+          states.expense.setState((prev) => ({
+            ...prev,
+            details: cached.expense as Expense,
+            payerList: cached.payerList as ExpensePayer[],
+            memberSplitList: cached.memberSplits as MemberSplit[],
+            paymentSplitList: cached.paymentSplits as Payment[]
+          }));
+        }
+      } catch {}
+    }
   };
 
   const fetchGroupDetails = async (groupId: string) => {

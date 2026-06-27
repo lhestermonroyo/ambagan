@@ -359,7 +359,10 @@ export default function SubscriptionScreen() {
                         <HStack className="items-center justify-between">
                           <VStack className="gap-y-0.5 flex-1">
                             <HStack className="items-center gap-x-2">
-                              <Text bold className="text-lg">
+                              <Text
+                                bold
+                                className={`text-lg ${isSelected ? "text-primary-400" : ""}`}
+                              >
                                 {plan.label}
                               </Text>
                               {plan.badge && (
@@ -383,7 +386,7 @@ export default function SubscriptionScreen() {
                           <HStack className="items-center gap-x-4">
                             <Text
                               bold
-                              className={`text-xl ${isSelected ? "text-primary-400" : ""}`}
+                              className={`text-xl ${isSelected ? "text-primary-400" : "text-secondary-950"}`}
                             >
                               {priceLabel}
                               <Text

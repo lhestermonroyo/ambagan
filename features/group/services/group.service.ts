@@ -323,52 +323,85 @@ export const getGroupsByUserIdPaginated = async (
   page: number = 0,
   filter: GroupFilter = "all"
 ): Promise<{ data: (Group & { members: Member[] })[]; hasNext: boolean }> => {
-  const user = await supabase.auth.getUser();
-  if (!user.data.user) throw new Error("User not authenticated");
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error("User not authenticated");
 
-  const from = page * GROUPS_PAGE_SIZE;
-  const to = from + GROUPS_PAGE_SIZE - 1;
+    const from = page * GROUPS_PAGE_SIZE;
+    const to = from + GROUPS_PAGE_SIZE - 1;
 
-  let query = supabase
-    .from(tables.GROUPS_TBL)
-    .select(
-      `id, created_at, name, category, avatar, archived,
-       admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
-       ${tables.GROUP_MEMBERS_TBL}!inner(member_id),
-       expenses:${tables.EXPENSES_TBL}(count)`,
-      { count: "exact" }
-    )
-    .eq(`${tables.GROUP_MEMBERS_TBL}.member_id`, userId)
-    .eq("archived", filter === "archived")
-    .order("created_at", { ascending: false })
-    .range(from, to);
+    let query = supabase
+      .from(tables.GROUPS_TBL)
+      .select(
+        `id, created_at, name, category, avatar, archived,
+         admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
+         ${tables.GROUP_MEMBERS_TBL}!inner(member_id),
+         expenses:${tables.EXPENSES_TBL}(count)`,
+        { count: "exact" }
+      )
+      .eq(`${tables.GROUP_MEMBERS_TBL}.member_id`, userId)
+      .eq("archived", filter === "archived")
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
-  if (filter === "created") {
-    query = query.eq("admin_id", userId);
-  } else if (filter === "joined") {
-    query = query.neq("admin_id", userId);
-  }
+    if (filter === "created") {
+      query = query.eq("admin_id", userId);
+    } else if (filter === "joined") {
+      query = query.neq("admin_id", userId);
+    }
 
-  const { data, error, count } = await query;
+    const { data, error, count } = await query;
 
-  if (error) throw error;
+    if (error) throw error;
 
-  const groups = (data as any[]).map(({ group_members_tbl: _, expenses: expData, ...group }) => ({
-    ...group,
-    expense_count: (expData as any[])?.[0]?.count ?? 0
-  })) as Group[];
-  const groupIds = groups.map((g) => g.id);
-  const members = groupIds.length ? await getMembersByGroupIds(groupIds) : [];
-
-  const totalPages = Math.ceil((count || 0) / GROUPS_PAGE_SIZE);
-
-  return {
-    data: groups.map((group) => ({
+    const groups = (data as any[]).map(({ group_members_tbl: _, expenses: expData, ...group }) => ({
       ...group,
-      members: members.filter((m) => m.group_id === group.id)
-    })),
-    hasNext: page < totalPages - 1
-  };
+      expense_count: (expData as any[])?.[0]?.count ?? 0
+    })) as Group[];
+    const groupIds = groups.map((g) => g.id);
+    const members = groupIds.length ? await getMembersByGroupIds(groupIds) : [];
+
+    const totalPages = Math.ceil((count || 0) / GROUPS_PAGE_SIZE);
+
+    const result = {
+      data: groups.map((group) => ({
+        ...group,
+        members: members.filter((m) => m.group_id === group.id)
+      })),
+      hasNext: page < totalPages - 1
+    };
+
+    // Cache the first "all" page when it's the complete list (no more pages),
+    // so the Groups tab is viewable offline. Skip when there are more pages to
+    // avoid shrinking a fuller snapshot already cached by the home tab.
+    if (page === 0 && filter === "all" && !result.hasNext) {
+      cacheService.saveGroupsList(userId, result.data).catch(() => {});
+    }
+
+    return result;
+  } catch (error) {
+    // Offline / fetch failure — serve from the cached snapshot. The cache holds
+    // the full non-archived list, so we filter it by tab and return it on the
+    // first page (pagination isn't available offline).
+    if (page > 0) return { data: [], hasNext: false };
+
+    const cached = (await cacheService.getGroupsList(userId)) as
+      | (Group & { members: Member[] })[]
+      | null;
+    if (!cached) throw error;
+
+    let data = cached;
+    if (filter === "created") {
+      data = cached.filter((g) => g.admin?.id === userId);
+    } else if (filter === "joined") {
+      data = cached.filter((g) => g.admin?.id !== userId);
+    } else if (filter === "archived") {
+      // Archived groups aren't cached (the snapshot excludes them).
+      data = [];
+    }
+
+    return { data, hasNext: false };
+  }
 };
 
 export const getGroupById = async (groupId: string) => {

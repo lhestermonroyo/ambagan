@@ -13,6 +13,7 @@ import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
+import { cacheService } from "@/utils/cacheService";
 import { DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { ImagePickerSuccessResult } from "expo-image-picker";
@@ -102,31 +103,43 @@ export default function NewExpenseScreen() {
     }
   }, []);
 
+  const applyGroupMembers = (raw: Member[]) => {
+    const currentUserId = states.user.getState().details?.id;
+    const members = [...raw].sort((a, b) =>
+      a.id === currentUserId ? -1 : b.id === currentUserId ? 1 : 0
+    );
+
+    setMembers(members);
+
+    const initialSplits: any = {};
+    const initialContributions: any = {};
+
+    members.forEach((member) => {
+      initialSplits[member.id] = { amount: "", percentage: "" };
+      initialContributions[member.id] = { amount: "" };
+    });
+
+    setSplits(initialSplits);
+    setPayers(initialContributions);
+  };
+
   const fetchGroupMembers = async (groupId: string) => {
     try {
       const raw = await services.member.getMembersByGroupId(groupId);
-
       if (!raw) return;
-
-      const currentUserId = states.user.getState().details?.id;
-      const members = [...raw].sort((a, b) =>
-        a.id === currentUserId ? -1 : b.id === currentUserId ? 1 : 0
-      );
-
-      setMembers(members);
-
-      const initialSplits: any = {};
-      const initialContributions: any = {};
-
-      members.forEach((member) => {
-        initialSplits[member.id] = { amount: "", percentage: "" };
-        initialContributions[member.id] = { amount: "" };
-      });
-
-      setSplits(initialSplits);
-      setPayers(initialContributions);
+      applyGroupMembers(raw);
     } catch (error) {
       console.error("Error fetching group members:", error);
+      // Offline (or fetch failed) — fall back to the cached member list so the
+      // split/payer rows still render and the expense can be queued offline.
+      try {
+        const cached = await cacheService.getGroupDetail(groupId);
+        if (cached?.memberList?.length) {
+          applyGroupMembers(cached.memberList as Member[]);
+        }
+      } catch {
+        // no cached members — form stays empty
+      }
     }
   };
 

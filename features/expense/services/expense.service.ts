@@ -420,7 +420,7 @@ export const getExpensesByGroupId = async (groupId: string) => {
   const { data, error } = await supabase
     .from(tables.EXPENSES_TBL)
     .select(
-      `id, created_at, group_id, amount, description, status, currency, creator:creator_id!inner(id, email, phone, first_name, last_name, avatar)`
+      `id, created_at, group_id, amount, description, status, currency, expense_date, split_type, proof_of_payment, creator:creator_id!inner(id, email, phone, first_name, last_name, avatar)`
     )
     .eq("group_id", groupId)
     .order("created_at", { ascending: false });
@@ -449,7 +449,7 @@ export const getExpensesByGroupId = async (groupId: string) => {
     })
   );
 
-  return expenseList as ExpensePreview[];
+  return expenseList as unknown as ExpensePreview[];
 };
 
 export const getExpenseById = async (id: string) => {
@@ -516,6 +516,59 @@ export const getMemberSplitsByExpenseId = async (expenseId: string) => {
       expense: undefined
     };
   }) as MemberSplit[];
+};
+
+export const getMemberSplitsByExpenseIds = async (
+  expenseIds: string[]
+): Promise<MemberSplit[]> => {
+  if (expenseIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from(tables.MEMBER_SPLITS_TBL)
+    .select(
+      `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
+    )
+    .in("expense_id", expenseIds);
+
+  if (error) throw error;
+
+  return data.map((item) => {
+    const expense = Array.isArray(item.expense) ? item.expense[0] : item.expense;
+    return {
+      ...item,
+      member: Array.isArray(item.member) ? item.member[0] : item.member,
+      currency: expense?.currency ?? "PHP",
+      expense: undefined
+    };
+  }) as MemberSplit[];
+};
+
+export const getPaymentsByExpenseIds = async (
+  expenseIds: string[]
+): Promise<Payment[]> => {
+  if (expenseIds.length === 0) return [];
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { data, error } = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(
+      `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
+    )
+    .in("expense_id", expenseIds)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return data.map((item) => {
+    const expense = Array.isArray(item.expense) ? item.expense[0] : item.expense;
+    return {
+      ...item,
+      member: Array.isArray(item.member) ? item.member[0] : item.member,
+      payer: Array.isArray(item.payer) ? item.payer[0] : item.payer,
+      currency: expense?.currency ?? "PHP",
+      expense: undefined
+    };
+  }) as Payment[];
 };
 
 export const getSplitsByExpense = async (expenseId: string) => {

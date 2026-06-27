@@ -38,6 +38,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
+import { cacheService } from "@/utils/cacheService";
 import { DAILY_EXPENSE_LIMIT } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
@@ -131,16 +132,27 @@ export default function QuickAddExpenseSheet({
     }
   }, [selectedGroup?.id]);
 
+  const applyMembers = (result: Member[]) => {
+    setMembers(result);
+    const self = result.find((m) => m.id === currentUser?.id);
+    setSelectedPayer(self ?? result[0] ?? null);
+  };
+
   const fetchMembers = async (groupId: string) => {
     try {
       const result = await services.member.getMembersByGroupId(groupId);
-      if (result) {
-        setMembers(result);
-        const self = result.find((m) => m.id === currentUser?.id);
-        setSelectedPayer(self ?? result[0] ?? null);
-      }
+      if (result) applyMembers(result);
     } catch {
-      // submit stays disabled if fetch fails
+      // Offline (or fetch failed) — fall back to the cached member list so the
+      // payer and split cards still render and the expense can be queued.
+      try {
+        const cached = await cacheService.getGroupDetail(groupId);
+        if (cached?.memberList?.length) {
+          applyMembers(cached.memberList as Member[]);
+        }
+      } catch {
+        // submit stays disabled if there's no cached member list either
+      }
     }
   };
 

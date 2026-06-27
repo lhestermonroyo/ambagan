@@ -42,6 +42,33 @@ export async function prefetchGroupDetails(
           active,
           existing?.settled ?? []
         );
+
+        // Cache per-expense detail (member splits + payment splits) so the
+        // expense detail screen is fully viewable offline.
+        if (expenses.length > 0) {
+          const expenseIds = expenses.map((e) => e.id);
+          const [memberSplits, paymentSplits] = await Promise.all([
+            services.expense.getMemberSplitsByExpenseIds(expenseIds),
+            services.expense.getPaymentsByExpenseIds(expenseIds)
+          ]);
+          const splitsByExpense: Record<string, typeof memberSplits> = {};
+          const paymentsByExpense: Record<string, typeof paymentSplits> = {};
+          for (const s of memberSplits) {
+            (splitsByExpense[s.expense_id] ??= []).push(s);
+          }
+          for (const p of paymentSplits) {
+            (paymentsByExpense[p.expense_id] ??= []).push(p);
+          }
+          for (const expense of expenses) {
+            await cacheService.saveExpenseDetail(
+              expense.id,
+              expense,
+              (expense as any).payer_list ?? [],
+              splitsByExpense[expense.id] ?? [],
+              paymentsByExpense[expense.id] ?? []
+            );
+          }
+        }
       } catch {
         // Skip this group and keep warming the rest.
       }

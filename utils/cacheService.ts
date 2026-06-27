@@ -116,6 +116,52 @@ export const cacheService = {
     return row ? JSON.parse(row.data) : null;
   },
 
+  async saveExpenseDetail(
+    expenseId: string,
+    expense: any,
+    payerList: any[],
+    memberSplits: any[],
+    paymentSplits: any[]
+  ): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_expense_detail (expense_id, expense_json, payer_list_json, member_splits_json, payment_splits_json, cached_at) VALUES (?, ?, ?, ?, ?, ?)",
+      [
+        expenseId,
+        JSON.stringify(expense),
+        JSON.stringify(payerList),
+        JSON.stringify(memberSplits),
+        JSON.stringify(paymentSplits),
+        Date.now()
+      ]
+    );
+  },
+
+  async getExpenseDetail(expenseId: string): Promise<{
+    expense: any;
+    payerList: any[];
+    memberSplits: any[];
+    paymentSplits: any[];
+  } | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{
+      expense_json: string;
+      payer_list_json: string;
+      member_splits_json: string;
+      payment_splits_json: string;
+    }>(
+      "SELECT expense_json, payer_list_json, member_splits_json, payment_splits_json FROM cache_expense_detail WHERE expense_id = ?",
+      [expenseId]
+    );
+    if (!row) return null;
+    return {
+      expense: JSON.parse(row.expense_json),
+      payerList: JSON.parse(row.payer_list_json),
+      memberSplits: JSON.parse(row.member_splits_json),
+      paymentSplits: JSON.parse(row.payment_splits_json)
+    };
+  },
+
   async saveGroupSettlements(
     groupId: string,
     active: any[],
