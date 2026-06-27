@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/radio";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import services from "@/services";
 import {
   DateRangeOption,
   dateRangeLabels,
@@ -25,9 +24,12 @@ import {
   getDateRangeCutoff
 } from "@/features/group/components/DateRangeSheet";
 import useAppToast from "@/hooks/use-app-toast";
+import services from "@/services";
 import { exportGroupSettlementsAsCsv } from "@/utils/exportCsv";
-import { CircleIcon } from "lucide-react-native";
+import { getSecondaryHex } from "@/utils/getColorHex";
+import { CircleIcon, Download } from "lucide-react-native";
 import { useState } from "react";
+import { useColorScheme } from "react-native";
 
 export default function ExportCsvSheet({
   isOpen,
@@ -46,6 +48,7 @@ export default function ExportCsvSheet({
   const [exporting, setExporting] = useState(false);
 
   const toast = useAppToast();
+  const colorScheme = useColorScheme() ?? "light"; // Replace with your actual color scheme logic if needed
 
   const handleExport = async () => {
     setExporting(true);
@@ -127,6 +130,12 @@ export default function ExportCsvSheet({
 
           <FormButton
             text="Export CSV"
+            icon={
+              <Download
+                size={18}
+                color={getSecondaryHex("text-secondary-0", colorScheme)}
+              />
+            }
             loading={exporting}
             onPress={handleExport}
           />

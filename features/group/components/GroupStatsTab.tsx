@@ -19,7 +19,10 @@ import services from "@/services";
 import states from "@/states";
 import { groupByCurrency } from "@/utils/currency";
 import { exportGroupSettlementsAsCsv } from "@/utils/exportCsv";
+import { getSecondaryHex } from "@/utils/getColorHex";
+import { Download } from "lucide-react-native";
 import { useMemo, useState } from "react";
+import { useColorScheme } from "react-native";
 
 export default function GroupStatsTab({
   groupId,
@@ -34,6 +37,7 @@ export default function GroupStatsTab({
   const { defaultCurrency, details: userDetails } = states.user();
   const isPro = userDetails?.plan === "pro";
   const toast = useAppToast();
+  const colorScheme = useColorScheme() ?? "light";
 
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
   const [exporting, setExporting] = useState(false);
@@ -207,6 +211,12 @@ export default function GroupStatsTab({
             </VStack>
             <FormButton
               text={isPro ? "Export CSV" : "Export CSV — Pro"}
+              icon={
+                <Download
+                  size={18}
+                  color={getSecondaryHex("text-secondary-0", colorScheme)}
+                />
+              }
               loading={exporting}
               onPress={handleExport}
             />

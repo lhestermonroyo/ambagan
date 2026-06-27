@@ -11,6 +11,20 @@ import { NotificationType } from "@/types/notifications";
 import { cacheService } from "@/utils/cacheService";
 import { splitTypes, tables } from "@/utils/constants";
 
+const GHOST_USER = {
+  id: "",
+  email: "",
+  phone: "",
+  first_name: "Deleted",
+  last_name: "User",
+  avatar: null as string | null
+};
+
+const resolveUser = (raw: any) => {
+  const user = Array.isArray(raw) ? raw[0] : raw;
+  return user ?? GHOST_USER;
+};
+
 export const getDailyExpenseCount = async (userId: string): Promise<number> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -409,8 +423,8 @@ export const getPaymentsByUserId = async (
         : item.expense;
       return {
         ...item,
-        member: Array.isArray(item.member) ? item.member[0] : item.member,
-        payer: Array.isArray(item.payer) ? item.payer[0] : item.payer,
+        member: resolveUser(item.member),
+        payer: resolveUser(item.payer),
         expense_description: expense?.description ?? null,
         currency: expense?.currency ?? "PHP",
         expense: undefined
@@ -421,7 +435,7 @@ export const getPaymentsByUserId = async (
     let query = supabase
       .from(tables.PAYMENT_SPLITS_TBL)
       .select(
-        `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), amount, status, expense:expense_id(description, currency)`,
+        `id, created_at, group_id, expense_id, member:member_id(id, email, phone, first_name, last_name, avatar), payer:payer_id(id, email, phone, first_name, last_name, avatar), amount, status, expense:expense_id(description, currency)`,
         { count: withMetadata ? "exact" : undefined }
       )
       .order("created_at", { ascending: false })
@@ -494,7 +508,7 @@ export const getPaymentsByExpenseId = async (expenseId: string) => {
   const paymentListResponse = await supabase
     .from(tables.PAYMENT_SPLITS_TBL)
     .select(
-      `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
+      `*, member:member_id(id, email, phone, first_name, last_name, avatar), payer:payer_id(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
     )
     .eq("expense_id", expenseId)
     .order("created_at", { ascending: false });
@@ -509,8 +523,8 @@ export const getPaymentsByExpenseId = async (expenseId: string) => {
       : item.expense;
     return {
       ...item,
-      member: Array.isArray(item.member) ? item.member[0] : item.member,
-      payer: Array.isArray(item.payer) ? item.payer[0] : item.payer,
+      member: resolveUser(item.member),
+      payer: resolveUser(item.payer),
       currency: expense?.currency ?? "PHP",
       expense: undefined
     };
@@ -584,7 +598,7 @@ export const getExpensesByGroupId = async (groupId: string) => {
   const { data, error } = await supabase
     .from(tables.EXPENSES_TBL)
     .select(
-      `id, created_at, group_id, amount, description, status, currency, expense_date, split_type, proof_of_payment, creator:creator_id!inner(id, email, phone, first_name, last_name, avatar)`
+      `id, created_at, group_id, amount, description, status, currency, expense_date, split_type, proof_of_payment, creator:creator_id(id, email, phone, first_name, last_name, avatar)`
     )
     .eq("group_id", groupId)
     .order("created_at", { ascending: false });
@@ -620,7 +634,7 @@ export const getExpenseById = async (id: string) => {
   const { data, error } = await supabase
     .from(tables.EXPENSES_TBL)
     .select(
-      `*, creator:creator_id!inner(id, email, phone, first_name, last_name, avatar)`
+      `*, creator:creator_id(id, email, phone, first_name, last_name, avatar)`
     )
     .eq("id", id)
     .single();
@@ -636,7 +650,7 @@ export const getPayersByExpenseId = async (expenseId: string) => {
   const { data, error } = await supabase
     .from(tables.EXPENSE_PAYERS_TBL)
     .select(
-      "*, payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)"
+      "*, payer:payer_id(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)"
     )
     .eq("expense_id", expenseId);
 
@@ -650,7 +664,7 @@ export const getPayersByExpenseId = async (expenseId: string) => {
       : item.expense;
     return {
       ...item,
-      payer: Array.isArray(item.payer) ? item.payer[0] : item.payer,
+      payer: resolveUser(item.payer),
       currency: expense?.currency ?? "PHP",
       expense: undefined
     };
@@ -661,7 +675,7 @@ export const getMemberSplitsByExpenseId = async (expenseId: string) => {
   const { data, error } = await supabase
     .from(tables.MEMBER_SPLITS_TBL)
     .select(
-      `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
+      `*, member:member_id(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
     )
     .eq("expense_id", expenseId);
 
@@ -675,7 +689,7 @@ export const getMemberSplitsByExpenseId = async (expenseId: string) => {
       : item.expense;
     return {
       ...item,
-      member: Array.isArray(item.member) ? item.member[0] : item.member,
+      member: resolveUser(item.member),
       currency: expense?.currency ?? "PHP",
       expense: undefined
     };
@@ -689,7 +703,7 @@ export const getMemberSplitsByExpenseIds = async (
   const { data, error } = await supabase
     .from(tables.MEMBER_SPLITS_TBL)
     .select(
-      `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
+      `*, member:member_id(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
     )
     .in("expense_id", expenseIds);
 
@@ -699,7 +713,7 @@ export const getMemberSplitsByExpenseIds = async (
     const expense = Array.isArray(item.expense) ? item.expense[0] : item.expense;
     return {
       ...item,
-      member: Array.isArray(item.member) ? item.member[0] : item.member,
+      member: resolveUser(item.member),
       currency: expense?.currency ?? "PHP",
       expense: undefined
     };
@@ -716,7 +730,7 @@ export const getPaymentsByExpenseIds = async (
   const { data, error } = await supabase
     .from(tables.PAYMENT_SPLITS_TBL)
     .select(
-      `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
+      `*, member:member_id(id, email, phone, first_name, last_name, avatar), payer:payer_id(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
     )
     .in("expense_id", expenseIds)
     .order("created_at", { ascending: false });
@@ -727,8 +741,8 @@ export const getPaymentsByExpenseIds = async (
     const expense = Array.isArray(item.expense) ? item.expense[0] : item.expense;
     return {
       ...item,
-      member: Array.isArray(item.member) ? item.member[0] : item.member,
-      payer: Array.isArray(item.payer) ? item.payer[0] : item.payer,
+      member: resolveUser(item.member),
+      payer: resolveUser(item.payer),
       currency: expense?.currency ?? "PHP",
       expense: undefined
     };
@@ -738,7 +752,7 @@ export const getPaymentsByExpenseIds = async (
 export const getSplitsByExpense = async (expenseId: string) => {
   const { data, error } = await supabase
     .from(tables.MEMBER_SPLITS_TBL)
-    .select(`*, member:user_id!inner(id, email, first_name, last_name, avatar)`)
+    .select(`*, member:user_id(id, email, first_name, last_name, avatar)`)
     .eq("expense_id", expenseId);
 
   if (error) {
@@ -1008,7 +1022,7 @@ export const markAsSettled = async (expensePayload: {
   return { success: true, message: "Marked as settled successfully" };
 };
 
-const PAYMENT_FIELDS = `*, member:member_id!inner(id, email, phone, first_name, last_name, avatar), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar), expense:expense_id(description, currency)`;
+const PAYMENT_FIELDS = `*, member:member_id(id, email, phone, first_name, last_name, avatar), payer:payer_id(id, email, phone, first_name, last_name, avatar), expense:expense_id(description, currency)`;
 
 const mapPaymentRows = (data: any[]): Payment[] =>
   data.map((item) => {
@@ -1017,8 +1031,8 @@ const mapPaymentRows = (data: any[]): Payment[] =>
       ...item,
       expense_description: expense?.description ?? null,
       currency: expense?.currency ?? "PHP",
-      member: Array.isArray(item.member) ? item.member[0] : item.member,
-      payer: Array.isArray(item.payer) ? item.payer[0] : item.payer,
+      member: resolveUser(item.member),
+      payer: resolveUser(item.payer),
       expense: undefined
     };
   }) as Payment[];
@@ -1055,6 +1069,23 @@ export const getActivePaymentsByGroupAndUserId = async (
     .from(tables.PAYMENT_SPLITS_TBL)
     .select(PAYMENT_FIELDS)
     .eq("group_id", groupId)
+    .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
+    .in("status", ["pending", "requested"])
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return mapPaymentRows(data);
+};
+
+export const getUnsettledPaymentsByUserId = async (
+  userId: string
+): Promise<Payment[]> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { data, error } = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(PAYMENT_FIELDS)
     .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
     .in("status", ["pending", "requested"])
     .order("created_at", { ascending: false });
