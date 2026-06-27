@@ -59,6 +59,8 @@ type AddExpenseStepProps = {
   isLockedGroup?: boolean;
   currencyLocked?: boolean;
   onCurrencyLockedPress?: () => void;
+  /** Existing proof-of-payment URL to preview when editing an expense. */
+  proofDefaultUri?: string | null;
   step: number;
 };
 
@@ -69,6 +71,7 @@ export default function AddExpenseStep({
   isLockedGroup = false,
   currencyLocked = false,
   onCurrencyLockedPress,
+  proofDefaultUri = null,
   step = 1
 }: AddExpenseStepProps) {
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -185,6 +188,7 @@ export default function AddExpenseStep({
           <VStack className="gap-y-1">
             <UploadImage
               title="Upload Proof of Payment"
+              defaultUri={proofDefaultUri}
               onSelect={(result) =>
                 setValues({ ...values, proof_of_payment: result })
               }

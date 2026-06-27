@@ -7,15 +7,26 @@ import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
 import { Box } from "@/components/ui/box";
+import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
+import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
+import { Menu, MenuItem, MenuItemLabel } from "@/components/ui/menu";
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader
+} from "@/components/ui/modal";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import ImageViewerSheet from "@/features/expense/components/ImageViewerSheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
@@ -29,9 +40,13 @@ import {
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { formatDate } from "@/utils/formatDate";
-import { getPrimaryHex } from "@/utils/getColorHex";
+import {
+  getErrorHex,
+  getPrimaryHex,
+  getSecondaryHex
+} from "@/utils/getColorHex";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { FileImage } from "lucide-react-native";
+import { Edit2, EllipsisVertical, FileImage, Trash2 } from "lucide-react-native";
 import { Fragment, ReactNode, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -47,12 +62,16 @@ export default function ExpenseDetailsScreen() {
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
+  const { isOnline } = useNetwork();
   const params = useLocalSearchParams();
   const expenseId = params.expenseId as string;
   const groupId = params.groupId as string;
 
   const toast = useAppToast();
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useFocusEffect(
     useMemo(
@@ -224,6 +243,7 @@ export default function ExpenseDetailsScreen() {
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
+    setDeleting(true);
     try {
       const deleteResponse = await services.expense.deleteExpense(expenseId);
 
@@ -240,6 +260,7 @@ export default function ExpenseDetailsScreen() {
           memberSplitList: [],
           paymentSplitList: []
         }));
+        setDeleteModalOpen(false);
         router.back();
       }
     } catch (error) {
@@ -249,6 +270,8 @@ export default function ExpenseDetailsScreen() {
         description: "Failed to delete expense. Please try again.",
         type: "error"
       });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -268,16 +291,112 @@ export default function ExpenseDetailsScreen() {
     [payerList, userDetails]
   );
 
-  const memberPaymentMap = useMemo(() => {
-    const map: Record<string, Payment> = {};
-    paymentSplitList.forEach((p) => {
-      const existing = map[p.member.id];
-      if (!existing || p.status !== "settled") {
-        map[p.member.id] = p;
-      }
-    });
-    return map;
-  }, [paymentSplitList]);
+  const isCreator = expenseDetails?.creator.id === userDetails?.id;
+
+  // Editing replaces the splits wholesale, which is only safe while every
+  // settlement is still pending. Mirror the server-side guard in the UI.
+  const hasSettlementProgress = useMemo(
+    () => paymentSplitList.some((p) => p.status !== "pending"),
+    [paymentSplitList]
+  );
+
+  const canEdit = Boolean(
+    isCreator && !hasSettlementProgress && isOnline && paymentSplitList.length
+  );
+
+  const handleEdit = () => {
+    router.push(`/groups/${groupId}/${expenseId}/edit`);
+  };
+
+  // When both edit and delete are available, collapse them into a single
+  // overflow menu (mirrors the group details screen). With only one action,
+  // surface its icon button directly.
+  const renderActions = (): ReactNode[] => {
+    const showEdit = canEdit;
+    const showDelete = isPayer;
+
+    if (showEdit && showDelete) {
+      return [
+        <Menu
+          key="menu"
+          placement="left top"
+          closeOnSelect
+          isOpen={menuOpen}
+          onOpen={() => setMenuOpen(true)}
+          onClose={() => setMenuOpen(false)}
+          trigger={({ ...triggerProps }) => (
+            <Button variant="link" className="rounded-full" {...triggerProps}>
+              <EllipsisVertical
+                size={20}
+                color={getSecondaryHex("text-secondary-950", colorScheme)}
+              />
+            </Button>
+          )}
+        >
+          <MenuItem
+            className="p-4 justify-between"
+            key="edit"
+            textValue="Edit"
+            onPress={() => {
+              setMenuOpen(false);
+              setTimeout(() => handleEdit(), 150);
+            }}
+          >
+            <HStack className="gap-x-2">
+              <Edit2
+                size={20}
+                color={getPrimaryHex("text-primary-500", colorScheme)}
+              />
+              <MenuItemLabel>Edit</MenuItemLabel>
+            </HStack>
+          </MenuItem>
+          <MenuItem
+            className="p-4 justify-between"
+            key="delete"
+            textValue="Delete"
+            onPress={() => {
+              setMenuOpen(false);
+              setTimeout(() => setDeleteModalOpen(true), 150);
+            }}
+          >
+            <HStack className="gap-x-2">
+              <Trash2
+                size={20}
+                color={getErrorHex("text-error-500", colorScheme)}
+              />
+              <MenuItemLabel className="text-error-500">Delete</MenuItemLabel>
+            </HStack>
+          </MenuItem>
+        </Menu>
+      ];
+    }
+
+    return [
+      showEdit && (
+        <Button
+          key="edit"
+          variant="link"
+          className="rounded-full"
+          onPress={handleEdit}
+        >
+          <Icon as="edit" className="text-secondary-950" />
+        </Button>
+      ),
+      showDelete && (
+        <ConfirmIconButton
+          key="delete"
+          variant="link"
+          className="rounded-full"
+          icon="delete"
+          isDelete
+          iconClassName="text-secondary-950"
+          confirmTitle="Delete Expense"
+          confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
+          onConfirm={() => handleDeleteExpense(expenseId)}
+        />
+      )
+    ];
+  };
 
   const sortedMemberSplits = useMemo(
     () =>
@@ -304,20 +423,7 @@ export default function ExpenseDetailsScreen() {
       <InnerLayout
         title="Expense Details"
         onBack={handleBack}
-        actions={[
-          isPayer && (
-            <ConfirmIconButton
-              variant="link"
-              className="rounded-full"
-              icon="delete"
-              isDelete
-              iconClassName="text-secondary-950"
-              confirmTitle="Delete Expense"
-              confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
-              onConfirm={() => handleDeleteExpense(expenseId)}
-            />
-          )
-        ]}
+        actions={renderActions()}
       >
         <LoadingWrapper
           isLoading={
@@ -443,10 +549,7 @@ export default function ExpenseDetailsScreen() {
                     data={sortedMemberSplits}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => (
-                      <MemberSplitItem
-                        memberSplit={item}
-                        payment={memberPaymentMap[item.member.id]}
-                      />
+                      <MemberSplitItem memberSplit={item} />
                     )}
                     ItemSeparatorComponent={ListDivider}
                     ListEmptyComponent={() => (
@@ -466,6 +569,39 @@ export default function ExpenseDetailsScreen() {
         uri={expenseDetails?.proof_of_payment ?? null}
         title="Proof of Payment"
       />
+
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => !deleting && setDeleteModalOpen(false)}
+      >
+        <ModalContent>
+          <ModalHeader>
+            <Heading size="lg">Delete Expense</Heading>
+          </ModalHeader>
+          <ModalBody>
+            <Text className="text-sm text-secondary-950">
+              Deleting this expense will remove splits and payments associated
+              with it. Are you sure you want to proceed?
+            </Text>
+          </ModalBody>
+          <ModalFooter>
+            <HStack className="gap-x-2">
+              <FormButton
+                variant="outline"
+                text="Cancel"
+                disabled={deleting}
+                onPress={() => setDeleteModalOpen(false)}
+              />
+              <FormButton
+                text="Yes"
+                action="negative"
+                loading={deleting}
+                onPress={() => handleDeleteExpense(expenseId)}
+              />
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Fragment>
   );
 }
@@ -479,13 +615,7 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function MemberSplitItem({
-  memberSplit,
-  payment
-}: {
-  memberSplit: MemberSplit;
-  payment?: Payment;
-}) {
+function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
   const { details: userDetails } = states.user();
   const router = useRouter();
   const isMe = memberSplit.member.id === userDetails?.id;

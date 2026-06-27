@@ -16,7 +16,7 @@ import { Member } from "@/types/groups";
 import { splitTypes } from "@/utils/constants";
 import { getCurrencySign } from "@/utils/currency";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
 import {
   getAmountPerPerson,
@@ -43,6 +43,14 @@ type SplitExpenseStepProps = {
   ) => void;
   isLockedGroup?: boolean;
   groupName?: string;
+  /** Pre-select a split tab (e.g. when editing an existing expense). */
+  initialTab?: (typeof splitTypes)[number]["value"];
+  /**
+   * Skip the auto-distribute/clear on the first effect run so seeded splits
+   * (from an expense being edited) are preserved. Subsequent tab/amount
+   * changes still recompute as usual.
+   */
+  skipInitialReset?: boolean;
 };
 
 export default function SplitSelection({
@@ -53,15 +61,23 @@ export default function SplitSelection({
   splits,
   onSetSplits,
   isLockedGroup = false,
-  groupName
+  groupName,
+  initialTab,
+  skipInitialReset = false
 }: SplitExpenseStepProps) {
   const [tab, setTab] = useState<(typeof splitTypes)[number]["value"]>(
-    splitTypes[0].value
+    initialTab ?? splitTypes[0].value
   );
+  const initialResetSkipped = useRef(false);
 
   const totalAmount = parseFloat(amount) || 0;
 
   useEffect(() => {
+    if (skipInitialReset && !initialResetSkipped.current) {
+      initialResetSkipped.current = true;
+      return;
+    }
+
     const initialSplits: {
       [userId: string]: {
         amount: string;
