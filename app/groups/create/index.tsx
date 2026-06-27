@@ -228,14 +228,14 @@ export default function CreateGroupScreen() {
                     className={`items-center px-4 rounded-full ${
                       values.category === category.value
                         ? "border-primary-400"
-                        : "border-background-200 bg-background-50 dark:bg-background-100"
+                        : "border-background-200 bg-background-50 dark:bg-background-50"
                     }`}
                   >
                     <ButtonText
                       className={
                         values.category === category.value
-                          ? "text-background-0"
-                          : "text-inherit"
+                          ? "text-secondary-0"
+                          : "text-inherit dark:text-secondary-950"
                       }
                     >
                       {category.label}

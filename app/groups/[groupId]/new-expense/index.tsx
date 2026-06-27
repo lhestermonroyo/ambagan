@@ -196,23 +196,33 @@ export default function NewExpenseScreen() {
     }
 
     const clientId = uuid();
+    const creator = {
+      id: userDetails.id,
+      email: userDetails.email,
+      phone: userDetails.phone,
+      first_name: userDetails.first_name,
+      last_name: userDetails.last_name,
+      avatar: userDetails.avatar,
+      plan: userDetails.plan
+    };
     const optimistic = offlineQueue.buildOptimisticExpense({
       clientId,
       groupId: values.group.id,
       amount: parseFloat(values.amount),
       description: values.description,
       currency: values.currency,
-      creator: {
-        id: userDetails.id,
-        email: userDetails.email,
-        phone: userDetails.phone,
-        first_name: userDetails.first_name,
-        last_name: userDetails.last_name,
-        avatar: userDetails.avatar,
-        plan: userDetails.plan
-      },
+      creator,
       payers: mappedPayers,
       members
+    });
+    const optimisticPayments = offlineQueue.buildOptimisticPayments({
+      expenseId: clientId,
+      groupId: values.group.id,
+      description: values.description,
+      currency: values.currency,
+      members,
+      currentUser: creator,
+      paymentSplits
     });
 
     await offlineQueue.queueAddExpense(
@@ -231,7 +241,8 @@ export default function NewExpenseScreen() {
         memberSplits: mappedSplits,
         paymentSplits
       },
-      optimistic
+      optimistic,
+      optimisticPayments
     );
 
     toast({

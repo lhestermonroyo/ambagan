@@ -46,11 +46,13 @@ import ViewBySheet, {
 } from "@/features/group/components/ViewBySheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
+import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -107,6 +109,7 @@ export default function FriendDetailScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
+  const { isOnline } = useNetwork();
 
   const { favoriteIds, loadFavorites, handleToggleFavorite } =
     useFavoriteToggle(userDetails?.id);
@@ -153,8 +156,25 @@ export default function FriendDetailScreen() {
       setSettledPage(0);
       setHasMoreSettled(settled.hasNext);
       initializedRef.current = true;
+
+      // Cache for offline viewing of this friend's settlements.
+      cacheService
+        .saveFriendSettlements(friendId, active, settled.data)
+        .catch(() => {});
     } catch (error) {
-      console.error("Failed to fetch friend settlements:", error);
+      // Offline / fetch failure — hydrate from the cached snapshot.
+      const cached = await cacheService
+        .getFriendSettlements(friendId)
+        .catch(() => null);
+      if (cached) {
+        setActiveSettlements(cached.active as PaymentPreview[]);
+        setSettledSettlements(cached.settled as PaymentPreview[]);
+        setSettledPage(0);
+        setHasMoreSettled(false);
+        initializedRef.current = true;
+      } else {
+        console.error("Failed to fetch friend settlements:", error);
+      }
     } finally {
       if (showLoading) setLoading(false);
       setInitialized(true);
@@ -192,6 +212,19 @@ export default function FriendDetailScreen() {
     setRefreshing(true);
     await fetchAll(false);
     setRefreshing(false);
+  };
+
+  const requireOnline = () => {
+    if (!isOnline) {
+      toast({
+        title: "You're offline",
+        description:
+          "Settling and requests need a connection. Try again once you're back online.",
+        type: "info"
+      });
+      return false;
+    }
+    return true;
   };
 
   const handleConfirmAction = async () => {
@@ -527,7 +560,9 @@ export default function FriendDetailScreen() {
                           )}
                         />
                       }
-                      onPress={() => setPendingAction("settle")}
+                      onPress={() =>
+                        requireOnline() && setPendingAction("settle")
+                      }
                     />
                   )}
                   {canRequestSettle && (
@@ -539,7 +574,9 @@ export default function FriendDetailScreen() {
                           color={getPrimaryHex("text-primary-500", colorScheme)}
                         />
                       }
-                      onPress={() => setPendingAction("request")}
+                      onPress={() =>
+                        requireOnline() && setPendingAction("request")
+                      }
                     />
                   )}
                 </VStack>
@@ -640,6 +677,7 @@ export default function FriendDetailScreen() {
                     <SettlementItem
                       item={item}
                       onPress={() => {
+                        if (!requireOnline()) return;
                         setSelectedPayment(item);
                         setActionSheetOpen(true);
                       }}

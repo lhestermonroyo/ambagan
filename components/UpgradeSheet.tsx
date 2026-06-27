@@ -11,7 +11,10 @@ import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { getSecondaryHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
+import { ArrowRight } from "lucide-react-native";
+import { useColorScheme } from "react-native";
 
 const PRO_FEATURES = [
   {
@@ -51,6 +54,7 @@ export default function UpgradeSheet({
   description?: string;
 }) {
   const router = useRouter();
+  const colorScheme = useColorScheme() ?? "light";
 
   const handleUpgrade = () => {
     onClose();
@@ -78,7 +82,8 @@ export default function UpgradeSheet({
               </Box>
             </HStack>
             <Text className="text-sm text-secondary-950">
-              {description ?? "One-time purchase · No subscription · No renewal"}
+              {description ??
+                "One-time purchase · No subscription · No renewal"}
             </Text>
           </VStack>
 
@@ -103,10 +108,20 @@ export default function UpgradeSheet({
                 </HStack>
               ))}
             </VStack>
-
-            <FormButton text="Unlock Pro — ₱499" onPress={handleUpgrade} />
           </VStack>
         </VStack>
+        <Box className="p-4 w-full">
+          <FormButton
+            text="Explore Pro Options"
+            iconEnd={
+              <ArrowRight
+                size={18}
+                color={getSecondaryHex("text-secondary-0", colorScheme)}
+              />
+            }
+            onPress={handleUpgrade}
+          />
+        </Box>
       </ActionsheetContent>
     </Actionsheet>
   );

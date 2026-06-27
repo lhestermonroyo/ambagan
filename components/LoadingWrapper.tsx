@@ -1,9 +1,10 @@
-import { Box } from "./ui/box";
+import { ActivityIndicator } from "react-native";
 import { Text } from "./ui/text";
+import { VStack } from "./ui/vstack";
 
 export default function LoadingWrapper({
   isLoading,
-  text = "Loading, please wait...",
+  text = "Loading...",
   skeleton,
   children
 }: {
@@ -15,9 +16,10 @@ export default function LoadingWrapper({
   if (isLoading) {
     return (
       skeleton ?? (
-        <Box className="p-4">
-          <Text className="text-center text-secondary-950">{text}</Text>
-        </Box>
+        <VStack className="p-8 items-center gap-y-2">
+          <ActivityIndicator />
+          <Text className="text-sm text-secondary-950">{text}</Text>
+        </VStack>
       )
     );
   }

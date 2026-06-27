@@ -1,6 +1,8 @@
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
+import LoadingWrapper from "@/components/LoadingWrapper";
+import { SubscriptionPlanSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
@@ -12,12 +14,11 @@ import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
-import { getPrimaryHex } from "@/utils/getColorHex";
 
 import { useRouter } from "expo-router";
 import { Crown } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, useColorScheme } from "react-native";
+import { useColorScheme } from "react-native";
 import { PurchasesOffering, PurchasesPackage } from "react-native-purchases";
 
 type PlanType = "two_week" | "monthly" | "yearly";
@@ -279,7 +280,7 @@ export default function SubscriptionScreen() {
           {!isPro && (
             <VStack className="gap-y-1">
               <HStack className="items-center gap-x-2">
-                <Text bold className="text-2xl">
+                <Text bold className="text-xl">
                   Upgrade to
                 </Text>
                 <Box className="bg-warning-400 px-2 py-0.5 rounded-full">
@@ -287,12 +288,6 @@ export default function SubscriptionScreen() {
                     PRO
                   </Text>
                 </Box>
-                {loadingOffering && (
-                  <ActivityIndicator
-                    size="small"
-                    color={getPrimaryHex("text-primary-400", colorScheme)}
-                  />
-                )}
               </HStack>
               <Text className="text-sm text-secondary-950">
                 One subscription, all features — cancel anytime.
@@ -302,7 +297,7 @@ export default function SubscriptionScreen() {
 
           {/* Feature list */}
           <VStack className="gap-y-2">
-            <Text bold className="text-lg">
+            <Text bold className="text-2xl">
               {isPro ? "Your Pro Features" : "What you get"}
             </Text>
             <Box className="rounded-2xl overflow-hidden bg-background-50">
@@ -332,12 +327,16 @@ export default function SubscriptionScreen() {
 
           {/* Plan cards — free users only */}
           {!isPro && (
-            <VStack className="gap-y-2">
-              <Text bold className="text-lg">
-                Choose a plan
-              </Text>
+            <LoadingWrapper
+              isLoading={loadingOffering}
+              skeleton={<SubscriptionPlanSkeleton />}
+            >
               <VStack className="gap-y-2">
-                {PLANS.map((plan) => {
+                <Text bold className="text-2xl">
+                  Choose a plan
+                </Text>
+                <VStack className="gap-y-2">
+                  {PLANS.map((plan) => {
                   const isSelected = selectedPlan === plan.key;
                   const priceLabel = getPriceLabel(
                     pkgMap[plan.key],
@@ -414,9 +413,10 @@ export default function SubscriptionScreen() {
                       </Box>
                     </Pressable>
                   );
-                })}
+                  })}
+                </VStack>
               </VStack>
-            </VStack>
+            </LoadingWrapper>
           )}
 
           {/* CTA — free users */}

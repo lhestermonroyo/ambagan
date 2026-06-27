@@ -37,9 +37,14 @@ export default function SettlementItem({
               >
                 {item.expense_description}
               </Text>
-              <Text className="text-sm text-secondary-950">
-                {formatDate(item.created_at)}
-              </Text>
+              <HStack className="gap-x-1 items-center">
+                {item.pending && (
+                  <Icon as="sync" size={14} className="text-primary-400" />
+                )}
+                <Text className="text-sm text-secondary-950">
+                  {formatDate(item.created_at)}
+                </Text>
+              </HStack>
             </HStack>
           )}
           <HStack className="gap-x-4">

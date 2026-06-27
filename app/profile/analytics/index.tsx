@@ -2,6 +2,8 @@ import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
+import LoadingWrapper from "@/components/LoadingWrapper";
+import { AnalyticsSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
@@ -21,7 +23,6 @@ import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator } from "react-native";
 
 const ANALYTICS_DATE_RANGES: DateRangeOption[] = [
   "1M",
@@ -90,15 +91,12 @@ export default function AnalyticsScreen() {
             </HStack>
           </ScrollView>
 
-          {loading ? (
-            <VStack className="flex-1 items-center justify-center py-16">
-              <ActivityIndicator />
-            </VStack>
-          ) : !data || data.summary.expenseCount === 0 ? (
-            <EmptyList type={EmptyType.ACTIVITY} />
-          ) : (
-            <>
-              {/* Summary card */}
+          <LoadingWrapper isLoading={loading} skeleton={<AnalyticsSkeleton />}>
+            {!data || data.summary.expenseCount === 0 ? (
+              <EmptyList type={EmptyType.ACTIVITY} />
+            ) : (
+              <>
+                {/* Summary card */}
               <Card className="rounded-2xl bg-secondary-100">
                 <VStack className="gap-y-4">
                   <Text bold className="uppercase text-secondary-950 text-sm">
@@ -251,8 +249,9 @@ export default function AnalyticsScreen() {
                   </Card>
                 </VStack>
               )}
-            </>
-          )}
+              </>
+            )}
+          </LoadingWrapper>
         </VStack>
       </ScrollView>
     </InnerLayout>

@@ -52,6 +52,11 @@ export function useOfflineSync() {
                 op.payload.groupId,
                 op.payload.clientId
               );
+              await offlineQueue._internal.clearPendingPaymentsForExpense(
+                op.payload.groupId,
+                op.payload.optimisticPayments ?? [],
+                states.user.getState().details?.id
+              );
             } else if (op.type === "CREATE_GROUP") {
               await services.group.saveGroup(op.payload.args);
               await offlineQueue._internal.clearPendingGroup(

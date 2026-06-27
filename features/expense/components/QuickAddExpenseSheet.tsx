@@ -199,6 +199,15 @@ export default function QuickAddExpenseSheet({
       const paymentSplits = generatePaymentSplits(payersArr, memberSplits);
 
       const clientId = uuid();
+      const optimisticPayments = offlineQueue.buildOptimisticPayments({
+        expenseId: clientId,
+        groupId: selectedGroup.id,
+        description: description.trim(),
+        currency,
+        members,
+        currentUser,
+        paymentSplits
+      });
       const optimistic = offlineQueue.buildOptimisticExpense({
         clientId,
         groupId: selectedGroup.id,
@@ -234,7 +243,8 @@ export default function QuickAddExpenseSheet({
           memberSplits,
           paymentSplits
         },
-        optimistic
+        optimistic,
+        optimisticPayments
       );
 
       toast({

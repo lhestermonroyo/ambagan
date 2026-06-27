@@ -34,6 +34,8 @@ import DateRangeSheet, {
 import ViewBySheet, {
   ViewOption
 } from "@/features/group/components/ViewBySheet";
+import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
@@ -56,6 +58,8 @@ export default function GroupSettlements({
   const { details, settlementRefreshToken } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
   const colorScheme = useColorScheme() ?? "light";
+  const toast = useAppToast();
+  const { isOnline } = useNetwork();
 
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -282,6 +286,19 @@ export default function GroupSettlements({
 
   const handleSettlementItemPress = (payment: PaymentPreview | Payment) => {
     const p = payment as Payment;
+
+    // Settling / requesting needs the server — block while offline (and for
+    // not-yet-synced offline settlements).
+    if (!isOnline || p.pending) {
+      toast({
+        title: "You're offline",
+        description:
+          "Settling and requests need a connection. Try again once you're back online.",
+        type: "info"
+      });
+      return;
+    }
+
     const isUserMember = p.member.id === userDetails?.id;
     const isUserPayer = p.payer.id === userDetails?.id;
 

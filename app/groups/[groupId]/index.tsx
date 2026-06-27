@@ -867,14 +867,10 @@ function ExpenseItem({
           <Text className="text-lg" numberOfLines={2} ellipsizeMode="tail">
             {expense.description}
           </Text>
-          {expense.pending && (
-            <Box className="self-start bg-warning-50 dark:bg-warning-900 rounded-full px-2 py-0.5 my-0.5">
-              <Text className="text-warning-600 text-2xs font-semibold uppercase">
-                Syncing…
-              </Text>
-            </Box>
-          )}
           <HStack className="gap-x-1 items-center">
+            {expense.pending && (
+              <Icon as="sync" size={14} className="text-primary-400" />
+            )}
             <Text className="text-sm text-secondary-950">Paid by</Text>
             <AppAvatarGroup items={formattedPayers} size="xs" />
           </HStack>

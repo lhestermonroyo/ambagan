@@ -19,9 +19,15 @@ import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
-import { Expense, ExpensePayer, MemberSplit, Payment } from "@/types/expenses";
-import { cacheService } from "@/utils/cacheService";
+import {
+  Expense,
+  ExpensePayer,
+  MemberSplit,
+  Payment,
+  SplitType
+} from "@/types/expenses";
 import { EmptyType } from "@/types/general";
+import { cacheService } from "@/utils/cacheService";
 import { formatDate } from "@/utils/formatDate";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -99,6 +105,32 @@ export default function ExpenseDetailsScreen() {
             memberSplitList: cached.memberSplits as MemberSplit[],
             paymentSplitList: cached.paymentSplits as Payment[]
           }));
+        } else {
+          // Full detail cache missing (e.g. offline-added expense not yet synced).
+          // Build a partial Expense from the ExpensePreview in group state/cache.
+          const preview =
+            states.group
+              .getState()
+              .expenseList.find((e) => e.id === expenseId) ??
+            (
+              await cacheService.getGroupDetail(groupId).catch(() => null)
+            )?.expenseList.find((e: any) => e.id === expenseId);
+
+          if (preview) {
+            states.expense.setState((prev) => ({
+              ...prev,
+              details: {
+                ...preview,
+                split_type: (preview as any).split_type ?? SplitType.EQUAL,
+                expense_date:
+                  (preview as any).expense_date ?? preview.created_at,
+                proof_of_payment: (preview as any).proof_of_payment ?? null
+              } as Expense,
+              payerList: preview.payer_list ?? [],
+              memberSplitList: [],
+              paymentSplitList: []
+            }));
+          }
         }
       } catch {}
     }
@@ -118,7 +150,28 @@ export default function ExpenseDetailsScreen() {
         details: response
       }));
     } catch (error) {
-      console.log("Error fetching group details:", error);
+      console.log("Error fetching group details (offline):", error);
+      // Offline fallback: check live list state, then the groups list cache.
+      const fromList = states.group
+        .getState()
+        .list.find((g) => g.id === groupId);
+      if (fromList) {
+        states.group.setState((prev) => ({ ...prev, details: fromList }));
+        return;
+      }
+      const userId = states.user.getState().details?.id;
+      if (userId) {
+        const cachedList = await cacheService
+          .getGroupsList(userId)
+          .catch(() => null);
+        const cachedGroup = (cachedList ?? []).find(
+          (g: any) => g.id === groupId
+        );
+        if (cachedGroup) {
+          states.group.setState((prev) => ({ ...prev, details: cachedGroup }));
+          return;
+        }
+      }
       router.replace("/groups");
     }
   };
@@ -365,7 +418,24 @@ export default function ExpenseDetailsScreen() {
 
                 <VStack className="gap-y-2">
                   <Text className="text-xl px-4" bold>
-                    Members Split
+                    Payers
+                  </Text>
+                  <FlatList
+                    className="flex-1"
+                    scrollEnabled={false}
+                    data={sortedPayerList}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => <PayerItem payer={item} />}
+                    ItemSeparatorComponent={ListDivider}
+                    ListEmptyComponent={() => (
+                      <EmptyList type={EmptyType.MEMBER} />
+                    )}
+                  />
+                </VStack>
+
+                <VStack className="gap-y-2">
+                  <Text className="text-xl px-4" bold>
+                    Member Splits
                   </Text>
                   <FlatList
                     className="flex-1"
@@ -378,23 +448,6 @@ export default function ExpenseDetailsScreen() {
                         payment={memberPaymentMap[item.member.id]}
                       />
                     )}
-                    ItemSeparatorComponent={ListDivider}
-                    ListEmptyComponent={() => (
-                      <EmptyList type={EmptyType.MEMBER} />
-                    )}
-                  />
-                </VStack>
-
-                <VStack className="gap-y-2">
-                  <Text className="text-xl px-4" bold>
-                    Payers' Contribution
-                  </Text>
-                  <FlatList
-                    className="flex-1"
-                    scrollEnabled={false}
-                    data={sortedPayerList}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => <PayerItem payer={item} />}
                     ItemSeparatorComponent={ListDivider}
                     ListEmptyComponent={() => (
                       <EmptyList type={EmptyType.MEMBER} />

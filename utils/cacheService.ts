@@ -187,5 +187,32 @@ export const cacheService = {
       active: JSON.parse(row.active),
       settled: JSON.parse(row.settled)
     };
+  },
+
+  async saveFriendSettlements(
+    friendId: string,
+    active: any[],
+    settled: any[]
+  ): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_friend_settlements (friend_id, active, settled, cached_at) VALUES (?, ?, ?, ?)",
+      [friendId, JSON.stringify(active), JSON.stringify(settled), Date.now()]
+    );
+  },
+
+  async getFriendSettlements(
+    friendId: string
+  ): Promise<{ active: any[]; settled: any[] } | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{ active: string; settled: string }>(
+      "SELECT active, settled FROM cache_friend_settlements WHERE friend_id = ?",
+      [friendId]
+    );
+    if (!row) return null;
+    return {
+      active: JSON.parse(row.active),
+      settled: JSON.parse(row.settled)
+    };
   }
 };
