@@ -37,7 +37,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Is Ambagan free to use?",
         answer:
-          "Yes. The core features are free — add up to 5 expenses per day, track balances, split bills, and settle up with friends at no cost. A Pro plan is available as a one-time purchase (₱499) for unlimited daily expenses, CSV export, spending analytics, and more."
+          "Yes. The core features are free — add up to 5 expenses per day, track balances, split bills, and settle up with friends at no cost. A Pro subscription is available (starting at ₱99 for 2 weeks) for unlimited daily expenses, draft expenses, CSV export, spending analytics, multi-currency support, and more."
       },
       {
         question: "What does the Net Balance on the home screen mean?",
@@ -118,6 +118,16 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "How are members shown in the expense detail?",
         answer:
           "When you open an expense, you are always listed first in both the Members Split and Payers' Contribution sections so your share and contribution are immediately visible without scrolling."
+      },
+      {
+        question: "What is Save as Draft and how does it work?",
+        answer:
+          "Save as Draft is a Pro feature that lets you log an expense with just the amount and description, then finalize who paid and how to split it later. On the Custom expense form, tap Save as Draft instead of Continue. Draft expenses appear at the top of the group's Expenses tab with an amber Draft badge and are only visible to you until finalized. Tap a draft and press Finalize Expense to complete the split."
+      },
+      {
+        question: "Can other group members see my draft expenses?",
+        answer:
+          "No. Draft expenses are private — only you (the creator) can see them until you finalize the split. Once finalized, the expense becomes visible to all group members and they receive an expense inclusion notification."
       }
     ]
   },
@@ -212,17 +222,17 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is the Pro plan?",
         answer:
-          "Pro is a one-time purchase of ₱499 that removes the daily expense limit and unlocks premium features: unlimited expenses per day, CSV export, spending analytics, and multi-currency expenses. Push notifications are free for everyone."
+          "Pro is a subscription that removes the daily expense limit and unlocks premium features: unlimited expenses per day, draft expenses (log now, split later), CSV export, spending analytics, multi-currency expenses, and a custom default currency. Plans start at ₱99 for 2 weeks, ₱149/month, or ₱799/year. Push notifications are free for everyone."
       },
       {
         question: "How do I upgrade to Pro?",
         answer:
-          "Go to Profile → Subscription and tap Unlock Pro. It's a one-time purchase of ₱499 — no subscription, no renewal. Once purchased, all Pro features are unlocked immediately."
+          "Go to Profile → Subscription and choose a plan — 2 Weeks (₱99), Monthly (₱149), or Yearly (₱799). Tap Subscribe and complete the purchase through the App Store. All Pro features are unlocked immediately after subscribing."
       },
       {
         question: "How many expenses can I add per day on the free plan?",
         answer:
-          "Free users can add up to 5 expenses per day, counted across all your groups combined. The counter resets at midnight. Upgrade to Pro (₱499, one-time) for unlimited daily expenses."
+          "Free users can add up to 5 expenses per day, counted across all your groups combined. The counter resets at midnight. Upgrade to Pro (from ₱99) for unlimited daily expenses."
       },
       {
         question: "How do I export settlements to CSV?",
@@ -237,13 +247,13 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What happens when I lose internet connection?",
         answer:
-          "A red banner appears at the top of the screen informing you that you're offline. Creating or updating expenses and settlements requires an internet connection."
+          "A toast notification appears saying 'No Internet Connection', and a blue banner at the top of the screen shows 'Offline Mode — Showing cached data'. You can still browse your groups, expenses, and friends using the last cached data. Creating new expenses works offline (they sync automatically when you reconnect), but editing expenses and settlements requires an internet connection."
       },
       {
         question:
           "I already paid — how do I restore my Pro access on a new device?",
         answer:
-          "Go to Profile → Subscription and tap Restore Purchase. Since Pro is a one-time non-consumable purchase, it will be restored automatically through the App Store or Play Store at no additional charge."
+          "Go to Profile → Subscription and tap Restore Purchase. Your active subscription will be restored automatically through the App Store at no additional charge."
       }
     ]
   },
@@ -278,6 +288,16 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I sign out?",
         answer: "Scroll to the bottom of the Profile tab and tap Sign Out."
+      },
+      {
+        question: "How do I delete my account?",
+        answer:
+          "Go to Profile → Account Settings → Delete My Account. If you have unsettled expenses, they will be listed and you will need to resolve them before deletion is allowed. Once deleted, your account is permanently removed — your name will appear as 'Deleted User' on any shared expense history so other members retain their records."
+      },
+      {
+        question: "What do 'You receive' and 'You pay' mean in settlements?",
+        answer:
+          "'You receive' appears in the Mark as Settled sheet and shows the amount the other person is paying you. 'You pay' appears in the Request Settlement sheet and shows how much you owe. These labels reflect your perspective so it is always clear which direction the money moves."
       }
     ]
   }

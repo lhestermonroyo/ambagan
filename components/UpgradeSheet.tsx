@@ -38,6 +38,11 @@ const PRO_FEATURES = [
     description: "Split bills in any currency — PHP, USD, JPY, and more."
   },
   {
+    icon: "pending-actions",
+    title: "Draft expenses",
+    description: "Log an expense now and finalize who paid and the split later."
+  },
+  {
     icon: "star",
     title: "All future updates included",
     description: "New Pro features as they ship — yours forever."
@@ -112,7 +117,7 @@ export default function UpgradeSheet({
         </VStack>
         <Box className="p-4 w-full">
           <FormButton
-            text="Explore Pro Options"
+            text="Explore Options"
             iconEnd={
               <ArrowRight
                 size={18}

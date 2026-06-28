@@ -129,6 +129,7 @@ export default function ProfileScreen() {
             label: "Default Currency",
             description: "Manage your default currency",
             value: <Text className="text-lg">{currencyLabel}</Text>,
+            badge: !isPro ? <ProBadge /> : undefined,
             onPress: () =>
               isPro ? setCurrencyOpen(true) : setCurrencyUpgradeOpen(true)
           },
@@ -155,6 +156,7 @@ export default function ProfileScreen() {
             label: "Spending Analytics",
             description:
               "See where your money goes — by group, by month, by friend",
+            badge: !isPro ? <ProBadge /> : undefined,
             onPress: () =>
               isPro
                 ? router.push("/profile/analytics")
@@ -173,7 +175,7 @@ export default function ProfileScreen() {
         ]
       }
     ],
-    [appearanceLabel, currencyLabel, colorScheme, handleNotificationsOpen]
+    [appearanceLabel, currencyLabel, colorScheme, handleNotificationsOpen, isPro]
   );
 
   const handleSignOut = async () => {
@@ -332,10 +334,11 @@ function MenuItem({
     label: string;
     description: string;
     value?: React.ReactNode;
+    badge?: React.ReactNode;
     onPress: () => void;
   };
 }) {
-  const { icon, label, description, value, onPress } = item;
+  const { icon, label, description, value, badge, onPress } = item;
 
   return (
     <PressableListItem onPress={onPress}>
@@ -347,6 +350,7 @@ function MenuItem({
         </VStack>
         <HStack className="gap-x-2 items-center self-center">
           {value}
+          {badge}
           <Icon as="chevron-right" className="text-secondary-950" />
         </HStack>
       </HStack>

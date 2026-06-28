@@ -52,6 +52,11 @@ const FEATURES = [
     description: "Split bills in any currency — PHP, USD, JPY, and more."
   },
   {
+    icon: "pending-actions",
+    title: "Draft expenses",
+    description: "Log an expense now and finalize who paid and the split later."
+  },
+  {
     icon: "star",
     title: "All future updates included",
     description: "New Pro features as they ship — yours forever."

@@ -50,7 +50,7 @@ import {
   X,
   Zap
 } from "lucide-react-native";
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
@@ -67,6 +67,7 @@ export default function GroupDetailsScreen() {
   const [fabOpen, setFabOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
+
 
   const { details: groupDetails, expenseList, settlementList } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
@@ -162,6 +163,13 @@ export default function GroupDetailsScreen() {
   });
   const params = useLocalSearchParams();
   const groupId = params.groupId as string | undefined;
+
+  useEffect(() => {
+    const incoming = params.tab as (typeof tabs)[number] | undefined;
+    if (incoming && tabs.includes(incoming)) {
+      setTab(incoming);
+    }
+  }, [params.tab]);
 
   const toast = useAppToast();
 

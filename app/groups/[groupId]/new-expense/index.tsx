@@ -256,6 +256,14 @@ export default function NewExpenseScreen() {
   };
 
   const handleSaveDraft = async () => {
+    if (!isPro) {
+      setUpgradeDescription(
+        "Draft Expenses is a Pro feature. Upgrade to log an expense now and finalize who paid and how to split it later."
+      );
+      setUpgradeSheetOpen(true);
+      return;
+    }
+
     let errors: any = {};
 
     if (!values.amount) {
@@ -325,7 +333,7 @@ export default function NewExpenseScreen() {
           "This draft will sync automatically when you're back online.",
         type: "info"
       });
-      router.back();
+      router.navigate(`/groups/${values.group.id}?tab=Expenses`);
       return;
     }
 
@@ -360,7 +368,7 @@ export default function NewExpenseScreen() {
         description: "Finalize it later to set who paid and split it.",
         type: "success"
       });
-      router.back();
+      router.navigate(`/groups/${values.group.id}?tab=Expenses`);
     } catch (error) {
       console.log("Error saving draft:", error);
       toast({
