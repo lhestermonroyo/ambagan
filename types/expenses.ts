@@ -20,6 +20,8 @@ export type Expense = {
   split_type: SplitType;
   currency: string;
   status: PaymentStatus;
+  /** True while the expense is a draft (amount + description only, no splits yet). */
+  is_draft: boolean;
 };
 
 export type ExpensePayer = {
@@ -41,6 +43,7 @@ export type ExpensePreview = Pick<
   | "creator"
   | "currency"
   | "status"
+  | "is_draft"
 > & {
   payer_list: ExpensePayer[];
   /** True for an expense created offline and not yet synced to the server. */

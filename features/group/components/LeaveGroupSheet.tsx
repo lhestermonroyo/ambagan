@@ -268,24 +268,26 @@ export default function LeaveGroupSheet({
                 disabled={loading}
                 onPress={onClose}
               />
-              <ConfirmButton
-                className="flex-1"
-                action="negative"
-                text="Leave Group"
-                isDelete
-                confirmText={isSoleAdmin ? "Delete Group" : "Leave Group"}
-                loading={loading}
-                disabled={!canLeave}
-                onConfirm={handleLeave}
-                confirmTitle="Leave Group"
-                confirmDescription={
-                  isSoleAdmin
-                    ? "This will permanently delete the group and all its data. Are you sure?"
-                    : selectedNewAdmin
-                      ? `Admin will be transferred to ${selectedNewAdmin.first_name} ${selectedNewAdmin.last_name}. Are you sure you want to leave?`
-                      : "Are you sure you want to leave this group?"
-                }
-              />
+              {!fetching && !hasUnsettled && (
+                <ConfirmButton
+                  className="flex-1"
+                  action="negative"
+                  text="Leave Group"
+                  isDelete
+                  confirmText={isSoleAdmin ? "Delete Group" : "Leave Group"}
+                  loading={loading}
+                  disabled={!canLeave}
+                  onConfirm={handleLeave}
+                  confirmTitle="Leave Group"
+                  confirmDescription={
+                    isSoleAdmin
+                      ? "This will permanently delete the group and all its data. Are you sure?"
+                      : selectedNewAdmin
+                        ? `Admin will be transferred to ${selectedNewAdmin.first_name} ${selectedNewAdmin.last_name}. Are you sure you want to leave?`
+                        : "Are you sure you want to leave this group?"
+                  }
+                />
+              )}
             </HStack>
           </Box>
         </VStack>

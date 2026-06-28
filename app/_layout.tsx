@@ -258,7 +258,11 @@ export default function RootLayout() {
       const response = await services.user.getUserById(id);
 
       if (response.message === "User not found" && !response.data) {
-        router.replace("/(auth)/onboarding");
+        // Account was hard-deleted — clear the stale JWT so the next app
+        // launch doesn't loop through fetchDetails again.
+        await supabase.auth.signOut();
+        states.user.setState((prev) => ({ ...prev, session: null, details: null }));
+        router.replace("/(auth)/login");
         return;
       }
 

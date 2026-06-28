@@ -34,6 +34,22 @@ export type AddExpenseArgs = {
 };
 
 /**
+ * Arguments forwarded verbatim to `services.expense.saveDraftExpense` on sync.
+ * A draft has no payers/splits, so only the expense payload is queued.
+ */
+export type CreateDraftArgs = {
+  expensePayload: {
+    amount: number;
+    description: string;
+    proof_of_payment: null;
+    group_id: string;
+    currency: string;
+    expense_date?: string;
+    id?: string;
+  };
+};
+
+/**
  * Arguments forwarded verbatim to `services.group.saveGroup` on sync.
  */
 export type CreateGroupArgs = {
@@ -45,7 +61,7 @@ export type CreateGroupArgs = {
   id?: string;
 };
 
-export type QueueOpType = "ADD_EXPENSE" | "CREATE_GROUP";
+export type QueueOpType = "ADD_EXPENSE" | "CREATE_DRAFT" | "CREATE_GROUP";
 
 export type AddExpensePayload = {
   clientId: string;
@@ -53,6 +69,12 @@ export type AddExpensePayload = {
   args: AddExpenseArgs;
   /** Optimistic settlements injected offline; cleared on sync. */
   optimisticPayments?: Payment[];
+};
+
+export type CreateDraftPayload = {
+  clientId: string;
+  groupId: string;
+  args: CreateDraftArgs;
 };
 
 export type CreateGroupPayload = {
@@ -66,6 +88,13 @@ export type QueuedOp =
       id: string;
       type: "ADD_EXPENSE";
       payload: AddExpensePayload;
+      status: "pending" | "failed";
+      created_at: number;
+    }
+  | {
+      id: string;
+      type: "CREATE_DRAFT";
+      payload: CreateDraftPayload;
       status: "pending" | "failed";
       created_at: number;
     }
@@ -429,6 +458,25 @@ export async function queueAddExpense(
   );
 }
 
+export async function queueCreateDraft(
+  groupId: string,
+  args: CreateDraftArgs,
+  optimistic: ExpensePreview
+): Promise<void> {
+  const payload: CreateDraftPayload = {
+    clientId: optimistic.id,
+    groupId,
+    // Pin the server-side id to the optimistic id (see queueAddExpense).
+    args: {
+      ...args,
+      expensePayload: { ...args.expensePayload, id: optimistic.id }
+    }
+  };
+  await enqueue("CREATE_DRAFT", payload);
+  // A draft has no payments, so only the expense preview is injected.
+  await injectPendingExpense(groupId, optimistic);
+}
+
 export async function queueCreateGroup(
   userId: string,
   args: CreateGroupArgs,
@@ -484,7 +532,35 @@ export function buildOptimisticExpense(params: {
     creator: params.creator,
     currency: params.currency,
     status: PaymentStatus.PENDING,
+    is_draft: false,
     payer_list,
+    pending: true
+  };
+}
+
+/**
+ * Build an optimistic draft `ExpensePreview` (no payers, flagged as a draft) so
+ * an offline-saved draft renders in the creator's list immediately.
+ */
+export function buildOptimisticDraft(params: {
+  clientId: string;
+  groupId: string;
+  amount: number;
+  description: string;
+  currency: string;
+  creator: UserPreview;
+}): ExpensePreview {
+  return {
+    id: params.clientId,
+    created_at: new Date().toISOString(),
+    group_id: params.groupId,
+    amount: params.amount,
+    description: params.description,
+    creator: params.creator,
+    currency: params.currency,
+    status: PaymentStatus.ONGOING,
+    is_draft: true,
+    payer_list: [],
     pending: true
   };
 }

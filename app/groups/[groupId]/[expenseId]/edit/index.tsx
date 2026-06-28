@@ -36,6 +36,8 @@ export default function EditExpenseScreen() {
   const [blockReason, setBlockReason] = useState<
     "offline" | "settled" | "notfound" | null
   >(null);
+  // A draft is finalized through this same screen — same form, different submit.
+  const [isDraft, setIsDraft] = useState(false);
   const [step, setStep] = useState(1);
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
   const [upgradeDescription, setUpgradeDescription] = useState<
@@ -139,6 +141,13 @@ export default function EditExpenseScreen() {
         seededPayers[payer.payer.id] = { amount: String(payer.amount) };
       });
 
+      // A draft has no payer rows yet — default the creator as the sole payer
+      // of the full amount so step 2 starts valid (the user can adjust).
+      if (expense.is_draft && currentUserId) {
+        seededPayers[currentUserId] = { amount: String(expense.amount) };
+      }
+
+      setIsDraft(Boolean(expense.is_draft));
       setMembers(sortedMembers);
       setSplits(seededSplits);
       setPayers(seededPayers);
@@ -258,34 +267,48 @@ export default function EditExpenseScreen() {
 
     setSubmitting(true);
     try {
-      const response = await services.expense.updateExpense(
-        expenseId,
-        {
-          amount: parseFloat(values.amount),
-          description: values.description,
-          proof_of_payment: values.proof_of_payment ?? existingProofUrl,
-          group_id: values.group.id,
-          split_type: values.split_type,
-          currency: values.currency,
-          expense_date: values.expense_date
-        },
-        mappedPayers,
-        mappedSplits,
-        paymentSplits
-      );
+      const expensePayload = {
+        amount: parseFloat(values.amount),
+        description: values.description,
+        proof_of_payment: values.proof_of_payment ?? existingProofUrl,
+        group_id: values.group.id,
+        split_type: values.split_type,
+        currency: values.currency,
+        expense_date: values.expense_date
+      };
+
+      const response = isDraft
+        ? await services.expense.finalizeDraft(
+            expenseId,
+            expensePayload,
+            mappedPayers,
+            mappedSplits,
+            paymentSplits
+          )
+        : await services.expense.updateExpense(
+            expenseId,
+            expensePayload,
+            mappedPayers,
+            mappedSplits,
+            paymentSplits
+          );
 
       if (!response) {
-        throw new Error("Failed to update expense");
+        throw new Error(
+          isDraft ? "Failed to finalize draft" : "Failed to update expense"
+        );
       }
 
       toast({
-        title: "Expense Updated",
-        description: "Your changes have been saved.",
+        title: isDraft ? "Draft Finalized" : "Expense Updated",
+        description: isDraft
+          ? "Your expense has been split and shared with the group."
+          : "Your changes have been saved.",
         type: "success"
       });
       router.back();
     } catch (error: any) {
-      console.log("Error updating expense:", error);
+      console.log("Error saving expense:", error);
       if (error?.message === services.expense.SETTLEMENT_IN_PROGRESS) {
         toast({
           title: "Can't Edit Expense",
@@ -295,9 +318,10 @@ export default function EditExpenseScreen() {
         });
       } else {
         toast({
-          title: "Update Failed",
-          description:
-            "An error occurred while updating the expense. Please try again.",
+          title: isDraft ? "Finalize Failed" : "Update Failed",
+          description: isDraft
+            ? "An error occurred while finalizing the draft. Please try again."
+            : "An error occurred while updating the expense. Please try again.",
           type: "error"
         });
       }
@@ -374,7 +398,7 @@ export default function EditExpenseScreen() {
   return (
     <>
       <FormLayout
-        title="Edit Expense"
+        title={isDraft ? "Finalize Expense" : "Edit Expense"}
         onBack={() => router.back()}
         footer={
           loading
@@ -418,7 +442,7 @@ export default function EditExpenseScreen() {
                   <FormButton
                     key="step-3-submit"
                     className="flex-1"
-                    text="Save Changes"
+                    text={isDraft ? "Finalize" : "Save Changes"}
                     loading={submitting}
                     disabled={!isValidMemberSplit || !isMultipleMembers}
                     onPress={handleSubmit}
@@ -471,7 +495,9 @@ export default function EditExpenseScreen() {
                   isLockedGroup
                   groupName={values.group.name}
                   initialTab={values.split_type}
-                  skipInitialReset
+                  // A draft has no splits yet — let the step auto-distribute
+                  // like a fresh expense; editing preserves existing splits.
+                  skipInitialReset={!isDraft}
                 />
               </Box>
             </>

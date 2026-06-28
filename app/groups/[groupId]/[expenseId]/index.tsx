@@ -6,6 +6,7 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
+import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
@@ -304,7 +305,15 @@ export default function ExpenseDetailsScreen() {
     isCreator && !hasSettlementProgress && isOnline && paymentSplitList.length
   );
 
+  const isDraft = Boolean(expenseDetails?.is_draft);
+
   const handleEdit = () => {
+    router.push(`/groups/${groupId}/${expenseId}/edit`);
+  };
+
+  // Finalizing reuses the edit screen, which detects the draft and writes its
+  // splits + payments.
+  const handleFinalize = () => {
     router.push(`/groups/${groupId}/${expenseId}/edit`);
   };
 
@@ -312,8 +321,9 @@ export default function ExpenseDetailsScreen() {
   // overflow menu (mirrors the group details screen). With only one action,
   // surface its icon button directly.
   const renderActions = (): ReactNode[] => {
+    // A draft has no payers, so deletion is gated on creator instead.
     const showEdit = canEdit;
-    const showDelete = isPayer;
+    const showDelete = isDraft ? isCreator : isPayer;
 
     if (showEdit && showDelete) {
       return [
@@ -435,13 +445,26 @@ export default function ExpenseDetailsScreen() {
             {expenseDetails && (
               <VStack className="gap-y-8">
                 <VStack className="w-full gap-y-1 px-4">
-                  <Text
-                    className="text-sm text-secondary-950 uppercase flex-1"
-                    bold
-                    numberOfLines={1}
-                  >
-                    {expenseDetails.description}
-                  </Text>
+                  <HStack className="items-center gap-x-2">
+                    <Text
+                      className="text-sm text-secondary-950 uppercase flex-1"
+                      bold
+                      numberOfLines={1}
+                    >
+                      {expenseDetails.description}
+                    </Text>
+                    {isDraft && (
+                      <Badge
+                        size="sm"
+                        variant="solid"
+                        className="rounded-full bg-warning-50 px-3"
+                      >
+                        <BadgeText className="font-bold text-xs uppercase text-warning-600">
+                          Draft
+                        </BadgeText>
+                      </Badge>
+                    )}
+                  </HStack>
                   <Text className="text-3xl" bold>
                     {formatAmount(
                       expenseDetails.amount,
@@ -479,17 +502,21 @@ export default function ExpenseDetailsScreen() {
                         </HStack>
                       }
                     />
-                    <Box className="mx-4">
-                      <Divider className="border-secondary-200" />
-                    </Box>
-                    <DetailRow
-                      label="Split Type"
-                      value={
-                        <Text className="capitalize">
-                          {expenseDetails.split_type}
-                        </Text>
-                      }
-                    />
+                    {!isDraft && (
+                      <>
+                        <Box className="mx-4">
+                          <Divider className="border-secondary-200" />
+                        </Box>
+                        <DetailRow
+                          label="Split Type"
+                          value={
+                            <Text className="capitalize">
+                              {expenseDetails.split_type}
+                            </Text>
+                          }
+                        />
+                      </>
+                    )}
                     <Box className="mx-4">
                       <Divider className="border-secondary-200" />
                     </Box>
@@ -522,41 +549,70 @@ export default function ExpenseDetailsScreen() {
                   </Box>
                 </VStack>
 
-                <VStack className="gap-y-2">
-                  <Text className="text-xl px-4" bold>
-                    Payers
-                  </Text>
-                  <FlatList
-                    className="flex-1"
-                    scrollEnabled={false}
-                    data={sortedPayerList}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => <PayerItem payer={item} />}
-                    ItemSeparatorComponent={ListDivider}
-                    ListEmptyComponent={() => (
-                      <EmptyList type={EmptyType.MEMBER} />
+                {isDraft ? (
+                  <VStack className="gap-y-4 px-4">
+                    <VStack className="bg-warning-50 rounded-xl p-4 gap-y-1">
+                      <Text bold className="text-warning-700">
+                        This expense is a draft
+                      </Text>
+                      <Text className="text-sm text-warning-700">
+                        Only you can see it. Finalize it to set who paid and
+                        split it among members — that's when it counts toward
+                        balances and everyone gets notified.
+                      </Text>
+                    </VStack>
+                    {isCreator && (
+                      <FormButton
+                        text="Finalize Expense"
+                        disabled={!isOnline}
+                        onPress={handleFinalize}
+                      />
                     )}
-                  />
-                </VStack>
+                    {isCreator && !isOnline && (
+                      <Text className="text-sm text-secondary-950 text-center">
+                        Finalizing requires an internet connection.
+                      </Text>
+                    )}
+                  </VStack>
+                ) : (
+                  <>
+                    <VStack className="gap-y-2">
+                      <Text className="text-xl px-4" bold>
+                        Payers
+                      </Text>
+                      <FlatList
+                        className="flex-1"
+                        scrollEnabled={false}
+                        data={sortedPayerList}
+                        keyExtractor={(item) => item.id.toString()}
+                        renderItem={({ item }) => <PayerItem payer={item} />}
+                        ItemSeparatorComponent={ListDivider}
+                        ListEmptyComponent={() => (
+                          <EmptyList type={EmptyType.MEMBER} />
+                        )}
+                      />
+                    </VStack>
 
-                <VStack className="gap-y-2">
-                  <Text className="text-xl px-4" bold>
-                    Member Splits
-                  </Text>
-                  <FlatList
-                    className="flex-1"
-                    scrollEnabled={false}
-                    data={sortedMemberSplits}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                      <MemberSplitItem memberSplit={item} />
-                    )}
-                    ItemSeparatorComponent={ListDivider}
-                    ListEmptyComponent={() => (
-                      <EmptyList type={EmptyType.MEMBER} />
-                    )}
-                  />
-                </VStack>
+                    <VStack className="gap-y-2">
+                      <Text className="text-xl px-4" bold>
+                        Member Splits
+                      </Text>
+                      <FlatList
+                        className="flex-1"
+                        scrollEnabled={false}
+                        data={sortedMemberSplits}
+                        keyExtractor={(item) => item.id.toString()}
+                        renderItem={({ item }) => (
+                          <MemberSplitItem memberSplit={item} />
+                        )}
+                        ItemSeparatorComponent={ListDivider}
+                        ListEmptyComponent={() => (
+                          <EmptyList type={EmptyType.MEMBER} />
+                        )}
+                      />
+                    </VStack>
+                  </>
+                )}
               </VStack>
             )}
           </ScrollView>

@@ -126,7 +126,7 @@ export default function MarkAsSettledSheet({
                   <Text className="text-3xl" bold>
                     {formatAmount(payment.amount || 0, payment.currency)}
                   </Text>
-                  <Text className="text-secondary-950">Amount paid</Text>
+                  <Text className="text-secondary-950">You receive</Text>
                 </VStack>
               </VStack>
 
@@ -183,7 +183,7 @@ export default function MarkAsSettledSheet({
           <HStack className="gap-x-2">
             <FormButton
               className="flex-1"
-              text="Approve"
+              text="Mark Settled"
               loading={submitting}
               onPress={handleSubmit}
             />

@@ -21,12 +21,14 @@ export const getFavorites = async (userId: string): Promise<UserPreview[]> => {
 
     if (error) throw error;
 
-    const result = data.map((item) => {
-      const fav = Array.isArray(item.favorite)
-        ? item.favorite[0]
-        : item.favorite;
-      return fav;
-    }) as UserPreview[];
+    const result = data
+      .map((item) => {
+        const fav = Array.isArray(item.favorite)
+          ? item.favorite[0]
+          : item.favorite;
+        return fav;
+      })
+      .filter((u): u is UserPreview => Boolean(u?.id));
 
     cacheService.saveFavorites(userId, result).catch(() => {});
 
@@ -34,7 +36,7 @@ export const getFavorites = async (userId: string): Promise<UserPreview[]> => {
   } catch (error) {
     const cached = await cacheService.getFavorites(userId);
     if (cached) {
-      return cached as UserPreview[];
+      return (cached as UserPreview[]).filter((u) => Boolean(u?.id));
     }
     throw error;
   }

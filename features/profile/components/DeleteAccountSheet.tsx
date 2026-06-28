@@ -1,4 +1,3 @@
-import ConfirmButton from "@/components/ConfirmButton";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import {
@@ -84,7 +83,6 @@ export default function DeleteAccountSheet({
   };
 
   const hasUnsettled = unsettledPayments.length > 0;
-  const canDelete = !fetching && !hasUnsettled;
   const snapPoints = hasUnsettled ? [90] : [30];
 
   return (
@@ -156,18 +154,15 @@ export default function DeleteAccountSheet({
                 disabled={deleting}
                 onPress={onClose}
               />
-              <ConfirmButton
-                className="flex-1"
-                action="negative"
-                text="Delete Account"
-                isDelete
-                confirmText="Delete Account"
-                loading={deleting}
-                disabled={!canDelete}
-                onConfirm={handleDelete}
-                confirmTitle="Delete Account"
-                confirmDescription="Are you sure you want to delete your account? All your data — groups, expenses, and settlements — will be permanently removed. This cannot be undone."
-              />
+              {!fetching && !hasUnsettled && (
+                <FormButton
+                  className="flex-1"
+                  action="negative"
+                  text="Delete Account"
+                  loading={deleting}
+                  onPress={handleDelete}
+                />
+              )}
             </HStack>
           </Box>
         </VStack>

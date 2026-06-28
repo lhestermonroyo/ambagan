@@ -57,6 +57,21 @@ export function useOfflineSync() {
                 op.payload.optimisticPayments ?? [],
                 states.user.getState().details?.id
               );
+            } else if (op.type === "CREATE_DRAFT") {
+              const { args } = op.payload;
+              await services.expense.saveDraftExpense({
+                ...args.expensePayload,
+                proof_of_payment: null,
+                // Pinned to the optimistic id; rehydrate the ISO date to a Date.
+                id: op.payload.clientId,
+                expense_date: args.expensePayload.expense_date
+                  ? new Date(args.expensePayload.expense_date)
+                  : undefined
+              });
+              await offlineQueue._internal.clearPendingExpense(
+                op.payload.groupId,
+                op.payload.clientId
+              );
             } else if (op.type === "CREATE_GROUP") {
               await services.group.saveGroup(op.payload.args);
               await offlineQueue._internal.clearPendingGroup(

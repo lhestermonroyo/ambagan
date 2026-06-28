@@ -482,7 +482,8 @@ export const getStatsByGroupId = async (groupId: string) => {
       `
       id,
       total_expenses: ${tables.EXPENSES_TBL} (
-        amount
+        amount,
+        is_draft
       ),
       total_paid: ${tables.MEMBER_SPLITS_TBL} (
         amount,
@@ -504,8 +505,11 @@ export const getStatsByGroupId = async (groupId: string) => {
     throw error;
   }
 
+  // Drafts aren't real shared expenses yet, so they don't count toward the
+  // group's total spending.
   const totalExpenses = (data as any).total_expenses.reduce(
-    (acc: number, expense: any) => acc + expense.amount,
+    (acc: number, expense: any) =>
+      expense.is_draft ? acc : acc + expense.amount,
     0
   );
 

@@ -115,7 +115,7 @@ export default function RequestSettledSheet({
                   <Text className="text-3xl" bold>
                     {formatAmount(payment.amount || 0, payment.currency)}
                   </Text>
-                  <Text className="text-secondary-950">Amount settled</Text>
+                  <Text className="text-secondary-950">You pay</Text>
                 </VStack>
               </VStack>
 

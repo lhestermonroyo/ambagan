@@ -212,7 +212,9 @@ export default function ReviewRequestPaidSheet({
                     <Text className="text-3xl" bold>
                       {formatAmount(payment.amount || 0, payment.currency)}
                     </Text>
-                    <Text className="text-secondary-950">Amount paid</Text>
+                    <Text className="text-secondary-950">
+                      {isPayerMe ? "Amount received" : "Amount paid"}
+                    </Text>
                   </VStack>
                 </VStack>
 

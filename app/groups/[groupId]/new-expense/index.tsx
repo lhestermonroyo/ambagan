@@ -34,6 +34,7 @@ export default function NewExpenseScreen() {
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
   const [upgradeDescription, setUpgradeDescription] = useState<
     string | undefined
@@ -252,6 +253,125 @@ export default function NewExpenseScreen() {
       type: "info"
     });
     router.back();
+  };
+
+  const handleSaveDraft = async () => {
+    let errors: any = {};
+
+    if (!values.amount) {
+      errors.amount = "Amount is required";
+    }
+
+    if (!values.description) {
+      errors.description = "Description is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    if (!values.group || !userDetails) {
+      toast({
+        title: "Group Not Selected",
+        description: "Please select a group for this expense.",
+        type: "error"
+      });
+      return;
+    }
+
+    const online = await offlineQueue.isOnline();
+
+    // Offline → queue the draft optimistically. The daily limit can't be
+    // enforced without the server, so we skip that check offline.
+    if (!online) {
+      const clientId = uuid();
+      const creator = {
+        id: userDetails.id,
+        email: userDetails.email,
+        phone: userDetails.phone,
+        first_name: userDetails.first_name,
+        last_name: userDetails.last_name,
+        avatar: userDetails.avatar,
+        plan: userDetails.plan
+      };
+      const optimistic = offlineQueue.buildOptimisticDraft({
+        clientId,
+        groupId: values.group.id,
+        amount: parseFloat(values.amount),
+        description: values.description,
+        currency: values.currency,
+        creator
+      });
+
+      await offlineQueue.queueCreateDraft(
+        values.group.id,
+        {
+          expensePayload: {
+            amount: parseFloat(values.amount),
+            description: values.description,
+            proof_of_payment: null,
+            group_id: values.group.id,
+            currency: values.currency,
+            expense_date: values.expense_date.toISOString()
+          }
+        },
+        optimistic
+      );
+
+      toast({
+        title: "Draft saved offline",
+        description:
+          "This draft will sync automatically when you're back online.",
+        type: "info"
+      });
+      router.back();
+      return;
+    }
+
+    if (!isPro) {
+      const count = await services.expense.getDailyExpenseCount(userDetails.id);
+      if (count >= DAILY_EXPENSE_LIMIT) {
+        setUpgradeDescription(
+          "You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
+        );
+        setUpgradeSheetOpen(true);
+        return;
+      }
+    }
+
+    setSavingDraft(true);
+    try {
+      const response = await services.expense.saveDraftExpense({
+        amount: parseFloat(values.amount),
+        description: values.description,
+        proof_of_payment: values.proof_of_payment,
+        group_id: values.group.id,
+        currency: values.currency,
+        expense_date: values.expense_date
+      });
+
+      if (!response) {
+        throw new Error("Failed to save draft");
+      }
+
+      toast({
+        title: "Draft Saved",
+        description: "Finalize it later to set who paid and split it.",
+        type: "success"
+      });
+      router.back();
+    } catch (error) {
+      console.log("Error saving draft:", error);
+      toast({
+        title: "Draft Save Failed",
+        description:
+          "An error occurred while saving the draft. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setSavingDraft(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -516,7 +636,16 @@ export default function NewExpenseScreen() {
       titleRight={!isPro ? <DailyLimitBadge count={dailyCount} limit={DAILY_EXPENSE_LIMIT} /> : undefined}
       onBack={() => router.back()}
       footer={[
-        step === 1 && (
+        step === 1 && [
+          <FormButton
+            key="step-1-draft"
+            className="flex-1"
+            variant="outline"
+            text="Save as Draft"
+            loading={savingDraft}
+            disabled={!values.amount || !values.description || !values.group}
+            onPress={handleSaveDraft}
+          />,
           <FormButton
             key="step-1-next"
             className="flex-1"
@@ -524,7 +653,7 @@ export default function NewExpenseScreen() {
             disabled={!values.amount || !values.description || !values.group}
             onPress={() => setStep(2)}
           />
-        ),
+        ],
         step === 2 && [
           <FormButton
             key="step-2-back"
