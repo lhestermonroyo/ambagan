@@ -29,6 +29,7 @@ const isAnyNotifEnabled = (prefs: UserPreferences) =>
 
 const USER_STATE = create<UserState>((set, get) => ({
   loading: true,
+  routeIntent: "splash",
   session: null,
   details: null,
   preferences: null,

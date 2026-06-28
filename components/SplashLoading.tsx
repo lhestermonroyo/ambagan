@@ -8,7 +8,7 @@ const SplashLoading = ({
   children
 }: {
   loading: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }) => {
   if (!loading) {
     return children;

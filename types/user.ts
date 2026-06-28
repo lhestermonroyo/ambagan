@@ -17,11 +17,22 @@ export type UserPreferences = {
   updated_at: string;
 };
 
+export type RouteIntent =
+  | "splash"
+  | "welcome"
+  | "onboarding"
+  | "tabs"
+  | "login";
+
 export type UserState = {
   session: Session | null;
   details: User | null;
   preferences: UserPreferences | null;
   loading: boolean;
+  // Single source of truth for top-level (cold-start) routing in app/index.tsx.
+  // Resolved by fetchDetails so we never flash /(tabs) before the profile/auth
+  // state is known.
+  routeIntent: RouteIntent;
   appearanceMode: AppearanceMode;
   notificationsEnabled: boolean;
   defaultCurrency: string;
