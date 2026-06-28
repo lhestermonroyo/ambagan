@@ -487,8 +487,8 @@ export default function FriendDetailScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <VStack className="gap-y-8">
-            <VStack className="px-4 gap-y-8">
+          <VStack className="gap-y-6 pt-4">
+            <VStack className="px-4 gap-y-6">
               <HStack className="gap-x-3 items-center">
                 <AppAvatar
                   name={decodedName}
@@ -551,7 +551,7 @@ export default function FriendDetailScreen() {
                 <VStack className="gap-y-2">
                   {canSettle && (
                     <FormButton
-                      text="Settle All"
+                      text="Mark All as Settled"
                       icon={
                         <CheckCheck
                           color={getSecondaryHex(
@@ -744,7 +744,7 @@ export default function FriendDetailScreen() {
           <ModalHeader>
             <Heading>
               {pendingAction === "settle"
-                ? "Settle All"
+                ? "Mark All as Settled"
                 : "Request All as Settled"}
             </Heading>
           </ModalHeader>

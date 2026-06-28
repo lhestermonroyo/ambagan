@@ -338,7 +338,7 @@ export default function GroupSettlements({
 
   return (
     <Fragment>
-      <VStack className="gap-y-8">
+      <VStack className="gap-y-6">
         <VStack className="px-4">
           <Card className="rounded-xl bg-secondary-100">
             <VStack className="gap-y-4">

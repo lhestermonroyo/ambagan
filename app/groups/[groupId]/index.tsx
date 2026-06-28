@@ -211,7 +211,9 @@ export default function GroupDetailsScreen() {
         .catch(() => {});
     } catch (error) {
       // Offline / fetch failure — hydrate from cache rather than bailing out.
-      const cached = await cacheService.getGroupDetail(groupId).catch(() => null);
+      const cached = await cacheService
+        .getGroupDetail(groupId)
+        .catch(() => null);
       const cachedGroup = states.group
         .getState()
         .list.find((g) => g.id === groupId);
@@ -651,7 +653,7 @@ export default function GroupDetailsScreen() {
               />
             }
           >
-            <VStack className="pb-4 gap-y-8">
+            <VStack className="gap-y-6 py-4">
               <HStack className="px-4 gap-x-4 items-center">
                 <VStack>
                   <AppAvatar

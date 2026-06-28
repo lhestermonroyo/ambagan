@@ -47,7 +47,12 @@ import {
   getSecondaryHex
 } from "@/utils/getColorHex";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { Edit2, EllipsisVertical, FileImage, Trash2 } from "lucide-react-native";
+import {
+  Edit2,
+  EllipsisVertical,
+  FileImage,
+  Trash2
+} from "lucide-react-native";
 import { Fragment, ReactNode, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -443,7 +448,7 @@ export default function ExpenseDetailsScreen() {
         >
           <ScrollView className="flex-1">
             {expenseDetails && (
-              <VStack className="gap-y-8">
+              <VStack className="gap-y-6 py-4">
                 <VStack className="w-full gap-y-1 px-4">
                   <HStack className="items-center gap-x-2">
                     <Text

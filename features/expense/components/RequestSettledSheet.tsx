@@ -171,7 +171,7 @@ export default function RequestSettledSheet({
           <HStack className="gap-x-2">
             <FormButton
               className="flex-1"
-              text="Request"
+              text="Request Settled"
               loading={submitting}
               onPress={handleSubmit}
             />
