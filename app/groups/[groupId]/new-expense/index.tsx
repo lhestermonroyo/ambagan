@@ -577,7 +577,6 @@ export default function NewExpenseScreen() {
     [payers, splits]
   );
 
-
   const isValidMemberSplit = useMemo(() => {
     const totalSplitAmount = Object.keys(splits)
       .filter(
@@ -639,118 +638,121 @@ export default function NewExpenseScreen() {
 
   return (
     <>
-    <FormLayout
-      title="Custom Expense"
-      titleRight={!isPro ? <DailyLimitBadge count={dailyCount} limit={DAILY_EXPENSE_LIMIT} /> : undefined}
-      onBack={() => router.back()}
-      footer={[
-        step === 1 && [
-          <FormButton
-            key="step-1-draft"
-            className="flex-1"
-            variant="outline"
-            text="Save as Draft"
-            loading={savingDraft}
-            disabled={!values.amount || !values.description || !values.group}
-            onPress={handleSaveDraft}
-          />,
-          <FormButton
-            key="step-1-next"
-            className="flex-1"
-            text="Continue"
-            disabled={!values.amount || !values.description || !values.group}
-            onPress={() => setStep(2)}
+      <FormLayout
+        title="Custom Expense"
+        titleRight={
+          !isPro ? (
+            <DailyLimitBadge count={dailyCount} limit={DAILY_EXPENSE_LIMIT} />
+          ) : undefined
+        }
+        onBack={() => router.back()}
+        footer={[
+          step === 1 && [
+            <FormButton
+              key="step-1-draft"
+              className="flex-1"
+              variant="outline"
+              text={isPro ? "Save Draft" : "Save Draft - Pro"}
+              loading={savingDraft}
+              disabled={!values.amount || !values.description || !values.group}
+              onPress={handleSaveDraft}
+            />,
+            <FormButton
+              key="step-1-next"
+              className="flex-1"
+              text="Continue"
+              disabled={!values.amount || !values.description || !values.group}
+              onPress={() => setStep(2)}
+            />
+          ],
+          step === 2 && [
+            <FormButton
+              key="step-2-back"
+              className="flex-1"
+              variant="outline"
+              text="Back"
+              disabled={submitting}
+              onPress={() => setStep(1)}
+            />,
+            <FormButton
+              key="step-2-next"
+              className="flex-1"
+              text="Continue"
+              disabled={!isValidPayerContribution}
+              onPress={() => setStep(3)}
+            />
+          ],
+          step === 3 && [
+            <FormButton
+              key="step-3-back"
+              className="flex-1"
+              variant="outline"
+              text="Back"
+              disabled={submitting}
+              onPress={() => setStep(2)}
+            />,
+            <FormButton
+              key="step-3-submit"
+              className="flex-1"
+              text="Save Expense"
+              loading={submitting}
+              disabled={!isValidMemberSplit || !isMultipleMembers}
+              onPress={handleSubmit}
+            />
+          ]
+        ]}
+      >
+        {step === 1 && (
+          <AddExpenseStep
+            values={values}
+            setValues={setValues}
+            formErrors={formErrors}
+            isLockedGroup={isLocked}
+            currencyLocked={!isPro}
+            onCurrencyLockedPress={() => {
+              setUpgradeDescription(
+                "Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
+              );
+              setUpgradeSheetOpen(true);
+            }}
+            step={step}
           />
-        ],
-        step === 2 && [
-          <FormButton
-            key="step-2-back"
-            className="flex-1"
-            variant="outline"
-            text="Back"
-            disabled={submitting}
-            onPress={() => setStep(1)}
-          />,
-          <FormButton
-            key="step-2-next"
-            className="flex-1"
-            text="Continue"
-            disabled={!isValidPayerContribution}
-            onPress={() => setStep(3)}
+        )}
+        {step === 2 && (
+          <PayersContributionStep
+            payers={payers}
+            members={members}
+            onPayerAmountChange={handlePayerAmountChange}
+            amount={values.amount}
+            currency={values.currency}
+            step={step}
+            isLockedGroup={isLocked}
+            groupName={values.group.name}
           />
-        ],
-        step === 3 && [
-          <FormButton
-            key="step-3-back"
-            className="flex-1"
-            variant="outline"
-            text="Back"
-            disabled={submitting}
-            onPress={() => setStep(2)}
-          />,
-          <FormButton
-            key="step-3-submit"
-            className="flex-1"
-            text="Save Expense"
-            loading={submitting}
-            disabled={!isValidMemberSplit || !isMultipleMembers}
-            onPress={handleSubmit}
+        )}
+        {step === 3 && (
+          <SplitExpenseStep
+            amount={values.amount}
+            currency={values.currency}
+            groupId={values.group.id}
+            members={members}
+            splits={splits}
+            onSetSplits={handleSetSplits}
+            step={step}
+            isLockedGroup={isLocked}
+            groupName={values.group.name}
           />
-        ]
-      ]}
-    >
-      {step === 1 && (
-        <AddExpenseStep
-          values={values}
-          setValues={setValues}
-          formErrors={formErrors}
-          isLockedGroup={isLocked}
-          currencyLocked={!isPro}
-          onCurrencyLockedPress={() => {
-            setUpgradeDescription(
-              "Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
-            );
-            setUpgradeSheetOpen(true);
-          }}
-          step={step}
-        />
-      )}
-      {step === 2 && (
-        <PayersContributionStep
-          payers={payers}
-          members={members}
-          onPayerAmountChange={handlePayerAmountChange}
-          amount={values.amount}
-          currency={values.currency}
-          step={step}
-          isLockedGroup={isLocked}
-          groupName={values.group.name}
-        />
-      )}
-      {step === 3 && (
-        <SplitExpenseStep
-          amount={values.amount}
-          currency={values.currency}
-          groupId={values.group.id}
-          members={members}
-          splits={splits}
-          onSetSplits={handleSetSplits}
-          step={step}
-          isLockedGroup={isLocked}
-          groupName={values.group.name}
-        />
-      )}
-    </FormLayout>
+        )}
+      </FormLayout>
 
-    <UpgradeSheet
-      isOpen={upgradeSheetOpen}
-      onClose={() => setUpgradeSheetOpen(false)}
-      description={upgradeDescription}
-    />
+      <UpgradeSheet
+        isOpen={upgradeSheetOpen}
+        onClose={() => setUpgradeSheetOpen(false)}
+        description={upgradeDescription}
+      />
     </>
   );
 }
-
 
 function DailyLimitBadge({ count, limit }: { count: number; limit: number }) {
   const remaining = limit - count;
