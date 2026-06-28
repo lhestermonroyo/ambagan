@@ -54,6 +54,7 @@ export default function RootLayout() {
   const toast = useAppToast();
   const overlayOpacity = useSharedValue(0);
   const isFirstRender = useRef(true);
+  const prevIsOnline = useRef<boolean | null>(null);
   const notificationChannel = useRef<RealtimeChannel | null>(null);
   const subscribedUserId = useRef<string | null>(null);
   const fetchedForUser = useRef<string | null>(null);
@@ -99,6 +100,21 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded, loading]);
+
+  useEffect(() => {
+    if (prevIsOnline.current === null) {
+      prevIsOnline.current = isOnline;
+      return;
+    }
+    if (prevIsOnline.current && !isOnline) {
+      toast({
+        title: "No Internet Connection",
+        description: "You're in offline mode. You can still browse cached data.",
+        type: "error"
+      });
+    }
+    prevIsOnline.current = isOnline;
+  }, [isOnline]);
 
   useEffect(() => {
     notifReceivedListener.current =
