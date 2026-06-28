@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -55,6 +56,7 @@ import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   CalendarRange,
@@ -787,9 +789,8 @@ function NetBalanceHero({
   const sorted = [...items].sort((a, b) =>
     a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
   );
-  const [primary, ...secondary] = sorted;
+  const [primary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
-
   const amountColor = primaryAmount < 0 && "text-error-400";
 
   return (
@@ -803,18 +804,18 @@ function NetBalanceHero({
         </Text>
       ) : (
         <HStack className="items-end gap-x-2">
-          <Text bold className={`text-3xl ${amountColor}`}>
+          <Text bold className={cn("text-3xl", amountColor)}>
             {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
           </Text>
           <HStack className="items-center gap-x-1 pb-1">
             <Text className="text-secondary-950 text-base">
               {primary?.currency ?? primaryCurrency}
             </Text>
-            {secondary.length > 0 && (
-              <Text className="text-secondary-950 text-sm">
-                +{secondary.length} more
-              </Text>
-            )}
+            <CurrencyCountButton
+              items={sorted}
+              title="Net Balance"
+              subtitle="To Collect minus To Pay, per currency"
+            />
           </HStack>
         </HStack>
       )}

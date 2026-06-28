@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -9,13 +10,6 @@ import {
   GroupListSkeleton,
   SettlementListSkeleton
 } from "@/components/SkeletonLoader";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
@@ -50,7 +44,6 @@ import * as Notifications from "expo-notifications";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   Bell,
-  ChevronRight,
   CircleQuestionMark,
   HousePlus,
   PlusCircle
@@ -72,6 +65,7 @@ import {
 } from "react-native";
 
 const SETTLEMENT_REMINDER_ID = "daily-settlement-reminder";
+
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState({
@@ -222,10 +216,7 @@ export default function HomeScreen() {
 
       if (!response) return;
 
-      setStats({
-        toPay: response.toPay,
-        toReceive: response.toReceive
-      });
+      setStats({ toPay: response.toPay, toReceive: response.toReceive });
       syncSettlementReminder(response.toPay);
     } catch (error) {
       console.error("Failed to fetch expense statistics:", error);
@@ -757,7 +748,6 @@ function StatItem({
   isLoading: boolean;
   primaryCurrency?: string;
 }) {
-  const [sheetOpen, setSheetOpen] = useState(false);
   const isReceive = type === "RECEIVE";
   const label = isReceive ? "To Collect" : "To Pay";
 
@@ -772,81 +762,33 @@ function StatItem({
       ),
     [items, primaryCurrency]
   );
-  const [primary, ...secondary] = sorted;
+  const [primary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
 
   return (
-    <Fragment>
-      <VStack className="flex-1 gap-y-2">
+    <VStack className="flex-1 gap-y-2">
+      <HStack className="items-center gap-x-2">
+        <SettlementAvatar isPayer={isReceive} light />
+        <Text className="text-background-0">{label}</Text>
+      </HStack>
+      {isLoading ? (
+        <Text bold className="text-2xl text-background-0">
+          —
+        </Text>
+      ) : (
         <HStack className="items-center gap-x-2">
-          <SettlementAvatar isPayer={isReceive} light />
-          <Text className="text-background-0">{label}</Text>
-        </HStack>
-        {isLoading ? (
           <Text bold className="text-2xl text-background-0">
-            —
+            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
           </Text>
-        ) : (
-          <Pressable
-            onPress={
-              secondary.length > 0 ? () => setSheetOpen(true) : undefined
-            }
-          >
-            <HStack className="items-center gap-x-2">
-              <Text bold className="text-2xl text-background-0">
-                {formatAmount(
-                  primaryAmount,
-                  primary?.currency ?? primaryCurrency
-                )}
-              </Text>
-              {secondary.length > 0 && (
-                <HStack className="bg-white/20 rounded-full px-2 py-0.5 items-center gap-x-0.5">
-                  <Text className="text-background-0 text-xs font-semibold">
-                    +{secondary.length}
-                  </Text>
-                  <ChevronRight size={10} color="white" />
-                </HStack>
-              )}
-            </HStack>
-          </Pressable>
-        )}
-      </VStack>
+          <CurrencyCountButton
+            items={sorted}
+            title={label}
+            subtitle="Breakdown by currency"
 
-      <Actionsheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full">
-            <VStack className="p-4">
-              <Text bold className="text-xl">
-                {label}
-              </Text>
-              <Text className="text-sm text-secondary-950">
-                Breakdown by currency
-              </Text>
-            </VStack>
-            <FlatList
-              data={sorted}
-              scrollEnabled={false}
-              keyExtractor={(item) => item.currency}
-              renderItem={({ item: { currency, amount } }) => (
-                <HStack className="items-center justify-between p-4">
-                  <Text className="text-secondary-950 font-medium text-lg">
-                    {currency}
-                  </Text>
-                  <Text bold className="text-lg">
-                    {formatAmount(amount, currency)}
-                  </Text>
-                </HStack>
-              )}
-              ItemSeparatorComponent={ListDivider}
-            />
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
-    </Fragment>
+          />
+        </HStack>
+      )}
+    </VStack>
   );
 }
 
@@ -859,8 +801,6 @@ function NetBalanceRow({
   isLoading: boolean;
   primaryCurrency?: string;
 }) {
-  const [sheetOpen, setSheetOpen] = useState(false);
-
   const sorted = useMemo(
     () =>
       [...items].sort((a, b) =>
@@ -872,89 +812,36 @@ function NetBalanceRow({
       ),
     [items, primaryCurrency]
   );
-  const [primary, ...secondary] = sorted;
+  const [primary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
 
   return (
-    <Fragment>
-      <VStack className="gap-y-2">
-        <Text bold className="text-sm text-background-0 uppercase">
-          Net Balance
+    <VStack className="gap-y-2">
+      <Text bold className="text-sm text-background-0 uppercase">
+        Net Balance
+      </Text>
+      {isLoading ? (
+        <Text bold className="text-4xl text-background-0">
+          —
         </Text>
-        {isLoading ? (
+      ) : (
+        <HStack className="items-end gap-x-2">
           <Text bold className="text-4xl text-background-0">
-            —
+            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
           </Text>
-        ) : (
-          <Pressable
-            onPress={
-              secondary.length > 0 ? () => setSheetOpen(true) : undefined
-            }
-          >
-            <HStack className="items-end gap-x-2">
-              <Text bold className="text-4xl text-background-0">
-                {formatAmount(
-                  primaryAmount,
-                  primary?.currency ?? primaryCurrency
-                )}
-              </Text>
-              <HStack className="items-center gap-x-1 pb-1">
-                <Text className="text-background-0/70 text-base">
-                  {primary?.currency ?? primaryCurrency}
-                </Text>
-                {secondary.length > 0 && (
-                  <HStack className="bg-white/20 rounded-full px-2 py-0.5 items-center gap-x-0.5">
-                    <Text className="text-background-0 text-xs font-semibold">
-                      +{secondary.length}
-                    </Text>
-                    <ChevronRight size={10} color="white" />
-                  </HStack>
-                )}
-              </HStack>
-            </HStack>
-          </Pressable>
-        )}
-      </VStack>
-
-      <Actionsheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full">
-            <VStack className="p-4">
-              <Text bold className="text-xl">
-                Net Balance
-              </Text>
-              <Text className="text-sm text-secondary-950">
-                To Collect minus To Pay, per currency
-              </Text>
-            </VStack>
-            <FlatList
-              data={sorted}
-              scrollEnabled={false}
-              keyExtractor={(item) => item.currency}
-              renderItem={({ item: { currency, amount } }) => {
-                const color =
-                  amount < 0 ? "text-error-400" : "text-secondary-950";
-                return (
-                  <HStack className="items-center justify-between p-4">
-                    <Text className="text-secondary-950 font-medium text-lg">
-                      {currency}
-                    </Text>
-                    <Text bold className={cn("text-lg", color)}>
-                      {amount > 0 ? "+" : ""}
-                      {formatAmount(amount, currency)}
-                    </Text>
-                  </HStack>
-                );
-              }}
-              ItemSeparatorComponent={ListDivider}
+          <HStack className="items-center gap-x-1 pb-1">
+            <Text className="text-background-0/70 text-base">
+              {primary?.currency ?? primaryCurrency}
+            </Text>
+            <CurrencyCountButton
+              items={sorted}
+              title="Net Balance"
+              subtitle="To Collect minus To Pay, per currency"
+  
             />
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
-    </Fragment>
+          </HStack>
+        </HStack>
+      )}
+    </VStack>
   );
 }
