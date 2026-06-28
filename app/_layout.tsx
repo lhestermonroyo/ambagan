@@ -294,12 +294,16 @@ export default function RootLayout() {
 
       try {
         const customerInfo = await services.purchase.getCustomerInfo();
-        const { plan } =
-          await services.purchase.syncPlanToSupabase(customerInfo);
+        // Pass the stored window so an unexpired (non-renewing) 2-week pass
+        // survives the launch sync; an expired one reverts to free.
+        const { plan, plan_expires_at } =
+          await services.purchase.syncPlanToSupabase(customerInfo, {
+            currentWindowExpiresAt: response.data?.plan_expires_at ?? null
+          });
         states.user.setState((prev) => ({
           ...prev,
           details: prev.details
-            ? { ...prev.details, plan, plan_expires_at: null }
+            ? { ...prev.details, plan, plan_expires_at }
             : prev.details
         }));
       } catch (error) {

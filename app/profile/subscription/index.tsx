@@ -18,7 +18,6 @@ import states from "@/states";
 import { useRouter } from "expo-router";
 import { Crown } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { useColorScheme } from "react-native";
 import { PurchasesOffering, PurchasesPackage } from "react-native-purchases";
 
 type PlanType = "two_week" | "monthly" | "yearly";
@@ -106,7 +105,6 @@ export default function SubscriptionScreen() {
 
   const router = useRouter();
   const toast = useAppToast();
-  const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   const isPro = userDetails?.plan === "pro";
 
@@ -139,7 +137,9 @@ export default function SubscriptionScreen() {
   const ctaLabel = () => {
     const plan = PLANS.find((p) => p.key === selectedPlan)!;
     const price = getPriceLabel(pkgMap[selectedPlan], plan.fallbackPrice);
-    return `Subscribe — ${price} ${plan.fallbackSuffix}`;
+    // The 2-week pass is a one-off purchase, not a subscription.
+    const verb = selectedPlan === "two_week" ? "Get Pro" : "Subscribe";
+    return `${verb} — ${price} ${plan.fallbackSuffix}`;
   };
 
   useEffect(() => {
@@ -172,18 +172,36 @@ export default function SubscriptionScreen() {
     setPurchasing(true);
     try {
       const customerInfo = await services.purchase.purchasePackage(activePkg);
-      const { plan } = await services.purchase.syncPlanToSupabase(customerInfo);
+
+      // The 2-week pass is a consumable — it grants no recurring entitlement,
+      // so we stamp a 14-day window ourselves, stacking onto any unexpired
+      // window so an early repurchase never loses days. Auto-renewable plans
+      // let RevenueCat's active entitlement drive the expiry.
+      const { plan, plan_expires_at } =
+        await services.purchase.syncPlanToSupabase(
+          customerInfo,
+          selectedPlan === "two_week"
+            ? {
+                setWindowExpiresAt: services.purchase.computeTwoWeekExpiry(
+                  userDetails?.plan_expires_at ?? null
+                )
+              }
+            : undefined
+        );
 
       states.user.setState((prev) => ({
         ...prev,
         details: prev.details
-          ? { ...prev.details, plan, plan_expires_at: null }
+          ? { ...prev.details, plan, plan_expires_at }
           : prev.details
       }));
 
       toast({
         title: "Welcome to Pro!",
-        description: "No daily limits — enjoy all features.",
+        description:
+          selectedPlan === "two_week"
+            ? "Your 2-week Pro pass is active — enjoy all features."
+            : "No daily limits — enjoy all features.",
         type: "success"
       });
     } catch (error) {
@@ -203,12 +221,15 @@ export default function SubscriptionScreen() {
     setRestoring(true);
     try {
       const customerInfo = await services.purchase.restorePurchases();
-      const { plan } = await services.purchase.syncPlanToSupabase(customerInfo);
+      const { plan, plan_expires_at } =
+        await services.purchase.syncPlanToSupabase(customerInfo, {
+          currentWindowExpiresAt: userDetails?.plan_expires_at ?? null
+        });
 
       states.user.setState((prev) => ({
         ...prev,
         details: prev.details
-          ? { ...prev.details, plan, plan_expires_at: null }
+          ? { ...prev.details, plan, plan_expires_at }
           : prev.details
       }));
 
@@ -342,82 +363,82 @@ export default function SubscriptionScreen() {
                 </Text>
                 <VStack className="gap-y-2">
                   {PLANS.map((plan) => {
-                  const isSelected = selectedPlan === plan.key;
-                  const priceLabel = getPriceLabel(
-                    pkgMap[plan.key],
-                    plan.fallbackPrice
-                  );
+                    const isSelected = selectedPlan === plan.key;
+                    const priceLabel = getPriceLabel(
+                      pkgMap[plan.key],
+                      plan.fallbackPrice
+                    );
 
-                  return (
-                    <Pressable
-                      key={plan.key}
-                      onPress={() => setSelectedPlan(plan.key)}
-                    >
-                      <Box
-                        className={`rounded-2xl p-4 ${
-                          isSelected
-                            ? "bg-primary-50 border border-primary-400 dark:bg-primary-950"
-                            : "bg-background-50"
-                        }`}
+                    return (
+                      <Pressable
+                        key={plan.key}
+                        onPress={() => setSelectedPlan(plan.key)}
                       >
-                        <HStack className="items-center justify-between">
-                          <VStack className="gap-y-0.5 flex-1">
-                            <HStack className="items-center gap-x-2">
+                        <Box
+                          className={`rounded-2xl p-4 ${
+                            isSelected
+                              ? "bg-primary-50 border border-primary-400 dark:bg-primary-950"
+                              : "bg-background-50 border border-background-50"
+                          }`}
+                        >
+                          <HStack className="items-center justify-between">
+                            <VStack className="gap-y-0.5 flex-1">
+                              <HStack className="items-center gap-x-2">
+                                <Text
+                                  bold
+                                  className={`text-lg ${isSelected ? "text-primary-400" : ""}`}
+                                >
+                                  {plan.label}
+                                </Text>
+                                {plan.badge && (
+                                  <Box className="bg-success-400 px-2 py-0.5 rounded-full">
+                                    <Text
+                                      bold
+                                      className="text-background-0 text-xs"
+                                    >
+                                      {plan.badge}
+                                    </Text>
+                                  </Box>
+                                )}
+                              </HStack>
+                              {plan.sublabel && (
+                                <Text className="text-secondary-950 text-sm">
+                                  {plan.sublabel}
+                                </Text>
+                              )}
+                            </VStack>
+
+                            <HStack className="items-center gap-x-4">
                               <Text
                                 bold
-                                className={`text-lg ${isSelected ? "text-primary-400" : ""}`}
+                                className={`text-xl ${isSelected && "text-primary-400"}`}
                               >
-                                {plan.label}
+                                {priceLabel}
+                                <Text
+                                  className={`text-sm ${isSelected ? "text-primary-400" : "text-secondary-950"}`}
+                                >
+                                  {" "}
+                                  {plan.fallbackSuffix}
+                                </Text>
                               </Text>
-                              {plan.badge && (
-                                <Box className="bg-success-400 px-2 py-0.5 rounded-full">
-                                  <Text
-                                    bold
-                                    className="text-background-0 text-xs"
-                                  >
-                                    {plan.badge}
-                                  </Text>
-                                </Box>
-                              )}
+
+                              {/* Radio button */}
+                              <Box
+                                className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
+                                  isSelected
+                                    ? "border-primary-400 bg-primary-400"
+                                    : "border-secondary-400 bg-transparent"
+                                }`}
+                              >
+                                {isSelected && (
+                                  <Box className="w-2 h-2 rounded-full bg-background-0" />
+                                )}
+                              </Box>
                             </HStack>
-                            {plan.sublabel && (
-                              <Text className="text-secondary-950 text-sm">
-                                {plan.sublabel}
-                              </Text>
-                            )}
-                          </VStack>
-
-                          <HStack className="items-center gap-x-4">
-                            <Text
-                              bold
-                              className={`text-xl ${isSelected ? "text-primary-400" : "text-secondary-950"}`}
-                            >
-                              {priceLabel}
-                              <Text
-                                className={`text-sm font-normal ${isSelected ? "text-primary-400" : "text-secondary-950"}`}
-                              >
-                                {" "}
-                                {plan.fallbackSuffix}
-                              </Text>
-                            </Text>
-
-                            {/* Radio button */}
-                            <Box
-                              className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
-                                isSelected
-                                  ? "border-primary-400 bg-primary-400"
-                                  : "border-secondary-400 bg-transparent"
-                              }`}
-                            >
-                              {isSelected && (
-                                <Box className="w-2 h-2 rounded-full bg-background-0" />
-                              )}
-                            </Box>
                           </HStack>
-                        </HStack>
-                      </Box>
-                    </Pressable>
-                  );
+                        </Box>
+                      </Pressable>
+                    );
                   })}
                 </VStack>
               </VStack>
