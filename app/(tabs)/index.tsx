@@ -16,7 +16,6 @@ import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
-import { Pressable } from "@/components/ui/pressable";
 import {
   ScrollView as HScrollView,
   ScrollView
@@ -66,7 +65,6 @@ import {
 
 const SETTLEMENT_REMINDER_ID = "daily-settlement-reminder";
 
-
 export default function HomeScreen() {
   const [loading, setLoading] = useState({
     stats: false,
@@ -97,18 +95,22 @@ export default function HomeScreen() {
   const { activityList } = states.expense();
   const { unreadCount } = states.notification();
 
+  const displayStats = stats;
+
   const netBalance = useMemo(() => {
     const allCurrencies = new Set([
-      ...stats.toReceive.map((i) => i.currency),
-      ...stats.toPay.map((i) => i.currency)
+      ...displayStats.toReceive.map((i) => i.currency),
+      ...displayStats.toPay.map((i) => i.currency)
     ]);
     return Array.from(allCurrencies).map((currency) => {
       const receive =
-        stats.toReceive.find((i) => i.currency === currency)?.amount ?? 0;
-      const pay = stats.toPay.find((i) => i.currency === currency)?.amount ?? 0;
+        displayStats.toReceive.find((i) => i.currency === currency)?.amount ??
+        0;
+      const pay =
+        displayStats.toPay.find((i) => i.currency === currency)?.amount ?? 0;
       return { currency, amount: receive - pay };
     });
-  }, [stats.toReceive, stats.toPay]);
+  }, [displayStats.toReceive, displayStats.toPay]);
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
@@ -128,7 +130,7 @@ export default function HomeScreen() {
   }, [netBalance, defaultCurrency]);
 
   const primaryReceive = useMemo(() => {
-    const sorted = [...stats.toReceive].sort((a, b) =>
+    const sorted = [...displayStats.toReceive].sort((a, b) =>
       a.currency === defaultCurrency
         ? -1
         : b.currency === defaultCurrency
@@ -136,10 +138,10 @@ export default function HomeScreen() {
           : 0
     );
     return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [stats.toReceive, defaultCurrency]);
+  }, [displayStats.toReceive, defaultCurrency]);
 
   const primaryPay = useMemo(() => {
-    const sorted = [...stats.toPay].sort((a, b) =>
+    const sorted = [...displayStats.toPay].sort((a, b) =>
       a.currency === defaultCurrency
         ? -1
         : b.currency === defaultCurrency
@@ -147,7 +149,7 @@ export default function HomeScreen() {
           : 0
     );
     return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [stats.toPay, defaultCurrency]);
+  }, [displayStats.toPay, defaultCurrency]);
 
   const COMPACT_THRESHOLD = 180;
   const compactOpacity = scrollY.interpolate({
@@ -346,12 +348,18 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const groupsPreview = useMemo(() => groupList.slice(0, 5), [groupList]);
+  const groupsPreview = useMemo(
+    () => groupList.slice(0, 5),
+    [groupList]
+  );
   const activitiesPreview = useMemo(
     () => activityList.slice(0, 5),
     [activityList]
   );
-  const friendsPreview = useMemo(() => friends.slice(0, 5), [friends]);
+  const friendsPreview = useMemo(
+    () => friends.slice(0, 5),
+    [friends]
+  );
 
   const handleOpenActionSheet = useCallback((item: PaymentPreview) => {
     setSelectedPayment(item);
@@ -524,7 +532,7 @@ export default function HomeScreen() {
                     <StatItem
                       type="RECEIVE"
                       isLoading={loading.stats}
-                      items={stats.toReceive}
+                      items={displayStats.toReceive}
                       primaryCurrency={defaultCurrency}
                     />
                     <Divider
@@ -534,7 +542,7 @@ export default function HomeScreen() {
                     <StatItem
                       type="PAY"
                       isLoading={loading.stats}
-                      items={stats.toPay}
+                      items={displayStats.toPay}
                       primaryCurrency={defaultCurrency}
                     />
                   </HStack>
@@ -784,7 +792,6 @@ function StatItem({
             items={sorted}
             title={label}
             subtitle="Breakdown by currency"
-
           />
         </HStack>
       )}
@@ -837,7 +844,6 @@ function NetBalanceRow({
               items={sorted}
               title="Net Balance"
               subtitle="To Collect minus To Pay, per currency"
-  
             />
           </HStack>
         </HStack>
