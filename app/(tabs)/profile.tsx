@@ -280,7 +280,7 @@ export default function ProfileScreen() {
               </VStack>
             ))}
 
-            <VStack className="px-4 mt-8 gap-y-3">
+            <VStack className="px-4 mt-8 gap-y-4">
               <FormButton
                 text="Sign Out"
                 action="negative"

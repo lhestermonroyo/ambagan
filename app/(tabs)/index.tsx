@@ -348,18 +348,12 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const groupsPreview = useMemo(
-    () => groupList.slice(0, 5),
-    [groupList]
-  );
+  const groupsPreview = useMemo(() => groupList.slice(0, 5), [groupList]);
   const activitiesPreview = useMemo(
     () => activityList.slice(0, 5),
     [activityList]
   );
-  const friendsPreview = useMemo(
-    () => friends.slice(0, 5),
-    [friends]
-  );
+  const friendsPreview = useMemo(() => friends.slice(0, 5), [friends]);
 
   const handleOpenActionSheet = useCallback((item: PaymentPreview) => {
     setSelectedPayment(item);
@@ -453,7 +447,7 @@ export default function HomeScreen() {
                     color={getSecondaryHex("text-secondary-0", colorScheme)}
                   />
                   {unreadCount > 0 && (
-                    <Box className="absolute -top-1 -right-1 bg-error-400 rounded-full flex w-4 h-4 items-center justify-center">
+                    <Box className="absolute -top-1 -right-1 bg-error-400 rounded-full flex px-1 min-w-4 h-4 items-center justify-center">
                       <Text className="text-white text-2xs font-semibold">
                         {unreadCount > 9 ? "9+" : unreadCount}
                       </Text>
