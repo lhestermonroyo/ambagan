@@ -42,8 +42,6 @@ import { cacheService } from "@/utils/cacheService";
 import { DAILY_EXPENSE_LIMIT } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
-import "react-native-get-random-values";
-import { v4 as uuid } from "uuid";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -62,6 +60,8 @@ import {
   useState
 } from "react";
 import { useColorScheme } from "react-native";
+import "react-native-get-random-values";
+import { v4 as uuid } from "uuid";
 
 type QuickAddExpenseSheetProps = {
   isOpen: boolean;
@@ -422,7 +422,7 @@ export default function QuickAddExpenseSheet({
                         onPress={openDateSheet}
                         className="p-4 border border-background-200 rounded-lg"
                       >
-                        <HStack className="items-center flex-1 gap-x-2">
+                        <HStack className="items-center gap-x-2">
                           <CalendarDays
                             color={getSecondaryHex(
                               "text-secondary-950",
@@ -605,6 +605,7 @@ export default function QuickAddExpenseSheet({
       <UpgradeSheet
         isOpen={upgradeSheetOpen}
         onClose={() => setUpgradeSheetOpen(false)}
+        onProceed={onClose}
         description={upgradeDescription}
       />
 

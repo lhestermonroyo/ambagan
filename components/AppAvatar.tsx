@@ -4,6 +4,7 @@ import {
   AvatarFallbackText,
   AvatarImage
 } from "@/components/ui/avatar";
+import { useNetwork } from "@/hooks/useNetwork";
 import { avatarColors } from "@/utils/constants";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import React, { ComponentPropsWithRef, useState } from "react";
@@ -24,8 +25,11 @@ const AppAvatar = ({
 }: AppAvatarProps) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const { isOnline } = useNetwork();
 
-  const showFallback = !uri || imageError;
+  // Offline: remote avatar URLs can't load (broken/blank), so show initials.
+  const showImage = !!uri && !imageError && isOnline;
+  const showFallback = !showImage;
 
   return (
     <Avatar
@@ -37,7 +41,7 @@ const AppAvatar = ({
         props.className
       )}
     >
-      {uri && !imageError && (
+      {showImage && (
         <AvatarImage
           source={{ uri: uri }}
           alt={name || "Avatar"}

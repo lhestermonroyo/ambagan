@@ -152,7 +152,7 @@ export default function AddExpenseStep({
               onPress={openDateSheet}
               className="p-4 border border-background-200 rounded-lg"
             >
-              <HStack className="items-center flex-1 gap-x-2">
+              <HStack className="items-center gap-x-2">
                 <CalendarDays
                   color={getSecondaryHex("text-secondary-950", colorScheme)}
                 />

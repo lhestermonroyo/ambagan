@@ -52,10 +52,14 @@ const PRO_FEATURES = [
 export default function UpgradeSheet({
   isOpen,
   onClose,
+  onProceed,
   description
 }: {
   isOpen: boolean;
   onClose: () => void;
+  // Fires when the user taps "Explore Options" (right before navigating).
+  // Lets a parent sheet dismiss itself too, so it isn't left open underneath.
+  onProceed?: () => void;
   description?: string;
 }) {
   const router = useRouter();
@@ -63,6 +67,7 @@ export default function UpgradeSheet({
 
   const handleUpgrade = () => {
     onClose();
+    onProceed?.();
     router.push("/profile/subscription");
   };
 
