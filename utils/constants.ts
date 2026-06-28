@@ -8,6 +8,7 @@ export const tables = {
   GROUPS_TBL: "groups_tbl",
   GROUP_MEMBERS_TBL: "group_members_tbl",
   EXPENSES_TBL: "expenses_tbl",
+  EXPENSE_CREATION_LOG_TBL: "expense_creation_log_tbl",
   EXPENSE_PAYERS_TBL: "expense_payers_tbl",
   MEMBER_SPLITS_TBL: "member_splits_tbl",
   PAYMENT_SPLITS_TBL: "payment_splits_tbl",

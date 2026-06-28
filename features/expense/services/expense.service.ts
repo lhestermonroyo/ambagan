@@ -29,10 +29,13 @@ export const getDailyExpenseCount = async (userId: string): Promise<number> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Count creation *events*, not surviving rows. The expense_creation_log_tbl is
+  // append-only (written by an AFTER INSERT trigger on expenses_tbl and never
+  // touched on delete), so deleting an expense can't refund the daily slot.
   const { count, error } = await supabase
-    .from(tables.EXPENSES_TBL)
+    .from(tables.EXPENSE_CREATION_LOG_TBL)
     .select("*", { count: "exact", head: true })
-    .eq("creator_id", userId)
+    .eq("user_id", userId)
     .gte("created_at", today.toISOString());
 
   if (error) throw error;

@@ -245,6 +245,56 @@ ALTER TABLE public.expenses_tbl
   ADD COLUMN IF NOT EXISTS is_draft boolean NOT NULL DEFAULT false;
 
 -- =====================================================================
+-- DAILY EXPENSE QUOTA — deletion-proof creation log (run once)
+-- The free-tier daily limit must count expenses *created* today, not the
+-- rows that still survive. Counting live rows let a user create 5 → delete →
+-- repeat forever, because a delete dropped the count and refunded the slot.
+-- This append-only log is written by an AFTER INSERT trigger on expenses_tbl
+-- and is NEVER touched on delete, so the daily count is monotonic. A draft is
+-- one INSERT (counts once); finalizing it is an UPDATE (no new log row), so it
+-- is not double-counted. Offline expenses INSERT on sync, so they count then.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS public.expense_creation_log_tbl (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT expense_creation_log_tbl_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS expense_creation_log_tbl_user_created_idx
+  ON public.expense_creation_log_tbl (user_id, created_at);
+
+CREATE OR REPLACE FUNCTION public.log_expense_creation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- creator_id is nullable (deleted-user ghosting); only log real creators.
+  IF NEW.creator_id IS NOT NULL THEN
+    INSERT INTO public.expense_creation_log_tbl (user_id, created_at)
+    VALUES (NEW.creator_id, now());
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_log_expense_creation ON public.expenses_tbl;
+CREATE TRIGGER trg_log_expense_creation
+  AFTER INSERT ON public.expenses_tbl
+  FOR EACH ROW EXECUTE FUNCTION public.log_expense_creation();
+
+-- RLS: a user reads only their own usage rows. Inserts happen solely via the
+-- SECURITY DEFINER trigger (which bypasses RLS), so there is no insert policy.
+ALTER TABLE public.expense_creation_log_tbl ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "expense_creation_log_select_own" ON public.expense_creation_log_tbl;
+CREATE POLICY "expense_creation_log_select_own" ON public.expense_creation_log_tbl
+  FOR SELECT TO authenticated
+  USING (user_id = auth.uid());
+
+-- =====================================================================
 -- ROW LEVEL SECURITY
 -- ---------------------------------------------------------------------
 -- Run this whole section in the Supabase SQL Editor. It is idempotent
