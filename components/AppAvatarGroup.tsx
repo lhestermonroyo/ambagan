@@ -1,3 +1,4 @@
+import { useNetwork } from "@/hooks/useNetwork";
 import { avatarColors } from "@/utils/constants";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useState } from "react";
@@ -27,7 +28,11 @@ type AvatarGroupItemProps = {
 
 const AvatarGroupItem = ({ avatar, size, isLast, index }: AvatarGroupItemProps) => {
   const [imageError, setImageError] = useState(false);
-  const showFallback = !avatar.uri || imageError;
+  const { isOnline } = useNetwork();
+
+  // Offline: remote avatar URLs can't load (broken/blank), so show initials.
+  const showImage = !!avatar.uri && !imageError && isOnline;
+  const showFallback = !showImage;
 
   return (
     <Avatar
@@ -42,7 +47,7 @@ const AvatarGroupItem = ({ avatar, size, isLast, index }: AvatarGroupItemProps) 
         "border-2 border-outline-0"
       )}
     >
-      {avatar.uri && !imageError && (
+      {showImage && (
         <AvatarImage
           source={{ uri: avatar.uri }}
           alt={avatar.name || "Avatar"}
