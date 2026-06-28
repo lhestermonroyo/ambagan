@@ -34,6 +34,7 @@
     "currency-formatter": "^1.5.9",
     "date-fns": "^4.1.0",
     "expo": "~54.0.35",
+    "expo-application": "~7.0.8",
     "expo-constants": "~18.0.13",
     "expo-dev-client": "~6.0.21",
     "expo-file-system": "~19.0.23",

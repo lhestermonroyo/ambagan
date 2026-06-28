@@ -27,6 +27,7 @@ import {
   Bell,
   CircleQuestionMark,
   Coins,
+  Copyright,
   Crown,
   Eye,
   LogOut,
@@ -175,7 +176,13 @@ export default function ProfileScreen() {
         ]
       }
     ],
-    [appearanceLabel, currencyLabel, colorScheme, handleNotificationsOpen, isPro]
+    [
+      appearanceLabel,
+      currencyLabel,
+      colorScheme,
+      handleNotificationsOpen,
+      isPro
+    ]
   );
 
   const handleSignOut = async () => {
@@ -273,7 +280,7 @@ export default function ProfileScreen() {
               </VStack>
             ))}
 
-            <VStack className="px-4">
+            <VStack className="px-4 mt-8 gap-y-3">
               <FormButton
                 text="Sign Out"
                 action="negative"
@@ -285,6 +292,18 @@ export default function ProfileScreen() {
                   />
                 }
               />
+              <VStack className="gap-y-0.5">
+                <HStack className="items-center justify-center gap-x-1">
+                  <Copyright
+                    size={12}
+                    color={getSecondaryHex("text-secondary-950", colorScheme)}
+                  />
+                  <Text className="text-center text-sm text-secondary-950">
+                    {new Date().getFullYear()} Ambagan &bull; v
+                    {Constants.expoConfig?.version ?? "1.0.0"}
+                  </Text>
+                </HStack>
+              </VStack>
             </VStack>
           </VStack>
         </VStack>

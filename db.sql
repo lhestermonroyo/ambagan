@@ -23,6 +23,7 @@ CREATE TABLE public.expenses_tbl (
   split_type text NOT NULL,
   currency text NOT NULL DEFAULT 'PHP'::text,
   status text NOT NULL DEFAULT 'ongoing'::text,
+  is_draft boolean NOT NULL DEFAULT false,
   CONSTRAINT expenses_tbl_pkey PRIMARY KEY (id),
   CONSTRAINT expenses_tbl_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.users_tbl(id),
   CONSTRAINT expenses_tbl_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups_tbl(id)
@@ -136,19 +137,112 @@ CREATE TABLE public.users_tbl (
   plan_expires_at timestamp with time zone,
   CONSTRAINT users_tbl_pkey PRIMARY KEY (id)
 );
+-- =====================================================================
+-- FK CONSTRAINT CHANGES — run once in Supabase SQL Editor
+-- Makes user-reference columns nullable so expense/payment history
+-- survives account deletion (ghost-user display in the app).
+-- =====================================================================
+-- expense_payers_tbl.payer_id
+ALTER TABLE public.expense_payers_tbl ALTER COLUMN payer_id DROP NOT NULL;
+ALTER TABLE public.expense_payers_tbl DROP CONSTRAINT expense_payers_tbl_payer_id_fkey;
+ALTER TABLE public.expense_payers_tbl ADD CONSTRAINT expense_payers_tbl_payer_id_fkey
+  FOREIGN KEY (payer_id) REFERENCES public.users_tbl(id) ON DELETE SET NULL;
+
+-- expenses_tbl.creator_id
+ALTER TABLE public.expenses_tbl ALTER COLUMN creator_id DROP NOT NULL;
+ALTER TABLE public.expenses_tbl DROP CONSTRAINT expenses_tbl_creator_id_fkey;
+ALTER TABLE public.expenses_tbl ADD CONSTRAINT expenses_tbl_creator_id_fkey
+  FOREIGN KEY (creator_id) REFERENCES public.users_tbl(id) ON DELETE SET NULL;
+
+-- member_splits_tbl.member_id
+ALTER TABLE public.member_splits_tbl ALTER COLUMN member_id DROP NOT NULL;
+ALTER TABLE public.member_splits_tbl DROP CONSTRAINT member_splits_tbl_member_id_fkey;
+ALTER TABLE public.member_splits_tbl ADD CONSTRAINT member_splits_tbl_member_id_fkey
+  FOREIGN KEY (member_id) REFERENCES public.users_tbl(id) ON DELETE SET NULL;
+
+-- payment_splits_tbl.member_id
+ALTER TABLE public.payment_splits_tbl ALTER COLUMN member_id DROP NOT NULL;
+ALTER TABLE public.payment_splits_tbl DROP CONSTRAINT payment_splits_tbl_member_id_fkey;
+ALTER TABLE public.payment_splits_tbl ADD CONSTRAINT payment_splits_tbl_member_id_fkey
+  FOREIGN KEY (member_id) REFERENCES public.users_tbl(id) ON DELETE SET NULL;
+
+-- payment_splits_tbl.payer_id
+ALTER TABLE public.payment_splits_tbl ALTER COLUMN payer_id DROP NOT NULL;
+ALTER TABLE public.payment_splits_tbl DROP CONSTRAINT payment_splits_tbl_payer_id_fkey;
+ALTER TABLE public.payment_splits_tbl ADD CONSTRAINT payment_splits_tbl_payer_id_fkey
+  FOREIGN KEY (payer_id) REFERENCES public.users_tbl(id) ON DELETE SET NULL;
+
+-- =====================================================================
 -- Required for account deletion (called via supabase.rpc('delete_user'))
 -- Run this in your Supabase SQL Editor.
+-- =====================================================================
 CREATE OR REPLACE FUNCTION delete_user()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  group_rec RECORD;
+  next_admin uuid;
 BEGIN
-  DELETE FROM public.users_tbl WHERE id = auth.uid();
-  DELETE FROM auth.users WHERE id = auth.uid();
+  -- Handle each group the user belongs to
+  FOR group_rec IN
+    SELECT g.id, g.admin_id,
+           (SELECT COUNT(*) FROM public.group_members_tbl WHERE group_id = g.id) AS member_count
+    FROM public.groups_tbl g
+    INNER JOIN public.group_members_tbl gm ON gm.group_id = g.id AND gm.member_id = v_user_id
+  LOOP
+    IF group_rec.member_count = 1 THEN
+      -- Sole member — wipe the group and all its data
+      DELETE FROM public.payment_splits_tbl WHERE group_id = group_rec.id;
+      DELETE FROM public.member_splits_tbl
+        WHERE expense_id IN (SELECT id FROM public.expenses_tbl WHERE group_id = group_rec.id);
+      DELETE FROM public.expense_payers_tbl
+        WHERE expense_id IN (SELECT id FROM public.expenses_tbl WHERE group_id = group_rec.id);
+      DELETE FROM public.expenses_tbl WHERE group_id = group_rec.id;
+      DELETE FROM public.group_members_tbl WHERE group_id = group_rec.id;
+      DELETE FROM public.groups_tbl WHERE id = group_rec.id;
+    ELSIF group_rec.admin_id = v_user_id THEN
+      -- Admin with other members — transfer to the longest-standing other member
+      SELECT member_id INTO next_admin
+      FROM public.group_members_tbl
+      WHERE group_id = group_rec.id AND member_id != v_user_id
+      ORDER BY joined_at ASC
+      LIMIT 1;
+
+      UPDATE public.groups_tbl SET admin_id = next_admin WHERE id = group_rec.id;
+      DELETE FROM public.group_members_tbl WHERE group_id = group_rec.id AND member_id = v_user_id;
+    ELSE
+      -- Regular member — just remove
+      DELETE FROM public.group_members_tbl WHERE group_id = group_rec.id AND member_id = v_user_id;
+    END IF;
+  END LOOP;
+
+  -- Clean up user-only tables
+  DELETE FROM public.notifications_tbl
+    WHERE to_user_id = v_user_id OR from_user_id = v_user_id;
+  DELETE FROM public.user_favorites_tbl
+    WHERE user_id = v_user_id OR favorite_id = v_user_id;
+  DELETE FROM public.user_preferences_tbl WHERE user_id = v_user_id;
+  DELETE FROM public.user_push_tokens_tbl WHERE user_id = v_user_id;
+
+  -- Hard delete — expense/payment/split refs become NULL via SET NULL FKs above,
+  -- preserving history for other group members (shown as "Deleted User" in the app).
+  DELETE FROM public.users_tbl WHERE id = v_user_id;
+  DELETE FROM auth.users WHERE id = v_user_id;
 END;
 $$;
+
+-- =====================================================================
+-- DRAFT EXPENSES — run once in Supabase SQL Editor
+-- "Log now, split later": a draft is an expenses_tbl row with no payers,
+-- member_splits, or payment_splits. The is_draft flag hides it from other
+-- members (see the expenses_select_members policy below) until finalized.
+-- =====================================================================
+ALTER TABLE public.expenses_tbl
+  ADD COLUMN IF NOT EXISTS is_draft boolean NOT NULL DEFAULT false;
 
 -- =====================================================================
 -- ROW LEVEL SECURITY
@@ -298,9 +392,15 @@ CREATE POLICY "members_delete_admin_or_self" ON public.group_members_tbl
 -- ---------------------------------------------------------------------
 ALTER TABLE public.expenses_tbl ENABLE ROW LEVEL SECURITY;
 
+-- Drafts (is_draft = true) are visible only to their creator; finalized
+-- expenses are visible to every group member.
 DROP POLICY IF EXISTS "expenses_select_members" ON public.expenses_tbl;
 CREATE POLICY "expenses_select_members" ON public.expenses_tbl
-  FOR SELECT TO authenticated USING (public.is_group_member(group_id));
+  FOR SELECT TO authenticated
+  USING (
+    public.is_group_member(group_id)
+    AND (is_draft = false OR creator_id = auth.uid())
+  );
 
 DROP POLICY IF EXISTS "expenses_insert_member_creator" ON public.expenses_tbl;
 CREATE POLICY "expenses_insert_member_creator" ON public.expenses_tbl
