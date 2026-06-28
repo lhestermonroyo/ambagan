@@ -20,6 +20,8 @@ export type Expense = {
   split_type: SplitType;
   currency: string;
   status: PaymentStatus;
+  /** True while the expense is a draft (amount + description only, no splits yet). */
+  is_draft: boolean;
 };
 
 export type ExpensePayer = {
@@ -41,8 +43,11 @@ export type ExpensePreview = Pick<
   | "creator"
   | "currency"
   | "status"
+  | "is_draft"
 > & {
   payer_list: ExpensePayer[];
+  /** True for an expense created offline and not yet synced to the server. */
+  pending?: boolean;
 };
 
 export type MemberSplit = {
@@ -70,6 +75,8 @@ export type Payment = {
   payer_note: string | null;
   status: PaymentStatus;
   status_updated_at: string;
+  /** True for a settlement generated from an offline expense, not yet synced. */
+  pending?: boolean;
 };
 
 export type PaymentPreview = Pick<
@@ -85,6 +92,8 @@ export type PaymentPreview = Pick<
   | "status"
 > & {
   expense_description?: string | null;
+  /** True for a settlement generated from an offline expense, not yet synced. */
+  pending?: boolean;
 };
 
 export type FriendBalance = {

@@ -53,7 +53,7 @@ export default function NotificationItem({
           <Text numberOfLines={3}>
             <Text className="font-medium">{fromName}</Text> {suffix}
           </Text>
-          <Text className="text-secondary-950">
+          <Text className="text-sm text-secondary-950">
             {formatDate(item.created_at)}
           </Text>
         </VStack>

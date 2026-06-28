@@ -1,4 +1,5 @@
 import FormButton from "@/components/FormButton";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
@@ -18,7 +19,10 @@ import services from "@/services";
 import states from "@/states";
 import { groupByCurrency } from "@/utils/currency";
 import { exportGroupSettlementsAsCsv } from "@/utils/exportCsv";
+import { getSecondaryHex } from "@/utils/getColorHex";
+import { Download } from "lucide-react-native";
 import { useMemo, useState } from "react";
+import { useColorScheme } from "react-native";
 
 export default function GroupStatsTab({
   groupId,
@@ -30,11 +34,14 @@ export default function GroupStatsTab({
   userId: string;
 }) {
   const { expenseList, settlementList } = states.group();
-  const { defaultCurrency } = states.user();
+  const { defaultCurrency, details: userDetails } = states.user();
+  const isPro = userDetails?.plan === "pro";
   const toast = useAppToast();
+  const colorScheme = useColorScheme() ?? "light";
 
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
   const [exporting, setExporting] = useState(false);
+  const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
 
   const cutoff = useMemo(() => getDateRangeCutoff(dateRange), [dateRange]);
 
@@ -84,6 +91,10 @@ export default function GroupStatsTab({
   }, [toCollect, toPay]);
 
   const handleExport = async () => {
+    if (!isPro) {
+      setUpgradeSheetOpen(true);
+      return;
+    }
     setExporting(true);
     try {
       const payments = await services.expense.getPaymentsForExport(
@@ -115,91 +126,104 @@ export default function GroupStatsTab({
   };
 
   return (
-    <VStack className="gap-y-6 pb-6">
-      {/* Date range pill tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <HStack className="gap-x-2 px-4">
-          {dateRangeOptions.map((option) => (
-            <FormButton
-              key={option}
-              size="sm"
-              variant={option === dateRange ? "solid" : "outline"}
-              text={option}
-              onPress={() => setDateRange(option)}
-            />
-          ))}
-        </HStack>
-      </ScrollView>
+    <>
+      <UpgradeSheet
+        isOpen={upgradeSheetOpen}
+        onClose={() => setUpgradeSheetOpen(false)}
+        description="CSV export is a Pro feature. Upgrade once to export settlements anytime."
+      />
+      <VStack className="gap-y-6 pb-6">
+        {/* Date range pill tabs */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <HStack className="gap-x-2 px-4">
+            {dateRangeOptions.map((option) => (
+              <FormButton
+                key={option}
+                size="sm"
+                variant={option === dateRange ? "solid" : "outline"}
+                text={option}
+                onPress={() => setDateRange(option)}
+              />
+            ))}
+          </HStack>
+        </ScrollView>
 
-      <VStack className="px-4 gap-y-4">
-        {/* Total Group Spendings */}
-        <Card className="rounded-xl bg-secondary-100">
-          <SpendingHero
-            items={totalSpendingsByCurrency}
-            primaryCurrency={defaultCurrency}
-          />
-        </Card>
-
-        {/* Net Balance */}
-        <Card className="rounded-xl bg-secondary-100">
-          <VStack className="gap-y-4">
-            <NetBalanceHero
-              items={netBalance}
+        <VStack className="px-4 gap-y-4">
+          {/* Total Group Spendings */}
+          <Card className="rounded-xl bg-secondary-100">
+            <SpendingHero
+              items={totalSpendingsByCurrency}
               primaryCurrency={defaultCurrency}
             />
-            <Divider />
-            <HStack className="items-stretch">
-              <VStack className="flex-1 gap-y-2">
-                <HStack className="items-center gap-x-2">
-                  <SettlementAvatar isPayer={true} />
-                  <Text className="text-secondary-950">To Collect</Text>
-                </HStack>
-                <CurrencyAmountDisplay
-                  isLoading={false}
-                  items={toCollect}
-                  label="To Collect"
-                  type="receive"
-                  primaryCurrency={defaultCurrency}
-                />
-              </VStack>
-              <Divider orientation="vertical" className="mx-4" />
-              <VStack className="flex-1 gap-y-2">
-                <HStack className="items-center gap-x-2">
-                  <SettlementAvatar isPayer={false} />
-                  <Text className="text-secondary-950">To Pay</Text>
-                </HStack>
-                <CurrencyAmountDisplay
-                  isLoading={false}
-                  items={toPay}
-                  label="To Pay"
-                  type="pay"
-                  primaryCurrency={defaultCurrency}
-                />
-              </VStack>
-            </HStack>
-          </VStack>
-        </Card>
+          </Card>
 
-        {/* Export */}
-        <VStack className="gap-y-3">
-          <VStack className="gap-y-1">
-            <Text bold className="text-secondary-950 uppercase text-sm">
-              Export Settlements
-            </Text>
-            <Text className="text-secondary-950">
-              The CSV includes all settlements you're involved in for this group
-              within the selected date range — settlement ID, date, payer,
-              member, amount, currency, and status.
-            </Text>
+          {/* Net Balance */}
+          <Card className="rounded-xl bg-secondary-100">
+            <VStack className="gap-y-4">
+              <NetBalanceHero
+                items={netBalance}
+                primaryCurrency={defaultCurrency}
+              />
+              <Divider />
+              <HStack className="items-stretch">
+                <VStack className="flex-1 gap-y-2">
+                  <HStack className="items-center gap-x-2">
+                    <SettlementAvatar isPayer={true} />
+                    <Text className="text-secondary-950">To Collect</Text>
+                  </HStack>
+                  <CurrencyAmountDisplay
+                    isLoading={false}
+                    items={toCollect}
+                    label="To Collect"
+                    type="receive"
+                    primaryCurrency={defaultCurrency}
+                  />
+                </VStack>
+                <Divider orientation="vertical" className="mx-4" />
+                <VStack className="flex-1 gap-y-2">
+                  <HStack className="items-center gap-x-2">
+                    <SettlementAvatar isPayer={false} />
+                    <Text className="text-secondary-950">To Pay</Text>
+                  </HStack>
+                  <CurrencyAmountDisplay
+                    isLoading={false}
+                    items={toPay}
+                    label="To Pay"
+                    type="pay"
+                    primaryCurrency={defaultCurrency}
+                  />
+                </VStack>
+              </HStack>
+            </VStack>
+          </Card>
+
+          {/* Export */}
+          <VStack className="gap-y-4">
+            <VStack className="gap-y-2">
+              <Text bold className="text-secondary-950 uppercase">
+                Export Settlements
+              </Text>
+              <Text className="text-sm text-secondary-950">
+                The CSV includes all settlements you're involved in for this
+                group within the selected date range — settlement ID, date,
+                payer, member, amount, currency, and status.
+              </Text>
+            </VStack>
+            <FormButton
+              text={isPro ? "Export CSV" : "Export CSV — Pro"}
+              icon={
+                <Download
+                  size={18}
+                  color={getSecondaryHex("text-secondary-0", colorScheme)}
+                />
+              }
+              loading={exporting}
+              onPress={handleExport}
+            />
           </VStack>
-          <FormButton
-            text="Export CSV"
-            loading={exporting}
-            onPress={handleExport}
-          />
         </VStack>
       </VStack>
-    </VStack>
+    </>
   );
 }
 

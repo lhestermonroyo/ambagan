@@ -1,3 +1,4 @@
+import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -8,6 +9,7 @@ import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
+import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -34,18 +36,23 @@ import DateRangeSheet, {
 import ViewBySheet, {
   ViewOption
 } from "@/features/group/components/ViewBySheet";
+import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
+import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect } from "expo-router";
 import { CalendarRange, LayoutList, X } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useColorScheme } from "react-native";
 
 const settlementTabs = ["All", "Pending", "Requested", "Settled"] as const;
+
 
 export default function GroupSettlements({
   refreshTrigger = 0
@@ -55,6 +62,8 @@ export default function GroupSettlements({
   const { details, settlementRefreshToken } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
   const colorScheme = useColorScheme() ?? "light";
+  const toast = useAppToast();
+  const { isOnline } = useNetwork();
 
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -133,8 +142,35 @@ export default function GroupSettlements({
         settlementList: sortPaymentsByStatus([...active, ...settled.data])
       }));
       initializedRef.current = true;
+
+      // Cache for offline viewing of the Settlements tab.
+      cacheService
+        .saveGroupSettlements(details.id, active, settled.data)
+        .catch(() => {});
     } catch (error) {
-      console.error("Error fetching group payments:", error);
+      // Offline / fetch failure — hydrate from the cached snapshot.
+      const cached = await cacheService
+        .getGroupSettlements(details.id)
+        .catch(() => null);
+
+      if (cached) {
+        const cachedActive = cached.active as Payment[];
+        const cachedSettled = cached.settled as Payment[];
+        setActivePayments(sortPaymentsByStatus(cachedActive));
+        setSettledPayments(cachedSettled);
+        setSettledPage(0);
+        setHasMoreSettled(false);
+        states.group.setState((prev) => ({
+          ...prev,
+          settlementList: sortPaymentsByStatus([
+            ...cachedActive,
+            ...cachedSettled
+          ])
+        }));
+        initializedRef.current = true;
+      } else {
+        console.error("Error fetching group payments:", error);
+      }
     } finally {
       setLoading(false);
     }
@@ -254,6 +290,19 @@ export default function GroupSettlements({
 
   const handleSettlementItemPress = (payment: PaymentPreview | Payment) => {
     const p = payment as Payment;
+
+    // Settling / requesting needs the server — block while offline (and for
+    // not-yet-synced offline settlements).
+    if (!isOnline || p.pending) {
+      toast({
+        title: "You're offline",
+        description:
+          "Settling and requests need a connection. Try again once you're back online.",
+        type: "info"
+      });
+      return;
+    }
+
     const isUserMember = p.member.id === userDetails?.id;
     const isUserPayer = p.payer.id === userDetails?.id;
 
@@ -293,7 +342,7 @@ export default function GroupSettlements({
 
   return (
     <Fragment>
-      <VStack className="gap-y-8">
+      <VStack className="gap-y-6">
         <VStack className="px-4">
           <Card className="rounded-xl bg-secondary-100">
             <VStack className="gap-y-4">
@@ -535,34 +584,33 @@ function NetBalanceHero({
   const sorted = [...items].sort((a, b) =>
     a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
   );
-  const [primary, ...secondary] = sorted;
+  const [primary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
-
   const amountColor = primaryAmount < 0 && "text-error-400";
 
   return (
     <VStack className="gap-y-2">
-      <Text bold className="text-secondary-950 uppercase text-sm">
+      <Text bold className="text-sm text-secondary-950 uppercase">
         Net Balance
       </Text>
       {isLoading ? (
-        <Text bold className="text-3xl text-secondary-950">
+        <Text bold className="text-3xl">
           —
         </Text>
       ) : (
         <HStack className="items-end gap-x-2">
-          <Text bold className={`text-3xl ${amountColor}`}>
+          <Text bold className={cn("text-3xl", amountColor)}>
             {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
           </Text>
           <HStack className="items-center gap-x-1 pb-1">
             <Text className="text-secondary-950 text-base">
               {primary?.currency ?? primaryCurrency}
             </Text>
-            {secondary.length > 0 && (
-              <Text className="text-secondary-950 text-sm">
-                +{secondary.length} more
-              </Text>
-            )}
+            <CurrencyCountButton
+              items={sorted}
+              title="Net Balance"
+              subtitle="To Collect minus To Pay, per currency"
+            />
           </HStack>
         </HStack>
       )}

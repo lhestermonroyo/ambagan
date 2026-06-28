@@ -43,7 +43,7 @@ const UploadAvatar = ({
       ) : (
         <Box
           className={cn(
-            "border-2 border-background-200 rounded-full justify-center items-center h-[100] w-[100]"
+            "border-2 border-background-200 bg-background-50 rounded-full justify-center items-center h-[100] w-[100]"
           )}
         >
           <Upload
@@ -66,7 +66,11 @@ const UploadAvatar = ({
         isOpen={sheetOpen}
         onClose={() => setSheetOpen(false)}
         onSelect={handleSelect}
-        options={{ allowsEditing: true, aspect: [1, 1], mediaTypes: ["images"] }}
+        options={{
+          allowsEditing: true,
+          aspect: [1, 1],
+          mediaTypes: ["images"]
+        }}
       />
     </VStack>
   );

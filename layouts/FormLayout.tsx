@@ -5,6 +5,7 @@ import { HStack } from "@/components/ui/hstack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
 import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { Text } from "@/components/ui/text";
+import { useNetwork } from "@/hooks/useNetwork";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment } from "react";
 import { Platform } from "react-native";
@@ -12,20 +13,25 @@ import { Platform } from "react-native";
 export default function FormLayout({
   children,
   title,
+  titleRight,
   onBack,
   footer
 }: {
   children: React.ReactNode;
   title: string;
+  titleRight?: React.ReactNode;
   onBack: () => void;
   footer: React.ReactNode[];
 }) {
+  const { isOnline } = useNetwork();
+
   return (
     <SafeAreaView className="flex-1 bg-background-0">
       <KeyboardAvoidingView
         className="bg-background-0 flex-1"
         behavior="padding"
       >
+        {!isOnline && <Box className="h-6" />}
         <Box
           className={cn(
             "px-4 pb-2",
@@ -39,6 +45,7 @@ export default function FormLayout({
             <Text bold className="flex-1 text-xl">
               {title}
             </Text>
+            {titleRight}
           </HStack>
         </Box>
         {children}

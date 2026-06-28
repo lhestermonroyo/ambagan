@@ -7,6 +7,7 @@ import {
   updatePreferences as updatePreferencesInDB
 } from "@/features/user/services/preferences.service";
 import { AppearanceMode, UserPreferences, UserState } from "@/types/user";
+import { supabase } from "@/utils/supabase";
 import { create } from "zustand";
 
 const NOTIF_ALL_ON = {

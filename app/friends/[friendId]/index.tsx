@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -46,13 +47,16 @@ import ViewBySheet, {
 } from "@/features/group/components/ViewBySheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
+import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   CalendarRange,
@@ -107,6 +111,7 @@ export default function FriendDetailScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
+  const { isOnline } = useNetwork();
 
   const { favoriteIds, loadFavorites, handleToggleFavorite } =
     useFavoriteToggle(userDetails?.id);
@@ -153,8 +158,25 @@ export default function FriendDetailScreen() {
       setSettledPage(0);
       setHasMoreSettled(settled.hasNext);
       initializedRef.current = true;
+
+      // Cache for offline viewing of this friend's settlements.
+      cacheService
+        .saveFriendSettlements(friendId, active, settled.data)
+        .catch(() => {});
     } catch (error) {
-      console.error("Failed to fetch friend settlements:", error);
+      // Offline / fetch failure — hydrate from the cached snapshot.
+      const cached = await cacheService
+        .getFriendSettlements(friendId)
+        .catch(() => null);
+      if (cached) {
+        setActiveSettlements(cached.active as PaymentPreview[]);
+        setSettledSettlements(cached.settled as PaymentPreview[]);
+        setSettledPage(0);
+        setHasMoreSettled(false);
+        initializedRef.current = true;
+      } else {
+        console.error("Failed to fetch friend settlements:", error);
+      }
     } finally {
       if (showLoading) setLoading(false);
       setInitialized(true);
@@ -192,6 +214,19 @@ export default function FriendDetailScreen() {
     setRefreshing(true);
     await fetchAll(false);
     setRefreshing(false);
+  };
+
+  const requireOnline = () => {
+    if (!isOnline) {
+      toast({
+        title: "You're offline",
+        description:
+          "Settling and requests need a connection. Try again once you're back online.",
+        type: "info"
+      });
+      return false;
+    }
+    return true;
   };
 
   const handleConfirmAction = async () => {
@@ -454,8 +489,8 @@ export default function FriendDetailScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <VStack className="gap-y-8">
-            <VStack className="px-4 gap-y-8">
+          <VStack className="gap-y-6 pt-4">
+            <VStack className="px-4 gap-y-6">
               <HStack className="gap-x-3 items-center">
                 <AppAvatar
                   name={decodedName}
@@ -518,7 +553,7 @@ export default function FriendDetailScreen() {
                 <VStack className="gap-y-2">
                   {canSettle && (
                     <FormButton
-                      text="Settle All"
+                      text="Mark All as Settled"
                       icon={
                         <CheckCheck
                           color={getSecondaryHex(
@@ -527,7 +562,9 @@ export default function FriendDetailScreen() {
                           )}
                         />
                       }
-                      onPress={() => setPendingAction("settle")}
+                      onPress={() =>
+                        requireOnline() && setPendingAction("settle")
+                      }
                     />
                   )}
                   {canRequestSettle && (
@@ -539,7 +576,9 @@ export default function FriendDetailScreen() {
                           color={getPrimaryHex("text-primary-500", colorScheme)}
                         />
                       }
-                      onPress={() => setPendingAction("request")}
+                      onPress={() =>
+                        requireOnline() && setPendingAction("request")
+                      }
                     />
                   )}
                 </VStack>
@@ -640,6 +679,7 @@ export default function FriendDetailScreen() {
                     <SettlementItem
                       item={item}
                       onPress={() => {
+                        if (!requireOnline()) return;
                         setSelectedPayment(item);
                         setActionSheetOpen(true);
                       }}
@@ -706,7 +746,7 @@ export default function FriendDetailScreen() {
           <ModalHeader>
             <Heading>
               {pendingAction === "settle"
-                ? "Settle All"
+                ? "Mark All as Settled"
                 : "Request All as Settled"}
             </Heading>
           </ModalHeader>
@@ -749,34 +789,33 @@ function NetBalanceHero({
   const sorted = [...items].sort((a, b) =>
     a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
   );
-  const [primary, ...secondary] = sorted;
+  const [primary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
-
   const amountColor = primaryAmount < 0 && "text-error-400";
 
   return (
     <VStack className="gap-y-2">
-      <Text bold className="text-secondary-950 uppercase text-sm">
+      <Text bold className="text-sm text-secondary-950 uppercase">
         Net Balance
       </Text>
       {isLoading ? (
-        <Text bold className="text-3xl text-secondary-950">
+        <Text bold className="text-3xl">
           —
         </Text>
       ) : (
         <HStack className="items-end gap-x-2">
-          <Text bold className={`text-3xl ${amountColor}`}>
+          <Text bold className={cn("text-3xl", amountColor)}>
             {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
           </Text>
           <HStack className="items-center gap-x-1 pb-1">
             <Text className="text-secondary-950 text-base">
               {primary?.currency ?? primaryCurrency}
             </Text>
-            {secondary.length > 0 && (
-              <Text className="text-secondary-950 text-sm">
-                +{secondary.length} more
-              </Text>
-            )}
+            <CurrencyCountButton
+              items={sorted}
+              title="Net Balance"
+              subtitle="To Collect minus To Pay, per currency"
+            />
           </HStack>
         </HStack>
       )}

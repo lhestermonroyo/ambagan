@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -9,20 +10,12 @@ import {
   GroupListSkeleton,
   SettlementListSkeleton
 } from "@/components/SkeletonLoader";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
-import { Pressable } from "@/components/ui/pressable";
 import {
   ScrollView as HScrollView,
   ScrollView
@@ -36,11 +29,13 @@ import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
+import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { getSecondaryHex } from "@/utils/getColorHex";
+import { prefetchGroupDetails } from "@/utils/offlinePrefetch";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { getReminderEnabled } from "@/utils/reminderPreference";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
@@ -52,9 +47,17 @@ import {
   HousePlus,
   PlusCircle
 } from "lucide-react-native";
-import React, { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import {
   Animated,
+  InteractionManager,
   Platform,
   RefreshControl,
   useColorScheme
@@ -92,21 +95,26 @@ export default function HomeScreen() {
   const { activityList } = states.expense();
   const { unreadCount } = states.notification();
 
+  const displayStats = stats;
+
   const netBalance = useMemo(() => {
     const allCurrencies = new Set([
-      ...stats.toReceive.map((i) => i.currency),
-      ...stats.toPay.map((i) => i.currency)
+      ...displayStats.toReceive.map((i) => i.currency),
+      ...displayStats.toPay.map((i) => i.currency)
     ]);
     return Array.from(allCurrencies).map((currency) => {
       const receive =
-        stats.toReceive.find((i) => i.currency === currency)?.amount ?? 0;
-      const pay = stats.toPay.find((i) => i.currency === currency)?.amount ?? 0;
+        displayStats.toReceive.find((i) => i.currency === currency)?.amount ??
+        0;
+      const pay =
+        displayStats.toPay.find((i) => i.currency === currency)?.amount ?? 0;
       return { currency, amount: receive - pay };
     });
-  }, [stats.toReceive, stats.toPay]);
+  }, [displayStats.toReceive, displayStats.toPay]);
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
+  const { isOnline } = useNetwork();
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -122,7 +130,7 @@ export default function HomeScreen() {
   }, [netBalance, defaultCurrency]);
 
   const primaryReceive = useMemo(() => {
-    const sorted = [...stats.toReceive].sort((a, b) =>
+    const sorted = [...displayStats.toReceive].sort((a, b) =>
       a.currency === defaultCurrency
         ? -1
         : b.currency === defaultCurrency
@@ -130,10 +138,10 @@ export default function HomeScreen() {
           : 0
     );
     return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [stats.toReceive, defaultCurrency]);
+  }, [displayStats.toReceive, defaultCurrency]);
 
   const primaryPay = useMemo(() => {
-    const sorted = [...stats.toPay].sort((a, b) =>
+    const sorted = [...displayStats.toPay].sort((a, b) =>
       a.currency === defaultCurrency
         ? -1
         : b.currency === defaultCurrency
@@ -141,7 +149,7 @@ export default function HomeScreen() {
           : 0
     );
     return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [stats.toPay, defaultCurrency]);
+  }, [displayStats.toPay, defaultCurrency]);
 
   const COMPACT_THRESHOLD = 180;
   const compactOpacity = scrollY.interpolate({
@@ -210,10 +218,7 @@ export default function HomeScreen() {
 
       if (!response) return;
 
-      setStats({
-        toPay: response.toPay,
-        toReceive: response.toReceive
-      });
+      setStats({ toPay: response.toPay, toReceive: response.toReceive });
       syncSettlementReminder(response.toPay);
     } catch (error) {
       console.error("Failed to fetch expense statistics:", error);
@@ -304,6 +309,15 @@ export default function HomeScreen() {
         ...prev,
         list: response
       }));
+
+      // On first load, quietly warm each group's offline cache in the
+      // background — deferred until interactions settle so it never competes
+      // with rendering or navigation.
+      if (!isInitialized && userId) {
+        InteractionManager.runAfterInteractions(() => {
+          prefetchGroupDetails(userId, response).catch(() => {});
+        });
+      }
     } catch (error) {
       console.error("Failed to fetch groups:", error);
     } finally {
@@ -334,20 +348,38 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const groupsPreview = useMemo(() => groupList.slice(0, 5), [groupList]);
-  const activitiesPreview = useMemo(() => activityList.slice(0, 5), [activityList]);
-  const friendsPreview = useMemo(() => friends.slice(0, 5), [friends]);
+  const groupsPreview = useMemo(
+    () => groupList.slice(0, 5),
+    [groupList]
+  );
+  const activitiesPreview = useMemo(
+    () => activityList.slice(0, 5),
+    [activityList]
+  );
+  const friendsPreview = useMemo(
+    () => friends.slice(0, 5),
+    [friends]
+  );
 
   const handleOpenActionSheet = useCallback((item: PaymentPreview) => {
     setSelectedPayment(item);
     setActionSheetOpen(true);
   }, []);
 
-  const handleCloseActionSheet = useCallback(() => setActionSheetOpen(false), []);
+  const handleCloseActionSheet = useCallback(
+    () => setActionSheetOpen(false),
+    []
+  );
   const handleRefetch = useCallback(() => init(true), [userId]);
 
-  const handleOpenNewExpense = useCallback(() => setNewExpensePickerOpen(true), []);
-  const handleCloseNewExpense = useCallback(() => setNewExpensePickerOpen(false), []);
+  const handleOpenNewExpense = useCallback(
+    () => setNewExpensePickerOpen(true),
+    []
+  );
+  const handleCloseNewExpense = useCallback(
+    () => setNewExpensePickerOpen(false),
+    []
+  );
   const handleOpenQuickAdd = useCallback(() => setQuickAddOpen(true), []);
   const handleCloseQuickAdd = useCallback(() => setQuickAddOpen(false), []);
 
@@ -373,7 +405,10 @@ export default function HomeScreen() {
 
   const renderGroupItem = useCallback(
     ({ item }: { item: (typeof groupList)[0] }) => (
-      <GroupItem details={item} onOpen={() => router.push(`/groups/${item.id}`)} />
+      <GroupItem
+        details={item}
+        onOpen={() => router.push(`/groups/${item.id}`)}
+      />
     ),
     [router]
   );
@@ -384,6 +419,7 @@ export default function HomeScreen() {
         className="flex-1 bg-secondary-0"
         behavior="padding"
       >
+        {!isOnline && <Box className="h-6" />}
         <Box className="sticky top-0 bg-primary-400">
           <HStack
             className={cn(
@@ -496,7 +532,7 @@ export default function HomeScreen() {
                     <StatItem
                       type="RECEIVE"
                       isLoading={loading.stats}
-                      items={stats.toReceive}
+                      items={displayStats.toReceive}
                       primaryCurrency={defaultCurrency}
                     />
                     <Divider
@@ -506,7 +542,7 @@ export default function HomeScreen() {
                     <StatItem
                       type="PAY"
                       isLoading={loading.stats}
-                      items={stats.toPay}
+                      items={displayStats.toPay}
                       primaryCurrency={defaultCurrency}
                     />
                   </HStack>
@@ -720,89 +756,46 @@ function StatItem({
   isLoading: boolean;
   primaryCurrency?: string;
 }) {
-  const [sheetOpen, setSheetOpen] = useState(false);
   const isReceive = type === "RECEIVE";
   const label = isReceive ? "To Collect" : "To Pay";
 
   const sorted = useMemo(
     () =>
       [...items].sort((a, b) =>
-        a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+        a.currency === primaryCurrency
+          ? -1
+          : b.currency === primaryCurrency
+            ? 1
+            : 0
       ),
     [items, primaryCurrency]
   );
-  const [primary, ...secondary] = sorted;
+  const [primary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
 
   return (
-    <Fragment>
-      <VStack className="flex-1 gap-y-2">
+    <VStack className="flex-1 gap-y-2">
+      <HStack className="items-center gap-x-2">
+        <SettlementAvatar isPayer={isReceive} light />
+        <Text className="text-background-0">{label}</Text>
+      </HStack>
+      {isLoading ? (
+        <Text bold className="text-2xl text-background-0">
+          —
+        </Text>
+      ) : (
         <HStack className="items-center gap-x-2">
-          <SettlementAvatar isPayer={isReceive} light />
-          <Text className="text-background-0">{label}</Text>
-        </HStack>
-        {isLoading ? (
           <Text bold className="text-2xl text-background-0">
-            —
+            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
           </Text>
-        ) : (
-          <Pressable
-            onPress={
-              secondary.length > 0 ? () => setSheetOpen(true) : undefined
-            }
-          >
-            <HStack className="items-center gap-x-2">
-              <Text bold className="text-2xl text-background-0">
-                {formatAmount(
-                  primaryAmount,
-                  primary?.currency ?? primaryCurrency
-                )}
-              </Text>
-              {secondary.length > 0 && (
-                <Box className="bg-white/20 rounded-full h-5 w-5 items-center justify-center">
-                  <Text className="text-background-0 text-xs font-semibold">
-                    +{secondary.length}
-                  </Text>
-                </Box>
-              )}
-            </HStack>
-          </Pressable>
-        )}
-      </VStack>
-
-      <Actionsheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full">
-            <VStack className="p-4">
-              <Text bold className="text-xl">
-                {label}
-              </Text>
-              <Text className="text-secondary-950">Breakdown by currency</Text>
-            </VStack>
-            <FlatList
-              data={sorted}
-              scrollEnabled={false}
-              keyExtractor={(item) => item.currency}
-              renderItem={({ item: { currency, amount } }) => (
-                <HStack className="items-center justify-between p-4">
-                  <Text className="text-secondary-950 font-medium text-lg">
-                    {currency}
-                  </Text>
-                  <Text bold className="text-lg">
-                    {formatAmount(amount, currency)}
-                  </Text>
-                </HStack>
-              )}
-              ItemSeparatorComponent={ListDivider}
-            />
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
-    </Fragment>
+          <CurrencyCountButton
+            items={sorted}
+            title={label}
+            subtitle="Breakdown by currency"
+          />
+        </HStack>
+      )}
+    </VStack>
   );
 }
 
@@ -815,101 +808,46 @@ function NetBalanceRow({
   isLoading: boolean;
   primaryCurrency?: string;
 }) {
-  const [sheetOpen, setSheetOpen] = useState(false);
-
   const sorted = useMemo(
     () =>
       [...items].sort((a, b) =>
-        a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+        a.currency === primaryCurrency
+          ? -1
+          : b.currency === primaryCurrency
+            ? 1
+            : 0
       ),
     [items, primaryCurrency]
   );
-  const [primary, ...secondary] = sorted;
+  const [primary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
 
   return (
-    <Fragment>
-      <VStack className="gap-y-2">
-        <Text bold className="text-background-0 uppercase text-sm">
-          Net Balance
+    <VStack className="gap-y-2">
+      <Text bold className="text-sm text-background-0 uppercase">
+        Net Balance
+      </Text>
+      {isLoading ? (
+        <Text bold className="text-4xl text-background-0">
+          —
         </Text>
-        {isLoading ? (
+      ) : (
+        <HStack className="items-end gap-x-2">
           <Text bold className="text-4xl text-background-0">
-            —
+            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
           </Text>
-        ) : (
-          <Pressable
-            onPress={
-              secondary.length > 0 ? () => setSheetOpen(true) : undefined
-            }
-          >
-            <HStack className="items-end gap-x-2">
-              <Text bold className="text-4xl text-background-0">
-                {formatAmount(
-                  primaryAmount,
-                  primary?.currency ?? primaryCurrency
-                )}
-              </Text>
-              <HStack className="items-center gap-x-1 pb-1">
-                <Text className="text-background-0/70 text-base">
-                  {primary?.currency ?? primaryCurrency}
-                </Text>
-                {secondary.length > 0 && (
-                  <Box className="bg-white/20 rounded-full h-5 w-5 items-center justify-center">
-                    <Text className="text-background-0 text-xs font-semibold">
-                      +{secondary.length}
-                    </Text>
-                  </Box>
-                )}
-              </HStack>
-            </HStack>
-          </Pressable>
-        )}
-      </VStack>
-
-      <Actionsheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full">
-            <VStack className="p-4">
-              <Text bold className="text-xl">
-                Net Balance
-              </Text>
-              <Text className="text-secondary-950">
-                To Collect minus To Pay, per currency
-              </Text>
-            </VStack>
-            <FlatList
-              data={sorted}
-              scrollEnabled={false}
-              keyExtractor={(item) => item.currency}
-              renderItem={({ item: { currency, amount } }) => {
-                const color =
-                  amount > 0
-                    ? "text-success-400"
-                    : amount < 0
-                      ? "text-error-400"
-                      : "text-secondary-950";
-                return (
-                  <HStack className="items-center justify-between p-4">
-                    <Text className="text-secondary-950 font-medium text-lg">
-                      {currency}
-                    </Text>
-                    <Text bold className={cn("text-lg", color)}>
-                      {amount > 0 ? "+" : ""}
-                      {formatAmount(amount, currency)}
-                    </Text>
-                  </HStack>
-                );
-              }}
-              ItemSeparatorComponent={ListDivider}
+          <HStack className="items-center gap-x-1 pb-1">
+            <Text className="text-background-0/70 text-base">
+              {primary?.currency ?? primaryCurrency}
+            </Text>
+            <CurrencyCountButton
+              items={sorted}
+              title="Net Balance"
+              subtitle="To Collect minus To Pay, per currency"
             />
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
-    </Fragment>
+          </HStack>
+        </HStack>
+      )}
+    </VStack>
   );
 }

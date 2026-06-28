@@ -18,10 +18,12 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import { Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
+import { filterContacts, getSavedContacts } from "@/utils/offlineContacts";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useEffect, useMemo, useState } from "react";
 import RecentFavoritesTab from "./RecentFavoritesTab";
@@ -42,11 +44,12 @@ export default function EditMembersSheet({
   const [users, setUsers] = useState<UserPreview[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [lockedMembers, setLockedMembers] = useState<Member[]>([]);
-  const [tab, setTab] = useState<"recent" | "favorites">("recent");
+  const [tab, setTab] = useState<"friends" | "favorites">("friends");
   const [recentUsers, setRecentUsers] = useState<UserPreview[]>([]);
 
   const { details: groupDetails, memberList } = states.group.getState();
   const { details: userDetails } = states.user();
+  const { isOnline } = useNetwork();
 
   const {
     favoriteIds,
@@ -68,7 +71,7 @@ export default function EditMembersSheet({
 
   useEffect(() => {
     fetchUsers();
-  }, [searchInput]);
+  }, [searchInput, isOnline]);
 
   const init = async () => {
     setLoading(true);
@@ -108,6 +111,16 @@ export default function EditMembersSheet({
     try {
       if (!searching) {
         setUsers([]);
+        return;
+      }
+      // Offline → filter the cached friends/favorites/recents pool; no DB search.
+      if (!isOnline) {
+        const contacts = await getSavedContacts(userDetails!.id);
+        setUsers(
+          filterContacts(contacts, searchInput).filter(
+            (u) => u.id !== groupDetails?.admin.id
+          )
+        );
         return;
       }
       const data = await services.user.searchUsers(searchInput);
@@ -175,7 +188,7 @@ export default function EditMembersSheet({
   };
 
   const handleClearStates = () => {
-    setTab("recent");
+    setTab("friends");
     setSearchInput("");
     setSearching(false);
     setUsers([]);
@@ -265,7 +278,7 @@ export default function EditMembersSheet({
             <VStack className="w-full gap-y-4 py-4">
               <VStack>
                 <HStack className="px-4">
-                  <Text className="text-secondary-950 flex-1">
+                  <Text className="text-sm text-secondary-950 flex-1">
                     {formattedMembers.length} member
                     {formattedMembers.length > 1 ? "s" : ""} selected
                   </Text>
@@ -307,6 +320,13 @@ export default function EditMembersSheet({
                   onSetSearching={setSearching}
                 />
               </Box>
+              {!isOnline && (
+                <Box className="px-4">
+                  <Text className="text-xs text-secondary-950">
+                    You're offline — showing saved contacts only
+                  </Text>
+                </Box>
+              )}
               {!searching && (
                 <RecentFavoritesTab tab={tab} onTabChange={setTab} />
               )}
@@ -314,7 +334,7 @@ export default function EditMembersSheet({
             <ScrollView className="flex-1 w-full">
               {displayUsers.length === 0 && (
                 <VStack className="p-4 justify-center items-center">
-                  <Text className="text-secondary-950">
+                  <Text className="text-sm text-secondary-950">
                     {searching
                       ? "No results found on your search."
                       : tab === "favorites"

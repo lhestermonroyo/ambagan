@@ -15,17 +15,31 @@ const ConfirmButton = ({
   onConfirm,
   confirmTitle,
   confirmDescription,
+  confirmText,
+  isDelete,
   ...buttonProps
 }: {
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   confirmTitle?: string;
   confirmDescription?: string;
+  confirmText?: string;
+  isDelete?: boolean;
 } & React.ComponentProps<typeof FormButton>) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleConfirm = () => {
-    setIsOpen(false);
-    onConfirm();
+  // Show the spinner inside the modal while the async action runs, combined
+  // with any external `loading` the caller passes in.
+  const loading = submitting || Boolean(buttonProps.loading);
+
+  const handleConfirm = async () => {
+    try {
+      setSubmitting(true);
+      await onConfirm();
+      setIsOpen(false);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -33,8 +47,13 @@ const ConfirmButton = ({
       <FormButton {...buttonProps} onPress={() => setIsOpen(true)} />
       <ConfirmModal
         isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
+        onClose={() => {
+          if (!loading) setIsOpen(false);
+        }}
         onConfirm={handleConfirm}
+        loading={loading}
+        isDelete={isDelete}
+        confirmText={confirmText}
         title={confirmTitle}
         description={confirmDescription}
       />
@@ -47,6 +66,8 @@ const ConfirmModal = ({
   onClose,
   onConfirm,
   loading,
+  isDelete,
+  confirmText,
   title = "Confirm Action",
   description = "Are you sure you want to proceed?"
 }: {
@@ -54,6 +75,8 @@ const ConfirmModal = ({
   onClose: () => void;
   onConfirm: () => void;
   loading?: boolean;
+  isDelete?: boolean;
+  confirmText?: string;
   title?: string;
   description?: string;
 }) => {
@@ -74,7 +97,12 @@ const ConfirmModal = ({
               disabled={loading}
               onPress={onClose}
             />
-            <FormButton text="Confirm" loading={loading} onPress={onConfirm} />
+            <FormButton
+              text={confirmText ?? (isDelete ? "Delete" : "Confirm")}
+              action={isDelete ? "negative" : "primary"}
+              loading={loading}
+              onPress={onConfirm}
+            />
           </HStack>
         </ModalFooter>
       </ModalContent>

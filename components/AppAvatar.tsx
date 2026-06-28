@@ -37,7 +37,7 @@ const AppAvatar = ({
         props.className
       )}
     >
-      {uri && (
+      {uri && !imageError && (
         <AvatarImage
           source={{ uri: uri }}
           alt={name || "Avatar"}

@@ -37,7 +37,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Is Ambagan free to use?",
         answer:
-          "Yes. The core features are free — create up to 3 groups, track expenses, split bills, and settle up with friends at no cost. A Pro plan is available as a one-time purchase (₱499) for users who need unlimited groups."
+          "Yes. The core features are free — add up to 5 expenses per day, track balances, split bills, and settle up with friends at no cost. A Pro subscription is available (starting at ₱99 for 2 weeks) for unlimited daily expenses, draft expenses, CSV export, spending analytics, multi-currency support, and more."
       },
       {
         question: "What does the Net Balance on the home screen mean?",
@@ -112,12 +112,22 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Can I use different currencies?",
         answer:
-          "Yes. Each expense can be set to a different currency, which is useful for travel groups. Your default currency can be changed in Profile → Default Currency."
+          "Multi-currency is a Pro feature. With Pro, each expense can be set to a different currency — useful for travel groups — and you can set a default currency in Profile → Default Currency. Free expenses are in Philippine Peso (PHP)."
       },
       {
         question: "How are members shown in the expense detail?",
         answer:
           "When you open an expense, you are always listed first in both the Members Split and Payers' Contribution sections so your share and contribution are immediately visible without scrolling."
+      },
+      {
+        question: "What is Save as Draft and how does it work?",
+        answer:
+          "Save as Draft is a Pro feature that lets you log an expense with just the amount and description, then finalize who paid and how to split it later. On the Custom expense form, tap Save as Draft instead of Continue. Draft expenses appear at the top of the group's Expenses tab with an amber Draft badge and are only visible to you until finalized. Tap a draft and press Finalize Expense to complete the split."
+      },
+      {
+        question: "Can other group members see my draft expenses?",
+        answer:
+          "No. Draft expenses are private — only you (the creator) can see them until you finalize the split. Once finalized, the expense becomes visible to all group members and they receive an expense inclusion notification."
       }
     ]
   },
@@ -212,22 +222,22 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is the Pro plan?",
         answer:
-          "Pro is a one-time purchase of ₱499 that removes the 3-group limit and unlocks unlimited groups. All other features — multi-currency expenses, CSV export, and push notifications — are available to every user for free."
+          "Pro is a subscription that removes the daily expense limit and unlocks premium features: unlimited expenses per day, draft expenses (log now, split later), CSV export, spending analytics, multi-currency expenses, and a custom default currency. Plans start at ₱99 for 2 weeks, ₱149/month, or ₱799/year. Push notifications are free for everyone."
       },
       {
         question: "How do I upgrade to Pro?",
         answer:
-          "Go to Profile → Subscription and tap Unlock Pro. It's a one-time purchase of ₱499 — no subscription, no renewal. Once purchased, unlimited groups are unlocked immediately."
+          "Go to Profile → Subscription and choose a plan — 2 Weeks (₱99), Monthly (₱149), or Yearly (₱799). Tap Subscribe and complete the purchase through the App Store. All Pro features are unlocked immediately after subscribing."
       },
       {
-        question: "How many groups can I create on the free plan?",
+        question: "How many expenses can I add per day on the free plan?",
         answer:
-          "Free users can create up to 3 active groups. Archived groups do not count toward this limit. Upgrade to Pro (₱499, one-time) for unlimited groups."
+          "Free users can add up to 5 expenses per day, counted across all your groups combined. The counter resets at midnight. Upgrade to Pro (from ₱99) for unlimited daily expenses."
       },
       {
         question: "How do I export settlements to CSV?",
         answer:
-          "Open a group and go to the Stats tab. Select a date range, then tap Export CSV at the bottom. The file includes all settlements you're involved in for that group within the selected range and will open your device's share sheet so you can save or send it."
+          "CSV export is a Pro feature. After upgrading, open a group and go to the Stats tab. Select a date range, then tap Export CSV. The file includes all settlements you're involved in for that group within the selected range and will open your device's share sheet so you can save or send it."
       },
       {
         question: "What does the Stats tab show?",
@@ -237,12 +247,13 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What happens when I lose internet connection?",
         answer:
-          "A red banner appears at the top of the screen informing you that you're offline. Creating or updating expenses and settlements requires an internet connection."
+          "A toast notification appears saying 'No Internet Connection', and a blue banner at the top of the screen shows 'Offline Mode — Showing cached data'. You can still browse your groups, expenses, and friends using the last cached data. Creating new expenses works offline (they sync automatically when you reconnect), but editing expenses and settlements requires an internet connection."
       },
       {
-        question: "I already paid — how do I restore my Pro access on a new device?",
+        question:
+          "I already paid — how do I restore my Pro access on a new device?",
         answer:
-          "Go to Profile → Subscription and tap Restore Purchase. Since Pro is a one-time non-consumable purchase, it will be restored automatically through the App Store or Play Store at no additional charge."
+          "Go to Profile → Subscription and tap Restore Purchase. Your active subscription will be restored automatically through the App Store at no additional charge."
       }
     ]
   },
@@ -252,7 +263,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I change my default currency?",
         answer:
-          "Go to Profile → Default Currency and select your preferred currency. This will be pre-selected when you create new expenses."
+          "Default currency is a Pro feature. After upgrading, go to Profile → Default Currency and select your preferred currency — it will be pre-selected when you create new expenses. Free accounts use Philippine Peso (PHP)."
       },
       {
         question: "How do I change the app appearance?",
@@ -277,6 +288,16 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I sign out?",
         answer: "Scroll to the bottom of the Profile tab and tap Sign Out."
+      },
+      {
+        question: "How do I delete my account?",
+        answer:
+          "Go to Profile → Account Settings → Delete My Account. If you have unsettled expenses, they will be listed and you will need to resolve them before deletion is allowed. Once deleted, your account is permanently removed — your name will appear as 'Deleted User' on any shared expense history so other members retain their records."
+      },
+      {
+        question: "What do 'You receive' and 'You pay' mean in settlements?",
+        answer:
+          "'You receive' appears in the Mark as Settled sheet and shows the amount the other person is paying you. 'You pay' appears in the Request Settlement sheet and shows how much you owe. These labels reflect your perspective so it is always clear which direction the money moves."
       }
     ]
   }
@@ -289,7 +310,7 @@ export default function HelpCenterScreen() {
     <InnerLayout title="Help Center" onBack={() => router.back()}>
       <ScrollView className="flex-1">
         <VStack className="p-4 gap-y-6 pb-10">
-          <Text className="text-secondary-950">
+          <Text className="text-sm text-secondary-950">
             Find answers to common questions below. If you need further help,
             contact us at{" "}
             <Text bold className="text-primary-400">
@@ -300,7 +321,7 @@ export default function HelpCenterScreen() {
 
           {FAQ_SECTIONS.map((section) => (
             <VStack key={section.title} className="gap-y-2">
-              <Text bold className="text-lg">
+              <Text bold className="text-secondary-950 uppercase text-sm">
                 {section.title}
               </Text>
               <Box className="rounded-xl overflow-hidden border border-secondary-500">
@@ -323,14 +344,14 @@ export default function HelpCenterScreen() {
                                 as={
                                   isExpanded ? ChevronUpIcon : ChevronDownIcon
                                 }
-                                className="text-secondary-950"
+                                className="text-sm text-secondary-950"
                               />
                             </>
                           )}
                         </AccordionTrigger>
                       </AccordionHeader>
                       <AccordionContent>
-                        <AccordionContentText className="text-secondary-950 leading-relaxed">
+                        <AccordionContentText className="text-secondary-950 text-base">
                           {item.answer}
                         </AccordionContentText>
                       </AccordionContent>

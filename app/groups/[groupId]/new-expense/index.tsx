@@ -1,5 +1,7 @@
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import UpgradeSheet from "@/components/UpgradeSheet";
+import { Badge, BadgeText } from "@/components/ui/badge";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import AddExpenseStep from "@/features/expense/components/AddExpenseStep";
@@ -11,10 +13,14 @@ import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
-import { splitTypes } from "@/utils/constants";
+import { cacheService } from "@/utils/cacheService";
+import { DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
+import * as offlineQueue from "@/utils/offlineQueue";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import "react-native-get-random-values";
+import { v4 as uuid } from "uuid";
 
 export default function NewExpenseScreen() {
   const router = useRouter();
@@ -23,12 +29,19 @@ export default function NewExpenseScreen() {
   const isLocked = groupId !== "[groupId]";
 
   const { list: groupList } = states.group();
-  const { defaultCurrency } = states.user();
+  const { defaultCurrency, details: userDetails } = states.user();
+  const isPro = userDetails?.plan === "pro";
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
+  const [upgradeDescription, setUpgradeDescription] = useState<
+    string | undefined
+  >(undefined);
+  const [dailyCount, setDailyCount] = useState(0);
   const [values, setValues] = useState({
-    currency: defaultCurrency,
+    currency: isPro ? defaultCurrency : "PHP",
     amount: "",
     description: "",
     expense_date: new Date(),
@@ -82,31 +95,52 @@ export default function NewExpenseScreen() {
     }
   }, [values.group?.id]);
 
+  useEffect(() => {
+    if (!isPro && userDetails?.id) {
+      services.expense
+        .getDailyExpenseCount(userDetails.id)
+        .then(setDailyCount)
+        .catch(() => {});
+    }
+  }, []);
+
+  const applyGroupMembers = (raw: Member[]) => {
+    const currentUserId = states.user.getState().details?.id;
+    const members = [...raw].sort((a, b) =>
+      a.id === currentUserId ? -1 : b.id === currentUserId ? 1 : 0
+    );
+
+    setMembers(members);
+
+    const initialSplits: any = {};
+    const initialContributions: any = {};
+
+    members.forEach((member) => {
+      initialSplits[member.id] = { amount: "", percentage: "" };
+      initialContributions[member.id] = { amount: "" };
+    });
+
+    setSplits(initialSplits);
+    setPayers(initialContributions);
+  };
+
   const fetchGroupMembers = async (groupId: string) => {
     try {
       const raw = await services.member.getMembersByGroupId(groupId);
-
       if (!raw) return;
-
-      const currentUserId = states.user.getState().details?.id;
-      const members = [...raw].sort((a, b) =>
-        a.id === currentUserId ? -1 : b.id === currentUserId ? 1 : 0
-      );
-
-      setMembers(members);
-
-      const initialSplits: any = {};
-      const initialContributions: any = {};
-
-      members.forEach((member) => {
-        initialSplits[member.id] = { amount: "", percentage: "" };
-        initialContributions[member.id] = { amount: "" };
-      });
-
-      setSplits(initialSplits);
-      setPayers(initialContributions);
+      applyGroupMembers(raw);
     } catch (error) {
       console.error("Error fetching group members:", error);
+      // Offline (or fetch failed) — fall back to the cached member list so the
+      // split/payer rows still render and the expense can be queued offline.
+      try {
+        const cached = await cacheService.getGroupDetail(groupId);
+        if (cached?.memberList?.length) {
+          applyGroupMembers(cached.memberList as Member[]);
+        }
+      } catch {
+        // no cached members — form stays empty
+      }
     }
   };
 
@@ -131,6 +165,221 @@ export default function NewExpenseScreen() {
       split_type: tab
     }));
     setSplits(splits);
+  };
+
+  const handleOfflineSave = async () => {
+    if (!values.group || !userDetails) return;
+
+    const mappedSplits = Object.keys(splits)
+      .filter(
+        (userId) =>
+          parseFloat(splits[userId].amount) > 0 &&
+          parseFloat(splits[userId].percentage) > 0
+      )
+      .map((userId) => ({
+        userId,
+        amount: parseFloat(splits[userId].amount),
+        percentage: parseFloat(splits[userId].percentage)
+      }));
+    const mappedPayers = Object.keys(payers)
+      .filter((userId) => parseFloat(payers[userId].amount) > 0)
+      .map((userId) => ({ userId, amount: parseFloat(payers[userId].amount) }));
+    const paymentSplits = generatePaymentSplits(mappedPayers, mappedSplits);
+
+    if (paymentSplits.length === 0) {
+      toast({
+        title: "Invalid Expense",
+        description:
+          "Everyone paid their exact share. There's nothing to split or settle.",
+        type: "error"
+      });
+      return;
+    }
+
+    const clientId = uuid();
+    const creator = {
+      id: userDetails.id,
+      email: userDetails.email,
+      phone: userDetails.phone,
+      first_name: userDetails.first_name,
+      last_name: userDetails.last_name,
+      avatar: userDetails.avatar,
+      plan: userDetails.plan
+    };
+    const optimistic = offlineQueue.buildOptimisticExpense({
+      clientId,
+      groupId: values.group.id,
+      amount: parseFloat(values.amount),
+      description: values.description,
+      currency: values.currency,
+      creator,
+      payers: mappedPayers,
+      members
+    });
+    const optimisticPayments = offlineQueue.buildOptimisticPayments({
+      expenseId: clientId,
+      groupId: values.group.id,
+      description: values.description,
+      currency: values.currency,
+      members,
+      currentUser: creator,
+      paymentSplits
+    });
+
+    await offlineQueue.queueAddExpense(
+      values.group.id,
+      {
+        expensePayload: {
+          amount: parseFloat(values.amount),
+          description: values.description,
+          proof_of_payment: null,
+          group_id: values.group.id,
+          split_type: values.split_type,
+          currency: values.currency,
+          expense_date: values.expense_date.toISOString()
+        },
+        payers: mappedPayers,
+        memberSplits: mappedSplits,
+        paymentSplits
+      },
+      optimistic,
+      optimisticPayments
+    );
+
+    toast({
+      title: "Saved offline",
+      description:
+        "This expense will sync automatically when you're back online.",
+      type: "info"
+    });
+    router.back();
+  };
+
+  const handleSaveDraft = async () => {
+    if (!isPro) {
+      setUpgradeDescription(
+        "Draft Expenses is a Pro feature. Upgrade to log an expense now and finalize who paid and how to split it later."
+      );
+      setUpgradeSheetOpen(true);
+      return;
+    }
+
+    let errors: any = {};
+
+    if (!values.amount) {
+      errors.amount = "Amount is required";
+    }
+
+    if (!values.description) {
+      errors.description = "Description is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    if (!values.group || !userDetails) {
+      toast({
+        title: "Group Not Selected",
+        description: "Please select a group for this expense.",
+        type: "error"
+      });
+      return;
+    }
+
+    const online = await offlineQueue.isOnline();
+
+    // Offline → queue the draft optimistically. The daily limit can't be
+    // enforced without the server, so we skip that check offline.
+    if (!online) {
+      const clientId = uuid();
+      const creator = {
+        id: userDetails.id,
+        email: userDetails.email,
+        phone: userDetails.phone,
+        first_name: userDetails.first_name,
+        last_name: userDetails.last_name,
+        avatar: userDetails.avatar,
+        plan: userDetails.plan
+      };
+      const optimistic = offlineQueue.buildOptimisticDraft({
+        clientId,
+        groupId: values.group.id,
+        amount: parseFloat(values.amount),
+        description: values.description,
+        currency: values.currency,
+        creator
+      });
+
+      await offlineQueue.queueCreateDraft(
+        values.group.id,
+        {
+          expensePayload: {
+            amount: parseFloat(values.amount),
+            description: values.description,
+            proof_of_payment: null,
+            group_id: values.group.id,
+            currency: values.currency,
+            expense_date: values.expense_date.toISOString()
+          }
+        },
+        optimistic
+      );
+
+      toast({
+        title: "Draft saved offline",
+        description:
+          "This draft will sync automatically when you're back online.",
+        type: "info"
+      });
+      router.navigate(`/groups/${values.group.id}?tab=Expenses`);
+      return;
+    }
+
+    if (!isPro) {
+      const count = await services.expense.getDailyExpenseCount(userDetails.id);
+      if (count >= DAILY_EXPENSE_LIMIT) {
+        setUpgradeDescription(
+          "You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
+        );
+        setUpgradeSheetOpen(true);
+        return;
+      }
+    }
+
+    setSavingDraft(true);
+    try {
+      const response = await services.expense.saveDraftExpense({
+        amount: parseFloat(values.amount),
+        description: values.description,
+        proof_of_payment: values.proof_of_payment,
+        group_id: values.group.id,
+        currency: values.currency,
+        expense_date: values.expense_date
+      });
+
+      if (!response) {
+        throw new Error("Failed to save draft");
+      }
+
+      toast({
+        title: "Draft Saved",
+        description: "Finalize it later to set who paid and split it.",
+        type: "success"
+      });
+      router.navigate(`/groups/${values.group.id}?tab=Expenses`);
+    } catch (error) {
+      console.log("Error saving draft:", error);
+      toast({
+        title: "Draft Save Failed",
+        description:
+          "An error occurred while saving the draft. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setSavingDraft(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -207,6 +456,27 @@ export default function NewExpenseScreen() {
         type: "error"
       });
       return;
+    }
+
+    // Offline → queue the expense and show it optimistically. The daily limit
+    // can't be enforced without the server, so we skip that check offline.
+    const online = await offlineQueue.isOnline();
+    if (!online) {
+      await handleOfflineSave();
+      return;
+    }
+
+    if (!isPro) {
+      const count = await services.expense.getDailyExpenseCount(
+        userDetails!.id
+      );
+      if (count >= DAILY_EXPENSE_LIMIT) {
+        setUpgradeDescription(
+          "You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
+        );
+        setUpgradeSheetOpen(true);
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -307,7 +577,6 @@ export default function NewExpenseScreen() {
     [payers, splits]
   );
 
-
   const isValidMemberSplit = useMemo(() => {
     const totalSplitAmount = Object.keys(splits)
       .filter(
@@ -368,90 +637,138 @@ export default function NewExpenseScreen() {
   }
 
   return (
-    <FormLayout
-      title="Custom Expense"
-      onBack={() => router.back()}
-      footer={[
-        step === 1 && (
-          <FormButton
-            key="step-1-next"
-            className="flex-1"
-            text="Continue"
-            disabled={!values.amount || !values.description || !values.group}
-            onPress={() => setStep(2)}
+    <>
+      <FormLayout
+        title="Custom Expense"
+        titleRight={
+          !isPro ? (
+            <DailyLimitBadge count={dailyCount} limit={DAILY_EXPENSE_LIMIT} />
+          ) : undefined
+        }
+        onBack={() => router.back()}
+        footer={[
+          step === 1 && [
+            <FormButton
+              key="step-1-draft"
+              className="flex-1"
+              variant="outline"
+              text={isPro ? "Save Draft" : "Save Draft - Pro"}
+              loading={savingDraft}
+              disabled={!values.amount || !values.description || !values.group}
+              onPress={handleSaveDraft}
+            />,
+            <FormButton
+              key="step-1-next"
+              className="flex-1"
+              text="Continue"
+              disabled={!values.amount || !values.description || !values.group}
+              onPress={() => setStep(2)}
+            />
+          ],
+          step === 2 && [
+            <FormButton
+              key="step-2-back"
+              className="flex-1"
+              variant="outline"
+              text="Back"
+              disabled={submitting}
+              onPress={() => setStep(1)}
+            />,
+            <FormButton
+              key="step-2-next"
+              className="flex-1"
+              text="Continue"
+              disabled={!isValidPayerContribution}
+              onPress={() => setStep(3)}
+            />
+          ],
+          step === 3 && [
+            <FormButton
+              key="step-3-back"
+              className="flex-1"
+              variant="outline"
+              text="Back"
+              disabled={submitting}
+              onPress={() => setStep(2)}
+            />,
+            <FormButton
+              key="step-3-submit"
+              className="flex-1"
+              text="Save Expense"
+              loading={submitting}
+              disabled={!isValidMemberSplit || !isMultipleMembers}
+              onPress={handleSubmit}
+            />
+          ]
+        ]}
+      >
+        {step === 1 && (
+          <AddExpenseStep
+            values={values}
+            setValues={setValues}
+            formErrors={formErrors}
+            isLockedGroup={isLocked}
+            currencyLocked={!isPro}
+            onCurrencyLockedPress={() => {
+              setUpgradeDescription(
+                "Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
+              );
+              setUpgradeSheetOpen(true);
+            }}
+            step={step}
           />
-        ),
-        step === 2 && [
-          <FormButton
-            key="step-2-back"
-            className="flex-1"
-            variant="outline"
-            text="Back"
-            disabled={submitting}
-            onPress={() => setStep(1)}
-          />,
-          <FormButton
-            key="step-2-next"
-            className="flex-1"
-            text="Continue"
-            disabled={!isValidPayerContribution}
-            onPress={() => setStep(3)}
+        )}
+        {step === 2 && (
+          <PayersContributionStep
+            payers={payers}
+            members={members}
+            onPayerAmountChange={handlePayerAmountChange}
+            amount={values.amount}
+            currency={values.currency}
+            step={step}
+            isLockedGroup={isLocked}
+            groupName={values.group.name}
           />
-        ],
-        step === 3 && [
-          <FormButton
-            key="step-3-back"
-            className="flex-1"
-            variant="outline"
-            text="Back"
-            disabled={submitting}
-            onPress={() => setStep(2)}
-          />,
-          <FormButton
-            key="step-3-submit"
-            className="flex-1"
-            text="Save Expense"
-            loading={submitting}
-            disabled={!isValidMemberSplit || !isMultipleMembers}
-            onPress={handleSubmit}
+        )}
+        {step === 3 && (
+          <SplitExpenseStep
+            amount={values.amount}
+            currency={values.currency}
+            groupId={values.group.id}
+            members={members}
+            splits={splits}
+            onSetSplits={handleSetSplits}
+            step={step}
+            isLockedGroup={isLocked}
+            groupName={values.group.name}
           />
-        ]
-      ]}
+        )}
+      </FormLayout>
+
+      <UpgradeSheet
+        isOpen={upgradeSheetOpen}
+        onClose={() => setUpgradeSheetOpen(false)}
+        description={upgradeDescription}
+      />
+    </>
+  );
+}
+
+function DailyLimitBadge({ count, limit }: { count: number; limit: number }) {
+  const remaining = limit - count;
+  const isLimitReached = remaining <= 0;
+
+  return (
+    <Badge
+      size="md"
+      variant="solid"
+      className={`rounded-full px-4 py-2 ${isLimitReached ? "bg-error-50" : "bg-primary-50"}`}
     >
-      {step === 1 && (
-        <AddExpenseStep
-          values={values}
-          setValues={setValues}
-          formErrors={formErrors}
-          isLockedGroup={isLocked}
-          step={step}
-        />
-      )}
-      {step === 2 && (
-        <PayersContributionStep
-          payers={payers}
-          members={members}
-          onPayerAmountChange={handlePayerAmountChange}
-          amount={values.amount}
-          currency={values.currency}
-          step={step}
-          isLockedGroup={isLocked}
-          groupName={values.group.name}
-        />
-      )}
-      {step === 3 && (
-        <SplitExpenseStep
-          amount={values.amount}
-          currency={values.currency}
-          groupId={values.group.id}
-          members={members}
-          splits={splits}
-          onSetSplits={handleSetSplits}
-          step={step}
-          isLockedGroup={isLocked}
-          groupName={values.group.name}
-        />
-      )}
-    </FormLayout>
+      <BadgeText
+        className={`font-bold text-sm uppercase ${isLimitReached ? "text-error-600" : "text-primary-400"}`}
+      >
+        {isLimitReached ? "LIMIT REACHED" : `${remaining} / ${limit} LEFT`}
+      </BadgeText>
+    </Badge>
   );
 }

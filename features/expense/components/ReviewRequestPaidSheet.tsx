@@ -12,7 +12,6 @@ import {
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
-import { Image } from "expo-image";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -23,6 +22,7 @@ import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
+import { Image } from "expo-image";
 import { ReceiptText } from "lucide-react-native";
 import { Fragment, ReactNode, useState } from "react";
 import { useColorScheme } from "react-native";
@@ -201,7 +201,7 @@ export default function ReviewRequestPaidSheet({
                 <VStack className="gap-y-1">
                   {payment.expense_description && (
                     <Text
-                      className="text-secondary-950 uppercase flex-1"
+                      className="text-sm text-secondary-950 uppercase flex-1"
                       bold
                       numberOfLines={1}
                     >
@@ -212,7 +212,9 @@ export default function ReviewRequestPaidSheet({
                     <Text className="text-3xl" bold>
                       {formatAmount(payment.amount || 0, payment.currency)}
                     </Text>
-                    <Text className="text-secondary-950">Amount paid</Text>
+                    <Text className="text-secondary-950">
+                      {isPayerMe ? "Amount received" : "Amount paid"}
+                    </Text>
                   </VStack>
                 </VStack>
 
@@ -309,7 +311,7 @@ export default function ReviewRequestPaidSheet({
                           colorScheme
                         )}
                       />
-                      <Text className="text-secondary-950">
+                      <Text className="text-sm text-secondary-950">
                         No proof of payment provided
                       </Text>
                     </VStack>
@@ -339,6 +341,8 @@ export default function ReviewRequestPaidSheet({
                             className="flex-1"
                             action="negative"
                             text="Reject"
+                            isDelete
+                            confirmText="Reject"
                             loading={rejecting}
                             disabled={submitting}
                             onConfirm={handleRejectRequest}
@@ -361,6 +365,8 @@ export default function ReviewRequestPaidSheet({
                         className="flex-1"
                         action="negative"
                         text="Undo Request"
+                        isDelete
+                        confirmText="Undo Request"
                         loading={undoing}
                         disabled={submitting}
                         onConfirm={handleUndoRequest}

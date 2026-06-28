@@ -16,7 +16,7 @@ import { Member } from "@/types/groups";
 import { splitTypes } from "@/utils/constants";
 import { getCurrencySign } from "@/utils/currency";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
 import {
   getAmountPerPerson,
@@ -43,6 +43,14 @@ type SplitExpenseStepProps = {
   ) => void;
   isLockedGroup?: boolean;
   groupName?: string;
+  /** Pre-select a split tab (e.g. when editing an existing expense). */
+  initialTab?: (typeof splitTypes)[number]["value"];
+  /**
+   * Skip the auto-distribute/clear on the first effect run so seeded splits
+   * (from an expense being edited) are preserved. Subsequent tab/amount
+   * changes still recompute as usual.
+   */
+  skipInitialReset?: boolean;
 };
 
 export default function SplitSelection({
@@ -53,15 +61,23 @@ export default function SplitSelection({
   splits,
   onSetSplits,
   isLockedGroup = false,
-  groupName
+  groupName,
+  initialTab,
+  skipInitialReset = false
 }: SplitExpenseStepProps) {
   const [tab, setTab] = useState<(typeof splitTypes)[number]["value"]>(
-    splitTypes[0].value
+    initialTab ?? splitTypes[0].value
   );
+  const initialResetSkipped = useRef(false);
 
   const totalAmount = parseFloat(amount) || 0;
 
   useEffect(() => {
+    if (skipInitialReset && !initialResetSkipped.current) {
+      initialResetSkipped.current = true;
+      return;
+    }
+
     const initialSplits: {
       [userId: string]: {
         amount: string;
@@ -167,7 +183,7 @@ export default function SplitSelection({
             <VStack className="gap-y-1">
               {isLockedGroup && groupName && (
                 <Text
-                  className="text-secondary-950 uppercase flex-1"
+                  className="text-sm text-secondary-950 uppercase flex-1"
                   bold
                   numberOfLines={1}
                 >
@@ -178,7 +194,7 @@ export default function SplitSelection({
                 <Text className="text-2xl" bold>
                   Who owes what?
                 </Text>
-                <Text className="text-secondary-950">
+                <Text className="text-sm text-secondary-950">
                   Set how the total is divided among each member.
                 </Text>
               </VStack>
@@ -237,7 +253,7 @@ export default function SplitSelection({
             <Text className="text-xl font-medium">
               {formatAmount(totalAmount, currency)}
             </Text>
-            <Text className="text-secondary-950">
+            <Text className="text-sm text-secondary-950">
               {formatAmount(equalSplits[0] || 0, currency)} per person
             </Text>
           </VStack>
@@ -318,7 +334,7 @@ function MemberSplitItem({
             <Text className="text-lg">
               {member?.first_name} {member?.last_name} {isMe && "(You)"}
             </Text>
-            <Text className="text-secondary-950">{member?.email}</Text>
+            <Text className="text-sm text-secondary-950">{member?.email}</Text>
           </VStack>
         </HStack>
 
@@ -328,7 +344,7 @@ function MemberSplitItem({
               <Text className="text-lg">
                 {formatAmount(Number(split.amount) || 0, currency)}
               </Text>
-              <Text className="text-secondary-950">{split.percentage}%</Text>
+              <Text className="text-sm text-secondary-950">{split.percentage}%</Text>
             </VStack>
           )}
 
@@ -347,7 +363,7 @@ function MemberSplitItem({
                   <Text className="text-lg font-medium">%</Text>
                 </InputSlot>
               </Input>
-              <Text className="text-secondary-950">
+              <Text className="text-sm text-secondary-950">
                 {formatAmount(Number(split.amount) || 0, currency)}
               </Text>
             </VStack>
@@ -372,7 +388,7 @@ function MemberSplitItem({
                 />
               </Input>
 
-              <Text className="text-secondary-950">
+              <Text className="text-sm text-secondary-950">
                 {split.percentage || 0}%
               </Text>
             </VStack>

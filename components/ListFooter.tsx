@@ -28,7 +28,7 @@ export default function ListFooter({
   if (showEndMessage) {
     return (
       <VStack className="justify-center items-center p-4">
-        <Text className="text-secondary-950 text-center">
+        <Text className="text-sm text-secondary-950 text-center">
           You've reached the end.
         </Text>
       </VStack>

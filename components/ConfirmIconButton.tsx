@@ -82,7 +82,7 @@ const ConfirmModal = ({
           <Heading size="lg">{title}</Heading>
         </ModalHeader>
         <ModalBody>
-          <Text className="text-secondary-950">{description}</Text>
+          <Text className="text-sm text-secondary-950">{description}</Text>
         </ModalBody>
         <ModalFooter>
           <HStack className="gap-x-2">

@@ -45,7 +45,7 @@ const FriendItem = React.memo(function FriendItem({
           <Text className="text-lg">
             {friend.first_name} {friend.last_name}
           </Text>
-          <Text className="text-secondary-950">{friend.email}</Text>
+          <Text className="text-sm text-secondary-950">{friend.email}</Text>
         </VStack>
         <HStack className="gap-x-3 items-center">
           <HStack className="gap-x-1 items-center">

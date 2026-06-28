@@ -108,7 +108,7 @@ export default function AboutScreen() {
             <Text bold className="text-xl">
               What is Ambagan?
             </Text>
-            <Text className="text-secondary-950 leading-relaxed">
+            <Text className="text-sm text-secondary-950 leading-relaxed">
               Ambagan is a group expense splitting app designed for Filipinos
               and anyone who shares costs with others. Whether you're on a trip,
               splitting household bills, or settling group dinners — Ambagan
@@ -135,7 +135,7 @@ export default function AboutScreen() {
                     </Box>
                     <VStack className="flex-1 gap-y-0.5">
                       <Text className="text-lg">{feature.title}</Text>
-                      <Text className="text-secondary-950">
+                      <Text className="text-sm text-secondary-950">
                         {feature.description}
                       </Text>
                     </VStack>
@@ -165,7 +165,7 @@ export default function AboutScreen() {
                 keyExtractor={(item) => item.label}
                 renderItem={({ item }) => (
                   <HStack className="p-4 gap-x-2 justify-between items-center">
-                    <Text className="text-secondary-950">{item.label}</Text>
+                    <Text className="text-sm text-secondary-950">{item.label}</Text>
                     <Text>{item.value}</Text>
                   </HStack>
                 )}

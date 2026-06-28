@@ -44,7 +44,7 @@ export default function GroupDetailsTab() {
 
   return (
     <Fragment>
-      <VStack className="gap-y-8 px-4">
+      <VStack className="gap-y-6 px-4">
         <Box className="bg-secondary-100 rounded-xl overflow-hidden">
           <DetailRow
             label="Admin"
@@ -170,7 +170,7 @@ function MemberItem({ item }: { item: Member }) {
               {isYou && " (You)"}
             </Text>
           </HStack>
-          <Text className="text-secondary-950">{item?.email}</Text>
+          <Text className="text-sm text-secondary-950">{item?.email}</Text>
         </VStack>
       </HStack>
     </HStack>

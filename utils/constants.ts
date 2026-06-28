@@ -1,6 +1,8 @@
 import { EmptyType } from "@/types/general";
 import { GroupCategory } from "@/types/groups";
 
+export const DAILY_EXPENSE_LIMIT = 5;
+
 export const tables = {
   USERS_TBL: "users_tbl",
   GROUPS_TBL: "groups_tbl",

@@ -7,9 +7,9 @@ export default function OfflineBanner() {
   const { top } = useSafeAreaInsets();
 
   return (
-    <View style={[styles.banner, { paddingTop: top + 4 }]}>
-      <WifiOff size={13} color="white" />
-      <Text style={styles.text}>No internet connection.</Text>
+    <View style={[styles.banner, { paddingTop: top }]}>
+      <WifiOff size={14} color="white" />
+      <Text style={styles.text}>Offline Mode — Showing cached data</Text>
     </View>
   );
 }
@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 9999,
-    backgroundColor: "#EF4444",
+    backgroundColor: "#3B82F6",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

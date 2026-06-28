@@ -11,18 +11,16 @@ import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { getSecondaryHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
+import { ArrowRight } from "lucide-react-native";
+import { useColorScheme } from "react-native";
 
 const PRO_FEATURES = [
   {
-    icon: "groups",
-    title: "Unlimited groups",
-    description: "Create as many groups as you need — no cap, ever."
-  },
-  {
-    icon: "public",
-    title: "Multi-currency expenses",
-    description: "Add expenses in PHP, USD, JPY, SGD, and more."
+    icon: "bolt",
+    title: "No daily expense limit",
+    description: "Add as many expenses as you need — no daily cap, ever."
   },
   {
     icon: "download",
@@ -30,20 +28,38 @@ const PRO_FEATURES = [
     description: "Download settlements by date range for your records."
   },
   {
+    icon: "trending-up",
+    title: "Spending analytics",
+    description: "See where your money goes — by group, by month, by friend."
+  },
+  {
+    icon: "currency-exchange",
+    title: "Multi-currency expenses",
+    description: "Split bills in any currency — PHP, USD, JPY, and more."
+  },
+  {
+    icon: "pending-actions",
+    title: "Draft expenses",
+    description: "Log an expense now and finalize who paid and the split later."
+  },
+  {
     icon: "star",
     title: "All future updates included",
-    description: "New features as they ship — yours forever."
+    description: "New Pro features as they ship — yours forever."
   }
 ];
 
 export default function UpgradeSheet({
   isOpen,
-  onClose
+  onClose,
+  description
 }: {
   isOpen: boolean;
   onClose: () => void;
+  description?: string;
 }) {
   const router = useRouter();
+  const colorScheme = useColorScheme() ?? "light";
 
   const handleUpgrade = () => {
     onClose();
@@ -51,7 +67,7 @@ export default function UpgradeSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[70]}>
+    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[75]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
         <ActionsheetDragIndicatorWrapper>
@@ -70,8 +86,9 @@ export default function UpgradeSheet({
                 </Text>
               </Box>
             </HStack>
-            <Text className="text-secondary-950">
-              One-time purchase · No subscription · No renewal
+            <Text className="text-sm text-secondary-950">
+              {description ??
+                "One-time purchase · No subscription · No renewal"}
             </Text>
           </VStack>
 
@@ -89,17 +106,27 @@ export default function UpgradeSheet({
                     <Text bold className="text-lg">
                       {feature.title}
                     </Text>
-                    <Text className="text-secondary-950">
+                    <Text className="text-sm text-secondary-950">
                       {feature.description}
                     </Text>
                   </VStack>
                 </HStack>
               ))}
             </VStack>
-
-            <FormButton text="Unlock Pro — ₱499" onPress={handleUpgrade} />
           </VStack>
         </VStack>
+        <Box className="p-4 w-full">
+          <FormButton
+            text="Explore Options"
+            iconEnd={
+              <ArrowRight
+                size={18}
+                color={getSecondaryHex("text-secondary-0", colorScheme)}
+              />
+            }
+            onPress={handleUpgrade}
+          />
+        </Box>
       </ActionsheetContent>
     </Actionsheet>
   );

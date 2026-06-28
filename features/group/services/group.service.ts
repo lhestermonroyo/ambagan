@@ -1,6 +1,7 @@
 import { createNotification } from "@/features/notifications/services/notification.service";
 import { NotificationType } from "@/types/notifications";
 import { Group, Member } from "@/types/groups";
+import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
@@ -15,13 +16,16 @@ export const saveGroup = async ({
   avatar,
   category,
   admin_id,
-  member_ids
+  member_ids,
+  id
 }: {
   name: string;
   category: string;
   avatar: ImagePickerSuccessResult | null;
   admin_id: string;
   member_ids: string[];
+  /** Optional pre-generated id — used so offline-queued groups keep a stable id on sync. */
+  id?: string;
 }) => {
   const user = await supabase.auth.getUser();
 
@@ -33,7 +37,7 @@ export const saveGroup = async ({
     throw new Error("Admin ID must be the same as the authenticated user");
   }
 
-  const groupId = uuid();
+  const groupId = id ?? uuid();
   let avatarUrl: string | null = null;
 
   if (avatar) {
@@ -247,53 +251,67 @@ export const deleteGroup = async (groupId: string) => {
 };
 
 export const getGroupsByUserId = async (userId: string) => {
-  const user = await supabase.auth.getUser();
+  try {
+    const user = await supabase.auth.getUser();
 
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
-  }
+    if (!user.data.user) {
+      throw new Error("User not authenticated");
+    }
 
-  const { data, error } = await supabase
-    .from(tables.GROUP_MEMBERS_TBL)
-    .select(
-      `${tables.GROUPS_TBL} (
-        id,
-        created_at,
-        name,
-        category,
-        avatar,
-        admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
-        archived,
-        expenses:${tables.EXPENSES_TBL}(count)
-      )`
-    )
-    .eq("member_id", userId);
+    const { data, error } = await supabase
+      .from(tables.GROUP_MEMBERS_TBL)
+      .select(
+        `${tables.GROUPS_TBL} (
+          id,
+          created_at,
+          name,
+          category,
+          avatar,
+          admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
+          archived,
+          expenses:${tables.EXPENSES_TBL}(count)
+        )`
+      )
+      .eq("member_id", userId);
 
-  if (error) {
+    if (error) {
+      throw error;
+    }
+
+    const groups = (data as any[])
+      .map((item) => {
+        const { expenses: expData, ...group } = item[tables.GROUPS_TBL];
+        return {
+          ...group,
+          expense_count: (expData as any[])?.[0]?.count ?? 0
+        };
+      })
+      .filter((group) => group.archived === false)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ) as Group[];
+    const groupIds = groups.map((g) => g.id);
+
+    const members = await getMembersByGroupIds(groupIds);
+
+    const result = groups.map((group) => ({
+      ...group,
+      members: members.filter((m) => m.group_id === group.id)
+    })) as (Group & { members: Member[] })[];
+
+    // Persist the fresh snapshot so the list is viewable offline.
+    cacheService.saveGroupsList(userId, result).catch(() => {});
+
+    return result;
+  } catch (error) {
+    // Offline / fetch failure — fall back to the last cached snapshot.
+    const cached = await cacheService.getGroupsList(userId);
+    if (cached) {
+      return cached as (Group & { members: Member[] })[];
+    }
     throw error;
   }
-
-  const groups = (data as any[])
-    .map((item) => {
-      const { expenses: expData, ...group } = item[tables.GROUPS_TBL];
-      return {
-        ...group,
-        expense_count: (expData as any[])?.[0]?.count ?? 0
-      };
-    })
-    .filter((group) => group.archived === false)
-    .sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    ) as Group[];
-  const groupIds = groups.map((g) => g.id);
-
-  const members = await getMembersByGroupIds(groupIds);
-
-  return groups.map((group) => ({
-    ...group,
-    members: members.filter((m) => m.group_id === group.id)
-  })) as (Group & { members: Member[] })[];
 };
 
 const GROUPS_PAGE_SIZE = 15;
@@ -305,52 +323,85 @@ export const getGroupsByUserIdPaginated = async (
   page: number = 0,
   filter: GroupFilter = "all"
 ): Promise<{ data: (Group & { members: Member[] })[]; hasNext: boolean }> => {
-  const user = await supabase.auth.getUser();
-  if (!user.data.user) throw new Error("User not authenticated");
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error("User not authenticated");
 
-  const from = page * GROUPS_PAGE_SIZE;
-  const to = from + GROUPS_PAGE_SIZE - 1;
+    const from = page * GROUPS_PAGE_SIZE;
+    const to = from + GROUPS_PAGE_SIZE - 1;
 
-  let query = supabase
-    .from(tables.GROUPS_TBL)
-    .select(
-      `id, created_at, name, category, avatar, archived,
-       admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
-       ${tables.GROUP_MEMBERS_TBL}!inner(member_id),
-       expenses:${tables.EXPENSES_TBL}(count)`,
-      { count: "exact" }
-    )
-    .eq(`${tables.GROUP_MEMBERS_TBL}.member_id`, userId)
-    .eq("archived", filter === "archived")
-    .order("created_at", { ascending: false })
-    .range(from, to);
+    let query = supabase
+      .from(tables.GROUPS_TBL)
+      .select(
+        `id, created_at, name, category, avatar, archived,
+         admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
+         ${tables.GROUP_MEMBERS_TBL}!inner(member_id),
+         expenses:${tables.EXPENSES_TBL}(count)`,
+        { count: "exact" }
+      )
+      .eq(`${tables.GROUP_MEMBERS_TBL}.member_id`, userId)
+      .eq("archived", filter === "archived")
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
-  if (filter === "created") {
-    query = query.eq("admin_id", userId);
-  } else if (filter === "joined") {
-    query = query.neq("admin_id", userId);
-  }
+    if (filter === "created") {
+      query = query.eq("admin_id", userId);
+    } else if (filter === "joined") {
+      query = query.neq("admin_id", userId);
+    }
 
-  const { data, error, count } = await query;
+    const { data, error, count } = await query;
 
-  if (error) throw error;
+    if (error) throw error;
 
-  const groups = (data as any[]).map(({ group_members_tbl: _, expenses: expData, ...group }) => ({
-    ...group,
-    expense_count: (expData as any[])?.[0]?.count ?? 0
-  })) as Group[];
-  const groupIds = groups.map((g) => g.id);
-  const members = groupIds.length ? await getMembersByGroupIds(groupIds) : [];
-
-  const totalPages = Math.ceil((count || 0) / GROUPS_PAGE_SIZE);
-
-  return {
-    data: groups.map((group) => ({
+    const groups = (data as any[]).map(({ group_members_tbl: _, expenses: expData, ...group }) => ({
       ...group,
-      members: members.filter((m) => m.group_id === group.id)
-    })),
-    hasNext: page < totalPages - 1
-  };
+      expense_count: (expData as any[])?.[0]?.count ?? 0
+    })) as Group[];
+    const groupIds = groups.map((g) => g.id);
+    const members = groupIds.length ? await getMembersByGroupIds(groupIds) : [];
+
+    const totalPages = Math.ceil((count || 0) / GROUPS_PAGE_SIZE);
+
+    const result = {
+      data: groups.map((group) => ({
+        ...group,
+        members: members.filter((m) => m.group_id === group.id)
+      })),
+      hasNext: page < totalPages - 1
+    };
+
+    // Cache the first "all" page when it's the complete list (no more pages),
+    // so the Groups tab is viewable offline. Skip when there are more pages to
+    // avoid shrinking a fuller snapshot already cached by the home tab.
+    if (page === 0 && filter === "all" && !result.hasNext) {
+      cacheService.saveGroupsList(userId, result.data).catch(() => {});
+    }
+
+    return result;
+  } catch (error) {
+    // Offline / fetch failure — serve from the cached snapshot. The cache holds
+    // the full non-archived list, so we filter it by tab and return it on the
+    // first page (pagination isn't available offline).
+    if (page > 0) return { data: [], hasNext: false };
+
+    const cached = (await cacheService.getGroupsList(userId)) as
+      | (Group & { members: Member[] })[]
+      | null;
+    if (!cached) throw error;
+
+    let data = cached;
+    if (filter === "created") {
+      data = cached.filter((g) => g.admin?.id === userId);
+    } else if (filter === "joined") {
+      data = cached.filter((g) => g.admin?.id !== userId);
+    } else if (filter === "archived") {
+      // Archived groups aren't cached (the snapshot excludes them).
+      data = [];
+    }
+
+    return { data, hasNext: false };
+  }
 };
 
 export const getGroupById = async (groupId: string) => {
@@ -431,7 +482,8 @@ export const getStatsByGroupId = async (groupId: string) => {
       `
       id,
       total_expenses: ${tables.EXPENSES_TBL} (
-        amount
+        amount,
+        is_draft
       ),
       total_paid: ${tables.MEMBER_SPLITS_TBL} (
         amount,
@@ -453,8 +505,11 @@ export const getStatsByGroupId = async (groupId: string) => {
     throw error;
   }
 
+  // Drafts aren't real shared expenses yet, so they don't count toward the
+  // group's total spending.
   const totalExpenses = (data as any).total_expenses.reduce(
-    (acc: number, expense: any) => acc + expense.amount,
+    (acc: number, expense: any) =>
+      expense.is_draft ? acc : acc + expense.amount,
     0
   );
 

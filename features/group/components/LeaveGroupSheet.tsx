@@ -268,22 +268,26 @@ export default function LeaveGroupSheet({
                 disabled={loading}
                 onPress={onClose}
               />
-              <ConfirmButton
-                className="flex-1"
-                action="negative"
-                text="Leave Group"
-                loading={loading}
-                disabled={!canLeave}
-                onConfirm={handleLeave}
-                confirmTitle="Leave Group"
-                confirmDescription={
-                  isSoleAdmin
-                    ? "This will permanently delete the group and all its data. Are you sure?"
-                    : selectedNewAdmin
-                      ? `Admin will be transferred to ${selectedNewAdmin.first_name} ${selectedNewAdmin.last_name}. Are you sure you want to leave?`
-                      : "Are you sure you want to leave this group?"
-                }
-              />
+              {!fetching && !hasUnsettled && (
+                <ConfirmButton
+                  className="flex-1"
+                  action="negative"
+                  text="Leave Group"
+                  isDelete
+                  confirmText={isSoleAdmin ? "Delete Group" : "Leave Group"}
+                  loading={loading}
+                  disabled={!canLeave}
+                  onConfirm={handleLeave}
+                  confirmTitle="Leave Group"
+                  confirmDescription={
+                    isSoleAdmin
+                      ? "This will permanently delete the group and all its data. Are you sure?"
+                      : selectedNewAdmin
+                        ? `Admin will be transferred to ${selectedNewAdmin.first_name} ${selectedNewAdmin.last_name}. Are you sure you want to leave?`
+                        : "Are you sure you want to leave this group?"
+                  }
+                />
+              )}
             </HStack>
           </Box>
         </VStack>
@@ -305,13 +309,13 @@ const SettlementItem = ({ item }: { item: Payment }) => {
         {item.expense_description && (
           <HStack className="gap-x-4 items-center flex-1">
             <Text
-              className="text-secondary-950 uppercase flex-1"
+              className="text-sm text-secondary-950 uppercase flex-1"
               bold
               numberOfLines={1}
             >
               {item.expense_description}
             </Text>
-            <Text className="text-secondary-950">
+            <Text className="text-sm text-secondary-950">
               {formatDate(item.created_at)}
             </Text>
           </HStack>

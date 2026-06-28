@@ -73,7 +73,7 @@ export default function ForgotPasswordScreen() {
             />
           </Box>
           <VStack className="gap-y-2 items-center">
-            <Text className="text-secondary-950 text-center">
+            <Text className="text-sm text-secondary-950 text-center">
               Open the link in the email to set a new password. If you don't see
               it, check your spam folder.
             </Text>

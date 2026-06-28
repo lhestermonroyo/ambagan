@@ -1,4 +1,5 @@
 import OfflineBanner from "@/components/OfflineBanner";
+import OfflineSync from "@/components/OfflineSync";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
 import useAppToast, { ToastProvider } from "@/hooks/use-app-toast";
@@ -53,6 +54,7 @@ export default function RootLayout() {
   const toast = useAppToast();
   const overlayOpacity = useSharedValue(0);
   const isFirstRender = useRef(true);
+  const prevIsOnline = useRef<boolean | null>(null);
   const notificationChannel = useRef<RealtimeChannel | null>(null);
   const subscribedUserId = useRef<string | null>(null);
   const fetchedForUser = useRef<string | null>(null);
@@ -98,6 +100,21 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded, loading]);
+
+  useEffect(() => {
+    if (prevIsOnline.current === null) {
+      prevIsOnline.current = isOnline;
+      return;
+    }
+    if (prevIsOnline.current && !isOnline) {
+      toast({
+        title: "No Internet Connection",
+        description: "You're in offline mode. You can still browse cached data.",
+        type: "error"
+      });
+    }
+    prevIsOnline.current = isOnline;
+  }, [isOnline]);
 
   useEffect(() => {
     notifReceivedListener.current =
@@ -257,7 +274,11 @@ export default function RootLayout() {
       const response = await services.user.getUserById(id);
 
       if (response.message === "User not found" && !response.data) {
-        router.replace("/(auth)/onboarding");
+        // Account was hard-deleted — clear the stale JWT so the next app
+        // launch doesn't loop through fetchDetails again.
+        await supabase.auth.signOut();
+        states.user.setState((prev) => ({ ...prev, session: null, details: null }));
+        router.replace("/(auth)/login");
         return;
       }
 
@@ -273,12 +294,16 @@ export default function RootLayout() {
 
       try {
         const customerInfo = await services.purchase.getCustomerInfo();
-        const { plan } =
-          await services.purchase.syncPlanToSupabase(customerInfo);
+        // Pass the stored window so an unexpired (non-renewing) 2-week pass
+        // survives the launch sync; an expired one reverts to free.
+        const { plan, plan_expires_at } =
+          await services.purchase.syncPlanToSupabase(customerInfo, {
+            currentWindowExpiresAt: response.data?.plan_expires_at ?? null
+          });
         states.user.setState((prev) => ({
           ...prev,
           details: prev.details
-            ? { ...prev.details, plan, plan_expires_at: null }
+            ? { ...prev.details, plan, plan_expires_at }
             : prev.details
         }));
       } catch (error) {
@@ -319,6 +344,7 @@ export default function RootLayout() {
                 }}
               />
               <StatusBar style="auto" />
+              <OfflineSync />
               {!isOnline && <OfflineBanner />}
             </ThemeProvider>
           </ToastProvider>

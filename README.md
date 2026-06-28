@@ -10,7 +10,7 @@
 - **Expenses** — Log expenses with flexible split types: equal, by percentage, or custom amount per person. Attach proof of payment images.
 - **Settlements** — Request, approve, or reject settlements with real-time push notifications. Track full payment history per group and per friend.
 - **Friends** — See everyone you share a group with, along with a net balance summary of what you owe or are owed.
-- **Multi-currency** — Each expense supports its own currency. Useful for travel groups across different countries.
+- **Multi-currency** _(Pro)_ — Each expense supports its own currency. Useful for travel groups across different countries.
 - **CSV Export** — Export settlement history per group to a CSV file for record-keeping.
 - **Offline Access** — Groups, expenses, and friends are cached automatically so you can browse them without an internet connection.
 - **Push Notifications** — Get notified for settlement requests, approvals, rejections, new expenses, and group activity.

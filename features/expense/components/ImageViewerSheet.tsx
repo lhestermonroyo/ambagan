@@ -58,7 +58,7 @@ export default function ImageViewerSheet({
               />
             ) : (
               <Box className="flex-1 items-center justify-center">
-                <Text className="text-secondary-950">No image available</Text>
+                <Text className="text-sm text-secondary-950">No image available</Text>
               </Box>
             )}
           </Box>

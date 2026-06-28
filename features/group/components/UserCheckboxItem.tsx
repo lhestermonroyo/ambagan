@@ -45,7 +45,7 @@ export function UserCheckboxItem({
               <Text className="text-lg">
                 {item?.first_name} {item?.last_name}
               </Text>
-              <Text className="text-secondary-950">{item?.email}</Text>
+              <Text className="text-sm text-secondary-950">{item?.email}</Text>
             </VStack>
           </HStack>
           <Pressable onPress={() => onToggleFavorite?.(item)}>

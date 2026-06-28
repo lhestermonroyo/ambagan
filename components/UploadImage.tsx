@@ -14,13 +14,16 @@ import { VStack } from "./ui/vstack";
 const UploadImage = ({
   title = "Upload Image",
   subtitle,
+  defaultUri = null,
   onSelect
 }: {
   title: string;
   subtitle?: string;
+  /** Existing image URL to display initially (e.g. when editing). */
+  defaultUri?: string | null;
   onSelect: (result: ImagePicker.ImagePickerSuccessResult) => void;
 }) => {
-  const [image, setImage] = useState<string | null>(null);
+  const [image, setImage] = useState<string | null>(defaultUri);
   const [sheetOpen, setSheetOpen] = useState(false);
   const colorScheme = useColorScheme() ?? "light";
 
@@ -41,7 +44,7 @@ const UploadImage = ({
               size={36}
               color={getSecondaryHex("text-secondary-950", colorScheme)}
             />
-            <Text className="text-secondary-950">{title}</Text>
+            <Text className="text-sm text-secondary-950">{title}</Text>
             {subtitle && (
               <Text className="text-secondary-950 text-sm">{subtitle}</Text>
             )}

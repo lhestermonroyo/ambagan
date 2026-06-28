@@ -21,10 +21,13 @@ import services from "@/services";
 import states from "@/states";
 import { UserPreview } from "@/types/user";
 import { categories } from "@/utils/constants";
+import * as offlineQueue from "@/utils/offlineQueue";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { Fragment, useEffect, useState } from "react";
+import "react-native-get-random-values";
+import { v4 as uuid } from "uuid";
 
 export default function CreateGroupScreen() {
   const [submitting, setSubmitting] = useState(false);
@@ -99,6 +102,44 @@ export default function CreateGroupScreen() {
         description: "Please select at least one member to create a group.",
         type: "error"
       });
+      return;
+    }
+
+    // Offline → queue the group creation. The cover photo is skipped (no
+    // image upload offline); it can be added once the group syncs.
+    const online = await offlineQueue.isOnline();
+    if (!online) {
+      const clientId = uuid();
+      const memberPreviews = members.concat(admin);
+      const optimistic = offlineQueue.buildOptimisticGroup({
+        clientId,
+        name: values.name,
+        category: values.category,
+        admin: admin[0],
+        members: memberPreviews
+      });
+
+      await offlineQueue.queueCreateGroup(
+        user.details!.id,
+        {
+          name: values.name,
+          category: values.category,
+          avatar: null,
+          admin_id: admin[0].id,
+          member_ids: memberPreviews.map((member) => member.id)
+        },
+        optimistic
+      );
+
+      await addRecentUsers(members, user.details!.id).catch(() => {});
+
+      toast({
+        title: "Saved offline",
+        description:
+          "Your group will be created automatically when you're back online. You can add a cover photo after it syncs.",
+        type: "info"
+      });
+      router.replace("/groups");
       return;
     }
 
@@ -187,14 +228,14 @@ export default function CreateGroupScreen() {
                     className={`items-center px-4 rounded-full ${
                       values.category === category.value
                         ? "border-primary-400"
-                        : "border-background-200 bg-background-50 dark:bg-background-100"
+                        : "border-background-200 bg-background-50 dark:bg-background-50"
                     }`}
                   >
                     <ButtonText
                       className={
                         values.category === category.value
-                          ? "text-background-0"
-                          : "text-inherit"
+                          ? "text-secondary-0"
+                          : "text-inherit dark:text-secondary-950"
                       }
                     >
                       {category.label}
@@ -248,14 +289,14 @@ export default function CreateGroupScreen() {
                   ListEmptyComponent={() =>
                     tab === "members" ? (
                       <VStack className="p-4 justify-center items-center">
-                        <Text className="text-secondary-950 text-center">
+                        <Text className="text-sm text-secondary-950 text-center">
                           No members added yet. Click "Add Member" to include
                           members in your group.
                         </Text>
                       </VStack>
                     ) : (
                       <VStack className="p-4 justify-center items-center">
-                        <Text className="text-secondary-950">
+                        <Text className="text-sm text-secondary-950">
                           An admin is required to create a group.
                         </Text>
                       </VStack>

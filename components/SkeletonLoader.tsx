@@ -246,6 +246,191 @@ export function SettlementListSkeleton({ count = 4 }: { count?: number }) {
 }
 
 // ─────────────────────────────────────────────
+// AnalyticsScreen skeleton
+// Overview card + Spending by Group + Monthly Trend + Top Partners
+// ─────────────────────────────────────────────
+export function AnalyticsSkeleton() {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const divider = scheme === "dark" ? DIVIDER_DARK : DIVIDER_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  return (
+    <Animated.View style={[animStyle, { padding: 16, gap: 24 }]}>
+      {/* Overview card */}
+      <View
+        style={{
+          backgroundColor: color,
+          borderRadius: 16,
+          padding: 16,
+          gap: 16
+        }}
+      >
+        <Bone w={72} h={12} color={divider} />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Bone w={48} h={32} color={divider} />
+          <Bone w={72} h={14} color={divider} />
+        </View>
+        <View style={{ height: 1, backgroundColor: divider }} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Bone w={72} h={14} color={divider} />
+          <Bone w={96} h={18} color={divider} />
+        </View>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Bone w={64} h={14} color={divider} />
+          <Bone w={96} h={18} color={divider} />
+        </View>
+      </View>
+
+      {/* Spending by Group */}
+      <View style={{ gap: 10 }}>
+        <Bone w={180} h={22} color={color} />
+        <View
+          style={{ backgroundColor: color, borderRadius: 16, padding: 24, gap: 20 }}
+        >
+          {[0.85, 0.6, 0.4, 0.25].map((pct, i) => (
+            <View key={i} style={{ gap: 6 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Bone w="50%" h={14} color={divider} />
+                <Bone w={80} h={14} color={divider} />
+              </View>
+              <View
+                style={{
+                  height: 8,
+                  borderRadius: 999,
+                  backgroundColor: divider,
+                  overflow: "hidden"
+                }}
+              >
+                <View
+                  style={{
+                    width: `${pct * 100}%`,
+                    height: 8,
+                    borderRadius: 999,
+                    backgroundColor: color
+                  }}
+                />
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Monthly Trend */}
+      <View style={{ gap: 10 }}>
+        <Bone w={148} h={22} color={color} />
+        <View
+          style={{
+            backgroundColor: color,
+            borderRadius: 16,
+            padding: 16
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-end",
+              gap: 6,
+              height: 96
+            }}
+          >
+            {[0.3, 0.6, 0.45, 0.8, 0.55, 1.0, 0.7, 0.4, 0.65, 0.5, 0.75, 0.35].map(
+              (h, i) => (
+                <View
+                  key={i}
+                  style={{ flex: 1, alignItems: "center", gap: 4, justifyContent: "flex-end" }}
+                >
+                  <View
+                    style={{
+                      width: "100%",
+                      height: Math.max(h * 72, 4),
+                      borderRadius: 4,
+                      backgroundColor: divider
+                    }}
+                  />
+                  <Bone w={16} h={8} color={divider} />
+                </View>
+              )
+            )}
+          </View>
+        </View>
+      </View>
+
+      {/* Top Split Partners */}
+      <View style={{ gap: 10 }}>
+        <Bone w={180} h={22} color={color} />
+        <View style={{ backgroundColor: color, borderRadius: 16, overflow: "hidden" }}>
+          {[0, 1, 2].map((i) => (
+            <React.Fragment key={i}>
+              {i > 0 && (
+                <View style={{ height: 1, backgroundColor: divider, marginHorizontal: 16 }} />
+              )}
+              <View
+                style={{
+                  padding: 16,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12
+                }}
+              >
+                <Bone w={40} h={40} radius={999} color={divider} />
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Bone w="50%" h={14} color={divider} />
+                  <Bone w="35%" h={12} color={divider} />
+                </View>
+                <Bone w={36} h={24} radius={999} color={divider} />
+              </View>
+            </React.Fragment>
+          ))}
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SubscriptionPlanSkeleton
+// 3 plan selection cards
+// ─────────────────────────────────────────────
+export function SubscriptionPlanSkeleton() {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const divider = scheme === "dark" ? DIVIDER_DARK : DIVIDER_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  return (
+    <Animated.View style={[animStyle, { gap: 8 }]}>
+      {[0, 1, 2].map((i) => (
+        <View
+          key={i}
+          style={{
+            backgroundColor: color,
+            borderRadius: 16,
+            padding: 16
+          }}
+        >
+          <View
+            style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+          >
+            <View style={{ gap: 6, flex: 1 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Bone w={80} h={18} color={divider} />
+                {i === 2 && <Bone w={56} h={20} radius={999} color={divider} />}
+              </View>
+              <Bone w={140} h={12} color={divider} />
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <Bone w={72} h={20} color={divider} />
+              <Bone w={20} h={20} radius={999} color={divider} />
+            </View>
+          </View>
+        </View>
+      ))}
+    </Animated.View>
+  );
+}
+
+// ─────────────────────────────────────────────
 // ExpenseItem skeleton
 // Layout: description + "paid by" avatars | amount
 // ─────────────────────────────────────────────

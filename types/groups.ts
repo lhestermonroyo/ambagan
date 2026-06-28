@@ -19,6 +19,8 @@ export type Group = {
   avatar: string | null;
   archived: boolean;
   expense_count: number;
+  /** True for a group created offline and not yet synced to the server. */
+  pending?: boolean;
 };
 
 export type Member = UserPreview & {

@@ -1,5 +1,6 @@
 import { avatarColors } from "@/utils/constants";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
+import { useState } from "react";
 import {
   Avatar,
   AvatarFallbackText,
@@ -17,6 +18,46 @@ type AppAvatarGroupProps = {
   size: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | undefined;
 };
 
+type AvatarGroupItemProps = {
+  avatar: { id: string; uri: string | undefined; name: string };
+  size: AppAvatarGroupProps["size"];
+  isLast: boolean;
+  index: number;
+};
+
+const AvatarGroupItem = ({ avatar, size, isLast, index }: AvatarGroupItemProps) => {
+  const [imageError, setImageError] = useState(false);
+  const showFallback = !avatar.uri || imageError;
+
+  return (
+    <Avatar
+      key={avatar.id}
+      size={size}
+      className={cn(
+        avatarColors[
+          (avatar.name[0]?.toLowerCase() as keyof typeof avatarColors) || "a"
+        ],
+        !isLast ? "mr-[-10]" : "",
+        `z-${index + 1}`,
+        "border-2 border-outline-0"
+      )}
+    >
+      {avatar.uri && !imageError && (
+        <AvatarImage
+          source={{ uri: avatar.uri }}
+          alt={avatar.name || "Avatar"}
+          onError={() => setImageError(true)}
+        />
+      )}
+      {showFallback && (
+        <AvatarFallbackText className="text-background-0">
+          {avatar.name[0]?.toUpperCase() || "A"}
+        </AvatarFallbackText>
+      )}
+    </Avatar>
+  );
+};
+
 const AppAvatarGroup = ({
   items,
   maxDisplay = 3,
@@ -30,31 +71,13 @@ const AppAvatarGroup = ({
       {items.slice(0, maxDisplay).map((avatar, index) => {
         const isLast = index === displayCount - 1 && !hasOverflow;
         return (
-          <Avatar
-            key={index}
+          <AvatarGroupItem
+            key={avatar.id}
+            avatar={avatar}
             size={size}
-            className={cn(
-              avatarColors[
-                (avatar.name[0]?.toLowerCase() as keyof typeof avatarColors) ||
-                  "a"
-              ],
-              !isLast ? "mr-[-10]" : "",
-              `z-${index + 1}`,
-              "border-2 border-outline-0"
-            )}
-          >
-            {avatar.uri && (
-              <AvatarImage
-                source={{ uri: avatar.uri }}
-                alt={avatar.name || "Avatar"}
-              />
-            )}
-            {!avatar.uri && (
-              <AvatarFallbackText className="text-background-0">
-                {avatar.name[0]?.toUpperCase() || "A"}
-              </AvatarFallbackText>
-            )}
-          </Avatar>
+            isLast={isLast}
+            index={index}
+          />
         );
       })}
       {hasOverflow && (
@@ -65,7 +88,7 @@ const AppAvatarGroup = ({
             `z-${maxDisplay + 1}`
           )}
         >
-          <AvatarFallbackText className="text-secondary-950">
+          <AvatarFallbackText className="text-sm text-secondary-950">
             {"+ " + (items.length - maxDisplay)}
           </AvatarFallbackText>
         </Avatar>

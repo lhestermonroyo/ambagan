@@ -31,17 +31,18 @@ export default function GroupItem({
       <HStack className="items-center gap-x-2">
         <AppAvatar name={details.name} uri={details.avatar || undefined} />
         <VStack className="flex-1">
-          <HStack className="items-center gap-x-2">
-            <Text
-              className="text-lg flex-shrink"
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {details.name}
-            </Text>
-          </HStack>
+          <Text
+            className="text-lg flex-shrink"
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {details.name}
+          </Text>
           <HStack className="gap-x-1 items-center">
-            <Text className="text-secondary-950">
+            {details.pending && (
+              <Icon as="sync" size={14} className="text-primary-400" />
+            )}
+            <Text className="text-sm text-secondary-950">
               {formatDate(details.created_at)} &bull;{" "}
               {details.expense_count ?? 0} expense
               {(details.expense_count ?? 0) !== 1 ? "s" : ""}

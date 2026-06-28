@@ -7,6 +7,7 @@ import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Fab, FabLabel } from "@/components/ui/fab";
@@ -32,6 +33,7 @@ import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { ExpensePreview } from "@/types/expenses";
+import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
@@ -48,7 +50,7 @@ import {
   X,
   Zap
 } from "lucide-react-native";
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
@@ -65,6 +67,7 @@ export default function GroupDetailsScreen() {
   const [fabOpen, setFabOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
+
 
   const { details: groupDetails, expenseList, settlementList } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
@@ -161,6 +164,13 @@ export default function GroupDetailsScreen() {
   const params = useLocalSearchParams();
   const groupId = params.groupId as string | undefined;
 
+  useEffect(() => {
+    const incoming = params.tab as (typeof tabs)[number] | undefined;
+    if (incoming && tabs.includes(incoming)) {
+      setTab(incoming);
+    }
+  }, [params.tab]);
+
   const toast = useAppToast();
 
   useFocusEffect(
@@ -202,9 +212,31 @@ export default function GroupDetailsScreen() {
         expenseList: expensesResponse,
         memberList: membersResponse
       }));
+
+      // Cache the detail so it stays viewable offline.
+      cacheService
+        .saveGroupDetail(groupId, expensesResponse, membersResponse)
+        .catch(() => {});
     } catch (error) {
-      console.log("Error fetching group details:", error);
-      router.replace("/groups");
+      // Offline / fetch failure — hydrate from cache rather than bailing out.
+      const cached = await cacheService
+        .getGroupDetail(groupId)
+        .catch(() => null);
+      const cachedGroup = states.group
+        .getState()
+        .list.find((g) => g.id === groupId);
+
+      if (cached && cachedGroup) {
+        states.group.setState((prev) => ({
+          ...prev,
+          details: cachedGroup,
+          expenseList: cached.expenseList,
+          memberList: cached.memberList
+        }));
+      } else {
+        console.log("Error fetching group details:", error);
+        router.replace("/groups");
+      }
     } finally {
       setLoading(false);
     }
@@ -276,9 +308,14 @@ export default function GroupDetailsScreen() {
   };
 
   const formattedExpenseList = useMemo(() => {
+    // Drafts are pinned to the top in their own section; the rest are grouped
+    // by date as usual.
+    const drafts = expenseList.filter((item) => item.is_draft);
+    const finalized = expenseList.filter((item) => !item.is_draft);
+
     const groupedByDate: { [key: string]: typeof expenseList } = {};
 
-    expenseList.forEach((item) => {
+    finalized.forEach((item) => {
       const createdAt = item.created_at || new Date().toISOString();
       const dateKey = format(parseISO(createdAt), "yyyy-MM-dd");
 
@@ -288,7 +325,7 @@ export default function GroupDetailsScreen() {
       groupedByDate[dateKey].push(item);
     });
 
-    const sections = Object.keys(groupedByDate)
+    const dateSections = Object.keys(groupedByDate)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
       .map((dateKey) => ({
         title: getDateGroupTitle(dateKey + "T00:00:00"),
@@ -298,7 +335,19 @@ export default function GroupDetailsScreen() {
         )
       }));
 
-    return sections;
+    if (drafts.length === 0) {
+      return dateSections;
+    }
+
+    const draftSection = {
+      title: "Drafts",
+      data: drafts.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+    };
+
+    return [draftSection, ...dateSections];
   }, [expenseList]);
 
   const isAdmin = groupDetails?.admin.id === userDetails?.id;
@@ -612,7 +661,7 @@ export default function GroupDetailsScreen() {
               />
             }
           >
-            <VStack className="pb-4 gap-y-8">
+            <VStack className="gap-y-6 py-4">
               <HStack className="px-4 gap-x-4 items-center">
                 <VStack>
                   <AppAvatar
@@ -685,7 +734,7 @@ export default function GroupDetailsScreen() {
                       <Text className="text-lg font-semibold">
                         Ready to archive?
                       </Text>
-                      <Text className="text-secondary-950">
+                      <Text className="text-sm text-secondary-950">
                         All settled up with no activity for 30+ days.
                       </Text>
                     </VStack>
@@ -725,9 +774,11 @@ export default function GroupDetailsScreen() {
                   />
                 )}
                 renderHiddenItem={({ item }, rowMap) =>
-                  item.payer_list.some(
-                    (item) => item.payer.id === userDetails?.id
-                  ) && (
+                  (item.is_draft
+                    ? item.creator?.id === userDetails?.id
+                    : item.payer_list.some(
+                        (payer) => payer.payer.id === userDetails?.id
+                      )) && (
                     <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
                       <ConfirmIconButton
                         icon="delete"
@@ -756,7 +807,7 @@ export default function GroupDetailsScreen() {
                 stickySectionHeadersEnabled={true}
                 ListEmptyComponent={() => (
                   <VStack className="flex-1 justify-center items-center py-4">
-                    <Text className="text-secondary-950">
+                    <Text className="text-sm text-secondary-950">
                       No expenses recorded yet.
                     </Text>
                   </VStack>
@@ -847,8 +898,25 @@ function ExpenseItem({
             {expense.description}
           </Text>
           <HStack className="gap-x-1 items-center">
-            <Text className="text-secondary-950">Paid by</Text>
-            <AppAvatarGroup items={formattedPayers} size="xs" />
+            {expense.pending && (
+              <Icon as="sync" size={14} className="text-primary-400" />
+            )}
+            {expense.is_draft ? (
+              <Badge
+                size="sm"
+                variant="solid"
+                className="rounded-full bg-warning-50 px-3"
+              >
+                <BadgeText className="font-bold text-xs uppercase text-warning-600">
+                  Draft
+                </BadgeText>
+              </Badge>
+            ) : (
+              <>
+                <Text className="text-sm text-secondary-950">Paid by</Text>
+                <AppAvatarGroup items={formattedPayers} size="xs" />
+              </>
+            )}
           </HStack>
         </VStack>
         <VStack className="items-end gap-y-1">

@@ -13,6 +13,7 @@ import {
   ActionsheetDragIndicator,
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
+import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -24,6 +25,7 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import { GroupSelectionActionSheet } from "@/features/expense/components/GroupSelection";
 import { PayerSelectionActionSheet } from "@/features/expense/components/PayerSelection";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
@@ -36,7 +38,12 @@ import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
+import { cacheService } from "@/utils/cacheService";
+import { DAILY_EXPENSE_LIMIT } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import * as offlineQueue from "@/utils/offlineQueue";
+import "react-native-get-random-values";
+import { v4 as uuid } from "uuid";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -81,8 +88,14 @@ export default function QuickAddExpenseSheet({
   const [selectedPayer, setSelectedPayer] = useState<Member | null>(null);
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   const [payerPickerOpen, setPayerPickerOpen] = useState(false);
+  const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
+  const [upgradeDescription, setUpgradeDescription] = useState<
+    string | undefined
+  >(undefined);
+  const [dailyCount, setDailyCount] = useState(0);
 
   const { details: currentUser, defaultCurrency } = states.user();
+  const isPro = currentUser?.plan === "pro";
   const toast = useAppToast();
   const router = useRouter();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
@@ -98,8 +111,14 @@ export default function QuickAddExpenseSheet({
       setExpenseDate(new Date());
       setSelectedGroup(group);
       setSelectedPayer(null);
-      setCurrency(defaultCurrency);
+      setCurrency(isPro ? defaultCurrency : "PHP");
       if (group) fetchMembers(group.id);
+      if (!isPro && currentUser?.id) {
+        services.expense
+          .getDailyExpenseCount(currentUser.id)
+          .then(setDailyCount)
+          .catch(() => {});
+      }
     } else {
       setMembers([]);
       setSelectedPayer(null);
@@ -108,21 +127,32 @@ export default function QuickAddExpenseSheet({
 
   useEffect(() => {
     if (selectedGroup && isOpen) {
-      setCurrency(defaultCurrency);
+      setCurrency(isPro ? defaultCurrency : "PHP");
       fetchMembers(selectedGroup.id);
     }
   }, [selectedGroup?.id]);
 
+  const applyMembers = (result: Member[]) => {
+    setMembers(result);
+    const self = result.find((m) => m.id === currentUser?.id);
+    setSelectedPayer(self ?? result[0] ?? null);
+  };
+
   const fetchMembers = async (groupId: string) => {
     try {
       const result = await services.member.getMembersByGroupId(groupId);
-      if (result) {
-        setMembers(result);
-        const self = result.find((m) => m.id === currentUser?.id);
-        setSelectedPayer(self ?? result[0] ?? null);
-      }
+      if (result) applyMembers(result);
     } catch {
-      // submit stays disabled if fetch fails
+      // Offline (or fetch failed) — fall back to the cached member list so the
+      // payer and split cards still render and the expense can be queued.
+      try {
+        const cached = await cacheService.getGroupDetail(groupId);
+        if (cached?.memberList?.length) {
+          applyMembers(cached.memberList as Member[]);
+        }
+      } catch {
+        // submit stays disabled if there's no cached member list either
+      }
     }
   };
 
@@ -151,6 +181,93 @@ export default function QuickAddExpenseSheet({
 
   const handleSubmit = async () => {
     if (!currentUser || !selectedGroup || !canSubmit) return;
+
+    // Offline → queue the expense optimistically and skip the daily-limit
+    // check (it can't be enforced without the server).
+    const online = await offlineQueue.isOnline();
+    if (!online) {
+      const amounts = getAmountPerPerson(parsedAmount, memberCount);
+      const percentages = getPercentagePerPerson(memberCount);
+      const memberSplits = members.map((m, i) => ({
+        userId: m.id,
+        amount: amounts[i],
+        percentage: percentages[i]
+      }));
+      const payersArr = [
+        { userId: selectedPayer?.id ?? currentUser.id, amount: parsedAmount }
+      ];
+      const paymentSplits = generatePaymentSplits(payersArr, memberSplits);
+
+      const clientId = uuid();
+      const optimisticPayments = offlineQueue.buildOptimisticPayments({
+        expenseId: clientId,
+        groupId: selectedGroup.id,
+        description: description.trim(),
+        currency,
+        members,
+        currentUser,
+        paymentSplits
+      });
+      const optimistic = offlineQueue.buildOptimisticExpense({
+        clientId,
+        groupId: selectedGroup.id,
+        amount: parsedAmount,
+        description: description.trim(),
+        currency,
+        creator: {
+          id: currentUser.id,
+          email: currentUser.email,
+          phone: currentUser.phone,
+          first_name: currentUser.first_name,
+          last_name: currentUser.last_name,
+          avatar: currentUser.avatar,
+          plan: currentUser.plan
+        },
+        payers: payersArr,
+        members
+      });
+
+      await offlineQueue.queueAddExpense(
+        selectedGroup.id,
+        {
+          expensePayload: {
+            amount: parsedAmount,
+            description: description.trim(),
+            proof_of_payment: null,
+            group_id: selectedGroup.id,
+            split_type: "equal",
+            currency,
+            expense_date: expenseDate.toISOString()
+          },
+          payers: payersArr,
+          memberSplits,
+          paymentSplits
+        },
+        optimistic,
+        optimisticPayments
+      );
+
+      toast({
+        title: "Saved offline",
+        description:
+          "This expense will sync automatically when you're back online.",
+        type: "info"
+      });
+      onClose();
+      return;
+    }
+
+    if (!isPro) {
+      const count = await services.expense.getDailyExpenseCount(currentUser.id);
+      if (count >= DAILY_EXPENSE_LIMIT) {
+        setUpgradeDescription(
+          "You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
+        );
+        setUpgradeSheetOpen(true);
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
@@ -210,19 +327,29 @@ export default function QuickAddExpenseSheet({
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
           <VStack className="w-full flex-1">
-            <Pressable onPress={onClose}>
-              <HStack className="p-4 items-start">
-                <Icon as="arrow-back-ios" className="text-secondary-950" />
-                <VStack>
-                  <Text bold className="text-xl">
-                    Quick Add
-                  </Text>
-                  <Text className="text-secondary-950">
-                    Paid by you · Equal split · Dated today
-                  </Text>
+            <HStack className="align-items justify-between">
+              <Pressable onPress={onClose}>
+                <HStack className="p-4 items-start">
+                  <Icon as="arrow-back-ios" className="text-secondary-950" />
+                  <VStack>
+                    <Text bold className="text-xl">
+                      Quick Add
+                    </Text>
+                    <Text className="text-sm text-secondary-950">
+                      Paid by you · Equal split · Dated today
+                    </Text>
+                  </VStack>
+                </HStack>
+              </Pressable>
+              {!isPro && (
+                <VStack className="px-4 pt-4">
+                  <DailyLimitText
+                    count={dailyCount}
+                    limit={DAILY_EXPENSE_LIMIT}
+                  />
                 </VStack>
-              </HStack>
-            </Pressable>
+              )}
+            </HStack>
 
             {!group ? (
               <VStack className="flex-1 p-4">
@@ -257,6 +384,13 @@ export default function QuickAddExpenseSheet({
                         <CurrencySelection
                           currency={currency}
                           onCurrencyChange={setCurrency}
+                          locked={!isPro}
+                          onLockedPress={() => {
+                            setUpgradeDescription(
+                              "Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
+                            );
+                            setUpgradeSheetOpen(true);
+                          }}
                         />
                         <VStack className="flex-1">
                           <AmountInput
@@ -300,7 +434,7 @@ export default function QuickAddExpenseSheet({
                           </Text>
                           <Icon
                             as="unfold-more"
-                            className="text-secondary-950"
+                            className="text-sm text-secondary-950"
                           />
                         </HStack>
                       </PressableListItem>
@@ -330,14 +464,14 @@ export default function QuickAddExpenseSheet({
                                       "(You)"}
                                   </Text>
                                 </HStack>
-                                <Text className="text-secondary-950">
+                                <Text className="text-sm text-secondary-950">
                                   {selectedPayer.email}
                                 </Text>
                               </VStack>
                             </HStack>
                             <Icon
                               as="unfold-more"
-                              className="text-secondary-950"
+                              className="text-sm text-secondary-950"
                             />
                           </HStack>
                         </PressableListItem>
@@ -356,7 +490,7 @@ export default function QuickAddExpenseSheet({
                                 <VStack className="gap-y-2 flex-1">
                                   <Text
                                     bold
-                                    className="text-secondary-950 uppercase"
+                                    className="text-sm text-secondary-950 uppercase"
                                     numberOfLines={1}
                                   >
                                     {selectedGroup?.name}
@@ -387,7 +521,7 @@ export default function QuickAddExpenseSheet({
                               </HStack>
                               <Icon
                                 as="unfold-more"
-                                className="text-secondary-950"
+                                className="text-sm text-secondary-950"
                               />
                             </HStack>
                           </PressableListItem>
@@ -398,7 +532,7 @@ export default function QuickAddExpenseSheet({
                                 <VStack className="gap-y-2 flex-1">
                                   <Text
                                     bold
-                                    className="text-secondary-950 uppercase"
+                                    className="text-sm text-secondary-950 uppercase"
                                     numberOfLines={1}
                                   >
                                     {selectedGroup?.name}
@@ -468,6 +602,12 @@ export default function QuickAddExpenseSheet({
         onSave={(payer) => setSelectedPayer(payer)}
       />
 
+      <UpgradeSheet
+        isOpen={upgradeSheetOpen}
+        onClose={() => setUpgradeSheetOpen(false)}
+        description={upgradeDescription}
+      />
+
       <BottomSheetModal
         ref={dateSheetRef}
         snapPoints={["60%"]}
@@ -517,5 +657,24 @@ export default function QuickAddExpenseSheet({
         </BottomSheetView>
       </BottomSheetModal>
     </>
+  );
+}
+
+function DailyLimitText({ count, limit }: { count: number; limit: number }) {
+  const remaining = limit - count;
+  const isLimitReached = remaining <= 0;
+
+  return (
+    <Badge
+      size="md"
+      variant="solid"
+      className={`rounded-full px-3 py-2 ${isLimitReached ? "bg-error-50" : "bg-primary-50"}`}
+    >
+      <BadgeText
+        className={`font-bold text-xs uppercase ${isLimitReached ? "text-error-600" : "text-primary-400"}`}
+      >
+        {isLimitReached ? "LIMIT REACHED" : `${remaining} / ${limit} LEFT`}
+      </BadgeText>
+    </Badge>
   );
 }

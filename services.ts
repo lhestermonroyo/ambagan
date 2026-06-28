@@ -1,3 +1,4 @@
+import * as ANALYTICS_SERVICE from "./features/analytics/services/analytics.service";
 import * as EXPENSE_SERVICE from "./features/expense/services/expense.service";
 import * as FRIEND_SERVICE from "./features/friends/services/friend.service";
 import * as GROUP_SERVICE from "./features/group/services/group.service";
@@ -10,6 +11,7 @@ import * as PUSH_TOKEN_SERVICE from "./features/user/services/push-token.service
 import * as PURCHASE_SERVICE from "./features/user/services/purchase.service";
 
 const services = {
+  analytics: ANALYTICS_SERVICE,
   auth: AUTH_SERVICE,
   user: USER_SERVICE,
   preferences: PREFERENCES_SERVICE,
