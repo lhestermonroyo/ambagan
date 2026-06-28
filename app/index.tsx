@@ -15,8 +15,6 @@ export default function Index() {
     case "welcome":
       return <Redirect href="/(auth)/welcome" />;
     default:
-      // "splash" — auth/profile still resolving; hold on the splash so we never
-      // flash the wrong screen.
       return <SplashLoading loading />;
   }
 }

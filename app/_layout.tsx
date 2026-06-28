@@ -70,9 +70,6 @@ export default function RootLayout() {
     getDb().catch(() => {});
   }, []);
 
-  // Call fetchDetails from a React effect — NOT from inside a Supabase callback.
-  // Supabase holds an internal lock during onAuthStateChange which causes any
-  // DB queries made inside the listener to hang indefinitely (known issue #41968).
   useEffect(() => {
     const uid = session?.user?.id;
     if (!uid) {
@@ -175,15 +172,11 @@ export default function RootLayout() {
       .getSession()
       .then(({ data: { session } }) => {
         if (!session) {
-          // No session → land on welcome. fetchDetails won't run.
           states.user.setState((prev) => ({ ...prev, routeIntent: "welcome" }));
           return;
         }
-        // Session exists but the profile/auth state isn't verified yet — keep
-        // routeIntent "splash" so index.tsx holds the splash until fetchDetails
-        // resolves where to go (avoids flashing /(tabs) for a deleted account).
+
         states.user.setState((prev) => ({ ...prev, session }));
-        // fetchDetails is called by the useEffect([session?.user?.id]) above
       })
       .finally(() => {
         states.user.setState((prev) => ({
@@ -201,8 +194,6 @@ export default function RootLayout() {
       }
 
       if (!session) {
-        // If a new user already signed in, skip cleanup to avoid
-        // stomping on their session
         if (states.user.getState().session) return;
 
         unsubscribeNotifications();
@@ -282,23 +273,10 @@ export default function RootLayout() {
       const response = await services.user.getUserById(id);
 
       if (response.message === "User not found" && !response.data) {
-        // A valid session with no profile row means one of two things:
-        //   1. A brand-new or interrupted sign-up — the auth user exists but
-        //      hasn't finished onboarding (the users_tbl row is only created at
-        //      the end of onboarding).
-        //   2. A hard-deleted account — delete_user() removed the auth.users
-        //      row, so the JWT is stale.
-        // auth.getUser() validates the JWT against the auth server: it succeeds
-        // for (1) and fails for (2). We only reach here when online (an offline
-        // getUserById throws and is caught below), so this network call is safe.
-        // We never navigate here — we only set routeIntent; index.tsx routes
-        // declaratively, and the sign-up screen already pushes onboarding for
-        // the live sign-up flow (so no double transition).
         const { data: authData, error: authError } =
           await supabase.auth.getUser();
 
         if (!authError && authData?.user) {
-          // Auth user still exists → they just haven't onboarded yet.
           states.user.setState((prev) => ({
             ...prev,
             details: null,
@@ -307,8 +285,6 @@ export default function RootLayout() {
           return;
         }
 
-        // Auth user is gone → account was hard-deleted. Clear the stale JWT so
-        // the next app launch doesn't loop through fetchDetails again.
         await supabase.auth.signOut();
         states.user.setState((prev) => ({
           ...prev,
