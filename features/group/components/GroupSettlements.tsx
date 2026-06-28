@@ -4,10 +4,18 @@ import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { SettlementListSkeleton } from "@/components/SkeletonLoader";
+import {
+  Actionsheet,
+  ActionsheetBackdrop,
+  ActionsheetContent,
+  ActionsheetDragIndicator,
+  ActionsheetDragIndicatorWrapper
+} from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
+import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -43,8 +51,9 @@ import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect } from "expo-router";
-import { CalendarRange, LayoutList, X } from "lucide-react-native";
+import { CalendarRange, ChevronRight, LayoutList, X } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -577,12 +586,13 @@ function NetBalanceHero({
   isLoading: boolean;
   primaryCurrency?: string;
 }) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+
   const sorted = [...items].sort((a, b) =>
     a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
   );
   const [primary, ...secondary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
-
   const amountColor = primaryAmount < 0 && "text-error-400";
 
   return (
@@ -591,26 +601,78 @@ function NetBalanceHero({
         Net Balance
       </Text>
       {isLoading ? (
-        <Text bold className="text-3xl text-secondary-950">
+        <Text bold className="text-3xl">
           —
         </Text>
       ) : (
-        <HStack className="items-end gap-x-2">
-          <Text bold className={`text-3xl ${amountColor}`}>
-            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
-          </Text>
-          <HStack className="items-center gap-x-1 pb-1">
-            <Text className="text-secondary-950 text-base">
-              {primary?.currency ?? primaryCurrency}
+        <Pressable
+          onPress={secondary.length > 0 ? () => setSheetOpen(true) : undefined}
+        >
+          <HStack className="items-end gap-x-2">
+            <Text bold className={cn("text-3xl", amountColor)}>
+              {formatAmount(
+                primaryAmount,
+                primary?.currency ?? primaryCurrency
+              )}
             </Text>
-            {secondary.length > 0 && (
-              <Text className="text-secondary-950 text-sm">
-                +{secondary.length} more
+            <HStack className="items-center gap-x-1 pb-1">
+              <Text className="text-secondary-950 text-base">
+                {primary?.currency ?? primaryCurrency}
               </Text>
-            )}
+              {secondary.length > 0 && (
+                <HStack className="bg-secondary-200 rounded-full px-2 py-0.5 items-center gap-x-0.5">
+                  <Text className="text-secondary-950 text-xs font-semibold">
+                    +{secondary.length}
+                  </Text>
+                  <ChevronRight size={10} color="#6b7280" />
+                </HStack>
+              )}
+            </HStack>
           </HStack>
-        </HStack>
+        </Pressable>
       )}
+
+      <Actionsheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)}>
+        <ActionsheetBackdrop />
+        <ActionsheetContent className="p-0">
+          <ActionsheetDragIndicatorWrapper>
+            <ActionsheetDragIndicator />
+          </ActionsheetDragIndicatorWrapper>
+          <VStack className="w-full">
+            <VStack className="p-4">
+              <Text bold className="text-xl">
+                Net Balance
+              </Text>
+              <Text className="text-sm text-secondary-950">
+                To Collect minus To Pay, per currency
+              </Text>
+            </VStack>
+            <FlatList
+              data={sorted}
+              scrollEnabled={false}
+              keyExtractor={(item) => item.currency}
+              renderItem={({ item: { currency, amount } }) => (
+                <HStack className="items-center justify-between p-4">
+                  <Text className="text-secondary-950 font-medium text-lg">
+                    {currency}
+                  </Text>
+                  <Text
+                    bold
+                    className={cn(
+                      "text-lg",
+                      amount < 0 ? "text-error-400" : "text-secondary-950"
+                    )}
+                  >
+                    {amount > 0 ? "+" : ""}
+                    {formatAmount(amount, currency)}
+                  </Text>
+                </HStack>
+              )}
+              ItemSeparatorComponent={ListDivider}
+            />
+          </VStack>
+        </ActionsheetContent>
+      </Actionsheet>
     </VStack>
   );
 }

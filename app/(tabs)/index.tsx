@@ -50,6 +50,7 @@ import * as Notifications from "expo-notifications";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   Bell,
+  ChevronRight,
   CircleQuestionMark,
   HousePlus,
   PlusCircle
@@ -799,11 +800,12 @@ function StatItem({
                 )}
               </Text>
               {secondary.length > 0 && (
-                <Box className="bg-white/20 rounded-full h-5 w-5 items-center justify-center">
+                <HStack className="bg-white/20 rounded-full px-2 py-0.5 items-center gap-x-0.5">
                   <Text className="text-background-0 text-xs font-semibold">
                     +{secondary.length}
                   </Text>
-                </Box>
+                  <ChevronRight size={10} color="white" />
+                </HStack>
               )}
             </HStack>
           </Pressable>
@@ -901,11 +903,12 @@ function NetBalanceRow({
                   {primary?.currency ?? primaryCurrency}
                 </Text>
                 {secondary.length > 0 && (
-                  <Box className="bg-white/20 rounded-full h-5 w-5 items-center justify-center">
+                  <HStack className="bg-white/20 rounded-full px-2 py-0.5 items-center gap-x-0.5">
                     <Text className="text-background-0 text-xs font-semibold">
                       +{secondary.length}
                     </Text>
-                  </Box>
+                    <ChevronRight size={10} color="white" />
+                  </HStack>
                 )}
               </HStack>
             </HStack>

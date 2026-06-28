@@ -798,7 +798,7 @@ function NetBalanceHero({
         Net Balance
       </Text>
       {isLoading ? (
-        <Text bold className="text-3xl text-secondary-950">
+        <Text bold className="text-3xl">
           —
         </Text>
       ) : (
