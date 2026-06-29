@@ -1,4 +1,6 @@
 import ImagePickerSheet from "@/components/ImagePickerSheet";
+import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import * as ImagePicker from "expo-image-picker";
 import { Edit, Upload } from "lucide-react-native";
@@ -26,17 +28,34 @@ const UploadImage = ({
   const [image, setImage] = useState<string | null>(defaultUri);
   const [sheetOpen, setSheetOpen] = useState(false);
   const colorScheme = useColorScheme() ?? "light";
+  const { isOnline } = useNetwork();
+  const toast = useAppToast();
 
   const handleSelect = (result: ImagePicker.ImagePickerSuccessResult) => {
     setImage(result.assets[0].uri);
     onSelect(result);
   };
 
+  // Uploading to storage needs a connection — block the picker offline and tell
+  // the user; the expense itself can still be saved without a proof image.
+  const openPicker = () => {
+    if (!isOnline) {
+      toast({
+        title: "You're offline",
+        description:
+          "Images can't be uploaded right now. You can still save without one.",
+        type: "info"
+      });
+      return;
+    }
+    setSheetOpen(true);
+  };
+
   if (!image) {
     return (
       <>
         <Pressable
-          onPress={() => setSheetOpen(true)}
+          onPress={openPicker}
           className="border-dashed border-2 border-background-200 rounded-3xl h-32 w-full justify-center items-center flex"
         >
           <VStack className="items-center gap-y-2">
@@ -72,7 +91,7 @@ const UploadImage = ({
         />
         <Button
           className="rounded-full p-0 h-[40] w-[40] absolute bottom-4 right-4"
-          onPress={() => setSheetOpen(true)}
+          onPress={openPicker}
         >
           <Edit
             size={18}

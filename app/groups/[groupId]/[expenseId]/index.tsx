@@ -251,7 +251,10 @@ export default function ExpenseDetailsScreen() {
   const handleDeleteExpense = async (expenseId: string) => {
     setDeleting(true);
     try {
-      const deleteResponse = await services.expense.deleteExpense(expenseId);
+      const deleteResponse = await services.expense.deleteExpense(
+        expenseId,
+        groupId
+      );
 
       if (deleteResponse.success) {
         toast({

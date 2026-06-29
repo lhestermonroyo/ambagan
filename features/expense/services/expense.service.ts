@@ -8,8 +8,10 @@ import {
   PaymentPreview
 } from "@/types/expenses";
 import { NotificationType } from "@/types/notifications";
+import states from "@/states";
 import { cacheService } from "@/utils/cacheService";
 import { splitTypes, tables } from "@/utils/constants";
+import * as offlineQueue from "@/utils/offlineQueue";
 
 const GHOST_USER = {
   id: "",
@@ -575,7 +577,26 @@ export const finalizeDraft = async (
   return { success: true, message: "Draft finalized successfully" };
 };
 
-export const deleteExpense = async (expenseId: string) => {
+export const deleteExpense = async (expenseId: string, groupId?: string) => {
+  // Offline → queue the delete (or, if the expense is a still-pending offline
+  // create, drop that create entirely) + optimistic removal. Returns the same
+  // success shape so callers behave identically.
+  if (!(await offlineQueue.isOnline())) {
+    const resolvedGroupId =
+      groupId ??
+      states.group
+        .getState()
+        .expenseList.find((e) => e.id === expenseId)?.group_id;
+    if (resolvedGroupId) {
+      await offlineQueue.queueDeleteExpense(resolvedGroupId, expenseId);
+      return {
+        success: true,
+        message: "Expense will be deleted when you're back online"
+      };
+    }
+    // No group context to update optimistically — fall through and let it fail.
+  }
+
   const user = await supabase.auth.getUser();
 
   if (!user.data.user) {

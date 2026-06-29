@@ -14,6 +14,7 @@ import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
+import { cacheService } from "@/utils/cacheService";
 import { splitTypes } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { ImagePickerSuccessResult } from "expo-image-picker";
@@ -84,29 +85,75 @@ export default function EditExpenseScreen() {
   const init = async () => {
     setLoading(true);
 
-    // Editing mutates server rows directly — it isn't supported offline.
     const online = await offlineQueue.isOnline();
-    if (!online) {
-      setBlockReason("offline");
-      setLoading(false);
-      return;
-    }
 
     try {
-      const [expense, payerList, memberSplitList, paymentList, rawMembers, group] =
-        await Promise.all([
-          services.expense.getExpenseById(expenseId),
-          services.expense.getPayersByExpenseId(expenseId),
-          services.expense.getMemberSplitsByExpenseId(expenseId),
-          services.expense.getPaymentsByExpenseId(expenseId),
-          services.member.getMembersByGroupId(groupId),
-          services.group.getGroupById(groupId)
-        ]);
+      let expense: any;
+      let payerList: any[];
+      let memberSplitList: any[];
+      let paymentList: any[];
+      let rawMembers: any[];
+      let group: any;
+
+      if (online) {
+        [expense, payerList, memberSplitList, paymentList, rawMembers, group] =
+          await Promise.all([
+            services.expense.getExpenseById(expenseId),
+            services.expense.getPayersByExpenseId(expenseId),
+            services.expense.getMemberSplitsByExpenseId(expenseId),
+            services.expense.getPaymentsByExpenseId(expenseId),
+            services.member.getMembersByGroupId(groupId),
+            services.group.getGroupById(groupId)
+          ]);
+      } else {
+        // Offline: hydrate from the per-expense snapshot + group caches warmed
+        // when the expense / group were last viewed online.
+        const cached = await cacheService.getExpenseDetail(expenseId);
+        const groupDetail = await cacheService.getGroupDetail(groupId);
+        const gState = states.group.getState();
+        group =
+          gState.details?.id === groupId
+            ? gState.details
+            : gState.list.find((g) => g.id === groupId) ?? null;
+
+        if (!cached || !group) {
+          // Never viewed online → no snapshot to edit from.
+          setBlockReason("offline");
+          setLoading(false);
+          return;
+        }
+
+        expense = cached.expense;
+        payerList = cached.payerList;
+        memberSplitList = cached.memberSplits;
+        paymentList = cached.paymentSplits;
+        rawMembers = groupDetail?.memberList ?? [];
+
+        // Finalizing a draft writes splits + sends notifications — online only.
+        if (expense?.is_draft) {
+          setBlockReason("offline");
+          setLoading(false);
+          return;
+        }
+      }
 
       if (!expense || !group) {
         setBlockReason("notfound");
         setLoading(false);
         return;
+      }
+
+      // Warm the per-expense snapshot so this expense stays editable offline.
+      if (online) {
+        cacheService
+          .saveExpenseDetail(
+            expenseId,
+            expense,
+            payerList,
+            memberSplitList,
+            paymentList
+          )
+          .catch(() => {});
       }
 
       // Block editing once any settlement has moved past "pending" — replacing
@@ -245,14 +292,6 @@ export default function EditExpenseScreen() {
     }
 
     const online = await offlineQueue.isOnline();
-    if (!online) {
-      toast({
-        title: "You're offline",
-        description: "Editing an expense requires an internet connection.",
-        type: "error"
-      });
-      return;
-    }
 
     const paymentSplits = generatePaymentSplits(mappedPayers, mappedSplits);
     if (paymentSplits.length === 0) {
@@ -262,6 +301,85 @@ export default function EditExpenseScreen() {
           "Everyone paid their exact share. There's nothing to split or settle.",
         type: "error"
       });
+      return;
+    }
+
+    // Offline: finalizing a draft is online-only (it notifies members); a normal
+    // edit is queued with an optimistic update + refreshed detail snapshot.
+    if (!online) {
+      if (isDraft) {
+        toast({
+          title: "You're offline",
+          description: "Finalizing a draft requires an internet connection.",
+          type: "error"
+        });
+        return;
+      }
+
+      const groupId = values.group.id;
+      const amount = parseFloat(values.amount);
+
+      const optimistic = offlineQueue.buildOptimisticExpense({
+        clientId: expenseId,
+        groupId,
+        amount,
+        description: values.description,
+        currency: values.currency,
+        creator: userDetails as any,
+        payers: mappedPayers,
+        members
+      });
+
+      const detailMemberSplits = mappedSplits.map((s) => ({
+        expense_id: expenseId,
+        member: members.find((m) => m.id === s.userId),
+        amount: s.amount,
+        percentage: s.percentage
+      }));
+      const detailPayments = offlineQueue.buildOptimisticPayments({
+        expenseId,
+        groupId,
+        description: values.description,
+        currency: values.currency,
+        members,
+        currentUser: userDetails as any,
+        paymentSplits
+      });
+      const detailExpense = {
+        ...optimistic,
+        split_type: values.split_type,
+        expense_date: values.expense_date.toISOString(),
+        proof_of_payment: existingProofUrl
+      };
+
+      const args: offlineQueue.UpdateExpenseArgs = {
+        expensePayload: {
+          amount,
+          description: values.description,
+          proof_of_payment: existingProofUrl,
+          group_id: groupId,
+          split_type: values.split_type,
+          currency: values.currency,
+          expense_date: values.expense_date.toISOString()
+        },
+        payers: mappedPayers,
+        memberSplits: mappedSplits,
+        paymentSplits
+      };
+
+      await offlineQueue.queueUpdateExpense(groupId, expenseId, args, optimistic, {
+        expense: detailExpense,
+        payerList: optimistic.payer_list,
+        memberSplits: detailMemberSplits,
+        paymentSplits: detailPayments
+      });
+
+      toast({
+        title: "Saved offline",
+        description: "Your changes will sync automatically when you're online.",
+        type: "info"
+      });
+      router.back();
       return;
     }
 

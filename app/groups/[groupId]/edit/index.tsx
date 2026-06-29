@@ -14,6 +14,7 @@ import UploadAvatar from "@/components/UploadAvatar";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
+import states from "@/states";
 import { categories } from "@/utils/constants";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -69,12 +70,28 @@ export default function EditGroupScreen() {
       setDefaultAvatar(response.avatar || null);
     } catch (error) {
       console.error("Error fetching group details:", error);
-      toast({
-        title: "Failed to Load Group",
-        description:
-          "An error occurred while loading the group details. Please try again.",
-        type: "error"
-      });
+      // Offline fallback: seed from the live groups list / detail so the group
+      // can still be edited (and queued) without a connection.
+      const state = states.group.getState();
+      const fromState =
+        state.details?.id === id
+          ? state.details
+          : state.list.find((g) => g.id === id);
+      if (fromState) {
+        setValues({
+          name: fromState.name,
+          avatar: null,
+          category: fromState.category
+        });
+        setDefaultAvatar(fromState.avatar || null);
+      } else {
+        toast({
+          title: "Failed to Load Group",
+          description:
+            "An error occurred while loading the group details. Please try again.",
+          type: "error"
+        });
+      }
     } finally {
       setLoading(false);
     }

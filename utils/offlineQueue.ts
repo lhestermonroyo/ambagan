@@ -50,6 +50,26 @@ export type CreateDraftArgs = {
 };
 
 /**
+ * Arguments forwarded verbatim to `services.expense.updateExpense` on sync.
+ * Offline edits can't pick a new image (uploads are blocked offline), so the
+ * proof is only ever an existing URL string or null.
+ */
+export type UpdateExpenseArgs = {
+  expensePayload: {
+    amount: number;
+    description: string;
+    proof_of_payment: string | null;
+    group_id: string;
+    split_type: string;
+    currency: string;
+    expense_date?: string;
+  };
+  payers: { userId: string; amount: number }[];
+  memberSplits: { userId: string; amount: number; percentage: number }[];
+  paymentSplits: { memberSplitId: string; payerId: string; amount: number }[];
+};
+
+/**
  * Arguments forwarded verbatim to `services.group.saveGroup` on sync.
  */
 export type CreateGroupArgs = {
@@ -61,7 +81,26 @@ export type CreateGroupArgs = {
   id?: string;
 };
 
-export type QueueOpType = "ADD_EXPENSE" | "CREATE_DRAFT" | "CREATE_GROUP";
+/**
+ * Arguments forwarded verbatim to `services.group.updateGroup` on sync.
+ * Avatar is always null offline (image uploads are blocked offline).
+ */
+export type UpdateGroupArgs = {
+  name: string;
+  category: string;
+  avatar: null;
+};
+
+export type QueueOpType =
+  | "ADD_EXPENSE"
+  | "CREATE_DRAFT"
+  | "UPDATE_EXPENSE"
+  | "DELETE_EXPENSE"
+  | "CREATE_GROUP"
+  | "UPDATE_GROUP"
+  | "SET_GROUP_ARCHIVED"
+  | "ADD_FAVORITE"
+  | "REMOVE_FAVORITE";
 
 export type AddExpensePayload = {
   clientId: string;
@@ -77,10 +116,37 @@ export type CreateDraftPayload = {
   args: CreateDraftArgs;
 };
 
+export type UpdateExpensePayload = {
+  clientId: string;
+  groupId: string;
+  expenseId: string;
+  args: UpdateExpenseArgs;
+};
+
+export type DeleteExpensePayload = {
+  groupId: string;
+  expenseId: string;
+};
+
 export type CreateGroupPayload = {
   clientId: string;
   userId: string;
   args: CreateGroupArgs;
+};
+
+export type UpdateGroupPayload = {
+  groupId: string;
+  args: UpdateGroupArgs;
+};
+
+export type SetGroupArchivedPayload = {
+  groupId: string;
+  archived: boolean;
+};
+
+export type FavoritePayload = {
+  userId: string;
+  favoriteId: string;
 };
 
 export type QueuedOp =
@@ -100,8 +166,50 @@ export type QueuedOp =
     }
   | {
       id: string;
+      type: "UPDATE_EXPENSE";
+      payload: UpdateExpensePayload;
+      status: "pending" | "failed";
+      created_at: number;
+    }
+  | {
+      id: string;
+      type: "DELETE_EXPENSE";
+      payload: DeleteExpensePayload;
+      status: "pending" | "failed";
+      created_at: number;
+    }
+  | {
+      id: string;
       type: "CREATE_GROUP";
       payload: CreateGroupPayload;
+      status: "pending" | "failed";
+      created_at: number;
+    }
+  | {
+      id: string;
+      type: "UPDATE_GROUP";
+      payload: UpdateGroupPayload;
+      status: "pending" | "failed";
+      created_at: number;
+    }
+  | {
+      id: string;
+      type: "SET_GROUP_ARCHIVED";
+      payload: SetGroupArchivedPayload;
+      status: "pending" | "failed";
+      created_at: number;
+    }
+  | {
+      id: string;
+      type: "ADD_FAVORITE";
+      payload: FavoritePayload;
+      status: "pending" | "failed";
+      created_at: number;
+    }
+  | {
+      id: string;
+      type: "REMOVE_FAVORITE";
+      payload: FavoritePayload;
       status: "pending" | "failed";
       created_at: number;
     };
@@ -156,6 +264,44 @@ export async function getQueue(): Promise<QueuedOp[]> {
 export async function removeFromQueue(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync("DELETE FROM pending_queue WHERE id = ?", [id]);
+}
+
+/** Overwrite a queued op's payload in place — used to coalesce an edit into a
+ * still-pending create so only one operation ever reaches the server. */
+async function updateQueuePayload(id: string, payload: object): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("UPDATE pending_queue SET payload = ? WHERE id = ?", [
+    JSON.stringify(payload),
+    id
+  ]);
+}
+
+/** The still-pending create op for an expense id (ADD_EXPENSE or CREATE_DRAFT),
+ * if any — the anchor for edit/delete coalescing. */
+async function findPendingExpenseCreate(
+  expenseId: string
+): Promise<QueuedOp | undefined> {
+  const ops = await getQueue();
+  return ops.find(
+    (o) =>
+      o.status === "pending" &&
+      (o.type === "ADD_EXPENSE" || o.type === "CREATE_DRAFT") &&
+      o.payload.clientId === expenseId
+  );
+}
+
+/** A still-pending favorite op (ADD or REMOVE) for the same target, if any. */
+async function findPendingFavorite(
+  type: "ADD_FAVORITE" | "REMOVE_FAVORITE",
+  userId: string,
+  favoriteId: string
+): Promise<QueuedOp | undefined> {
+  const ops = await getQueue();
+  return ops.find((o) => {
+    if (o.status !== "pending" || o.type !== type) return false;
+    const p = o.payload as FavoritePayload;
+    return p.userId === userId && p.favoriteId === favoriteId;
+  });
 }
 
 export async function markFailed(id: string): Promise<void> {
@@ -428,6 +574,182 @@ async function clearPendingGroup(userId: string, clientId: string) {
   }
 }
 
+/**
+ * Replace an expense preview in the group's live list + caches with an edited
+ * version, and refresh its detail snapshot so re-opening the editor offline
+ * shows the new values.
+ */
+async function replaceExpenseOptimistic(
+  groupId: string,
+  expense: ExpensePreview,
+  detail?: {
+    expense: any;
+    payerList: any[];
+    memberSplits: any[];
+    paymentSplits: any[];
+  }
+) {
+  const swap = (e: ExpensePreview) => (e.id === expense.id ? expense : e);
+
+  if (states.group.getState().details?.id === groupId) {
+    states.group.setState((prev) => ({
+      ...prev,
+      expenseList: prev.expenseList.map(swap)
+    }));
+  }
+
+  try {
+    const cached = await cacheService.getGroupDetail(groupId);
+    if (cached) {
+      await cacheService.saveGroupDetail(
+        groupId,
+        cached.expenseList.map(swap),
+        cached.memberList
+      );
+    }
+  } catch {
+    // best-effort
+  }
+
+  if (detail) {
+    cacheService
+      .saveExpenseDetail(
+        expense.id,
+        detail.expense,
+        detail.payerList,
+        detail.memberSplits,
+        detail.paymentSplits
+      )
+      .catch(() => {});
+  }
+}
+
+/**
+ * Remove an expense from the group's live list + caches (offline delete) and
+ * decrement the groups-list expense_count.
+ */
+async function removeExpenseOptimistic(groupId: string, expenseId: string) {
+  states.group.setState((prev) => ({
+    ...prev,
+    expenseList:
+      prev.details?.id === groupId
+        ? prev.expenseList.filter((e) => e.id !== expenseId)
+        : prev.expenseList,
+    list: prev.list.map((g) =>
+      g.id === groupId
+        ? { ...g, expense_count: Math.max((g.expense_count ?? 1) - 1, 0) }
+        : g
+    )
+  }));
+
+  try {
+    const cached = await cacheService.getGroupDetail(groupId);
+    if (cached) {
+      await cacheService.saveGroupDetail(
+        groupId,
+        cached.expenseList.filter((e: any) => e.id !== expenseId),
+        cached.memberList
+      );
+    }
+  } catch {
+    // best-effort
+  }
+
+  const userId = states.user.getState().details?.id;
+  if (userId) {
+    try {
+      const cachedList = await cacheService.getGroupsList(userId);
+      if (cachedList) {
+        await cacheService.saveGroupsList(
+          userId,
+          (cachedList as any[]).map((g: any) =>
+            g.id === groupId
+              ? {
+                  ...g,
+                  expense_count: Math.max((g.expense_count ?? 1) - 1, 0)
+                }
+              : g
+          )
+        );
+      }
+    } catch {
+      // best-effort
+    }
+  }
+}
+
+/** Patch a group's name/category in the live list + caches (offline edit). */
+async function updateGroupOptimistic(
+  userId: string,
+  groupId: string,
+  patch: { name: string; category: string }
+) {
+  const apply = (g: any) =>
+    g.id === groupId ? { ...g, ...patch, pending: true } : g;
+
+  states.group.setState((prev) => ({
+    ...prev,
+    list: prev.list.map(apply),
+    details:
+      prev.details?.id === groupId ? { ...prev.details, ...patch } : prev.details
+  }));
+
+  try {
+    const cached = await cacheService.getGroupsList(userId);
+    if (cached) {
+      await cacheService.saveGroupsList(userId, (cached as any[]).map(apply));
+    }
+  } catch {
+    // best-effort
+  }
+}
+
+/** Flip a group's archived flag in the caches (offline archive/unarchive). The
+ * calling screens already update live Zustand state themselves. */
+async function setGroupArchivedInCache(
+  userId: string,
+  groupId: string,
+  archived: boolean
+) {
+  try {
+    const cached = await cacheService.getGroupsList(userId);
+    if (cached) {
+      await cacheService.saveGroupsList(
+        userId,
+        (cached as any[]).map((g: any) =>
+          g.id === groupId ? { ...g, archived } : g
+        )
+      );
+    }
+  } catch {
+    // best-effort
+  }
+}
+
+async function addFavoriteToCache(userId: string, favorite: UserPreview) {
+  try {
+    const cached = (await cacheService.getFavorites(userId)) ?? [];
+    if ((cached as UserPreview[]).some((u) => u.id === favorite.id)) return;
+    await cacheService.saveFavorites(userId, [favorite, ...cached]);
+  } catch {
+    // best-effort
+  }
+}
+
+async function removeFavoriteFromCache(userId: string, favoriteId: string) {
+  try {
+    const cached = await cacheService.getFavorites(userId);
+    if (cached) {
+      await cacheService.saveFavorites(
+        userId,
+        (cached as UserPreview[]).filter((u) => u.id !== favoriteId)
+      );
+    }
+  } catch {
+    // best-effort
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Public enqueue helpers used by the create flows
 // ---------------------------------------------------------------------------
@@ -495,6 +817,213 @@ export async function queueCreateGroup(
   cacheService
     .saveGroupDetail(optimistic.id, [], optimistic.members)
     .catch(() => {});
+}
+
+/**
+ * Queue an expense edit. If the expense is still a pending offline create, the
+ * edit is folded into that create op (one write reaches the server) instead of
+ * enqueuing a separate update against a row that doesn't exist yet.
+ */
+export async function queueUpdateExpense(
+  groupId: string,
+  expenseId: string,
+  args: UpdateExpenseArgs,
+  optimistic: ExpensePreview,
+  detail?: {
+    expense: any;
+    payerList: any[];
+    memberSplits: any[];
+    paymentSplits: any[];
+  }
+): Promise<void> {
+  const createOp = await findPendingExpenseCreate(expenseId);
+
+  if (createOp && createOp.type === "ADD_EXPENSE") {
+    // Coalesce: rewrite the pending create with the edited values. An unsynced
+    // expense can't have an uploaded proof, so it stays null.
+    const patched: AddExpensePayload = {
+      ...createOp.payload,
+      args: {
+        expensePayload: {
+          ...createOp.payload.args.expensePayload,
+          amount: args.expensePayload.amount,
+          description: args.expensePayload.description,
+          proof_of_payment: null,
+          split_type: args.expensePayload.split_type,
+          currency: args.expensePayload.currency,
+          expense_date: args.expensePayload.expense_date
+        },
+        payers: args.payers,
+        memberSplits: args.memberSplits,
+        paymentSplits: args.paymentSplits
+      }
+    };
+    await updateQueuePayload(createOp.id, patched);
+  } else {
+    await enqueue("UPDATE_EXPENSE", {
+      clientId: optimistic.id,
+      groupId,
+      expenseId,
+      args
+    } as UpdateExpensePayload);
+  }
+
+  await replaceExpenseOptimistic(groupId, optimistic, detail);
+}
+
+/**
+ * Queue an expense delete. If the expense is still a pending offline create, the
+ * create op is dropped entirely (nothing ever syncs) along with its optimistic
+ * settlements; otherwise a DELETE_EXPENSE op is enqueued.
+ */
+export async function queueDeleteExpense(
+  groupId: string,
+  expenseId: string
+): Promise<void> {
+  const createOp = await findPendingExpenseCreate(expenseId);
+
+  if (createOp) {
+    await removeFromQueue(createOp.id);
+    if (createOp.type === "ADD_EXPENSE") {
+      await clearPendingPaymentsForExpense(
+        groupId,
+        createOp.payload.optimisticPayments ?? [],
+        states.user.getState().details?.id
+      );
+    }
+  } else {
+    await enqueue("DELETE_EXPENSE", {
+      groupId,
+      expenseId
+    } as DeleteExpensePayload);
+  }
+
+  await removeExpenseOptimistic(groupId, expenseId);
+}
+
+/**
+ * Queue a group edit (name/category). Folds into a still-pending create op so
+ * the group is created with the edited values instead of update-after-create.
+ */
+export async function queueUpdateGroup(
+  userId: string,
+  groupId: string,
+  args: UpdateGroupArgs
+): Promise<void> {
+  const ops = await getQueue();
+  const createOp = ops.find(
+    (o) =>
+      o.status === "pending" &&
+      o.type === "CREATE_GROUP" &&
+      o.payload.clientId === groupId
+  );
+
+  if (createOp && createOp.type === "CREATE_GROUP") {
+    const patched: CreateGroupPayload = {
+      ...createOp.payload,
+      args: {
+        ...createOp.payload.args,
+        name: args.name,
+        category: args.category
+      }
+    };
+    await updateQueuePayload(createOp.id, patched);
+  } else {
+    await enqueue("UPDATE_GROUP", { groupId, args } as UpdateGroupPayload);
+  }
+
+  await updateGroupOptimistic(userId, groupId, {
+    name: args.name,
+    category: args.category
+  });
+}
+
+/**
+ * Queue a group archive/unarchive (offline "delete" = archive). Coalesces a
+ * repeated toggle on the same group into one op.
+ */
+export async function queueSetGroupArchived(
+  userId: string,
+  groupId: string,
+  archived: boolean
+): Promise<void> {
+  const ops = await getQueue();
+  const existing = ops.find(
+    (o) =>
+      o.status === "pending" &&
+      o.type === "SET_GROUP_ARCHIVED" &&
+      o.payload.groupId === groupId
+  );
+
+  if (existing) {
+    await updateQueuePayload(existing.id, {
+      groupId,
+      archived
+    } as SetGroupArchivedPayload);
+  } else {
+    await enqueue("SET_GROUP_ARCHIVED", {
+      groupId,
+      archived
+    } as SetGroupArchivedPayload);
+  }
+
+  await setGroupArchivedInCache(userId, groupId, archived);
+}
+
+/** Queue a favorite add. An add that cancels a pending remove just drops it. */
+export async function queueAddFavorite(
+  userId: string,
+  favorite: UserPreview
+): Promise<void> {
+  const pendingRemove = await findPendingFavorite(
+    "REMOVE_FAVORITE",
+    userId,
+    favorite.id
+  );
+  if (pendingRemove) {
+    await removeFromQueue(pendingRemove.id);
+  } else {
+    const pendingAdd = await findPendingFavorite(
+      "ADD_FAVORITE",
+      userId,
+      favorite.id
+    );
+    if (!pendingAdd) {
+      await enqueue("ADD_FAVORITE", {
+        userId,
+        favoriteId: favorite.id
+      } as FavoritePayload);
+    }
+  }
+  await addFavoriteToCache(userId, favorite);
+}
+
+/** Queue a favorite remove. A remove that cancels a pending add just drops it. */
+export async function queueRemoveFavorite(
+  userId: string,
+  favoriteId: string
+): Promise<void> {
+  const pendingAdd = await findPendingFavorite(
+    "ADD_FAVORITE",
+    userId,
+    favoriteId
+  );
+  if (pendingAdd) {
+    await removeFromQueue(pendingAdd.id);
+  } else {
+    const pendingRemove = await findPendingFavorite(
+      "REMOVE_FAVORITE",
+      userId,
+      favoriteId
+    );
+    if (!pendingRemove) {
+      await enqueue("REMOVE_FAVORITE", {
+        userId,
+        favoriteId
+      } as FavoritePayload);
+    }
+  }
+  await removeFavoriteFromCache(userId, favoriteId);
 }
 
 // ---------------------------------------------------------------------------

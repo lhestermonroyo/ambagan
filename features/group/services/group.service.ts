@@ -1,8 +1,10 @@
 import { createNotification } from "@/features/notifications/services/notification.service";
+import states from "@/states";
 import { NotificationType } from "@/types/notifications";
 import { Group, Member } from "@/types/groups";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
+import * as offlineQueue from "@/utils/offlineQueue";
 import { supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
 import { sendPushNotification } from "@/utils/sendPushNotifications";
@@ -115,6 +117,20 @@ export const updateGroup = async (
     avatar: ImagePickerSuccessResult | null;
   }
 ) => {
+  // Offline → queue name/category (avatar uploads are blocked offline, so it
+  // stays null) + optimistic cache. Folds into a still-pending create.
+  if (!(await offlineQueue.isOnline())) {
+    const uid = states.user.getState().details?.id;
+    if (uid) {
+      await offlineQueue.queueUpdateGroup(uid, groupId, {
+        name: payload.name,
+        category: payload.category,
+        avatar: null
+      });
+    }
+    return { message: "Group will be updated when you're back online" };
+  }
+
   const user = await supabase.auth.getUser();
 
   if (!user.data.user) {
@@ -425,6 +441,13 @@ export const getGroupById = async (groupId: string) => {
 };
 
 export const archiveGroup = async (groupId: string) => {
+  // Offline → queue + optimistic cache. The "delete group" action archives.
+  if (!(await offlineQueue.isOnline())) {
+    const uid = states.user.getState().details?.id;
+    if (uid) await offlineQueue.queueSetGroupArchived(uid, groupId, true);
+    return { success: true };
+  }
+
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 
@@ -439,6 +462,12 @@ export const archiveGroup = async (groupId: string) => {
 };
 
 export const unarchiveGroup = async (groupId: string) => {
+  if (!(await offlineQueue.isOnline())) {
+    const uid = states.user.getState().details?.id;
+    if (uid) await offlineQueue.queueSetGroupArchived(uid, groupId, false);
+    return { success: true };
+  }
+
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 

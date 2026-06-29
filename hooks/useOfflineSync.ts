@@ -72,11 +72,58 @@ export function useOfflineSync() {
                 op.payload.groupId,
                 op.payload.clientId
               );
+            } else if (op.type === "UPDATE_EXPENSE") {
+              const { args } = op.payload;
+              await services.expense.updateExpense(
+                op.payload.expenseId,
+                {
+                  ...args.expensePayload,
+                  expense_date: args.expensePayload.expense_date
+                    ? new Date(args.expensePayload.expense_date)
+                    : undefined
+                } as any,
+                args.payers,
+                args.memberSplits,
+                args.paymentSplits
+              );
+              await offlineQueue._internal.clearPendingExpense(
+                op.payload.groupId,
+                op.payload.clientId
+              );
+            } else if (op.type === "DELETE_EXPENSE") {
+              await services.expense.deleteExpense(op.payload.expenseId);
             } else if (op.type === "CREATE_GROUP") {
               await services.group.saveGroup(op.payload.args);
               await offlineQueue._internal.clearPendingGroup(
                 op.payload.userId,
                 op.payload.clientId
+              );
+            } else if (op.type === "UPDATE_GROUP") {
+              await services.group.updateGroup(op.payload.groupId, {
+                ...op.payload.args
+              });
+              const uid = states.user.getState().details?.id;
+              if (uid) {
+                await offlineQueue._internal.clearPendingGroup(
+                  uid,
+                  op.payload.groupId
+                );
+              }
+            } else if (op.type === "SET_GROUP_ARCHIVED") {
+              if (op.payload.archived) {
+                await services.group.archiveGroup(op.payload.groupId);
+              } else {
+                await services.group.unarchiveGroup(op.payload.groupId);
+              }
+            } else if (op.type === "ADD_FAVORITE") {
+              await services.friend.addFavorite(
+                op.payload.userId,
+                op.payload.favoriteId
+              );
+            } else if (op.type === "REMOVE_FAVORITE") {
+              await services.friend.removeFavorite(
+                op.payload.userId,
+                op.payload.favoriteId
               );
             }
 

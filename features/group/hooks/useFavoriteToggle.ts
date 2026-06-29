@@ -30,7 +30,7 @@ export function useFavoriteToggle(userId: string | undefined) {
         });
         setFavoriteUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
       } else {
-        await services.friend.addFavorite(userId, targetUser.id);
+        await services.friend.addFavorite(userId, targetUser.id, targetUser);
         setFavoriteIds((prev) => new Set([...prev, targetUser.id]));
         setFavoriteUsers((prev) => [targetUser, ...prev]);
       }

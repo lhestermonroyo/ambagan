@@ -1,5 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
 import ImagePickerSheet from "@/components/ImagePickerSheet";
+import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import * as ImagePicker from "expo-image-picker";
@@ -24,10 +26,27 @@ const UploadAvatar = ({
   const [image, setImage] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const colorScheme = useColorScheme() ?? "light";
+  const { isOnline } = useNetwork();
+  const toast = useAppToast();
 
   useEffect(() => {
     setImage(defaultAvatar || null);
   }, [defaultAvatar]);
+
+  // Images upload to storage, which needs a connection. Block the picker offline
+  // and tell the user; the surrounding form can still be saved without an image.
+  const openPicker = () => {
+    if (!isOnline) {
+      toast({
+        title: "You're offline",
+        description:
+          "Images can't be uploaded right now. You can still save without one.",
+        type: "info"
+      });
+      return;
+    }
+    setSheetOpen(true);
+  };
 
   const handleSelect = (result: ImagePicker.ImagePickerSuccessResult) => {
     setImage(result.assets[0].uri);
@@ -54,7 +73,7 @@ const UploadAvatar = ({
       )}
       {!pending && (
         <AppButton
-          onPress={() => setSheetOpen(true)}
+          onPress={openPicker}
           size="sm"
           className="self-center rounded-full"
           text={image ? "Change" : "Upload"}

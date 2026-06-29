@@ -4,6 +4,7 @@ import { NotificationType } from "@/types/notifications";
 import { UserPreview } from "@/types/user";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
+import * as offlineQueue from "@/utils/offlineQueue";
 import { supabase } from "@/utils/supabase";
 
 export const getFavorites = async (userId: string): Promise<UserPreview[]> => {
@@ -44,8 +45,19 @@ export const getFavorites = async (userId: string): Promise<UserPreview[]> => {
 
 export const addFavorite = async (
   userId: string,
-  favoriteId: string
+  favoriteId: string,
+  // Passed by the UI so an offline add can be cached as a full favorite row.
+  favorite?: UserPreview
 ): Promise<void> => {
+  // Offline → queue + optimistic cache update (coalesces a pending remove).
+  if (!(await offlineQueue.isOnline())) {
+    await offlineQueue.queueAddFavorite(
+      userId,
+      favorite ?? ({ id: favoriteId } as UserPreview)
+    );
+    return;
+  }
+
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 
@@ -60,6 +72,12 @@ export const removeFavorite = async (
   userId: string,
   favoriteId: string
 ): Promise<void> => {
+  // Offline → queue + optimistic cache update (coalesces a pending add).
+  if (!(await offlineQueue.isOnline())) {
+    await offlineQueue.queueRemoveFavorite(userId, favoriteId);
+    return;
+  }
+
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 

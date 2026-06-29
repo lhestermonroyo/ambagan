@@ -34,6 +34,7 @@ import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
 import { formatDate } from "@/utils/formatDate";
 import { getErrorHex, getPrimaryHex } from "@/utils/getColorHex";
+import * as offlineQueue from "@/utils/offlineQueue";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { AlertTriangle, CircleIcon } from "lucide-react-native";
 import { Fragment, useEffect, useState } from "react";
@@ -92,6 +93,18 @@ export default function LeaveGroupSheet({
 
   const handleLeave = async () => {
     if (!groupDetails?.id || !userDetails?.id) return;
+
+    // Leaving reassigns admin / may delete the group and notify members — it
+    // needs a live connection, so it isn't supported offline.
+    if (!(await offlineQueue.isOnline())) {
+      toast({
+        title: "You're offline",
+        description: "Leaving a group requires an internet connection.",
+        type: "error"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await services.member.leaveGroup(
