@@ -125,6 +125,11 @@ export function useOfflineSync() {
                 op.payload.userId,
                 op.payload.favoriteId
               );
+            } else if (op.type === "UPDATE_PREFERENCES") {
+              await services.preferences.updatePreferences(
+                op.payload.userId,
+                op.payload.prefs
+              );
             }
 
             await offlineQueue.removeFromQueue(op.id);

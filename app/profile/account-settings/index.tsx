@@ -6,6 +6,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import DeleteAccountSheet from "@/features/profile/components/DeleteAccountSheet";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
@@ -18,6 +19,7 @@ import { useColorScheme } from "react-native";
 export default function AccountSettingsScreen() {
   const router = useRouter();
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
   const { signOut } = states.user();
 
   const colorScheme = useColorScheme() ?? "light";
@@ -73,6 +75,10 @@ export default function AccountSettingsScreen() {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    if (
+      !(await ensureOnline("Changing your password needs an internet connection."))
+    )
+      return;
 
     setSubmitting(true);
     try {
@@ -105,6 +111,10 @@ export default function AccountSettingsScreen() {
   };
 
   const handleDeleteAccount = async () => {
+    if (
+      !(await ensureOnline("Deleting your account needs an internet connection."))
+    )
+      return;
     await services.auth.deleteAccount();
     signOut();
     router.replace("/(auth)/login");

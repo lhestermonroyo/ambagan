@@ -22,6 +22,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadImage from "@/components/UploadImage";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
@@ -49,6 +50,7 @@ export default function MarkAsSettledSheet({
 
   const { details: userDetails } = states.user();
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
   const colorScheme = useColorScheme() ?? "light";
 
   if (!payment) {
@@ -58,6 +60,10 @@ export default function MarkAsSettledSheet({
   const isMe = payment.member.id === userDetails?.id;
 
   const handleSubmit = async () => {
+    if (
+      !(await ensureOnline("Settling an expense needs an internet connection."))
+    )
+      return;
     setSubmitting(true);
 
     try {

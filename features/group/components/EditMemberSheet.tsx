@@ -18,6 +18,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
@@ -60,6 +61,7 @@ export default function EditMembersSheet({
   } = useFavoriteToggle(userDetails?.id);
 
   const showToast = useAppToast();
+  const ensureOnline = useEnsureOnline();
 
   useEffect(() => {
     if (isOpen && userDetails?.id) {
@@ -202,6 +204,10 @@ export default function EditMembersSheet({
   };
 
   const handleUpdateMembers = async () => {
+    if (
+      !(await ensureOnline("Updating members needs an internet connection."))
+    )
+      return;
     try {
       setSubmitting(true);
 

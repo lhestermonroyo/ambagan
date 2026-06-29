@@ -68,7 +68,6 @@ export default function GroupDetailsScreen() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
-
   const { details: groupDetails, expenseList, settlementList } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
 
@@ -457,24 +456,6 @@ export default function GroupDetailsScreen() {
                       </HStack>
                     </MenuItem>
                   )}
-                  <MenuItem
-                    className="p-4 justify-between"
-                    key="leave"
-                    textValue="Leave Group"
-                    onPress={() => {
-                      setMenuOpen(false);
-                      setTimeout(() => setLeaveSheetOpen(true), 150);
-                    }}
-                  >
-                    <HStack className="gap-x-2">
-                      <LogOut
-                        size={20}
-                        color={getPrimaryHex("text-primary-500", colorScheme)}
-                      />
-                      <MenuItemLabel>Leave Group</MenuItemLabel>
-                    </HStack>
-                  </MenuItem>
-                  <MenuSeparator key="separator" />
                   {groupDetails?.archived ? (
                     <MenuItem
                       className="p-4 justify-between"
@@ -512,6 +493,24 @@ export default function GroupDetailsScreen() {
                       </HStack>
                     </MenuItem>
                   )}
+                  <MenuSeparator key="separator" />
+                  <MenuItem
+                    className="p-4 justify-between"
+                    key="leave"
+                    textValue="Leave Group"
+                    onPress={() => {
+                      setMenuOpen(false);
+                      setTimeout(() => setLeaveSheetOpen(true), 150);
+                    }}
+                  >
+                    <HStack className="gap-x-2">
+                      <LogOut
+                        size={20}
+                        color={getPrimaryHex("text-primary-500", colorScheme)}
+                      />
+                      <MenuItemLabel>Leave Group</MenuItemLabel>
+                    </HStack>
+                  </MenuItem>
                 </Menu>
               ]
             : [
@@ -702,7 +701,7 @@ export default function GroupDetailsScreen() {
             </VStack>
 
             {groupDetails?.archived ? (
-              <HStack className="mx-4 mb-4 p-4 rounded-xl bg-secondary-100 dark:bg-secondary-900 border border-secondary-200 dark:border-secondary-800 gap-x-2 items-start">
+              <HStack className="mx-4 mb-4 p-4 rounded-xl bg-secondary-100 gap-x-2 items-start">
                 <Archive
                   color={getPrimaryHex("text-primary-500", colorScheme)}
                 />

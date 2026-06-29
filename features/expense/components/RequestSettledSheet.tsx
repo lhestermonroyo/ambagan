@@ -21,6 +21,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadImage from "@/components/UploadImage";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import { Payment } from "@/types/expenses";
 import { ImagePickerSuccessResult } from "expo-image-picker";
@@ -46,12 +47,19 @@ export default function RequestSettledSheet({
   });
 
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
 
   if (!payment) {
     return null;
   }
 
   const handleSubmit = async () => {
+    if (
+      !(await ensureOnline(
+        "Requesting a settlement needs an internet connection."
+      ))
+    )
+      return;
     setSubmitting(true);
 
     try {

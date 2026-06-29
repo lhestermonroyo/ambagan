@@ -14,6 +14,7 @@ import { VStack } from "@/components/ui/vstack";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import AppearanceSheet from "@/features/profile/components/AppearanceSheet";
 import NotificationsSheet from "@/features/profile/components/PushNotificationsSheet";
+import { useNetwork } from "@/hooks/useNetwork";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
@@ -52,6 +53,7 @@ export default function ProfileScreen() {
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
+  const { isOnline } = useNetwork();
 
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -336,6 +338,7 @@ export default function ProfileScreen() {
         isOpen={currencyOpen}
         currency={defaultCurrency}
         title="Select Default Currency"
+        disabled={!isOnline}
         onClose={() => setCurrencyOpen(false)}
         onCurrencyChange={(currency) => {
           if (userDetails?.id) setDefaultCurrency(userDetails.id, currency);

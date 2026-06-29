@@ -47,6 +47,7 @@ import ViewBySheet, {
 } from "@/features/group/components/ViewBySheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import { useNetwork } from "@/hooks/useNetwork";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
@@ -111,6 +112,7 @@ export default function FriendDetailScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
   const { isOnline } = useNetwork();
 
   const { favoriteIds, loadFavorites, handleToggleFavorite } =
@@ -231,6 +233,10 @@ export default function FriendDetailScreen() {
 
   const handleConfirmAction = async () => {
     if (!userDetails?.id || !friendId || !pendingAction) return;
+    if (
+      !(await ensureOnline("Settling balances needs an internet connection."))
+    )
+      return;
     setActionLoading(true);
     try {
       if (pendingAction === "settle") {

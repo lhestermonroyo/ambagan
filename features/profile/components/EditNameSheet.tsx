@@ -12,6 +12,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
 import { User } from "@/types/user";
@@ -26,6 +27,7 @@ export default function EditNameSheet({
 }) {
   const { details: userDetails } = states.user();
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
 
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
@@ -42,6 +44,9 @@ export default function EditNameSheet({
       });
       return;
     }
+
+    if (!(await ensureOnline("Updating your name needs an internet connection.")))
+      return;
 
     setSubmitting(true);
 

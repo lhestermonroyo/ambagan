@@ -17,6 +17,7 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
@@ -52,6 +53,7 @@ export default function ReviewRequestPaidSheet({
 
   const { details: userDetails } = states.user();
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
   const colorScheme = useColorScheme() ?? "light";
 
   if (!payment) {
@@ -59,6 +61,8 @@ export default function ReviewRequestPaidSheet({
   }
 
   const handleMarkAsSettled = async () => {
+    if (!(await ensureOnline("Settling a request needs an internet connection.")))
+      return;
     setApproving(true);
     try {
       const response = await services.expense.markAsSettled({
@@ -92,6 +96,8 @@ export default function ReviewRequestPaidSheet({
   };
 
   const handleRejectRequest = async () => {
+    if (!(await ensureOnline("Rejecting a request needs an internet connection.")))
+      return;
     setRejecting(true);
     try {
       const response = await services.expense.rejectSettledRequest(payment.id);
@@ -120,6 +126,8 @@ export default function ReviewRequestPaidSheet({
   };
 
   const handleUndoRequest = async () => {
+    if (!(await ensureOnline("Undoing a request needs an internet connection.")))
+      return;
     setUndoing(true);
     try {
       const response = await services.expense.undoSettledRequest(payment.id);
@@ -148,6 +156,10 @@ export default function ReviewRequestPaidSheet({
   };
 
   const handleRevertSettledRequest = async () => {
+    if (
+      !(await ensureOnline("Reopening a settlement needs an internet connection."))
+    )
+      return;
     setReverting(true);
     try {
       const response = await services.expense.revertSettledRequest(payment.id);

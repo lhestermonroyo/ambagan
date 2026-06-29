@@ -244,7 +244,8 @@ export default function QuickAddExpenseSheet({
           paymentSplits
         },
         optimistic,
-        optimisticPayments
+        optimisticPayments,
+        members
       );
 
       toast({

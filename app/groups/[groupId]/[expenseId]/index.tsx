@@ -309,8 +309,10 @@ export default function ExpenseDetailsScreen() {
     [paymentSplitList]
   );
 
+  // Editing now works offline (the editor seeds from the cached snapshot and
+  // queues an UPDATE_EXPENSE), so this is no longer gated on connectivity.
   const canEdit = Boolean(
-    isCreator && !hasSettlementProgress && isOnline && paymentSplitList.length
+    isCreator && !hasSettlementProgress && paymentSplitList.length
   );
 
   const isDraft = Boolean(expenseDetails?.is_draft);

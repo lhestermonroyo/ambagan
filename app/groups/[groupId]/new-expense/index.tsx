@@ -243,7 +243,8 @@ export default function NewExpenseScreen() {
         paymentSplits
       },
       optimistic,
-      optimisticPayments
+      optimisticPayments,
+      members
     );
 
     toast({

@@ -7,6 +7,7 @@ import {
   updatePreferences as updatePreferencesInDB
 } from "@/features/user/services/preferences.service";
 import { AppearanceMode, UserPreferences, UserState } from "@/types/user";
+import * as offlineQueue from "@/utils/offlineQueue";
 import { supabase } from "@/utils/supabase";
 import { create } from "zustand";
 
@@ -53,8 +54,17 @@ const USER_STATE = create<UserState>((set, get) => ({
   setAppearanceMode: async (mode: AppearanceMode) => {
     const { details } = get();
     if (!details?.id) return;
-    await updatePreferencesInDB(details.id, { appearance: mode });
+    // Appearance is purely visual, so apply it immediately and let it sync.
+    // Offline → queue the preference change (flushed on reconnect) instead of
+    // failing the DB write.
     set({ appearanceMode: mode });
+    if (await offlineQueue.isOnline()) {
+      await updatePreferencesInDB(details.id, { appearance: mode });
+    } else {
+      await offlineQueue.queueUpdatePreferences(details.id, {
+        appearance: mode
+      });
+    }
   },
 
   setNotificationsEnabled: async (enabled: boolean) => {
@@ -89,6 +99,12 @@ const USER_STATE = create<UserState>((set, get) => ({
   loadPreferences: async (userId?: string) => {
     if (!userId) return;
 
+    // An appearance change made offline lives in the queue until it syncs —
+    // honor it on load so the chosen theme survives a restart while offline.
+    const pending = await offlineQueue
+      .getPendingPreferences(userId)
+      .catch(() => null);
+
     try {
       let prefs = await getPreferences(userId);
 
@@ -102,11 +118,17 @@ const USER_STATE = create<UserState>((set, get) => ({
 
       set({
         preferences: prefs,
-        appearanceMode: prefs.appearance,
+        appearanceMode:
+          (pending?.appearance as AppearanceMode) ?? prefs.appearance,
         notificationsEnabled: isAnyNotifEnabled(prefs),
         defaultCurrency: prefs.default_currency
       });
     } catch (error) {
+      // Offline / failed load — still apply a pending appearance change so the
+      // theme the user picked offline persists across the restart.
+      if (pending?.appearance) {
+        set({ appearanceMode: pending.appearance as AppearanceMode });
+      }
       console.error("Error loading preferences:", error);
     }
   }

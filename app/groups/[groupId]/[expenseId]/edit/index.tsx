@@ -331,6 +331,8 @@ export default function EditExpenseScreen() {
       });
 
       const detailMemberSplits = mappedSplits.map((s) => ({
+        // Stable id so the detail screen's keyExtractor (item.id.toString()) works.
+        id: `${expenseId}-${s.userId}`,
         expense_id: expenseId,
         member: members.find((m) => m.id === s.userId),
         amount: s.amount,

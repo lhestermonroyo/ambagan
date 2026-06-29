@@ -1,5 +1,6 @@
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
+import { useNetwork } from "@/hooks/useNetwork";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -112,6 +113,7 @@ export default function PushNotificationsSheet({
   } = states.user();
 
   const colorScheme = useColorScheme() ?? "light";
+  const { isOnline } = useNetwork();
   const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
   const [reminderEnabled, setReminderEnabledState] = useState(true);
 
@@ -166,10 +168,16 @@ export default function PushNotificationsSheet({
         </ActionsheetDragIndicatorWrapper>
         {userDetails && preferences ? (
           <VStack className="w-full flex-1">
-            <VStack className="p-4">
+            <VStack className="p-4 gap-y-1">
               <Text bold className="text-xl">
                 Push Notifications
               </Text>
+              {!isOnline && (
+                <Text className="text-sm text-secondary-950">
+                  You're offline — notification preferences can't be changed
+                  until you reconnect.
+                </Text>
+              )}
             </VStack>
 
             <ScrollView className="flex-1 w-full">
@@ -243,6 +251,7 @@ export default function PushNotificationsSheet({
                         <Switch
                           size="sm"
                           value={preferences[item.key]}
+                          isDisabled={!isOnline}
                           onValueChange={(val) => handleToggle(item.key, val)}
                           trackColor={switchColors}
                         />

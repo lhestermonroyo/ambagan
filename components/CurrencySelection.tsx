@@ -23,13 +23,16 @@ export const CurrencySelectionSheet = ({
   currency,
   onClose,
   onCurrencyChange,
-  title = "Select Currency"
+  title = "Select Currency",
+  // Disables selection (e.g. offline, when the change can't be saved to the DB).
+  disabled = false
 }: {
   isOpen: boolean;
   currency: string;
   onClose: () => void;
   onCurrencyChange: (currency: string) => void;
   title?: string;
+  disabled?: boolean;
 }) => {
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
@@ -40,14 +43,21 @@ export const CurrencySelectionSheet = ({
         </ActionsheetDragIndicatorWrapper>
 
         <VStack className="w-full py-4 flex-1 gap-y-4">
-          <HStack className="items-center px-4">
+          <VStack className="px-4 gap-y-1">
             <Text bold className="text-xl">
               {title}
             </Text>
-          </HStack>
+            {disabled && (
+              <Text className="text-sm text-secondary-950">
+                You're offline — changing your default currency needs an
+                internet connection.
+              </Text>
+            )}
+          </VStack>
           <RadioGroup
             className="flex-1"
             value={currency}
+            isDisabled={disabled}
             onChange={(value) => {
               onCurrencyChange(value);
               onClose();

@@ -56,7 +56,7 @@ const UploadAvatar = ({
   return (
     <VStack className="gap-y-4 items-center">
       {image ? (
-        <Box className="border-2 border-background-200 rounded-full">
+        <Box className="rounded-full">
           <AppAvatar name="A" className="h-[100] w-[100]" uri={image} />
         </Box>
       ) : (

@@ -100,7 +100,8 @@ export type QueueOpType =
   | "UPDATE_GROUP"
   | "SET_GROUP_ARCHIVED"
   | "ADD_FAVORITE"
-  | "REMOVE_FAVORITE";
+  | "REMOVE_FAVORITE"
+  | "UPDATE_PREFERENCES";
 
 export type AddExpensePayload = {
   clientId: string;
@@ -147,6 +148,11 @@ export type SetGroupArchivedPayload = {
 export type FavoritePayload = {
   userId: string;
   favoriteId: string;
+};
+
+export type UpdatePreferencesPayload = {
+  userId: string;
+  prefs: Record<string, any>;
 };
 
 export type QueuedOp =
@@ -210,6 +216,13 @@ export type QueuedOp =
       id: string;
       type: "REMOVE_FAVORITE";
       payload: FavoritePayload;
+      status: "pending" | "failed";
+      created_at: number;
+    }
+  | {
+      id: string;
+      type: "UPDATE_PREFERENCES";
+      payload: UpdatePreferencesPayload;
       status: "pending" | "failed";
       created_at: number;
     };
@@ -758,7 +771,10 @@ export async function queueAddExpense(
   groupId: string,
   args: AddExpenseArgs,
   optimistic: ExpensePreview,
-  optimisticPayments: Payment[] = []
+  optimisticPayments: Payment[] = [],
+  // Member list so the detail snapshot can carry member splits with full user
+  // objects — without it, opening the offline expense shows an empty split.
+  members: UserPreview[] = []
 ): Promise<void> {
   const payload: AddExpensePayload = {
     clientId: optimistic.id,
@@ -778,6 +794,35 @@ export async function queueAddExpense(
     optimisticPayments,
     states.user.getState().details?.id
   );
+
+  // Warm a per-expense snapshot so the detail screen renders the full split
+  // (payers + member splits + settlements) while offline, before any sync.
+  if (members.length) {
+    const detailMemberSplits = args.memberSplits.map((s) => ({
+      // Stable id so the detail screen's keyExtractor (item.id.toString()) works.
+      id: `${optimistic.id}-${s.userId}`,
+      expense_id: optimistic.id,
+      member: members.find((m) => m.id === s.userId),
+      amount: s.amount,
+      percentage: s.percentage
+    }));
+    const detailExpense = {
+      ...optimistic,
+      split_type: args.expensePayload.split_type,
+      expense_date:
+        args.expensePayload.expense_date ?? optimistic.created_at,
+      proof_of_payment: null
+    };
+    cacheService
+      .saveExpenseDetail(
+        optimistic.id,
+        detailExpense,
+        optimistic.payer_list,
+        detailMemberSplits,
+        optimisticPayments
+      )
+      .catch(() => {});
+  }
 }
 
 export async function queueCreateDraft(
@@ -996,6 +1041,65 @@ export async function queueAddFavorite(
     }
   }
   await addFavoriteToCache(userId, favorite);
+}
+
+/**
+ * Queue a user-preferences patch (e.g. app appearance). Coalesces into a single
+ * pending op per user by merging the patch, so the latest values win.
+ */
+export async function queueUpdatePreferences(
+  userId: string,
+  prefs: Record<string, any>
+): Promise<void> {
+  const ops = await getQueue();
+  const existing = ops.find(
+    (o) =>
+      o.status === "pending" &&
+      o.type === "UPDATE_PREFERENCES" &&
+      (o.payload as UpdatePreferencesPayload).userId === userId
+  );
+
+  if (existing) {
+    const merged = {
+      userId,
+      prefs: {
+        ...(existing.payload as UpdatePreferencesPayload).prefs,
+        ...prefs
+      }
+    } as UpdatePreferencesPayload;
+    await updateQueuePayload(existing.id, merged);
+  } else {
+    await enqueue("UPDATE_PREFERENCES", {
+      userId,
+      prefs
+    } as UpdatePreferencesPayload);
+  }
+}
+
+/**
+ * The merged preferences from any pending UPDATE_PREFERENCES ops for a user.
+ * Read on launch so an offline preference change (e.g. appearance) is reflected
+ * even after a restart, before it has synced. Returns null if nothing pending.
+ */
+export async function getPendingPreferences(
+  userId: string
+): Promise<Record<string, any> | null> {
+  const ops = await getQueue();
+  const merged = ops
+    .filter(
+      (o) =>
+        o.status === "pending" &&
+        o.type === "UPDATE_PREFERENCES" &&
+        (o.payload as UpdatePreferencesPayload).userId === userId
+    )
+    .reduce<Record<string, any>>(
+      (acc, o) => ({
+        ...acc,
+        ...(o.payload as UpdatePreferencesPayload).prefs
+      }),
+      {}
+    );
+  return Object.keys(merged).length ? merged : null;
 }
 
 /** Queue a favorite remove. A remove that cancels a pending add just drops it. */

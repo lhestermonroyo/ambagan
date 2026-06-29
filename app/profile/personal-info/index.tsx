@@ -11,6 +11,7 @@ import UploadAvatar from "@/components/UploadAvatar";
 import EditNameSheet from "@/features/profile/components/EditNameSheet";
 import EditPhoneSheet from "@/features/profile/components/EditPhoneSheet";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
@@ -24,6 +25,7 @@ export default function PersonalInfoScreen() {
   const { details: userDetails } = states.user();
   const router = useRouter();
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
 
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [editPhoneOpen, setEditPhoneOpen] = useState(false);
@@ -40,6 +42,8 @@ export default function PersonalInfoScreen() {
 
   const handleSaveAvatar = async () => {
     if (!pendingAvatar) return;
+    if (!(await ensureOnline("Updating your avatar needs an internet connection.")))
+      return;
 
     setSavingAvatar(true);
     try {
