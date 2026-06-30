@@ -18,13 +18,13 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
-import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import { Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
 import { filterContacts, getSavedContacts } from "@/utils/offlineContacts";
+import * as offlineQueue from "@/utils/offlineQueue";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useEffect, useMemo, useState } from "react";
 import RecentFavoritesTab from "./RecentFavoritesTab";
@@ -61,7 +61,6 @@ export default function EditMembersSheet({
   } = useFavoriteToggle(userDetails?.id);
 
   const showToast = useAppToast();
-  const ensureOnline = useEnsureOnline();
 
   useEffect(() => {
     if (isOpen && userDetails?.id) {
@@ -204,14 +203,9 @@ export default function EditMembersSheet({
   };
 
   const handleUpdateMembers = async () => {
-    if (
-      !(await ensureOnline("Updating members needs an internet connection."))
-    )
-      return;
     try {
-      setSubmitting(true);
-
       if (!groupDetails?.id) return;
+      setSubmitting(true);
 
       const allMembers = lockedMembers.concat(members);
 
@@ -226,17 +220,6 @@ export default function EditMembersSheet({
         )
         .map((member) => member.id);
 
-      const response = await services.member.updateGroupMembers(
-        groupDetails.id,
-        membersToAdd,
-        membersToRemove
-      );
-
-      states.group.setState((prev) => ({
-        ...prev,
-        memberList: response.data
-      }));
-
       const membersToSave = members.map(
         (m) =>
           ({
@@ -248,6 +231,56 @@ export default function EditMembersSheet({
             phone: ""
           }) as UserPreview
       );
+
+      // Offline → queue the roster change with an optimistic update. The cached
+      // member list is updated too, so an offline-added expense reflects the new
+      // roster. Member editing is admin-only, so there's a single authorized
+      // editor and no cross-user conflict.
+      if (!(await offlineQueue.isOnline())) {
+        const now = new Date().toISOString();
+        const roster = allMembers.map(
+          (m) =>
+            ({
+              id: m.id,
+              email: (m as any).email ?? "",
+              phone: (m as any).phone ?? "",
+              first_name: m.first_name,
+              last_name: m.last_name,
+              avatar: m.avatar ?? null,
+              joined_at: (m as any).joined_at ?? now,
+              group_id: groupDetails.id
+            }) as Member
+        );
+
+        await offlineQueue.queueUpdateMembers(
+          groupDetails.id,
+          membersToAdd,
+          membersToRemove,
+          roster
+        );
+        await addRecentUsers(membersToSave, userDetails!.id);
+
+        showToast({
+          title: "Saved offline",
+          description:
+            "Member changes will sync automatically when you're back online.",
+          type: "info"
+        });
+        handleClose();
+        return;
+      }
+
+      const response = await services.member.updateGroupMembers(
+        groupDetails.id,
+        membersToAdd,
+        membersToRemove
+      );
+
+      states.group.setState((prev) => ({
+        ...prev,
+        memberList: response.data
+      }));
+
       await addRecentUsers(membersToSave, userDetails!.id);
 
       showToast({

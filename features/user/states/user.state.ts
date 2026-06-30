@@ -9,6 +9,7 @@ import {
 import { AppearanceMode, UserPreferences, UserState } from "@/types/user";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { supabase } from "@/utils/supabase";
+import { clearCachedUserSession } from "@/utils/userCache";
 import { create } from "zustand";
 
 const NOTIF_ALL_ON = {
@@ -45,6 +46,8 @@ const USER_STATE = create<UserState>((set, get) => ({
       preferences: null,
       defaultCurrency: "PHP"
     });
+    // Drop the offline profile cache so the next account never hydrates ours.
+    clearCachedUserSession();
     EXPENSE_STATE.getState().reset();
     GROUP_STATE.getState().reset();
     NOTIFICATION_STATE.getState().reset();

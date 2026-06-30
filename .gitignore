@@ -46,3 +46,6 @@ app-example
 # internal docs
 GUIDE.md
 MARKETING.md
+
+# database schema (kept local; run manually in Supabase)
+db.sql

@@ -101,7 +101,8 @@ export type QueueOpType =
   | "SET_GROUP_ARCHIVED"
   | "ADD_FAVORITE"
   | "REMOVE_FAVORITE"
-  | "UPDATE_PREFERENCES";
+  | "UPDATE_PREFERENCES"
+  | "UPDATE_MEMBERS";
 
 export type AddExpensePayload = {
   clientId: string;
@@ -153,6 +154,12 @@ export type FavoritePayload = {
 export type UpdatePreferencesPayload = {
   userId: string;
   prefs: Record<string, any>;
+};
+
+export type UpdateMembersPayload = {
+  groupId: string;
+  membersToAdd: string[];
+  membersToRemove: string[];
 };
 
 export type QueuedOp =
@@ -223,6 +230,13 @@ export type QueuedOp =
       id: string;
       type: "UPDATE_PREFERENCES";
       payload: UpdatePreferencesPayload;
+      status: "pending" | "failed";
+      created_at: number;
+    }
+  | {
+      id: string;
+      type: "UPDATE_MEMBERS";
+      payload: UpdateMembersPayload;
       status: "pending" | "failed";
       created_at: number;
     };
@@ -739,6 +753,25 @@ async function setGroupArchivedInCache(
   }
 }
 
+/**
+ * Replace a group's member roster in the live state + the cached group detail.
+ * Updating `group_detail.memberList` is what makes an offline-added expense pick
+ * up the new roster (the expense flow reads members from that cache offline).
+ */
+async function updateMembersOptimistic(groupId: string, roster: Member[]) {
+  if (states.group.getState().details?.id === groupId) {
+    states.group.setState((prev) => ({ ...prev, memberList: roster }));
+  }
+  try {
+    const cached = await cacheService.getGroupDetail(groupId);
+    if (cached) {
+      await cacheService.saveGroupDetail(groupId, cached.expenseList, roster);
+    }
+  } catch {
+    // best-effort
+  }
+}
+
 async function addFavoriteToCache(userId: string, favorite: UserPreview) {
   try {
     const cached = (await cacheService.getFavorites(userId)) ?? [];
@@ -1013,6 +1046,72 @@ export async function queueSetGroupArchived(
   }
 
   await setGroupArchivedInCache(userId, groupId, archived);
+}
+
+/**
+ * Queue a group member-roster edit (admin-only). `roster` is the full desired
+ * member list, used for the optimistic update. Coalesces into a still-pending
+ * group create (folds into its member_ids), or merges with a pending member edit
+ * (an add cancels a pending remove of the same id, and vice versa).
+ */
+export async function queueUpdateMembers(
+  groupId: string,
+  membersToAdd: string[],
+  membersToRemove: string[],
+  roster: Member[]
+): Promise<void> {
+  const ops = await getQueue();
+
+  const createOp = ops.find(
+    (o) =>
+      o.status === "pending" &&
+      o.type === "CREATE_GROUP" &&
+      o.payload.clientId === groupId
+  );
+
+  if (createOp && createOp.type === "CREATE_GROUP") {
+    const ids = new Set(createOp.payload.args.member_ids);
+    membersToAdd.forEach((id) => ids.add(id));
+    membersToRemove.forEach((id) => ids.delete(id));
+    await updateQueuePayload(createOp.id, {
+      ...createOp.payload,
+      args: { ...createOp.payload.args, member_ids: Array.from(ids) }
+    } as CreateGroupPayload);
+  } else {
+    const existing = ops.find(
+      (o) =>
+        o.status === "pending" &&
+        o.type === "UPDATE_MEMBERS" &&
+        (o.payload as UpdateMembersPayload).groupId === groupId
+    );
+
+    if (existing && existing.type === "UPDATE_MEMBERS") {
+      const p = existing.payload as UpdateMembersPayload;
+      const addSet = new Set(p.membersToAdd);
+      const removeSet = new Set(p.membersToRemove);
+      membersToAdd.forEach((id) => {
+        removeSet.delete(id);
+        addSet.add(id);
+      });
+      membersToRemove.forEach((id) => {
+        addSet.delete(id);
+        removeSet.add(id);
+      });
+      await updateQueuePayload(existing.id, {
+        groupId,
+        membersToAdd: Array.from(addSet),
+        membersToRemove: Array.from(removeSet)
+      } as UpdateMembersPayload);
+    } else {
+      await enqueue("UPDATE_MEMBERS", {
+        groupId,
+        membersToAdd,
+        membersToRemove
+      } as UpdateMembersPayload);
+    }
+  }
+
+  await updateMembersOptimistic(groupId, roster);
 }
 
 /** Queue a favorite add. An add that cancels a pending remove just drops it. */

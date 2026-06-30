@@ -10,6 +10,11 @@ import { NotificationType } from "@/types/notifications";
 import { tables } from "@/utils/constants";
 import { getDb } from "@/utils/offlineDb";
 import { supabase } from "@/utils/supabase";
+import {
+  clearCachedUserSession,
+  getCachedUserSession,
+  setCachedUserSession
+} from "@/utils/userCache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { RealtimeChannel } from "@supabase/supabase-js";
@@ -269,6 +274,28 @@ export default function RootLayout() {
   };
 
   const fetchDetails = async (id: string) => {
+    // Hydrate from the local cache FIRST so the app is usable offline right away,
+    // independent of the network (which may be down or slow on a cold launch).
+    // The network fetch below refreshes this once it succeeds.
+    try {
+      const cached = await getCachedUserSession(id);
+      if (cached?.details) {
+        states.user.setState((prev) => ({
+          ...prev,
+          details: cached.details,
+          ...(cached.appearanceMode && {
+            appearanceMode: cached.appearanceMode as typeof prev.appearanceMode
+          }),
+          ...(cached.defaultCurrency && {
+            defaultCurrency: cached.defaultCurrency
+          }),
+          routeIntent: "tabs"
+        }));
+      }
+    } catch {
+      // best-effort — fall through to the network fetch
+    }
+
     try {
       const response = await services.user.getUserById(id);
 
@@ -285,6 +312,7 @@ export default function RootLayout() {
           return;
         }
 
+        await clearCachedUserSession();
         await supabase.auth.signOut();
         states.user.setState((prev) => ({
           ...prev,
@@ -305,6 +333,15 @@ export default function RootLayout() {
       subscribeToNotifications(id);
       registerDevicePushToken(id);
       services.purchase.initializePurchases(id);
+
+      // Persist the fresh profile + UI prefs for the next offline cold launch.
+      const current = states.user.getState();
+      await setCachedUserSession({
+        userId: id,
+        details: response.data,
+        appearanceMode: current.appearanceMode,
+        defaultCurrency: current.defaultCurrency
+      });
 
       try {
         const customerInfo = await services.purchase.getCustomerInfo();

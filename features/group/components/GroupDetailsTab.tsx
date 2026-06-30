@@ -26,6 +26,9 @@ export default function GroupDetailsTab() {
 
   const { details: userDetails } = states.user();
 
+  // Only the group admin may edit the member roster (enforced by RLS too).
+  const isAdmin = details.admin.id === userDetails?.id;
+
   const categoryLabel = useMemo(() => {
     if (!details) return null;
     const category = categories.find((c) => c.value === details.category);
@@ -99,9 +102,16 @@ export default function GroupDetailsTab() {
             <Text bold className="text-xl flex-1">
               Members
             </Text>
-            <Button variant="link" onPress={() => setIsEditMembersOpen(true)}>
-              <Text className="text-primary-400 font-medium">Edit Members</Text>
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="link"
+                onPress={() => setIsEditMembersOpen(true)}
+              >
+                <Text className="text-primary-400 font-medium">
+                  Edit Members
+                </Text>
+              </Button>
+            )}
           </HStack>
 
           <HStack className="gap-x-2">

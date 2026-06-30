@@ -100,12 +100,15 @@ export const updateGroupMembers = async (
 ) => {
   const responses = await Promise.all([
     ...membersToAdd.map((memberId) => {
-      return supabase.from(tables.GROUP_MEMBERS_TBL).insert([
+      // Upsert (ignore duplicates) so a re-synced offline add — or the same
+      // member added from two devices — never creates a duplicate membership.
+      return supabase.from(tables.GROUP_MEMBERS_TBL).upsert(
         {
           group_id: groupId,
           member_id: memberId
-        }
-      ]);
+        },
+        { onConflict: "group_id,member_id", ignoreDuplicates: true }
+      );
     }),
     ...membersToRemove.map((memberId) => {
       return supabase

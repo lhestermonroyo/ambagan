@@ -130,6 +130,12 @@ export function useOfflineSync() {
                 op.payload.userId,
                 op.payload.prefs
               );
+            } else if (op.type === "UPDATE_MEMBERS") {
+              await services.member.updateGroupMembers(
+                op.payload.groupId,
+                op.payload.membersToAdd,
+                op.payload.membersToRemove
+              );
             }
 
             await offlineQueue.removeFromQueue(op.id);
