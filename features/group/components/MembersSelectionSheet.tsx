@@ -184,7 +184,7 @@ export default function MembersSelectionSheet({
                 </Text>
               </HStack>
             </Pressable>
-            <VStack className="w-full gap-y-4">
+            <VStack className="w-full gap-y-4 pb-4">
               {selected.length > 0 && (
                 <HStack className="px-4">
                   <Text className="text-sm text-secondary-950 flex-1">

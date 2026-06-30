@@ -326,7 +326,7 @@ export default function EditMembersSheet({
             </HStack>
           </Pressable>
           <LoadingWrapper text="Loading members..." isLoading={loading}>
-            <VStack className="w-full gap-y-4">
+            <VStack className="w-full gap-y-4 pb-4">
               <VStack>
                 <HStack className="px-4">
                   <Text className="text-sm text-secondary-950 flex-1">
