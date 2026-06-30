@@ -14,6 +14,7 @@ import { VStack } from "@/components/ui/vstack";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import AppearanceSheet from "@/features/profile/components/AppearanceSheet";
 import NotificationsSheet from "@/features/profile/components/PushNotificationsSheet";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import { useNetwork } from "@/hooks/useNetwork";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
@@ -54,6 +55,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const { isOnline } = useNetwork();
+  const ensureOnline = useEnsureOnline();
 
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -188,6 +190,13 @@ export default function ProfileScreen() {
   );
 
   const handleSignOut = async () => {
+    // Logging out offline clears the local session + cache but login needs a
+    // connection — so the user would be stranded with no access to cached data.
+    if (
+      !(await ensureOnline("You need to be online to log out of your account."))
+    )
+      return;
+
     try {
       const { status } = await Notifications.getPermissionsAsync();
       if (status === "granted") {

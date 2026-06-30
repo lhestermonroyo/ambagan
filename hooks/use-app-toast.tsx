@@ -4,6 +4,7 @@ import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { useNetwork } from "@/hooks/useNetwork";
+import { useNetworkHealth } from "@/hooks/useNetworkHealth";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions } from "react-native";
@@ -174,13 +175,15 @@ const CustomToastContainer: React.FC<CustomToastContainerProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const { isOnline } = useNetwork();
+  const { isDegraded } = useNetworkHealth();
 
   if (toasts.length === 0) return null;
 
-  // Clear the status bar/notch; when offline, also clear the offline banner so
-  // the toast isn't hidden underneath it.
+  // Clear the status bar/notch; when a top banner is showing (offline, or the
+  // online-but-slow banner), also clear it so the toast isn't hidden underneath.
+  const showsBanner = !isOnline || isDegraded;
   const paddingTop =
-    insets.top + 12 + (isOnline ? 0 : OFFLINE_BANNER_HEIGHT);
+    insets.top + 12 + (showsBanner ? OFFLINE_BANNER_HEIGHT : 0);
 
   return (
     <Box

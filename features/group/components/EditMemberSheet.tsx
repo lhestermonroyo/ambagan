@@ -1,18 +1,18 @@
 import FormButton from "@/components/FormButton";
+import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
 import {
   Actionsheet,
   ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
+  ActionsheetContent
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { CheckboxGroup } from "@/components/ui/checkbox";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -26,7 +26,9 @@ import { UserPreview } from "@/types/user";
 import { filterContacts, getSavedContacts } from "@/utils/offlineContacts";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useEffect, useMemo, useState } from "react";
+import { Platform } from "react-native";
 import RecentFavoritesTab from "./RecentFavoritesTab";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
@@ -306,15 +308,25 @@ export default function EditMembersSheet({
   }, [members, lockedMembers]);
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[90]}>
+    <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[100]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
-        <ActionsheetDragIndicatorWrapper>
-          <ActionsheetDragIndicator />
-        </ActionsheetDragIndicatorWrapper>
-        <Box className="w-full flex-1">
+        <VStack
+          className={cn(
+            "w-full flex-1",
+            Platform.OS === "android" ? "pt-[3rem]" : "pt-[4.5rem]"
+          )}
+        >
+          <Pressable onPress={handleClose}>
+            <HStack className="p-4 items-center">
+              <Icon as="arrow-back-ios" className="text-secondary-950" />
+              <Text bold className="text-xl">
+                Edit Members
+              </Text>
+            </HStack>
+          </Pressable>
           <LoadingWrapper text="Loading members..." isLoading={loading}>
-            <VStack className="w-full gap-y-4 py-4">
+            <VStack className="w-full gap-y-4">
               <VStack>
                 <HStack className="px-4">
                   <Text className="text-sm text-secondary-950 flex-1">
@@ -413,10 +425,9 @@ export default function EditMembersSheet({
               </CheckboxGroup>
             </ScrollView>
           </LoadingWrapper>
-        </Box>
-        <Box className="items-center justify-start sticky bottom-0 px-4">
-          <Box className="h-4" />
-          <HStack className="gap-x-2 pt-4">
+        </VStack>
+        <Box className="items-center justify-center p-4">
+          <HStack className="gap-x-2">
             <FormButton
               className="flex-1"
               variant="outline"

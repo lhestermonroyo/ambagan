@@ -1,12 +1,11 @@
 import FormButton from "@/components/FormButton";
+import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import SearchInput from "@/components/SearchInput";
 import {
   Actionsheet,
   ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
+  ActionsheetContent
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { CheckboxGroup } from "@/components/ui/checkbox";
@@ -22,8 +21,14 @@ import services from "@/services";
 import states from "@/states";
 import { UserPreview } from "@/types/user";
 import { filterContacts, getSavedContacts } from "@/utils/offlineContacts";
-import { addRecentUser, addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
+import {
+  addRecentUser,
+  addRecentUsers,
+  getRecentUsers
+} from "@/utils/recentUsers";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { Platform } from "react-native";
 import RecentFavoritesTab from "./RecentFavoritesTab";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
@@ -101,7 +106,6 @@ export default function MembersSelectionSheet({
     return tab === "favorites" ? favoriteUsers : recentUsers;
   }, [searching, tab, users, favoriteUsers, recentUsers]);
 
-
   const handleChangeMembers = (newSelectedIds: (string | number)[]) => {
     const selectedUsers = displayUsers.filter((u) =>
       newSelectedIds.includes(u.id)
@@ -163,30 +167,42 @@ export default function MembersSelectionSheet({
 
   return (
     <Fragment>
-      <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[90]}>
+      <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[100]}>
         <ActionsheetBackdrop />
         <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full gap-y-4 py-4">
-            <VStack>
-              <HStack className="px-4">
-                <Text className="text-sm text-secondary-950 flex-1">
-                  {selected.length} member
-                  {selected.length > 1 ? "s" : ""} selected
+          <VStack
+            className={cn(
+              "w-full flex-1",
+              Platform.OS === "android" ? "pt-[3rem]" : "pt-[4.5rem]"
+            )}
+          >
+            <Pressable onPress={handleClose}>
+              <HStack className="p-4 items-center">
+                <Icon as="arrow-back-ios" className="text-secondary-950" />
+                <Text bold className="text-xl">
+                  Select Members
                 </Text>
-                <Pressable
-                  onPress={handleRemoveAllMembers}
-                  disabled={
-                    selected.includes(
-                      selected.find((m) => m.id === user.details?.id)!
-                    ) && selected.length === 1
-                  }
-                >
-                  <Text className="text-primary-400">Remove All</Text>
-                </Pressable>
               </HStack>
+            </Pressable>
+            <VStack className="w-full gap-y-4">
+              {selected.length > 0 && (
+                <HStack className="px-4">
+                  <Text className="text-sm text-secondary-950 flex-1">
+                    {selected.length} member
+                    {selected.length > 1 ? "s" : ""} selected
+                  </Text>
+                  <Pressable
+                    onPress={handleRemoveAllMembers}
+                    disabled={
+                      selected.includes(
+                        selected.find((m) => m.id === user.details?.id)!
+                      ) && selected.length === 1
+                    }
+                  >
+                    <Text className="text-primary-400">Remove All</Text>
+                  </Pressable>
+                </HStack>
+              )}
               <FlatList
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -205,58 +221,60 @@ export default function MembersSelectionSheet({
                   );
                 }}
               />
-            </VStack>
-            <Box className="px-4">
-              <SearchInput
-                placeholder="Search users to add or remove"
-                value={searchInput}
-                onChangeText={(val) => setSearchInput(val)}
-                onSetSearching={setSearching}
-              />
-            </Box>
-            {!isOnline && (
               <Box className="px-4">
-                <Text className="text-xs text-secondary-950">
-                  You're offline — showing saved contacts only
-                </Text>
+                <SearchInput
+                  placeholder="Search users to add or remove"
+                  value={searchInput}
+                  onChangeText={(val) => setSearchInput(val)}
+                  onSetSearching={setSearching}
+                />
               </Box>
-            )}
-            {!searching && (
-              <RecentFavoritesTab tab={tab} onTabChange={setTab} />
-            )}
+              {!isOnline && (
+                <Box className="px-4">
+                  <Text className="text-xs text-secondary-950">
+                    You're offline — showing saved contacts only
+                  </Text>
+                </Box>
+              )}
+              {!searching && (
+                <RecentFavoritesTab tab={tab} onTabChange={setTab} />
+              )}
+            </VStack>
+            <ScrollView className="flex-1 w-full">
+              {displayUsers.length === 0 && (
+                <VStack className="p-4 justify-center items-center">
+                  <Text className="text-sm text-secondary-950">
+                    {emptyText}
+                  </Text>
+                </VStack>
+              )}
+              <CheckboxGroup
+                className="w-full"
+                value={selected.map((member) => member.id)}
+                onChange={handleChangeMembers}
+              >
+                <FlatList
+                  scrollEnabled={false}
+                  className="flex-1"
+                  data={displayUsers}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => {
+                    const isCreator = item.id === userDetails?.id;
+                    return (
+                      <UserCheckboxItem
+                        key={item.id}
+                        item={item}
+                        disabled={isCreator}
+                        isFavorite={favoriteIds.has(item.id)}
+                        onToggleFavorite={handleToggleFavorite}
+                      />
+                    );
+                  }}
+                  ItemSeparatorComponent={ListDivider}
+                />
+              </CheckboxGroup>
+            </ScrollView>
           </VStack>
-          <ScrollView className="flex-1 w-full">
-            {displayUsers.length === 0 && (
-              <VStack className="p-4 justify-center items-center">
-                <Text className="text-sm text-secondary-950">{emptyText}</Text>
-              </VStack>
-            )}
-            <CheckboxGroup
-              className="w-full"
-              value={selected.map((member) => member.id)}
-              onChange={handleChangeMembers}
-            >
-              <FlatList
-                scrollEnabled={false}
-                className="flex-1"
-                data={displayUsers}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => {
-                  const isCreator = item.id === userDetails?.id;
-                  return (
-                    <UserCheckboxItem
-                      key={item.id}
-                      item={item}
-                      disabled={isCreator}
-                      isFavorite={favoriteIds.has(item.id)}
-                      onToggleFavorite={handleToggleFavorite}
-                    />
-                  );
-                }}
-                ItemSeparatorComponent={ListDivider}
-              />
-            </CheckboxGroup>
-          </ScrollView>
           <Box className="items-center justify-center p-4">
             <HStack className="gap-x-2">
               <FormButton
