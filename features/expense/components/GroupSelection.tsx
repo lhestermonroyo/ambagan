@@ -14,6 +14,7 @@ import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
+import { Pressable } from "@/components/ui/pressable";
 import {
   Radio,
   RadioGroup,
@@ -134,12 +135,17 @@ export function GroupSelectionActionSheet({
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full p-4 flex-1 gap-y-4">
-          <Text bold className="text-xl">
-            Select Group to Add Expense
-          </Text>
+        <VStack className="w-full flex-1">
+          <Pressable onPress={onClose}>
+            <HStack className="p-4 items-center">
+              <Icon as="arrow-back-ios" className="text-secondary-950" />
+              <Text bold className="text-xl">
+                Select Group to Add Expense
+              </Text>
+            </HStack>
+          </Pressable>
           <RadioGroup
-            className="flex-1"
+            className="flex-1 px-4"
             value={selectedGroup.toString()}
             onChange={(value) => {
               setSelectedGroup(value);

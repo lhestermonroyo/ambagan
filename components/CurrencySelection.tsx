@@ -1,3 +1,4 @@
+import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import { currencies } from "@/utils/constants";
 import { getSecondaryHex } from "@/utils/getColorHex";
@@ -5,6 +6,7 @@ import { ChevronDown, CircleIcon, Lock } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 import PressableListItem from "./PressableListItem";
+import { Pressable } from "./ui/pressable";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -42,18 +44,23 @@ export const CurrencySelectionSheet = ({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
 
-        <VStack className="w-full py-4 flex-1 gap-y-4">
-          <VStack className="px-4 gap-y-1">
-            <Text bold className="text-xl">
-              {title}
-            </Text>
-            {disabled && (
+        <VStack className="w-full flex-1 gap-y-4">
+          <Pressable onPress={onClose}>
+            <HStack className="p-4 items-center">
+              <Icon as="arrow-back-ios" className="text-secondary-950" />
+              <Text bold className="text-xl">
+                {title}
+              </Text>
+            </HStack>
+          </Pressable>
+          {disabled && (
+            <VStack className="px-4">
               <Text className="text-sm text-secondary-950">
                 You're offline — changing your default currency needs an
                 internet connection.
               </Text>
-            )}
-          </VStack>
+            </VStack>
+          )}
           <RadioGroup
             className="flex-1"
             value={currency}

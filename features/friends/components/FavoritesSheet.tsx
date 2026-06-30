@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import SearchInput from "@/components/SearchInput";
 import {
@@ -113,15 +114,20 @@ export default function FavoritesSheet({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full">
-          <VStack className="p-4">
-            <Text bold className="text-xl">
-              Manage Favorites
-            </Text>
+          <Pressable onPress={handleClose}>
+            <HStack className="p-4 items-center">
+              <Icon as="arrow-back-ios" className="text-secondary-950" />
+              <Text bold className="text-xl">
+                Manage Favorites
+              </Text>
+            </HStack>
+          </Pressable>
+          <Box className="px-4 pb-2">
             <Text className="text-sm text-secondary-950">
               Search users or select from your friends to manage your favorite
               list.
             </Text>
-          </VStack>
+          </Box>
 
           <VStack className="gap-y-4">
             <Box className="px-4">

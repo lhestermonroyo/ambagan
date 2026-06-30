@@ -1,4 +1,5 @@
 import FormButton from "@/components/FormButton";
+import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import { useNetwork } from "@/hooks/useNetwork";
 import {
@@ -11,6 +12,7 @@ import {
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
@@ -168,17 +170,22 @@ export default function PushNotificationsSheet({
         </ActionsheetDragIndicatorWrapper>
         {userDetails && preferences ? (
           <VStack className="w-full flex-1">
-            <VStack className="p-4 gap-y-1">
-              <Text bold className="text-xl">
-                Push Notifications
-              </Text>
-              {!isOnline && (
+            <Pressable onPress={onClose}>
+              <HStack className="p-4 items-center">
+                <Icon as="arrow-back-ios" className="text-secondary-950" />
+                <Text bold className="text-xl">
+                  Push Notifications
+                </Text>
+              </HStack>
+            </Pressable>
+            {!isOnline && (
+              <Box className="px-4 pb-2">
                 <Text className="text-sm text-secondary-950">
                   You're offline — notification preferences can't be changed
                   until you reconnect.
                 </Text>
-              )}
-            </VStack>
+              </Box>
+            )}
 
             <ScrollView className="flex-1 w-full">
               {permissionStatus === "undetermined" && (
