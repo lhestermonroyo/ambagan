@@ -1,20 +1,16 @@
-import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
-import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import PressableListItem from "@/components/PressableListItem";
 import SearchInput from "@/components/SearchInput";
 import { FriendListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
-import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import FriendItem from "@/features/friends/components/FriendItem";
+import FriendRow from "@/features/friends/components/FriendRow";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
@@ -22,21 +18,23 @@ import states from "@/states";
 import { FriendSummary } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Heart } from "lucide-react-native";
-import React, { Fragment, useCallback, useMemo, useRef, useState } from "react";
-import { RefreshControl, useColorScheme } from "react-native";
+import { Fragment, useCallback, useMemo, useState } from "react";
+import { RefreshControl } from "react-native";
 
-type FriendsTab = "all" | "owes-me" | "i-owe" | "friends" | "favorites";
+type MainTab = "balances" | "contacts";
+type BalanceFilter = "all" | "collect" | "pay";
 
-const TABS: { key: FriendsTab; label: string }[] = [
+const MAIN_TABS: { key: MainTab; label: string }[] = [
+  { key: "balances", label: "Balances" },
+  { key: "contacts", label: "Contacts" }
+];
+
+const BALANCE_FILTERS: { key: BalanceFilter; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "owes-me", label: "To Collect" },
-  { key: "i-owe", label: "To Pay" },
-  { key: "friends", label: "Friends" },
-  { key: "favorites", label: "Favorites" }
+  { key: "collect", label: "To collect" },
+  { key: "pay", label: "To pay" }
 ];
 
 export default function FriendsScreen() {
@@ -45,11 +43,9 @@ export default function FriendsScreen() {
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [recentFriends, setRecentFriends] = useState<UserPreview[]>([]);
   const [searchInput, setSearchInput] = useState("");
-  const [searching, setSearching] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [activeTab, setActiveTab] = useState<FriendsTab>("all");
-
-  const activeTabRef = useRef<FriendsTab>("all");
+  const [mainTab, setMainTab] = useState<MainTab>("balances");
+  const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
 
   const { details: userDetails } = states.user();
   const router = useRouter();
@@ -94,12 +90,6 @@ export default function FriendsScreen() {
     }
   };
 
-  const handleTabChange = (tab: FriendsTab) => {
-    if (tab === activeTabRef.current) return;
-    activeTabRef.current = tab;
-    setActiveTab(tab);
-  };
-
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
@@ -110,22 +100,7 @@ export default function FriendsScreen() {
     setRefreshing(false);
   };
 
-  const handleFriendPress = useCallback(
-    (item: FriendSummary) => {
-      router.push({
-        pathname: "/friends/[friendId]",
-        params: {
-          friendId: item.friend.id,
-          name: `${item.friend.first_name} ${item.friend.last_name}`,
-          email: item.friend.email,
-          avatar: item.friend.avatar || ""
-        }
-      });
-    },
-    [router]
-  );
-
-  const handleFavoritePress = useCallback(
+  const handlePress = useCallback(
     (user: UserPreview) => {
       router.push({
         pathname: "/friends/[friendId]",
@@ -140,81 +115,76 @@ export default function FriendsScreen() {
     [router]
   );
 
-  const allList = useMemo(
-    () =>
-      [...friends].sort(
-        (a, b) =>
-          Math.abs(b.balances[0]?.amount ?? 0) -
-          Math.abs(a.balances[0]?.amount ?? 0)
-      ),
-    [friends]
-  );
+  // Balance lookup so any row (search/contacts) can show an amount if the
+  // person is also someone we share money with.
+  const balanceByUserId = useMemo(() => {
+    const map = new Map<string, FriendSummary>();
+    friends.forEach((f) => map.set(f.friend.id, f));
+    return map;
+  }, [friends]);
 
-  const owesMeList = useMemo(
-    () => friends.filter((f) => (f.balances[0]?.amount ?? 0) > 0),
-    [friends]
-  );
+  // The full people directory: favorites + people we have balances with +
+  // recent contacts, de-duplicated (favorites kept first).
+  const allContacts = useMemo(() => {
+    const map = new Map<string, UserPreview>();
+    [
+      ...favoriteUsers,
+      ...friends.map((f) => f.friend),
+      ...recentFriends
+    ].forEach((u) => {
+      if (u.id !== userDetails?.id && !map.has(u.id)) map.set(u.id, u);
+    });
+    return Array.from(map.values());
+  }, [favoriteUsers, friends, recentFriends, userDetails?.id]);
 
-  const iOweList = useMemo(
-    () => friends.filter((f) => (f.balances[0]?.amount ?? 0) < 0),
-    [friends]
-  );
+  const matchesQuery = (u: UserPreview, q: string) =>
+    `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||
+    u.email.toLowerCase().includes(q);
 
-  const filteredFriends = useMemo(() => {
-    const q = searchInput.toLowerCase();
-    const list =
-      activeTab === "all"
-        ? allList
-        : activeTab === "i-owe"
-          ? iOweList
-          : owesMeList;
-    if (!q) return list;
-    return list.filter(
-      ({ friend }) =>
-        `${friend.first_name} ${friend.last_name}`.toLowerCase().includes(q) ||
-        friend.email.toLowerCase().includes(q)
+  const isSearchActive = searchInput.trim().length > 0;
+
+  // Global search across the whole directory; each row adapts (amount if the
+  // person has a balance, none otherwise) and always shows the favorite toggle.
+  const searchResults = useMemo(() => {
+    if (!isSearchActive) return [];
+    const q = searchInput.toLowerCase().trim();
+    return allContacts.filter((u) => matchesQuery(u, q));
+  }, [isSearchActive, searchInput, allContacts]);
+
+  const balanceList = useMemo(() => {
+    const filtered =
+      balanceFilter === "collect"
+        ? friends.filter((f) => (f.balances[0]?.amount ?? 0) > 0)
+        : balanceFilter === "pay"
+          ? friends.filter((f) => (f.balances[0]?.amount ?? 0) < 0)
+          : friends;
+    return [...filtered].sort(
+      (a, b) =>
+        Math.abs(b.balances[0]?.amount ?? 0) -
+        Math.abs(a.balances[0]?.amount ?? 0)
     );
-  }, [searchInput, activeTab, allList, owesMeList, iOweList]);
+  }, [friends, balanceFilter]);
 
-  const filteredFavorites = useMemo(() => {
-    if (!searchInput) return favoriteUsers;
-    const q = searchInput.toLowerCase();
-    return favoriteUsers.filter(
-      (u) =>
-        `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q)
-    );
-  }, [searchInput, favoriteUsers]);
-
-  const filteredRecentFriends = useMemo(() => {
-    if (!searchInput) return recentFriends;
-    const q = searchInput.toLowerCase();
-    return recentFriends.filter(
-      (u) =>
-        `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q)
-    );
-  }, [searchInput, recentFriends]);
-
-  const emptyType = searching ? EmptyType.SEARCH : EmptyType.FRIEND;
-
-  const renderFriendItem = useCallback(
-    ({ item }: { item: FriendSummary }) => (
-      <FriendItem item={item} onPress={handleFriendPress} />
-    ),
-    [handleFriendPress]
+  const favoriteContacts = useMemo(
+    () => allContacts.filter((u) => favoriteIds.has(u.id)),
+    [allContacts, favoriteIds]
   );
 
-  const renderFavoriteListItem = useCallback(
+  const otherContacts = useMemo(
+    () => allContacts.filter((u) => !favoriteIds.has(u.id)),
+    [allContacts, favoriteIds]
+  );
+
+  const renderContactRow = useCallback(
     ({ item }: { item: UserPreview }) => (
-      <FavoriteListItem
-        item={item}
+      <FriendRow
+        user={item}
         isFavorite={favoriteIds.has(item.id)}
-        onPress={handleFavoritePress}
+        onPress={handlePress}
         onToggleFavorite={handleToggleFavorite}
       />
     ),
-    [favoriteIds, handleFavoritePress, handleToggleFavorite]
+    [favoriteIds, handlePress, handleToggleFavorite]
   );
 
   return (
@@ -225,21 +195,35 @@ export default function FriendsScreen() {
             <SearchInput
               value={searchInput}
               onChangeText={setSearchInput}
-              onSetSearching={setSearching}
               placeholder="Search friends"
             />
           </Box>
 
-          {!searching && (
+          {/* Balances / Contacts tabs under the search */}
+          <HStack className="px-4 gap-x-2">
+            {MAIN_TABS.map((tab) => (
+              <FormButton
+                key={tab.key}
+                className="flex-1"
+                size="sm"
+                variant={mainTab === tab.key ? "solid" : "outline"}
+                text={tab.label}
+                onPress={() => setMainTab(tab.key)}
+              />
+            ))}
+          </HStack>
+
+          {/* Balance direction filter — only on the Balances tab, not searching */}
+          {!isSearchActive && mainTab === "balances" && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <HStack className="gap-x-2 px-4">
-                {TABS.map((tab) => (
+                {BALANCE_FILTERS.map((filter) => (
                   <FormButton
-                    key={tab.key}
+                    key={filter.key}
                     size="sm"
-                    variant={activeTab === tab.key ? "solid" : "outline"}
-                    text={tab.label}
-                    onPress={() => handleTabChange(tab.key)}
+                    variant={balanceFilter === filter.key ? "solid" : "outline"}
+                    text={filter.label}
+                    onPress={() => setBalanceFilter(filter.key)}
                   />
                 ))}
               </HStack>
@@ -254,114 +238,87 @@ export default function FriendsScreen() {
           }
         >
           <LoadingWrapper isLoading={loading} skeleton={<FriendListSkeleton />}>
-            {activeTab === "friends" ? (
+            {isSearchActive ? (
+              // Unified global search across balances + contacts.
               <FlatList
-                data={filteredRecentFriends}
+                data={searchResults}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
-                renderItem={renderFavoriteListItem}
-                ItemSeparatorComponent={ListDivider}
-                ListEmptyComponent={() => (
-                  <EmptyList
-                    type={searching ? EmptyType.SEARCH : EmptyType.FRIEND}
+                renderItem={({ item }) => (
+                  <FriendRow
+                    user={item}
+                    balances={balanceByUserId.get(item.id)?.balances}
+                    isFavorite={favoriteIds.has(item.id)}
+                    onPress={handlePress}
+                    onToggleFavorite={handleToggleFavorite}
                   />
                 )}
+                ItemSeparatorComponent={ListDivider}
+                ListEmptyComponent={() => <EmptyList type={EmptyType.SEARCH} />}
                 ListFooterComponent={() => <Box className="h-16" />}
               />
-            ) : activeTab !== "favorites" ? (
-              <>
-                {activeTab === "all" && filteredFavorites.length > 0 && (
+            ) : mainTab === "balances" ? (
+              <FlatList
+                data={balanceList}
+                keyExtractor={(item) => item.friend.id}
+                scrollEnabled={false}
+                renderItem={({ item }) => (
+                  <FriendRow
+                    user={item.friend}
+                    balances={item.balances}
+                    isFavorite={favoriteIds.has(item.friend.id)}
+                    onPress={handlePress}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
+                )}
+                ItemSeparatorComponent={ListDivider}
+                ListEmptyComponent={() => <EmptyList type={EmptyType.FRIEND} />}
+                ListFooterComponent={() => <Box className="h-16" />}
+              />
+            ) : (
+              // Contacts directory — favorites pinned, then everyone else.
+              <VStack className="gap-y-2">
+                {favoriteContacts.length > 0 && (
                   <VStack className="gap-y-2">
-                    <Text bold className="text-sm text-secondary-950 uppercase px-4">
+                    <Text
+                      bold
+                      className="text-sm text-secondary-950 uppercase px-4 pt-2"
+                    >
                       Favorites
                     </Text>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                    >
-                      <HStack className="px-4 pb-3">
-                        {filteredFavorites.map((fav) => (
-                          <Pressable
-                            key={fav.id}
-                            style={{ maxWidth: 100 }}
-                            className="p-2"
-                            onPress={() => handleFavoritePress(fav)}
-                          >
-                            <VStack className="relative justify-center items-center gap-y-2">
-                              <AppAvatar
-                                name={fav.first_name}
-                                uri={fav.avatar || undefined}
-                                size="lg"
-                                className="rounded-full"
-                              />
-                              <VStack className="items-center gap-y-0">
-                                <Text className="text-center break-words">
-                                  {fav.first_name} {fav.last_name}
-                                </Text>
-                              </VStack>
-                            </VStack>
-                          </Pressable>
-                        ))}
-                      </HStack>
-                    </ScrollView>
-                  </VStack>
-                )}
-                {activeTab === "all" && searchInput.length > 0 ? (
-                  filteredFriends.length > 0 ? (
-                    <VStack className="gap-y-2">
-                      {filteredFavorites.length > 0 && (
-                        <Text
-                          bold
-                          className="text-sm text-secondary-950 uppercase px-4"
-                        >
-                          Settlements
-                        </Text>
-                      )}
-                      <FlatList
-                        data={filteredFriends}
-                        keyExtractor={(item) => item.friend.id}
-                        scrollEnabled={false}
-                        renderItem={renderFriendItem}
-                        ItemSeparatorComponent={ListDivider}
-                        ListFooterComponent={() => <Box className="h-16" />}
-                      />
-                    </VStack>
-                  ) : filteredFavorites.length === 0 ? (
-                    <EmptyList type={EmptyType.SEARCH} />
-                  ) : null
-                ) : (
-                  <VStack className="gap-y-2">
-                    {activeTab === "all" && (
-                      <Text bold className="text-sm text-secondary-950 uppercase px-4">
-                        Settlements
-                      </Text>
-                    )}
                     <FlatList
-                      data={filteredFriends}
-                      keyExtractor={(item) => item.friend.id}
+                      data={favoriteContacts}
+                      keyExtractor={(item) => item.id}
                       scrollEnabled={false}
-                      renderItem={renderFriendItem}
+                      renderItem={renderContactRow}
                       ItemSeparatorComponent={ListDivider}
-                      ListEmptyComponent={() => <EmptyList type={emptyType} />}
-                      ListFooterComponent={() => <Box className="h-16" />}
                     />
                   </VStack>
                 )}
-              </>
-            ) : (
-              <FlatList
-                data={filteredFavorites}
-                keyExtractor={(item) => item.id}
-                scrollEnabled={false}
-                renderItem={renderFavoriteListItem}
-                ItemSeparatorComponent={ListDivider}
-                ListEmptyComponent={() => (
-                  <EmptyList
-                    type={searching ? EmptyType.SEARCH : EmptyType.FAVORITE}
+                <VStack className="gap-y-2">
+                  {favoriteContacts.length > 0 && otherContacts.length > 0 && (
+                    <Text
+                      bold
+                      className="text-sm text-secondary-950 uppercase px-4 pt-2"
+                    >
+                      All Contacts
+                    </Text>
+                  )}
+                  <FlatList
+                    data={otherContacts}
+                    keyExtractor={(item) => item.id}
+                    scrollEnabled={false}
+                    renderItem={renderContactRow}
+                    ItemSeparatorComponent={ListDivider}
+                    ListEmptyComponent={() =>
+                      favoriteContacts.length === 0 ? (
+                        <EmptyList type={EmptyType.FRIEND} />
+                      ) : null
+                    }
                   />
-                )}
-                ListFooterComponent={() => <Box className="h-16" />}
-              />
+                </VStack>
+                <Box className="h-16" />
+              </VStack>
             )}
           </LoadingWrapper>
         </ScrollView>
@@ -369,57 +326,3 @@ export default function FriendsScreen() {
     </Fragment>
   );
 }
-
-const FavoriteListItem = React.memo(function FavoriteListItem({
-  item,
-  isFavorite = false,
-  onPress,
-  onToggleFavorite
-}: {
-  item: UserPreview;
-  isFavorite?: boolean;
-  onPress: (item: UserPreview) => void;
-  onToggleFavorite?: (item: UserPreview) => void;
-}) {
-  const colorScheme = useColorScheme() ?? "light";
-
-  const handlePress = useCallback(() => onPress(item), [item, onPress]);
-  const handleToggle = useCallback(
-    () => onToggleFavorite?.(item),
-    [item, onToggleFavorite]
-  );
-
-  return (
-    <PressableListItem className="p-4" onPress={handlePress}>
-      <HStack className="gap-x-3 items-center">
-        <AppAvatar name={item.first_name} uri={item.avatar || undefined} />
-        <VStack className="flex-1">
-          <Text className="text-lg">
-            {item.first_name} {item.last_name}
-          </Text>
-          <Text className="text-sm text-secondary-950">{item.email}</Text>
-        </VStack>
-        <HStack className="gap-x-3 items-center">
-          {onToggleFavorite && (
-            <Pressable onPress={handleToggle}>
-              <Heart
-                size={18}
-                color={
-                  isFavorite
-                    ? getPrimaryHex("text-primary-400", colorScheme)
-                    : getSecondaryHex("text-secondary-950", colorScheme)
-                }
-                fill={
-                  isFavorite
-                    ? getPrimaryHex("text-primary-400", colorScheme)
-                    : "none"
-                }
-              />
-            </Pressable>
-          )}
-          <Icon as="chevron-right" className="text-secondary-950" />
-        </HStack>
-      </HStack>
-    </PressableListItem>
-  );
-});

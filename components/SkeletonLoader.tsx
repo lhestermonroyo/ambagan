@@ -50,8 +50,8 @@ function SkeletonDivider({ color }: { color: string }) {
 }
 
 // ─────────────────────────────────────────────
-// FriendItem / FavoriteListItem skeleton
-// Layout: avatar(48) | name + email | amount
+// FriendRow skeleton
+// Layout: avatar(48) | name + email | amount + heart + chevron
 // ─────────────────────────────────────────────
 function FriendSkeletonRow({ color }: { color: string }) {
   return (
@@ -61,7 +61,11 @@ function FriendSkeletonRow({ color }: { color: string }) {
         <Bone w="40%" h={14} color={color} />
         <Bone w="62%" h={12} color={color} />
       </View>
-      <Bone w={56} h={14} color={color} />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Bone w={56} h={14} color={color} />
+        <Bone w={18} h={18} radius={999} color={color} />
+        <Bone w={8} h={14} color={color} />
+      </View>
     </View>
   );
 }

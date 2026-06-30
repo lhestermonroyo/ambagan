@@ -5,8 +5,8 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import { GroupListSkeleton } from "@/components/SkeletonLoader";
 import SearchInput from "@/components/SearchInput";
+import { GroupListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Fab, FabLabel } from "@/components/ui/fab";
@@ -26,7 +26,6 @@ import { HousePlus } from "lucide-react-native";
 import { Fragment, useMemo, useRef, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
-
 
 const TABS: { key: GroupFilter; label: string }[] = [
   { key: "all", label: "All" },
@@ -208,7 +207,7 @@ export default function GroupsScreen() {
             <SearchInput
               onChangeText={handleSearchChange}
               value={searchInput}
-              placeholder="Search group"
+              placeholder="Search groups"
             />
           </Box>
 
