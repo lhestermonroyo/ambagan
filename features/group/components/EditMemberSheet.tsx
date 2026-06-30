@@ -8,6 +8,7 @@ import {
   ActionsheetBackdrop,
   ActionsheetContent
 } from "@/components/ui/actionsheet";
+import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
 import { Box } from "@/components/ui/box";
 import { CheckboxGroup } from "@/components/ui/checkbox";
 import { FlatList } from "@/components/ui/flat-list";
@@ -311,6 +312,7 @@ export default function EditMembersSheet({
     <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[100]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
+        <KeyboardAvoidingSheet>
         <VStack
           className={cn(
             "w-full flex-1",
@@ -444,6 +446,7 @@ export default function EditMembersSheet({
             />
           </HStack>
         </Box>
+        </KeyboardAvoidingSheet>
       </ActionsheetContent>
     </Actionsheet>
   );

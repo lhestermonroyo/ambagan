@@ -8,6 +8,7 @@ import {
   ActionsheetDragIndicator,
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
+import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
@@ -107,6 +108,7 @@ export default function FavoritesSheet({
     <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[90]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
+        <KeyboardAvoidingSheet>
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
@@ -158,6 +160,7 @@ export default function FavoritesSheet({
             </ScrollView>
           </VStack>
         </VStack>
+        </KeyboardAvoidingSheet>
       </ActionsheetContent>
     </Actionsheet>
   );

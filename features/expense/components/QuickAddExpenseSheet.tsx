@@ -14,6 +14,7 @@ import {
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Badge, BadgeText } from "@/components/ui/badge";
+import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -59,7 +60,7 @@ import {
   useRef,
   useState
 } from "react";
-import { useColorScheme } from "react-native";
+import { Platform, useColorScheme } from "react-native";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
@@ -327,6 +328,10 @@ export default function QuickAddExpenseSheet({
           <ActionsheetDragIndicatorWrapper>
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={{ flex: 1, width: "100%" }}
+          >
           <VStack className="w-full flex-1">
             <HStack className="align-items justify-between">
               <Pressable onPress={onClose}>
@@ -584,6 +589,7 @@ export default function QuickAddExpenseSheet({
               </>
             )}
           </VStack>
+          </KeyboardAvoidingView>
         </ActionsheetContent>
       </Actionsheet>
 

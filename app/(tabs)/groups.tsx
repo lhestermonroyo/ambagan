@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Fab, FabLabel } from "@/components/ui/fab";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
+import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import GroupItem from "@/features/group/components/GroupItem";
 import { GroupFilter } from "@/features/group/services/group.service";
@@ -297,6 +298,14 @@ export default function GroupsScreen() {
               rightOpenValue={activeTab === "archived" ? -70 : -116}
               disableRightSwipe
               ItemSeparatorComponent={ListDivider}
+              ListHeaderComponent={() =>
+                searching && (
+                  <Text className="text-sm text-secondary-950 px-4 pb-2" bold>
+                    {filteredGroups.length} result
+                    {filteredGroups.length !== 1 ? "s" : ""}
+                  </Text>
+                )
+              }
               ListEmptyComponent={() => (
                 <EmptyList
                   type={searching ? EmptyType.SEARCH : EmptyType.GROUP}
@@ -314,7 +323,6 @@ export default function GroupsScreen() {
                   <Box className="h-16" />
                 </>
               )}
-              stickyHeaderIndices={[0]}
             />
           </LoadingWrapper>
         </ScrollView>

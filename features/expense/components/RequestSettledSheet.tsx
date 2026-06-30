@@ -9,6 +9,7 @@ import {
   ActionsheetDragIndicator,
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
+import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -97,6 +98,7 @@ export default function RequestSettledSheet({
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
+        <KeyboardAvoidingSheet>
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
@@ -185,6 +187,7 @@ export default function RequestSettledSheet({
             />
           </HStack>
         </Box>
+        </KeyboardAvoidingSheet>
       </ActionsheetContent>
     </Actionsheet>
   );

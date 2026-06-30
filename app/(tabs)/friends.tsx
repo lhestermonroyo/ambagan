@@ -200,18 +200,20 @@ export default function FriendsScreen() {
           </Box>
 
           {/* Balances / Contacts tabs under the search */}
-          <HStack className="px-4 gap-x-2">
-            {MAIN_TABS.map((tab) => (
-              <FormButton
-                key={tab.key}
-                className="flex-1"
-                size="sm"
-                variant={mainTab === tab.key ? "solid" : "outline"}
-                text={tab.label}
-                onPress={() => setMainTab(tab.key)}
-              />
-            ))}
-          </HStack>
+          {!isSearchActive && (
+            <HStack className="px-4 gap-x-2">
+              {MAIN_TABS.map((tab) => (
+                <FormButton
+                  key={tab.key}
+                  className="flex-1"
+                  size="sm"
+                  variant={mainTab === tab.key ? "solid" : "outline"}
+                  text={tab.label}
+                  onPress={() => setMainTab(tab.key)}
+                />
+              ))}
+            </HStack>
+          )}
 
           {/* Balance direction filter — only on the Balances tab, not searching */}
           {!isSearchActive && mainTab === "balances" && (
@@ -254,6 +256,12 @@ export default function FriendsScreen() {
                   />
                 )}
                 ItemSeparatorComponent={ListDivider}
+                ListHeaderComponent={() => (
+                  <Text className="text-sm text-secondary-950 px-4 pb-2" bold>
+                    {searchResults.length} result
+                    {searchResults.length !== 1 ? "s" : ""}
+                  </Text>
+                )}
                 ListEmptyComponent={() => <EmptyList type={EmptyType.SEARCH} />}
                 ListFooterComponent={() => <Box className="h-16" />}
               />

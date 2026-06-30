@@ -7,6 +7,7 @@ import {
   ActionsheetDragIndicator,
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
+import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
@@ -83,6 +84,7 @@ export default function EditNameSheet({
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[60]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
+        <KeyboardAvoidingSheet>
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
@@ -128,6 +130,7 @@ export default function EditNameSheet({
             />
           </HStack>
         </Box>
+        </KeyboardAvoidingSheet>
       </ActionsheetContent>
     </Actionsheet>
   );
