@@ -91,10 +91,10 @@
           <i data-lucide="sun" class="w-[18px] h-[18px] hidden dark:block"></i>
           <i data-lucide="moon" class="w-[18px] h-[18px] dark:hidden"></i>
         </button>
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-medium px-3 py-1.5">
-          <i data-lucide="test-tube-2" class="w-3.5 h-3.5"></i>
-          TestFlight · v1.1
-        </span>
+        <a href="https://apps.apple.com/ph/app/ambagan-ph/id6779220285" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-medium px-3 py-1.5 hover:bg-violet-100 dark:hover:bg-violet-500/20 transition-colors">
+          <i data-lucide="apple" class="w-3.5 h-3.5"></i>
+          Now on the App Store
+        </a>
       </div>
     </div>
   </header>
@@ -103,7 +103,7 @@
   <section class="max-w-6xl mx-auto px-6 pt-16 pb-20 md:pt-24 md:pb-28 grid md:grid-cols-2 gap-12 items-center">
     <div>
       <span class="inline-flex items-center gap-1.5 rounded-full bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-semibold px-3 py-1.5 mb-6">
-        Made for the barkada 🇵🇭 · v1.1 now in TestFlight
+        Made for the barkada 🇵🇭 · Now live on iOS
       </span>
       <h1 class="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] mb-5">
         Split smarter.<br />Settle faster.
@@ -113,22 +113,20 @@
         effortless — track who paid, who owes, and settle up in seconds.
       </p>
       <!--
-        STORE BADGES (currently disabled "coming soon" <span>s since the app
-        isn't published yet). Once live, swap each <span> for an <a> with the
-        real store URL, e.g.:
-          Apple:   <a href="https://apps.apple.com/app/idXXXXXXXXX" ...>
-          Android: <a href="https://play.google.com/store/apps/details?id=com.lhestermonroyo.ambagan" ...>
-        and remove the opacity-60 / cursor-not-allowed classes.
+        STORE BADGES — iOS is live on the App Store; Android is still in
+        development, so its badge stays disabled with a "Soon" tag until the
+        Play Store listing is published.
       -->
       <div class="flex flex-wrap items-center gap-3">
-        <span class="opacity-60 cursor-not-allowed" aria-disabled="true">
+        <a href="https://apps.apple.com/ph/app/ambagan-ph/id6779220285" target="_blank" rel="noopener" class="transition-opacity hover:opacity-90">
           <img src="./assets/images/app-store.png" alt="Download on the App Store" class="h-11 w-auto" />
-        </span>
-        <span class="opacity-60 cursor-not-allowed" aria-disabled="true">
-          <img src="./assets/images/google-play.png" alt="Get it on Google Play" class="h-11 w-auto" />
+        </a>
+        <span class="relative opacity-60 cursor-not-allowed" aria-disabled="true" title="Android coming soon">
+          <img src="./assets/images/google-play.png" alt="Get it on Google Play — coming soon" class="h-11 w-auto" />
+          <span class="absolute -top-2 -right-2 rounded-full bg-violet-600 text-white text-[10px] font-semibold px-2 py-0.5">Soon</span>
         </span>
       </div>
-      <p class="text-sm text-gray-400 dark:text-gray-500 mt-4">Now in TestFlight · Free to start · Pro from ₱149/month or ₱799/year.</p>
+      <p class="text-sm text-gray-400 dark:text-gray-500 mt-4">Now on the App Store · Android coming soon · Free to start · Pro from ₱149/month or ₱799/year.</p>
     </div>
 
     <!-- Hero phone screenshots — 3-card fan -->
@@ -199,7 +197,7 @@
             <i data-lucide="wifi-off" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i>
           </div>
           <h3 class="font-semibold mb-1.5">Works offline, syncs instantly</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">No signal? No problem. Browse your groups and balances from cache, log expenses offline, and everything syncs when you reconnect.</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">No signal? No problem. Browse from cache and add, edit, or delete expenses, manage your groups and members, and update favorites entirely offline — everything syncs automatically when you reconnect.</p>
         </div>
 
         <div class="bg-white dark:bg-gray-800/60 rounded-2xl p-6 border border-gray-100 dark:border-gray-800">
@@ -390,14 +388,15 @@
   <section class="bg-violet-50 dark:bg-violet-500/10 py-16">
     <div class="max-w-2xl mx-auto px-6 text-center">
       <h2 class="text-2xl md:text-3xl font-bold tracking-tight mb-3">Ready to split smarter?</h2>
-      <p class="text-gray-500 dark:text-gray-400 leading-relaxed mb-2">Now in TestFlight on iOS. Android coming soon.</p>
+      <p class="text-gray-500 dark:text-gray-400 leading-relaxed mb-2">Now live on the App Store. Android coming soon.</p>
       <p class="text-sm text-gray-400 dark:text-gray-500 mb-7">Free to download · Pro from ₱149/month or ₱799/year.</p>
       <div class="flex flex-wrap items-center justify-center gap-3">
-        <span class="opacity-60 cursor-not-allowed" aria-disabled="true">
+        <a href="https://apps.apple.com/ph/app/ambagan-ph/id6779220285" target="_blank" rel="noopener" class="transition-opacity hover:opacity-90">
           <img src="./assets/images/app-store.png" alt="Download on the App Store" class="h-11 w-auto" />
-        </span>
-        <span class="opacity-60 cursor-not-allowed" aria-disabled="true">
-          <img src="./assets/images/google-play.png" alt="Get it on Google Play" class="h-11 w-auto" />
+        </a>
+        <span class="relative opacity-60 cursor-not-allowed" aria-disabled="true" title="Android coming soon">
+          <img src="./assets/images/google-play.png" alt="Get it on Google Play — coming soon" class="h-11 w-auto" />
+          <span class="absolute -top-2 -right-2 rounded-full bg-violet-600 text-white text-[10px] font-semibold px-2 py-0.5">Soon</span>
         </span>
       </div>
     </div>

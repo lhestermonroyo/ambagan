@@ -57,7 +57,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Can I add members after a group is created?",
         answer:
-          "Yes. Open the group, go to the Members section in the Group Details tab, and tap Edit Members to add or remove people."
+          "Yes — the group admin can. Open the group, go to the Members section in the Group Details tab, and tap Edit Members to add or remove people. Only the admin sees the Edit Members option; other members can leave on their own but can't change the roster."
       },
       {
         question: "Why can't I remove a member from the group?",
@@ -172,12 +172,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What does the Friends tab show?",
         answer:
-          "The Friends tab shows everyone you share a group with, along with a balance summary. Use the All, To Collect, To Pay, Friends, and Favorites filters to find who you need. The Friends filter shows everyone saved from your group history as a quick contact list."
+          "The Friends tab has two views. Balances shows everyone you share money with, along with the amount — use the All, To Collect, and To Pay filters to focus on who owes you or who you owe. Contacts is your full directory of people (favorites pinned at the top, then everyone else) for browsing or starting something new. Search at the top looks across both at once: matching people show their balance if they have one, or just their name if they don't."
       },
       {
         question: "How do I add someone as a favorite?",
         answer:
-          "Tap the heart icon on any person in the Friends or Favorites tab to add or remove them as a favorite. You can also tap the heart icon in the top-right corner of a friend's detail page. Favorites appear in the dedicated Favorites tab."
+          "Tap the heart icon next to any person in the Friends tab — in either the Balances or Contacts view, or in search results. You can also tap the heart in the top-right corner of a friend's detail page. Your favorites are pinned to the top of the Contacts view for quick access."
       },
       {
         question: "What is the net balance shown on a friend's detail page?",
@@ -247,7 +247,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What happens when I lose internet connection?",
         answer:
-          "A toast notification appears saying 'No Internet Connection', and a blue banner at the top of the screen shows 'Offline Mode — Showing cached data'. You can still browse your groups, expenses, and friends using the last cached data. Creating new expenses works offline (they sync automatically when you reconnect), but editing expenses and settlements requires an internet connection."
+          "A blue 'Offline Mode — Showing cached data' banner appears at the top, and you can keep using the app with your last synced data. Most actions work offline and sync automatically when you reconnect: adding, editing, and deleting expenses; creating groups and editing a group's name or category; archiving a group; adding or removing members (group admin); managing favorites; and changing the app appearance. A few things need a live connection: settling up, finalizing a draft, leaving a group, logging out, editing your profile or account, changing your default currency or notification preferences, and uploading images (payment proofs and photos). You'll see a short message if you try one of those while offline."
+      },
+      {
+        question: "Why does it say 'Slow connection — showing saved data'?",
+        answer:
+          "If your device is connected but the network is too slow or unresponsive to load fresh data, Ambagan shows your last saved data with an amber 'Slow connection' banner instead of leaving you stuck waiting. It refreshes automatically once the connection recovers."
       },
       {
         question:
