@@ -167,11 +167,8 @@ export default function CreateGroupScreen() {
         throw new Error("Failed to create group");
       }
 
-      // Don't pollute recent contacts with placeholders (ghosts).
-      await addRecentUsers(
-        resolvedMembers.filter((m) => !m.is_placeholder),
-        user.details!.id
-      );
+      // Placeholder ghosts are dropped inside addRecentUsers, so recent stays clean.
+      await addRecentUsers(resolvedMembers, user.details!.id);
 
       toast({
         title: "Group Created",

@@ -228,7 +228,7 @@ export default function GroupsScreen() {
           size={18}
           color={getSecondaryHex("text-secondary-0", colorScheme)}
         />
-        <FabLabel className="text-lg font-medium">Add Group</FabLabel>
+        <FabLabel className="text-lg font-medium">Create Group</FabLabel>
       </Fab>
       <TabLayout title="Groups">
         <VStack className="bg-background-0 pb-3 gap-y-3">

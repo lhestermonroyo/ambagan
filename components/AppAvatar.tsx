@@ -1,9 +1,11 @@
+import Icon from "@/components/Icon";
 import {
   Avatar,
   AvatarBadge,
   AvatarFallbackText,
   AvatarImage
 } from "@/components/ui/avatar";
+import { Box } from "@/components/ui/box";
 import { useNetwork } from "@/hooks/useNetwork";
 import { avatarColors } from "@/utils/constants";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
@@ -13,6 +15,9 @@ type AppAvatarProps = {
   name: string;
   uri?: string;
   unread?: boolean;
+  /** Phone-contact placeholder (not on Ambagan yet) — shows a small corner
+   *  indicator on the avatar, mirroring the locked-member indicator. */
+  isPlaceholder?: boolean;
   indicator?: React.ReactNode;
 } & ComponentPropsWithRef<typeof Avatar>;
 
@@ -20,6 +25,7 @@ const AppAvatar = ({
   name,
   uri,
   unread = false,
+  isPlaceholder = false,
   indicator,
   ...props
 }: AppAvatarProps) => {
@@ -59,6 +65,11 @@ const AppAvatar = ({
         <AvatarBadge className="p-0 justify-center items-center" size="xl">
           {indicator}
         </AvatarBadge>
+      )}
+      {isPlaceholder && (
+        <Box className="absolute right-0 bottom-0 z-10 bg-background-100 rounded-full p-1">
+          <Icon as="schedule" size={12} className="text-secondary-950" />
+        </Box>
       )}
     </Avatar>
   );

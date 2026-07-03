@@ -49,15 +49,25 @@ export default function SettlementItem({
           )}
           <HStack className="gap-x-4">
             <VStack className="flex-1">
-              <Text className="text-lg">
-                {item.member.first_name} {item.member.last_name}
-                {isUserMember && " (You)"}
-              </Text>
+              <HStack className="items-center gap-x-1">
+                <Text className="text-lg">
+                  {item.member.first_name} {item.member.last_name}
+                  {isUserMember && " (You)"}
+                </Text>
+                {item.member.is_placeholder && (
+                  <Icon as="schedule" size={14} className="text-secondary-950" />
+                )}
+              </HStack>
               <Text className="text-sm text-secondary-950">pays</Text>
-              <Text className="text-lg">
-                {item.payer.first_name} {item.payer.last_name}
-                {isUserPayer && " (You)"}
-              </Text>
+              <HStack className="items-center gap-x-1">
+                <Text className="text-lg">
+                  {item.payer.first_name} {item.payer.last_name}
+                  {isUserPayer && " (You)"}
+                </Text>
+                {item.payer.is_placeholder && (
+                  <Icon as="schedule" size={14} className="text-secondary-950" />
+                )}
+              </HStack>
             </VStack>
             <HStack className="gap-x-2 items-center">
               <VStack className="items-end">

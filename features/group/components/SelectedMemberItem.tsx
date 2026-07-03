@@ -1,5 +1,6 @@
 import { default as Avatar } from "@/components/AppAvatar";
 import Icon from "@/components/Icon";
+import PlaceholderBadge from "@/components/PlaceholderBadge";
 import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -52,11 +53,7 @@ export default function SelectedMemberItem({
             {member.first_name} {member.last_name}
             {isMe && " (You)"}
           </Text>
-          {member.is_placeholder && (
-            <Text className="text-center text-xs text-secondary-950">
-              Not on Ambagan yet
-            </Text>
-          )}
+          {member.is_placeholder && <PlaceholderBadge />}
         </VStack>
       </VStack>
     </Pressable>

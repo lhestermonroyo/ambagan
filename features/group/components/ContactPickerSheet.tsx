@@ -8,6 +8,7 @@ import {
   ActionsheetBackdrop,
   ActionsheetContent
 } from "@/components/ui/actionsheet";
+import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import {
   Checkbox,
@@ -37,6 +38,13 @@ type PickableContact = {
   avatar: string | null;
 };
 
+/** Normalized full name used to match a contact against a known account. */
+const normalizeName = (first?: string | null, last?: string | null) =>
+  `${first ?? ""} ${last ?? ""}`
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
 /** Build a member-shaped object for a picked contact. Its id is a temp marker
  *  (`contact:<phone>`) that resolveContactMembers swaps for a real id on save. */
 export function toContactMember(c: PickableContact): UserPreview {
@@ -56,12 +64,17 @@ export default function ContactPickerSheet({
   isOpen,
   onClose,
   excludePhones = [],
+  knownUsers = [],
   onAdd
 }: {
   isOpen: boolean;
   onClose: () => void;
   /** Normalized phones already in the group, hidden from the picker. */
   excludePhones?: string[];
+  /** Real accounts the caller already knows (friends/favorites/members). A
+   *  contact whose name matches one of these — and which phone-matching can't
+   *  catch — links to that account instead of minting a duplicate ghost. */
+  knownUsers?: UserPreview[];
   onAdd: (members: UserPreview[]) => void;
 }) {
   const [permission, setPermission] =
@@ -152,6 +165,26 @@ export default function ContactPickerSheet({
     return map;
   }, [contacts]);
 
+  // Name → known account, but ONLY for accounts with no phone on file (the ones
+  // phone-matching can never catch). A known account WITH a phone is handled by
+  // excludePhones/the RPC; matching those by name risks merging two different
+  // same-named people. Ambiguous names (two known accounts share one) map to
+  // null so they fall back to a normal ghost rather than link to the wrong one.
+  const knownByName = useMemo(() => {
+    const map = new Map<string, UserPreview | null>();
+    for (const u of knownUsers) {
+      if (u.is_placeholder || normalizePhone(u.phone)) continue;
+      const name = normalizeName(u.first_name, u.last_name);
+      if (!name) continue;
+      map.set(name, map.has(name) ? null : u);
+    }
+    return map;
+  }, [knownUsers]);
+
+  /** The known account a contact links to, or null to create a ghost. */
+  const linkedUserFor = (c: PickableContact): UserPreview | null =>
+    knownByName.get(normalizeName(c.first_name, c.last_name)) ?? null;
+
   const handleChange = (values: (string | number)[]) =>
     setSelected((prev) => {
       const next: Record<string, PickableContact> = {};
@@ -170,7 +203,8 @@ export default function ContactPickerSheet({
     const added = Object.values(selected);
     if (added.length === 0) return;
 
-    onAdd(added.map(toContactMember));
+    // Link contacts that match a known account; mint a ghost for the rest.
+    onAdd(added.map((c) => linkedUserFor(c) ?? toContactMember(c)));
 
     // Drop the just-added contacts from the list and reset the selection so the
     // sheet stays open for another batch. They won't reappear this session.
@@ -238,32 +272,51 @@ export default function ContactPickerSheet({
                     className="flex-1"
                     data={filtered}
                     keyExtractor={(item) => item.key}
-                    renderItem={({ item }) => (
-                      <Checkbox
-                        size="lg"
-                        value={item.key}
-                        aria-label={`Select ${item.first_name}`}
-                        className="p-4"
-                      >
-                        <HStack className="gap-x-3 items-center flex-1">
-                          <CheckboxIndicator>
-                            <CheckboxIcon as={CheckIcon} />
-                          </CheckboxIndicator>
-                          <AppAvatar
-                            name={item.first_name}
-                            uri={item.avatar || undefined}
-                          />
-                          <VStack className="flex-1">
-                            <Text className="text-lg">
-                              {item.first_name} {item.last_name}
-                            </Text>
-                            <Text className="text-sm text-secondary-950">
-                              {item.phone}
-                            </Text>
-                          </VStack>
-                        </HStack>
-                      </Checkbox>
-                    )}
+                    renderItem={({ item }) => {
+                      const linked = linkedUserFor(item);
+                      return (
+                        <Checkbox
+                          size="lg"
+                          value={item.key}
+                          aria-label={`Select ${item.first_name}`}
+                          className="p-4"
+                        >
+                          <HStack className="gap-x-3 items-center flex-1">
+                            <CheckboxIndicator>
+                              <CheckboxIcon as={CheckIcon} />
+                            </CheckboxIndicator>
+                            <AppAvatar
+                              name={item.first_name}
+                              uri={item.avatar || undefined}
+                            />
+                            <VStack className="flex-1">
+                              <HStack className="items-center gap-x-2">
+                                <Text className="text-lg">
+                                  {item.first_name} {item.last_name}
+                                </Text>
+                                {linked && (
+                                  <Badge
+                                    size="sm"
+                                    action="success"
+                                    variant="outline"
+                                    className="rounded-full px-2"
+                                  >
+                                    <BadgeText className="text-xs normal-case">
+                                      On Ambagan
+                                    </BadgeText>
+                                  </Badge>
+                                )}
+                              </HStack>
+                              <Text className="text-sm text-secondary-950">
+                                {linked
+                                  ? `Links to ${linked.first_name} ${linked.last_name}'s account`
+                                  : item.phone}
+                              </Text>
+                            </VStack>
+                          </HStack>
+                        </Checkbox>
+                      );
+                    }}
                     ItemSeparatorComponent={ListDivider}
                     ListEmptyComponent={() => (
                       <VStack className="p-4 items-center">

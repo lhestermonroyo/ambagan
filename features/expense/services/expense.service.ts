@@ -907,7 +907,7 @@ export const getPayersByExpenseId = async (expenseId: string) => {
   const { data, error } = await supabase
     .from(tables.EXPENSE_PAYERS_TBL)
     .select(
-      "*, payer:payer_id(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)"
+      "*, payer:payer_id(id, email, phone, first_name, last_name, avatar, is_placeholder), expense:expense_id(currency)"
     )
     .eq("expense_id", expenseId);
 
@@ -932,7 +932,7 @@ export const getMemberSplitsByExpenseId = async (expenseId: string) => {
   const { data, error } = await supabase
     .from(tables.MEMBER_SPLITS_TBL)
     .select(
-      `*, member:member_id(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
+      `*, member:member_id(id, email, phone, first_name, last_name, avatar, is_placeholder), expense:expense_id(currency)`
     )
     .eq("expense_id", expenseId);
 
@@ -960,7 +960,7 @@ export const getMemberSplitsByExpenseIds = async (
   const { data, error } = await supabase
     .from(tables.MEMBER_SPLITS_TBL)
     .select(
-      `*, member:member_id(id, email, phone, first_name, last_name, avatar), expense:expense_id(currency)`
+      `*, member:member_id(id, email, phone, first_name, last_name, avatar, is_placeholder), expense:expense_id(currency)`
     )
     .in("expense_id", expenseIds);
 
@@ -1279,7 +1279,7 @@ export const markAsSettled = async (expensePayload: {
   return { success: true, message: "Marked as settled successfully" };
 };
 
-const PAYMENT_FIELDS = `*, member:member_id(id, email, phone, first_name, last_name, avatar), payer:payer_id(id, email, phone, first_name, last_name, avatar), expense:expense_id(description, currency)`;
+const PAYMENT_FIELDS = `*, member:member_id(id, email, phone, first_name, last_name, avatar, is_placeholder), payer:payer_id(id, email, phone, first_name, last_name, avatar, is_placeholder), expense:expense_id(description, currency)`;
 
 const mapPaymentRows = (data: any[]): Payment[] =>
   data.map((item) => {

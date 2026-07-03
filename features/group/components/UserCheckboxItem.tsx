@@ -41,7 +41,12 @@ export function UserCheckboxItem({
             <CheckboxIcon as={CheckIcon} />
           </CheckboxIndicator>
           <HStack className="gap-x-2 items-center flex-1">
-            <AppAvatar name={item.first_name} uri={item.avatar!} size="md" />
+            <AppAvatar
+              name={item.first_name}
+              uri={item.avatar!}
+              size="md"
+              isPlaceholder={item.is_placeholder}
+            />
             <VStack>
               <Text className="text-lg">
                 {item?.first_name} {item?.last_name}

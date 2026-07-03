@@ -1,6 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import ConfirmIconButton from "@/components/ConfirmIconButton";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
@@ -35,6 +36,7 @@ import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { ExpensePreview } from "@/types/expenses";
+import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
@@ -891,15 +893,18 @@ export default function GroupDetailsScreen() {
                 )}
                 ItemSeparatorComponent={ListDivider}
                 stickySectionHeadersEnabled={true}
-                ListEmptyComponent={() => (
-                  <VStack className="flex-1 justify-center items-center py-4 px-8">
-                    <Text className="text-sm text-secondary-950 text-center">
-                      {canAddExpense
-                        ? "No expenses recorded yet."
-                        : "This group has no other members yet. Add members from Group Info → Edit Members to start splitting expenses."}
-                    </Text>
-                  </VStack>
-                )}
+                ListEmptyComponent={() =>
+                  canAddExpense ? (
+                    <EmptyList type={EmptyType.EXPENSE} />
+                  ) : (
+                    <VStack className="flex-1 justify-center items-center py-4 px-8">
+                      <Text className="text-sm text-secondary-950 text-center">
+                        This group has no other members yet. Add members from
+                        Group Info → Edit Members to start splitting expenses.
+                      </Text>
+                    </VStack>
+                  )
+                }
                 ListFooterComponent={() => <Box className="h-16" />}
               />
             )}

@@ -129,7 +129,11 @@ function PayerItem({
       onPress={onPress}
     >
       <HStack className="flex-1 items-center gap-x-2">
-        <AppAvatar name={fullName} uri={member.avatar ?? ""} />
+        <AppAvatar
+          name={fullName}
+          uri={member.avatar ?? ""}
+          isPlaceholder={member.is_placeholder}
+        />
         <VStack className="gap-y-4 py-4">
           <VStack>
             <HStack className="gap-x-1 items-center">

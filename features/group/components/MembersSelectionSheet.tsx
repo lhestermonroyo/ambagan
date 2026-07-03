@@ -2,7 +2,9 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
 import ListDivider from "@/components/ListDivider";
+import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
+import { FriendListSkeleton } from "@/components/SkeletonLoader";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -16,6 +18,7 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { CONTACTS_IMPORT_ENABLED } from "@/constants/features";
 import ContactPickerSheet from "@/features/group/components/ContactPickerSheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import { useNetwork } from "@/hooks/useNetwork";
@@ -56,6 +59,7 @@ export default function MembersSelectionSheet({
   const [users, setUsers] = useState<UserPreview[]>([]);
   const [recentUsers, setRecentUsers] = useState<UserPreview[]>([]);
   const [contactPickerOpen, setContactPickerOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const user = states.user();
   const { details: userDetails } = user;
@@ -71,8 +75,10 @@ export default function MembersSelectionSheet({
 
   useEffect(() => {
     if (isOpen && userDetails?.id) {
-      loadFavorites();
-      loadRecentUsers();
+      setLoading(true);
+      Promise.all([loadFavorites(), loadRecentUsers()]).finally(() =>
+        setLoading(false)
+      );
     }
   }, [isOpen]);
 
@@ -120,25 +126,28 @@ export default function MembersSelectionSheet({
   }, [searching, tab, users, favoriteUsers, recentUsers, selected]);
 
   const handleChangeMembers = (newSelectedIds: (string | number)[]) => {
-    const selectedUsers = displayUsers.filter((u) =>
-      newSelectedIds.includes(u.id)
+    // Only additions can come from this list: already-selected members are
+    // filtered out of `displayUsers`, so a visible row can only be newly
+    // checked. Removals go through the selected chips (handleRemoveMember).
+    //
+    // We deliberately do NOT derive removals from `newSelectedIds`. On React
+    // Native, react-stately's controlled-value ref (inside CheckboxGroup) only
+    // syncs through the checkbox itself — its sync effect is a no-op without a
+    // `document`. So when `selected` changes from outside the group (e.g. adding
+    // phone contacts via the picker), the ref goes stale and the next toggle's
+    // onChange omits those entries. Trusting it for removals would wrongly clear
+    // contacts the moment a friend/favorite is added.
+    const newlyAdded = displayUsers.filter(
+      (u) =>
+        newSelectedIds.includes(u.id) && !selected.some((m) => m.id === u.id)
     );
-    const currentIds = selected.map((m) => m.id);
-    const newlyAdded = selectedUsers.filter((u) => !currentIds.includes(u.id));
-    newlyAdded.forEach((u) => addRecentUser(u, userDetails!.id));
+    if (newlyAdded.length === 0) return;
 
-    setSelected((prev) => {
-      const newMembers = selectedUsers.filter(
-        (u) => !prev.some((m) => m.id === u.id)
-      );
-      const removedMembers = prev.filter(
-        (m) => !newSelectedIds.includes(m.id) && m.id !== userDetails?.id
-      );
-      return [
-        ...newMembers,
-        ...prev.filter((m) => !removedMembers.some((r) => r.id === m.id))
-      ];
-    });
+    newlyAdded.forEach((u) => addRecentUser(u, userDetails!.id));
+    setSelected((prev) => [
+      ...prev,
+      ...newlyAdded.filter((u) => !prev.some((m) => m.id === u.id))
+    ]);
   };
 
   const handleRemoveMember = (id: string) => {
@@ -152,12 +161,15 @@ export default function MembersSelectionSheet({
     });
   };
 
+  // Hide from the contact picker anyone already selected, or already a
+  // friend/favorite — matched by normalized phone. Users without a phone
+  // (email-only accounts) simply can't collide with a contact, so they drop out.
   const excludePhones = useMemo(
     () =>
-      selected
+      [...selected, ...recentUsers, ...favoriteUsers]
         .map((m) => normalizePhone(m.phone))
         .filter((p): p is string => !!p),
-    [selected]
+    [selected, recentUsers, favoriteUsers]
   );
 
   const handleRemoveAllMembers = () => {
@@ -214,7 +226,7 @@ export default function MembersSelectionSheet({
                     </Text>
                   </HStack>
                 </Pressable>
-                {isOnline && (
+                {CONTACTS_IMPORT_ENABLED && isOnline && (
                   <FormButton
                     variant="link"
                     size="md"
@@ -231,7 +243,7 @@ export default function MembersSelectionSheet({
               </HStack>
               <VStack className="w-full gap-y-4 pb-4">
                 {selected.length > 0 && (
-                  <HStack className="px-4">
+                  <HStack className="px-4 pt-4">
                     <Text className="text-sm text-secondary-950 flex-1">
                       {selected.length} member
                       {selected.length > 1 ? "s" : ""} selected
@@ -287,38 +299,43 @@ export default function MembersSelectionSheet({
                 )}
               </VStack>
               <ScrollView className="flex-1 w-full">
-                {displayUsers.length === 0 && (
-                  <VStack className="p-4 justify-center items-center">
-                    <Text className="text-sm text-secondary-950">
-                      {emptyText}
-                    </Text>
-                  </VStack>
-                )}
-                <CheckboxGroup
-                  className="w-full"
-                  value={selected.map((member) => member.id)}
-                  onChange={handleChangeMembers}
+                <LoadingWrapper
+                  isLoading={loading}
+                  skeleton={<FriendListSkeleton />}
                 >
-                  <FlatList
-                    scrollEnabled={false}
-                    className="flex-1"
-                    data={displayUsers}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => {
-                      const isCreator = item.id === userDetails?.id;
-                      return (
-                        <UserCheckboxItem
-                          key={item.id}
-                          item={item}
-                          disabled={isCreator}
-                          isFavorite={favoriteIds.has(item.id)}
-                          onToggleFavorite={handleToggleFavorite}
-                        />
-                      );
-                    }}
-                    ItemSeparatorComponent={ListDivider}
-                  />
-                </CheckboxGroup>
+                  {displayUsers.length === 0 && (
+                    <VStack className="p-4 justify-center items-center">
+                      <Text className="text-sm text-secondary-950">
+                        {emptyText}
+                      </Text>
+                    </VStack>
+                  )}
+                  <CheckboxGroup
+                    className="w-full"
+                    value={selected.map((member) => member.id)}
+                    onChange={handleChangeMembers}
+                  >
+                    <FlatList
+                      scrollEnabled={false}
+                      className="flex-1"
+                      data={displayUsers}
+                      keyExtractor={(item) => item.id.toString()}
+                      renderItem={({ item }) => {
+                        const isCreator = item.id === userDetails?.id;
+                        return (
+                          <UserCheckboxItem
+                            key={item.id}
+                            item={item}
+                            disabled={isCreator}
+                            isFavorite={favoriteIds.has(item.id)}
+                            onToggleFavorite={handleToggleFavorite}
+                          />
+                        );
+                      }}
+                      ItemSeparatorComponent={ListDivider}
+                    />
+                  </CheckboxGroup>
+                </LoadingWrapper>
               </ScrollView>
             </VStack>
             <Box className="items-center justify-center p-4">
@@ -345,6 +362,7 @@ export default function MembersSelectionSheet({
         isOpen={contactPickerOpen}
         onClose={() => setContactPickerOpen(false)}
         excludePhones={excludePhones}
+        knownUsers={[...recentUsers, ...favoriteUsers]}
         onAdd={handleAddContacts}
       />
     </Fragment>

@@ -705,6 +705,7 @@ function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
         name={memberSplit.member.first_name}
         uri={memberSplit.member.avatar!}
         size="md"
+        isPlaceholder={memberSplit.member.is_placeholder}
       />
       <VStack className="flex-1">
         <Text className="text-lg">
@@ -759,6 +760,7 @@ function PayerItem({ payer }: { payer: ExpensePayer }) {
           name={payer.payer.first_name}
           uri={payer.payer.avatar!}
           size="md"
+          isPlaceholder={payer.payer.is_placeholder}
         />
         <VStack>
           <Text className="text-lg">

@@ -4,6 +4,7 @@ import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
+import { FriendListSkeleton } from "@/components/SkeletonLoader";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -17,6 +18,7 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { CONTACTS_IMPORT_ENABLED } from "@/constants/features";
 import ContactPickerSheet from "@/features/group/components/ContactPickerSheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
@@ -164,15 +166,25 @@ export default function EditMembersSheet({
         !lockedMembers.some((m) => m.id === u.id) &&
         !members.some((m) => m.id === u.id)
     );
-  }, [searching, tab, users, favoriteUsers, recentUsers, lockedMembers, members]);
+  }, [
+    searching,
+    tab,
+    users,
+    favoriteUsers,
+    recentUsers,
+    lockedMembers,
+    members
+  ]);
 
-  const handleChangeMembers = (selected: (string | number)[]) => {
-    const selectedUnlocked = selected.filter(
-      (id) => !lockedMembers.some((member) => member.id === id)
-    );
-
-    const selectedUsers = displayUsers
-      .filter((user) => selectedUnlocked.includes(user.id))
+  const handleChangeMembers = (selectedIds: (string | number)[]) => {
+    // Additions only. displayUsers already excludes everyone selected (members +
+    // lockedMembers), so a visible-and-checked row can only be a new add;
+    // removals go through the selected chips (handleRemoveMember). We deliberately
+    // don't derive removals from selectedIds — react-stately's controlled ref goes
+    // stale on RN when `members` changes from outside the group (e.g. adding phone
+    // contacts), which would wrongly drop entries on the next toggle.
+    const newlyAdded = displayUsers
+      .filter((user) => selectedIds.includes(user.id))
       .map(
         (user) =>
           ({
@@ -183,24 +195,12 @@ export default function EditMembersSheet({
             last_name: user.last_name
           }) as Member
       );
-    const currentIds = members.map((m) => m.id);
-    const newlyAdded = selectedUsers.filter((u) => !currentIds.includes(u.id));
-    // intentionally not saving here — saved in bulk on submit
+    if (newlyAdded.length === 0) return;
 
-    setMembers((prev) => {
-      const newMembers = selectedUsers.filter(
-        (user) => !prev.some((member) => member.id === user.id)
-      );
-      const removedMembers = prev.filter(
-        (member) =>
-          !selectedUnlocked.includes(member.id) &&
-          displayUsers.some((u) => u.id === member.id)
-      );
-      return [
-        ...newMembers,
-        ...prev.filter((m) => !removedMembers.some((r) => r.id === m.id))
-      ];
-    });
+    setMembers((prev) => [
+      ...prev,
+      ...newlyAdded.filter((u) => !prev.some((m) => m.id === u.id))
+    ]);
   };
 
   const handleRemoveMember = (id: string) => {
@@ -231,12 +231,21 @@ export default function EditMembersSheet({
     });
   };
 
+  // Hide from the contact picker anyone already on the group (locked or not),
+  // or already a friend/favorite — matched by normalized phone. Users without a
+  // phone (email-only accounts) can't collide with a contact, so they drop out.
   const excludePhones = useMemo(
     () =>
-      [...memberList, ...lockedMembers, ...members]
+      [
+        ...memberList,
+        ...lockedMembers,
+        ...members,
+        ...recentUsers,
+        ...favoriteUsers
+      ]
         .map((m) => normalizePhone((m as any).phone))
         .filter((p): p is string => !!p),
-    [memberList, lockedMembers, members]
+    [memberList, lockedMembers, members, recentUsers, favoriteUsers]
   );
 
   const handleUpdateMembers = async () => {
@@ -381,7 +390,7 @@ export default function EditMembersSheet({
                     </Text>
                   </HStack>
                 </Pressable>
-                {isOnline && (
+                {CONTACTS_IMPORT_ENABLED && isOnline && (
                   <FormButton
                     variant="link"
                     size="md"
@@ -396,11 +405,14 @@ export default function EditMembersSheet({
                   />
                 )}
               </HStack>
-              <LoadingWrapper text="Loading members..." isLoading={loading}>
+              <LoadingWrapper
+                isLoading={loading}
+                skeleton={<FriendListSkeleton />}
+              >
                 <VStack className="w-full gap-y-4 pb-4">
                   <VStack>
                     {formattedMembers.length > 0 && (
-                      <HStack className="px-4">
+                      <HStack className="px-4 pt-4">
                         <Text className="text-sm text-secondary-950 flex-1">
                           {formattedMembers.length} member
                           {formattedMembers.length > 1 ? "s" : ""} selected
@@ -430,6 +442,7 @@ export default function EditMembersSheet({
                         );
                       }}
                     />
+
                     {formattedMembers.length > 0 && (
                       <VStack className="w-full px-4">
                         <Text className="text-sm text-secondary-950">
@@ -528,6 +541,13 @@ export default function EditMembersSheet({
         isOpen={contactPickerOpen}
         onClose={() => setContactPickerOpen(false)}
         excludePhones={excludePhones}
+        knownUsers={[
+          ...recentUsers,
+          ...favoriteUsers,
+          ...memberList,
+          ...lockedMembers,
+          ...members
+        ]}
         onAdd={handleAddContacts}
       />
     </>

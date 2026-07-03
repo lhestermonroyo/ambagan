@@ -27,9 +27,11 @@ import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { Group } from "@/types/groups";
 import { formatDate } from "@/utils/formatDate";
+import { getSecondaryHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
-import { CircleIcon } from "lucide-react-native";
+import { CircleIcon, UserStar } from "lucide-react-native";
 import { Fragment, useState } from "react";
+import { useColorScheme } from "react-native";
 
 export default function GroupSelection({
   group,
@@ -196,6 +198,10 @@ export function GroupSelectionActionSheet({
 }
 
 function GroupItem({ group, onPress }: { group: Group; onPress: () => void }) {
+  const { details: userDetails } = states.user();
+  const isCreator = group.admin.id === userDetails?.id;
+  const colorScheme = useColorScheme() ?? "light";
+
   return (
     <Radio
       key={group.id}
@@ -205,7 +211,17 @@ function GroupItem({ group, onPress }: { group: Group; onPress: () => void }) {
       onPress={onPress}
     >
       <HStack className="flex-1 items-center gap-x-2">
-        <AppAvatar name={group.name} uri={group.avatar || ""} />
+        <Box className="relative">
+          {isCreator && (
+            <Box className="absolute right-0 bottom-0 z-10 bg-primary-600 rounded-full p-1">
+              <UserStar
+                size={12}
+                color={getSecondaryHex("text-secondary-0", colorScheme)}
+              />
+            </Box>
+          )}
+          <AppAvatar name={group.name} uri={group.avatar || ""} />
+        </Box>
         <VStack className="gap-y-4 py-4">
           <VStack>
             <Text className="text-lg">{group?.name}</Text>
