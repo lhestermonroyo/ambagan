@@ -1,9 +1,49 @@
+import { createOrGetPlaceholder } from "@/features/user/services/user.service";
 import { createNotification } from "@/features/notifications/services/notification.service";
 import { NotificationType } from "@/types/notifications";
 import { Member } from "@/types/groups";
+import { UserPreview } from "@/types/user";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 import { sendPushNotification } from "@/utils/sendPushNotifications";
+
+/** Temp id prefix for a picked phone contact before it's resolved to a real
+ *  placeholder id (see resolveContactMembers). */
+export const CONTACT_MEMBER_PREFIX = "contact:";
+
+/** True if the list still contains unresolved phone-contact members. */
+export const hasUnresolvedContacts = (members: UserPreview[]): boolean =>
+  members.some(
+    (m) => !!m.is_placeholder && m.id.startsWith(CONTACT_MEMBER_PREFIX)
+  );
+
+/**
+ * Turn any unresolved phone-contact members (temp id `contact:<phone>`) into
+ * real placeholder user ids via the RPC, so they can be written to
+ * group_members. Non-contact members pass through unchanged. Online-only — the
+ * RPC de-dupes ghosts by phone server-side, so ids can't be generated offline.
+ */
+export const resolveContactMembers = async (
+  members: UserPreview[]
+): Promise<UserPreview[]> => {
+  return Promise.all(
+    members.map(async (m) => {
+      if (
+        m.is_placeholder &&
+        m.id.startsWith(CONTACT_MEMBER_PREFIX) &&
+        m.phone
+      ) {
+        const id = await createOrGetPlaceholder(
+          m.phone,
+          m.first_name,
+          m.last_name
+        );
+        return { ...m, id };
+      }
+      return m;
+    })
+  );
+};
 
 export const leaveGroup = async (
   groupId: string,
@@ -137,7 +177,7 @@ export const getMembersByGroupId = async (groupId: string) => {
   const { data, error } = await supabase
     .from(tables.GROUP_MEMBERS_TBL)
     .select(
-      `id, group_id, joined_at, member:member_id (id, email, phone, first_name, last_name, avatar)`
+      `id, group_id, joined_at, member:member_id (id, email, phone, first_name, last_name, avatar, is_placeholder)`
     )
     .eq("group_id", groupId);
 

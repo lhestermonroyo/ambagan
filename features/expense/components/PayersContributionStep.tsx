@@ -11,6 +11,7 @@ import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { Member } from "@/types/groups";
 import { getCurrencySign } from "@/utils/currency";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment, useMemo } from "react";
 import { formatAmount } from "../utils/formatAmount";
@@ -137,7 +138,9 @@ function PayerItem({
                 {isMe && " (You)"}
               </Text>
             </HStack>
-            <Text className="text-sm text-secondary-950">{payer.email}</Text>
+            <Text className="text-sm text-secondary-950">
+              {getUserSubtitle(payer)}
+            </Text>
           </VStack>
         </HStack>
 

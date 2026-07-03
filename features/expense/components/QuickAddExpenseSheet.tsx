@@ -30,6 +30,7 @@ import UpgradeSheet from "@/components/UpgradeSheet";
 import { GroupSelectionActionSheet } from "@/features/expense/components/GroupSelection";
 import { PayerSelectionActionSheet } from "@/features/expense/components/PayerSelection";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import {
   generatePaymentSplits,
   getAmountPerPerson,
@@ -471,7 +472,7 @@ export default function QuickAddExpenseSheet({
                                   </Text>
                                 </HStack>
                                 <Text className="text-sm text-secondary-950">
-                                  {selectedPayer.email}
+                                  {getUserSubtitle(selectedPayer)}
                                 </Text>
                               </VStack>
                             </HStack>

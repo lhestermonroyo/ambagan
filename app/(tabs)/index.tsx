@@ -576,6 +576,7 @@ export default function HomeScreen() {
                   Friends
                 </Text>
                 <FormButton
+                  size="md"
                   text="View All"
                   variant="link"
                   onPress={() => router.push("/friends")}
@@ -635,6 +636,7 @@ export default function HomeScreen() {
                   Recent Groups
                 </Text>
                 <FormButton
+                  size="md"
                   text="View All"
                   variant="link"
                   onPress={() => router.push("/groups")}

@@ -36,7 +36,7 @@ export default function TabLayout({
               {title}
             </Text>
             {actions && (
-              <HStack className="gap-x-4">
+              <HStack className="gap-x-6">
                 {actions.map((item, index) => (
                   <Fragment key={index}>{item}</Fragment>
                 ))}

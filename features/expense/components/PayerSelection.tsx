@@ -23,6 +23,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { Member } from "@/types/groups";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import { CircleIcon } from "lucide-react-native";
 import { useEffect, useState } from "react";
 
@@ -136,7 +137,9 @@ function PayerItem({
                 {fullName} {isCurrentUser && "(You)"}
               </Text>
             </HStack>
-            <Text className="text-sm text-secondary-950">{member.email}</Text>
+            <Text className="text-sm text-secondary-950">
+              {getUserSubtitle(member)}
+            </Text>
           </VStack>
         </VStack>
       </HStack>

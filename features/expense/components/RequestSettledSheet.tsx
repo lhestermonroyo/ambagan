@@ -25,6 +25,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import { Payment } from "@/types/expenses";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
 import { Pressable } from "react-native";
@@ -147,7 +148,7 @@ export default function RequestSettledSheet({
                         </Text>
                       </HStack>
                       <Text className="text-sm text-secondary-950">
-                        {payment.payer.email}
+                        {getUserSubtitle(payment.payer)}
                       </Text>
                     </VStack>
                   </HStack>

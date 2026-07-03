@@ -13,6 +13,7 @@ import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
 import { categories } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import React, { Fragment, useMemo, useState } from "react";
 import EditMembersSheet from "./EditMemberSheet";
 
@@ -180,7 +181,9 @@ function MemberItem({ item }: { item: Member }) {
               {isYou && " (You)"}
             </Text>
           </HStack>
-          <Text className="text-sm text-secondary-950">{item?.email}</Text>
+          <Text className="text-sm text-secondary-950">
+            {getUserSubtitle(item)}
+          </Text>
         </VStack>
       </HStack>
     </HStack>

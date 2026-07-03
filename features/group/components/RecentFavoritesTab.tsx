@@ -13,14 +13,14 @@ export default function RecentFavoritesTab({
       <FormButton
         size="sm"
         variant={tab === "friends" ? "solid" : "outline"}
-        className="flex-1 h-10"
+        className="flex-1"
         text="Friends"
         onPress={() => onTabChange("friends")}
       />
       <FormButton
         size="sm"
         variant={tab === "favorites" ? "solid" : "outline"}
-        className="flex-1 h-10"
+        className="flex-1"
         text="Favorites"
         onPress={() => onTabChange("favorites")}
       />

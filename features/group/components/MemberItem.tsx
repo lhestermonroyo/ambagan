@@ -6,6 +6,7 @@ import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { UserPreview } from "@/types/user";
 import { getSecondaryHex } from "@/utils/getColorHex";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import { X } from "lucide-react-native";
 import { useColorScheme } from "react-native";
 
@@ -36,7 +37,9 @@ export default function MemberItem({
               {isMe && " (You)"}
             </Text>
           </HStack>
-          <Text className="text-sm text-secondary-950">{item?.email}</Text>
+          <Text className="text-sm text-secondary-950">
+            {getUserSubtitle(item)}
+          </Text>
         </VStack>
       </HStack>
       {!isMe && (

@@ -38,6 +38,7 @@ import {
   Payment,
   SplitType
 } from "@/types/expenses";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { formatDate } from "@/utils/formatDate";
@@ -711,7 +712,7 @@ function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
           {isMe && " (You)"}
         </Text>
         <Text className="text-sm text-secondary-950">
-          {memberSplit.member.email}
+          {getUserSubtitle(memberSplit.member)}
         </Text>
       </VStack>
       <VStack className="items-end gap-y-1">
@@ -765,7 +766,7 @@ function PayerItem({ payer }: { payer: ExpensePayer }) {
             {isMe && " (You)"}
           </Text>
           <Text className="text-sm text-secondary-950">
-            {payer.payer.email}
+            {getUserSubtitle(payer.payer)}
           </Text>
         </VStack>
       </HStack>

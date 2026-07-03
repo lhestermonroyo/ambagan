@@ -24,7 +24,9 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import QuickAddExpenseSheet from "@/features/expense/components/QuickAddExpenseSheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import DeleteGroupSheet from "@/features/group/components/DeleteGroupSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
+import GroupInviteSheet from "@/features/group/components/GroupInviteSheet";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
 import GroupStatsTab from "@/features/group/components/GroupStatsTab";
 import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
@@ -36,7 +38,11 @@ import { ExpensePreview } from "@/types/expenses";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import {
+  getErrorHex,
+  getPrimaryHex,
+  getSecondaryHex
+} from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -47,6 +53,8 @@ import {
   EllipsisVertical,
   ListPlus,
   LogOut,
+  Share,
+  Trash2,
   X,
   Zap
 } from "lucide-react-native";
@@ -63,13 +71,24 @@ export default function GroupDetailsScreen() {
   const [archiving, setArchiving] = useState(false);
   const [showArchiveBanner, setShowArchiveBanner] = useState(true);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
+  const [inviteSheetOpen, setInviteSheetOpen] = useState(false);
+  const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
-  const { details: groupDetails, expenseList, settlementList } = states.group();
+  const {
+    details: groupDetails,
+    expenseList,
+    settlementList,
+    memberList
+  } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
+
+  // A split needs at least two people, so expenses are gated until the group
+  // has a second member (joined via invite, or added as a phone contact).
+  const canAddExpense = memberList.length >= 2;
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
@@ -404,6 +423,24 @@ export default function GroupDetailsScreen() {
     }
   };
 
+  const handleDeleteGroup = async () => {
+    await services.group.deleteGroup(groupId!);
+    states.group.setState((prev) => ({
+      ...prev,
+      list: prev.list.filter((g) => g.id !== groupId),
+      details: null,
+      memberList: [],
+      expenseList: [],
+      settlementList: []
+    }));
+    toast({
+      title: "Group deleted",
+      description: "The group has been permanently deleted.",
+      type: "success"
+    });
+    router.replace("/groups");
+  };
+
   return (
     <Fragment>
       <InnerLayout
@@ -412,6 +449,23 @@ export default function GroupDetailsScreen() {
         actions={
           isAdmin
             ? [
+                ...(!groupDetails?.archived && groupDetails?.invite_token
+                  ? [
+                      <Button
+                        variant="link"
+                        className="rounded-full"
+                        onPress={() => setInviteSheetOpen(true)}
+                      >
+                        <Share
+                          size={20}
+                          color={getSecondaryHex(
+                            "text-secondary-950",
+                            colorScheme
+                          )}
+                        />
+                      </Button>
+                    ]
+                  : []),
                 <Menu
                   placement="left top"
                   closeOnSelect
@@ -456,6 +510,23 @@ export default function GroupDetailsScreen() {
                       </HStack>
                     </MenuItem>
                   )}
+                  <MenuItem
+                    className="p-4 justify-between"
+                    key="leave"
+                    textValue="Leave Group"
+                    onPress={() => {
+                      setMenuOpen(false);
+                      setTimeout(() => setLeaveSheetOpen(true), 150);
+                    }}
+                  >
+                    <HStack className="gap-x-2">
+                      <LogOut
+                        size={20}
+                        color={getPrimaryHex("text-primary-500", colorScheme)}
+                      />
+                      <MenuItemLabel>Leave Group</MenuItemLabel>
+                    </HStack>
+                  </MenuItem>
                   {groupDetails?.archived ? (
                     <MenuItem
                       className="p-4 justify-between"
@@ -496,19 +567,21 @@ export default function GroupDetailsScreen() {
                   <MenuSeparator key="separator" />
                   <MenuItem
                     className="p-4 justify-between"
-                    key="leave"
-                    textValue="Leave Group"
+                    key="delete"
+                    textValue="Delete Group"
                     onPress={() => {
                       setMenuOpen(false);
-                      setTimeout(() => setLeaveSheetOpen(true), 150);
+                      setTimeout(() => setDeleteSheetOpen(true), 150);
                     }}
                   >
                     <HStack className="gap-x-2">
-                      <LogOut
+                      <Trash2
                         size={20}
-                        color={getPrimaryHex("text-primary-500", colorScheme)}
+                        color={getErrorHex("text-error-400", colorScheme)}
                       />
-                      <MenuItemLabel>Leave Group</MenuItemLabel>
+                      <MenuItemLabel className="text-error-400">
+                        Delete Group
+                      </MenuItemLabel>
                     </HStack>
                   </MenuItem>
                 </Menu>
@@ -572,7 +645,18 @@ export default function GroupDetailsScreen() {
                 isHovered={false}
                 isDisabled={false}
                 isPressed={false}
-                onPress={() => setFabOpen((prev) => !prev)}
+                onPress={() => {
+                  if (!canAddExpense && !fabOpen) {
+                    toast({
+                      title: "Add a member first",
+                      description:
+                        "A group needs at least two members before you can add an expense. Add someone from Group Info → Edit Members.",
+                      type: "info"
+                    });
+                    return;
+                  }
+                  setFabOpen((prev) => !prev);
+                }}
               >
                 {fabOpen ? (
                   <X
@@ -808,9 +892,11 @@ export default function GroupDetailsScreen() {
                 ItemSeparatorComponent={ListDivider}
                 stickySectionHeadersEnabled={true}
                 ListEmptyComponent={() => (
-                  <VStack className="flex-1 justify-center items-center py-4">
-                    <Text className="text-sm text-secondary-950">
-                      No expenses recorded yet.
+                  <VStack className="flex-1 justify-center items-center py-4 px-8">
+                    <Text className="text-sm text-secondary-950 text-center">
+                      {canAddExpense
+                        ? "No expenses recorded yet."
+                        : "This group has no other members yet. Add members from Group Info → Edit Members to start splitting expenses."}
                     </Text>
                   </VStack>
                 )}
@@ -828,6 +914,14 @@ export default function GroupDetailsScreen() {
           </ScrollView>
         </LoadingWrapper>
       </InnerLayout>
+      {groupDetails?.invite_token && (
+        <GroupInviteSheet
+          isOpen={inviteSheetOpen}
+          onClose={() => setInviteSheetOpen(false)}
+          groupName={groupDetails.name}
+          inviteToken={groupDetails.invite_token}
+        />
+      )}
       <LeaveGroupSheet
         isOpen={leaveSheetOpen}
         onClose={() => setLeaveSheetOpen(false)}
@@ -856,6 +950,11 @@ export default function GroupDetailsScreen() {
             setSettlementRefreshTrigger((prev) => prev + 1);
           }
         }}
+      />
+      <DeleteGroupSheet
+        isOpen={deleteSheetOpen}
+        onClose={() => setDeleteSheetOpen(false)}
+        onDelete={handleDeleteGroup}
       />
     </Fragment>
   );

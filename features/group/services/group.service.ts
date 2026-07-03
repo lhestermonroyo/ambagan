@@ -207,6 +207,18 @@ export const deleteGroup = async (groupId: string) => {
     throw new Error("Only the group admin can delete the group");
   }
 
+  const { count: unsettledCount, error: unsettledError } = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select("id", { count: "exact", head: true })
+    .eq("group_id", groupId)
+    .or("status.eq.pending,status.eq.requested");
+
+  if (unsettledError) throw unsettledError;
+
+  if (unsettledCount && unsettledCount > 0) {
+    throw new Error("Settle all expenses before deleting the group.");
+  }
+
   const { data: expenses, error: expensesError } = await supabase
     .from(tables.EXPENSES_TBL)
     .select("id")
@@ -438,6 +450,19 @@ export const getGroupById = async (groupId: string) => {
   }
 
   return data as Group;
+};
+
+/**
+ * Join a group via its invite token (from a shared link / QR). Adds the current
+ * user as a member and claims any phone-contact ghost matching their phone.
+ * Returns the joined group's id. Online-only.
+ */
+export const joinGroupByToken = async (token: string): Promise<string> => {
+  const { data, error } = await supabase.rpc("join_group_by_token", {
+    _token: token
+  });
+  if (error) throw error;
+  return data as string;
 };
 
 export const archiveGroup = async (groupId: string) => {

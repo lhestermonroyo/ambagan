@@ -57,7 +57,12 @@ export const saveUser = async ({
 export const searchUsers = async (query: string) => {
   const { data, error } = await supabase
     .from(tables.USERS_TBL)
-    .select("id, created_at, first_name, last_name, email, phone, avatar, plan")
+    .select(
+      "id, created_at, first_name, last_name, email, phone, avatar, plan, is_placeholder"
+    )
+    // Exclude placeholder (phone-contact) users — they're never added via
+    // search, only through the contact picker, which de-dupes them by phone.
+    .eq("is_placeholder", false)
     .or(
       `first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`
     )
@@ -65,6 +70,39 @@ export const searchUsers = async (query: string) => {
 
   if (error) throw error;
   return data as UserPreview[];
+};
+
+/**
+ * Resolve a phone contact to a member id: returns an existing user's id if one
+ * already has this phone, otherwise creates (or reuses) a placeholder ghost.
+ * `phone` must be normalized to E.164 (see utils/phone.ts).
+ */
+export const createOrGetPlaceholder = async (
+  phone: string,
+  firstName: string,
+  lastName: string
+): Promise<string> => {
+  const { data, error } = await supabase.rpc("create_or_get_placeholder", {
+    _phone: phone,
+    _first_name: firstName,
+    _last_name: lastName
+  });
+  if (error) throw error;
+  return data as string;
+};
+
+/**
+ * Called right after a user finishes onboarding with a phone number: if a
+ * placeholder ghost exists for that phone, its memberships and balances are
+ * migrated onto this account and the ghost is removed. Returns true if claimed.
+ * `phone` must be normalized to E.164.
+ */
+export const claimPlaceholder = async (phone: string): Promise<boolean> => {
+  const { data, error } = await supabase.rpc("claim_placeholder", {
+    _phone: phone
+  });
+  if (error) throw error;
+  return (data as number) > 0;
 };
 
 export const updateUser = async ({

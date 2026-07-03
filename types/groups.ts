@@ -19,6 +19,9 @@ export type Group = {
   avatar: string | null;
   archived: boolean;
   expense_count: number;
+  /** Stable invite token for the share link / QR. Present on group detail
+   *  (getGroupById selects `*`); omitted from lighter list queries. */
+  invite_token?: string;
   /** True for a group created offline and not yet synced to the server. */
   pending?: boolean;
 };

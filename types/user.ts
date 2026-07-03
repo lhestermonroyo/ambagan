@@ -57,9 +57,19 @@ export type User = {
   archived: boolean;
   plan: UserPlan;
   plan_expires_at: string | null;
+  // True for a phone-contact member who has no Ambagan account yet (a
+  // placeholder that gets claimed when they sign up with the same phone).
+  is_placeholder?: boolean;
 };
 
 export type UserPreview = Pick<
   User,
-  "id" | "email" | "phone" | "first_name" | "last_name" | "avatar" | "plan"
+  | "id"
+  | "email"
+  | "phone"
+  | "first_name"
+  | "last_name"
+  | "avatar"
+  | "plan"
+  | "is_placeholder"
 >;

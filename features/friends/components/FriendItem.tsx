@@ -11,6 +11,7 @@ import { FriendSummary } from "@/types/expenses";
 import { UserPreview } from "@/types/user";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import { Heart } from "lucide-react-native";
 import React, { useCallback } from "react";
 import { useColorScheme } from "react-native";
@@ -45,7 +46,9 @@ const FriendItem = React.memo(function FriendItem({
           <Text className="text-lg">
             {friend.first_name} {friend.last_name}
           </Text>
-          <Text className="text-sm text-secondary-950">{friend.email}</Text>
+          <Text className="text-sm text-secondary-950">
+            {getUserSubtitle(friend)}
+          </Text>
         </VStack>
         <HStack className="gap-x-3 items-center">
           <HStack className="gap-x-1 items-center">

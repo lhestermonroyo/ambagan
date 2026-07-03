@@ -28,6 +28,7 @@ import StatusBadge from "@/features/expense/components/StatusBadge";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
@@ -240,7 +241,7 @@ export default function LeaveGroupSheet({
                                     {member.first_name} {member.last_name}
                                   </Text>
                                   <Text className="text-secondary-950 text-sm">
-                                    {member.email}
+                                    {getUserSubtitle(member)}
                                   </Text>
                                 </VStack>
                               </HStack>

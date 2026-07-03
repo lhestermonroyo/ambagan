@@ -27,6 +27,7 @@ import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
 import { useColorScheme } from "react-native";
@@ -157,7 +158,7 @@ export default function MarkAsSettledSheet({
                         </Text>
                       </HStack>
                       <Text className="text-sm text-secondary-950">
-                        {payment.member.email}
+                        {getUserSubtitle(payment.member)}
                       </Text>
                     </VStack>
                   </HStack>

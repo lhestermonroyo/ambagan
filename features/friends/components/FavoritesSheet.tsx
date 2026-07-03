@@ -23,6 +23,7 @@ import services from "@/services";
 import states from "@/states";
 import { UserPreview } from "@/types/user";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import { addRecentUser, getRecentUsers } from "@/utils/recentUsers";
 import { Heart } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
@@ -190,7 +191,9 @@ function UserFavoriteItem({
         <Text className="text-lg">
           {item.first_name} {item.last_name}
         </Text>
-        <Text className="text-sm text-secondary-950">{item.email}</Text>
+        <Text className="text-sm text-secondary-950">
+          {getUserSubtitle(item)}
+        </Text>
       </VStack>
       <Pressable hitSlop={8} onPress={() => onToggle(item)}>
         <Heart

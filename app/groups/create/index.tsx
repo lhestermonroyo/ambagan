@@ -96,19 +96,24 @@ export default function CreateGroupScreen() {
       return;
     }
 
-    if (members.length === 0) {
-      toast({
-        title: "No Members Selected",
-        description: "Please select at least one member to create a group.",
-        type: "error"
-      });
-      return;
-    }
+    // Members are optional — a group can start with just the admin, then invite
+    // people (or add phone contacts). Expenses stay gated on having 2+ members.
 
     // Offline → queue the group creation. The cover photo is skipped (no
     // image upload offline); it can be added once the group syncs.
     const online = await offlineQueue.isOnline();
     if (!online) {
+      // Phone-contact members need the placeholder RPC to get a stable id, so
+      // a group with unresolved contacts can't be queued offline.
+      if (services.member.hasUnresolvedContacts(members)) {
+        toast({
+          title: "You're offline",
+          description:
+            "Adding phone contacts as members needs an internet connection. Remove them or reconnect to continue.",
+          type: "error"
+        });
+        return;
+      }
       const clientId = uuid();
       const memberPreviews = members.concat(admin);
       const optimistic = offlineQueue.buildOptimisticGroup({
@@ -146,19 +151,27 @@ export default function CreateGroupScreen() {
     setSubmitting(true);
 
     try {
+      // Turn any picked phone contacts into real placeholder user ids first.
+      const resolvedMembers =
+        await services.member.resolveContactMembers(members);
+
       const response = await services.group.saveGroup({
         name: values.name,
         avatar: values.avatar,
         category: values.category,
         admin_id: admin[0].id,
-        member_ids: members.concat(admin).map((member) => member.id)
+        member_ids: resolvedMembers.concat(admin).map((member) => member.id)
       });
 
       if (!response) {
         throw new Error("Failed to create group");
       }
 
-      await addRecentUsers(members, user.details!.id);
+      // Don't pollute recent contacts with placeholders (ghosts).
+      await addRecentUsers(
+        resolvedMembers.filter((m) => !m.is_placeholder),
+        user.details!.id
+      );
 
       toast({
         title: "Group Created",
@@ -189,7 +202,7 @@ export default function CreateGroupScreen() {
             className="flex-1"
             text="Create"
             loading={submitting}
-            disabled={!values.name || !values.category || members.length === 0}
+            disabled={!values.name || !values.category}
             onPress={handleSubmit}
           />
         ]}
@@ -248,14 +261,16 @@ export default function CreateGroupScreen() {
               <VStack className="gap-y-2">
                 <HStack>
                   <FormControlLabel className="flex-1">
-                    <FormControlLabelText>Members</FormControlLabelText>
+                    <FormControlLabelText>
+                      Members (optional)
+                    </FormControlLabelText>
                   </FormControlLabel>
                   <Button
                     variant="link"
                     onPress={() => setOpenSelectMembers(true)}
                   >
                     <Text className="text-primary-400 font-medium">
-                      Add Member
+                      Add Members
                     </Text>
                   </Button>
                 </HStack>

@@ -9,6 +9,7 @@ import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { UserPreview } from "@/types/user";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Heart } from "lucide-react-native";
 import React, { useCallback } from "react";
@@ -53,7 +54,9 @@ const FriendRow = React.memo(function FriendRow({
           <Text className="text-lg">
             {user.first_name} {user.last_name}
           </Text>
-          <Text className="text-sm text-secondary-950">{user.email}</Text>
+          <Text className="text-sm text-secondary-950">
+            {getUserSubtitle(user)}
+          </Text>
         </VStack>
         <HStack className="gap-x-3 items-center">
           {primary && (

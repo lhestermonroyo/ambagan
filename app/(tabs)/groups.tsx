@@ -39,6 +39,7 @@ export default function GroupsScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
@@ -139,6 +140,33 @@ export default function GroupsScreen() {
       });
     } finally {
       setArchiving(false);
+    }
+  };
+
+  const handleDeleteGroup = async (groupId: string) => {
+    setDeleting(true);
+    try {
+      await services.group.deleteGroup(groupId);
+      toast({
+        title: "Group deleted",
+        description: "The group has been permanently deleted.",
+        type: "success"
+      });
+      setGroups((prev) => prev.filter((g) => g.id !== groupId));
+      states.group.setState((prev) => ({
+        ...prev,
+        list: prev.list.filter((g) => g.id !== groupId)
+      }));
+    } catch (error: any) {
+      console.error("Failed to delete group:", error);
+      toast({
+        title: "Cannot delete group",
+        description:
+          error?.message ?? "Failed to delete group. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -252,19 +280,36 @@ export default function GroupsScreen() {
                 item.admin.id === userDetails?.id && (
                   <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
                     {activeTab === "archived" ? (
-                      <ConfirmIconButton
-                        icon="unarchive"
-                        iconClassName="text-background-0"
-                        variant="solid"
-                        className="rounded-full h-[40] w-[40] p-0"
-                        confirmTitle="Restore Group"
-                        confirmDescription="This will move the group back to your active groups."
-                        isLoading={archiving}
-                        onConfirm={() => {
-                          rowMap[item.id]?.closeRow();
-                          handleUnarchiveGroup(item.id);
-                        }}
-                      />
+                      <>
+                        <ConfirmIconButton
+                          icon="unarchive"
+                          iconClassName="text-background-0"
+                          variant="solid"
+                          className="rounded-full h-[40] w-[40] p-0"
+                          confirmTitle="Restore Group"
+                          confirmDescription="This will move the group back to your active groups."
+                          isLoading={archiving}
+                          onConfirm={() => {
+                            rowMap[item.id]?.closeRow();
+                            handleUnarchiveGroup(item.id);
+                          }}
+                        />
+                        <ConfirmIconButton
+                          icon="delete"
+                          iconClassName="text-background-0"
+                          variant="solid"
+                          action="negative"
+                          className="rounded-full h-[40] w-[40] p-0"
+                          confirmTitle="Delete Group"
+                          confirmDescription="Permanently deleting this group will remove all expenses, settlements, and member data. This cannot be undone."
+                          isDelete
+                          isLoading={deleting}
+                          onConfirm={() => {
+                            rowMap[item.id]?.closeRow();
+                            handleDeleteGroup(item.id);
+                          }}
+                        />
+                      </>
                     ) : (
                       <>
                         <Button
@@ -290,12 +335,27 @@ export default function GroupsScreen() {
                             handleArchiveGroup(item.id);
                           }}
                         />
+                        <ConfirmIconButton
+                          icon="delete"
+                          iconClassName="text-background-0"
+                          variant="solid"
+                          action="negative"
+                          className="rounded-full h-[40] w-[40] p-0"
+                          confirmTitle="Delete Group"
+                          confirmDescription="Permanently deleting this group will remove all expenses, settlements, and member data. This cannot be undone."
+                          isDelete
+                          isLoading={deleting}
+                          onConfirm={() => {
+                            rowMap[item.id]?.closeRow();
+                            handleDeleteGroup(item.id);
+                          }}
+                        />
                       </>
                     )}
                   </HStack>
                 )
               }
-              rightOpenValue={activeTab === "archived" ? -70 : -116}
+              rightOpenValue={activeTab === "archived" ? -116 : -174}
               disableRightSwipe
               ItemSeparatorComponent={ListDivider}
               ListHeaderComponent={() =>

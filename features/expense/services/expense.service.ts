@@ -1315,6 +1315,23 @@ export const getPaymentsByGroupAndUserId = async (
   return mapPaymentRows(data);
 };
 
+export const getUnsettledPaymentsByGroupId = async (
+  groupId: string
+): Promise<Payment[]> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { data, error } = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(PAYMENT_FIELDS)
+    .eq("group_id", groupId)
+    .in("status", ["pending", "requested"])
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return mapPaymentRows(data);
+};
+
 export const getActivePaymentsByGroupAndUserId = async (
   groupId: string,
   userId: string

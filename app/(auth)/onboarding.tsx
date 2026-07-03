@@ -10,6 +10,11 @@ import OnboardName from "@/features/user/components/OnboardName";
 import OnboardPhone from "@/features/user/components/OnboardPhone";
 import services from "@/services";
 import states from "@/states";
+import { normalizePhone } from "@/utils/phone";
+import {
+  clearPendingInviteToken,
+  getPendingInviteToken
+} from "@/utils/pendingInvite";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -35,10 +40,13 @@ export default function OnboardingScreen() {
         throw new Error("Please fill in all required fields");
       }
 
+      // Store the phone in E.164 so it matches phone-contact placeholders.
+      const normalizedPhone = normalizePhone(values.phone) ?? values.phone;
+
       const response = await services.user.saveUser({
         first_name: values.first_name,
         last_name: values.last_name,
-        phone: values.phone,
+        phone: normalizedPhone,
         avatar: values.avatar
       });
 
@@ -46,10 +54,32 @@ export default function OnboardingScreen() {
         throw new Error("Failed to save user details");
       }
 
+      // If someone already added this person as a phone contact, claim that
+      // placeholder now — its groups and balances move onto this account.
+      try {
+        await services.user.claimPlaceholder(normalizedPhone);
+      } catch (claimError) {
+        console.error("Failed to claim placeholder:", claimError);
+      }
+
       states.user.setState((prev) => ({
         ...prev,
         details: response.data
       }));
+
+      // Consume any pending invite that was stashed before the user had an account.
+      try {
+        const pendingToken = await getPendingInviteToken();
+        if (pendingToken) {
+          const groupId = await services.group.joinGroupByToken(pendingToken);
+          await clearPendingInviteToken();
+          router.replace(`/groups/${groupId}` as any);
+          return;
+        }
+      } catch {
+        await clearPendingInviteToken();
+      }
+
       router.replace("/(tabs)");
     } catch (error) {
       console.error(error);

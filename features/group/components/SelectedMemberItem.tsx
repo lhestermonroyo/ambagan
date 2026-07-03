@@ -43,7 +43,7 @@ export default function SelectedMemberItem({
           <Avatar
             name={member.first_name || ""}
             uri={member.avatar!}
-            size="lg"
+            size="md"
             className="rounded-full"
           />
         </Box>
@@ -52,6 +52,11 @@ export default function SelectedMemberItem({
             {member.first_name} {member.last_name}
             {isMe && " (You)"}
           </Text>
+          {member.is_placeholder && (
+            <Text className="text-center text-xs text-secondary-950">
+              Not on Ambagan yet
+            </Text>
+          )}
         </VStack>
       </VStack>
     </Pressable>

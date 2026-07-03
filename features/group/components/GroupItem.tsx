@@ -2,12 +2,17 @@ import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
+import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import states from "@/states";
 import { Group, Member } from "@/types/groups";
 import { formatDate } from "@/utils/formatDate";
+import { getSecondaryHex } from "@/utils/getColorHex";
+import { UserStar } from "lucide-react-native";
 import { useMemo } from "react";
+import { useColorScheme } from "react-native";
 
 export default function GroupItem({
   details,
@@ -16,6 +21,15 @@ export default function GroupItem({
   details: Group & { members: Member[] };
   onOpen: () => void;
 }) {
+  const { details: userDetails } = states.user();
+  const isCreator = details.admin.id === userDetails?.id;
+
+  if (!details && !userDetails) {
+    return;
+  }
+
+  const colorScheme = useColorScheme() ?? "light";
+
   const appAvatarGroupItems = useMemo(
     () =>
       details.members.map((item) => ({
@@ -29,7 +43,17 @@ export default function GroupItem({
   return (
     <PressableListItem className="p-4" onPress={onOpen}>
       <HStack className="items-center gap-x-2">
-        <AppAvatar name={details.name} uri={details.avatar || undefined} />
+        <Box className="relative">
+          {isCreator && (
+            <Box className="absolute right-0 bottom-0 z-10 bg-primary-600 rounded-full p-1">
+              <UserStar
+                size={12}
+                color={getSecondaryHex("text-secondary-0", colorScheme)}
+              />
+            </Box>
+          )}
+          <AppAvatar name={details.name} uri={details.avatar || undefined} />
+        </Box>
         <VStack className="flex-1">
           <Text
             className="text-lg flex-shrink"

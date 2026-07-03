@@ -15,6 +15,7 @@ import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
 import { splitTypes } from "@/utils/constants";
 import { getCurrencySign } from "@/utils/currency";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
@@ -334,7 +335,9 @@ function MemberSplitItem({
             <Text className="text-lg">
               {member?.first_name} {member?.last_name} {isMe && "(You)"}
             </Text>
-            <Text className="text-sm text-secondary-950">{member?.email}</Text>
+            <Text className="text-sm text-secondary-950">
+              {getUserSubtitle(member)}
+            </Text>
           </VStack>
         </HStack>
 

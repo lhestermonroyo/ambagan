@@ -17,6 +17,10 @@ import {
   getCachedUserSession,
   setCachedUserSession
 } from "@/utils/userCache";
+import {
+  clearPendingInviteToken,
+  getPendingInviteToken
+} from "@/utils/pendingInvite";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { RealtimeChannel } from "@supabase/supabase-js";
@@ -336,6 +340,7 @@ export default function RootLayout() {
       subscribeToNotifications(id);
       registerDevicePushToken(id);
       services.purchase.initializePurchases(id);
+      consumePendingInvite();
 
       // Persist the fresh profile + UI prefs for the next offline cold launch.
       const current = states.user.getState();
@@ -369,6 +374,19 @@ export default function RootLayout() {
       // handled above, not here). Let an existing session through to the tabs,
       // which read from cache — don't strand the user on the splash.
       states.user.setState((prev) => ({ ...prev, routeIntent: "tabs" }));
+    }
+  };
+
+  const consumePendingInvite = async () => {
+    try {
+      const token = await getPendingInviteToken();
+      if (!token) return;
+      const groupId = await services.group.joinGroupByToken(token);
+      await clearPendingInviteToken();
+      router.push(`/groups/${groupId}` as any);
+    } catch {
+      // silently ignore — stale/invalid token, don't block the user
+      await clearPendingInviteToken();
     }
   };
 

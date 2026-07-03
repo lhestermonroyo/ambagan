@@ -55,7 +55,13 @@
       "expo-sqlite",
       "@react-native-community/datetimepicker",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Ambagan uses your contacts to add people to your expense groups."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

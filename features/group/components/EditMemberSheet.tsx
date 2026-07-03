@@ -1,5 +1,6 @@
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
@@ -8,7 +9,6 @@ import {
   ActionsheetBackdrop,
   ActionsheetContent
 } from "@/components/ui/actionsheet";
-import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
 import { Box } from "@/components/ui/box";
 import { CheckboxGroup } from "@/components/ui/checkbox";
 import { FlatList } from "@/components/ui/flat-list";
@@ -17,6 +17,7 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import ContactPickerSheet from "@/features/group/components/ContactPickerSheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
@@ -24,12 +25,15 @@ import services from "@/services";
 import states from "@/states";
 import { Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
+import { getPrimaryHex } from "@/utils/getColorHex";
 import { filterContacts, getSavedContacts } from "@/utils/offlineContacts";
 import * as offlineQueue from "@/utils/offlineQueue";
+import { normalizePhone } from "@/utils/phone";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
+import { UserRoundPlus } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Platform } from "react-native";
+import { Platform, useColorScheme } from "react-native";
 import RecentFavoritesTab from "./RecentFavoritesTab";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
@@ -50,10 +54,12 @@ export default function EditMembersSheet({
   const [lockedMembers, setLockedMembers] = useState<Member[]>([]);
   const [tab, setTab] = useState<"friends" | "favorites">("friends");
   const [recentUsers, setRecentUsers] = useState<UserPreview[]>([]);
+  const [contactPickerOpen, setContactPickerOpen] = useState(false);
 
   const { details: groupDetails, memberList } = states.group.getState();
   const { details: userDetails } = states.user();
   const { isOnline } = useNetwork();
+  const colorScheme = useColorScheme() ?? "light";
 
   const {
     favoriteIds,
@@ -146,9 +152,19 @@ export default function EditMembersSheet({
   };
 
   const displayUsers = useMemo(() => {
-    if (searching) return users;
-    return tab === "favorites" ? favoriteUsers : recentUsers;
-  }, [searching, tab, users, favoriteUsers, recentUsers]);
+    const base = searching
+      ? users
+      : tab === "favorites"
+        ? favoriteUsers
+        : recentUsers;
+    // Hide anyone already selected (locked or unlocked) — they reappear here
+    // only after being removed from the selected chips above.
+    return base.filter(
+      (u) =>
+        !lockedMembers.some((m) => m.id === u.id) &&
+        !members.some((m) => m.id === u.id)
+    );
+  }, [searching, tab, users, favoriteUsers, recentUsers, lockedMembers, members]);
 
   const handleChangeMembers = (selected: (string | number)[]) => {
     const selectedUnlocked = selected.filter(
@@ -205,12 +221,48 @@ export default function EditMembersSheet({
     onClose();
   };
 
+  const handleAddContacts = (contactMembers: UserPreview[]) => {
+    setMembers((prev) => {
+      const existing = new Set([...prev, ...lockedMembers].map((m) => m.id));
+      return [
+        ...prev,
+        ...contactMembers.filter((m) => !existing.has(m.id))
+      ] as Member[];
+    });
+  };
+
+  const excludePhones = useMemo(
+    () =>
+      [...memberList, ...lockedMembers, ...members]
+        .map((m) => normalizePhone((m as any).phone))
+        .filter((p): p is string => !!p),
+    [memberList, lockedMembers, members]
+  );
+
   const handleUpdateMembers = async () => {
     try {
       if (!groupDetails?.id) return;
+
+      const online = await offlineQueue.isOnline();
+      // Phone contacts need the placeholder RPC (online) to get real ids.
+      if (!online && services.member.hasUnresolvedContacts(members)) {
+        showToast({
+          title: "You're offline",
+          description:
+            "Adding phone contacts as members needs an internet connection. Remove them or reconnect.",
+          type: "error"
+        });
+        return;
+      }
+
       setSubmitting(true);
 
-      const allMembers = lockedMembers.concat(members);
+      // Resolve picked phone contacts to real placeholder ids (online only).
+      const resolvedMembers = online
+        ? ((await services.member.resolveContactMembers(members)) as Member[])
+        : members;
+
+      const allMembers = lockedMembers.concat(resolvedMembers);
 
       const membersToAdd = allMembers
         .filter((member) => !memberList.some((m) => m.id === member.id))
@@ -223,7 +275,7 @@ export default function EditMembersSheet({
         )
         .map((member) => member.id);
 
-      const membersToSave = members.map(
+      const membersToSave = resolvedMembers.map(
         (m) =>
           ({
             id: m.id,
@@ -239,7 +291,7 @@ export default function EditMembersSheet({
       // member list is updated too, so an offline-added expense reflects the new
       // roster. Member editing is admin-only, so there's a single authorized
       // editor and no cross-user conflict.
-      if (!(await offlineQueue.isOnline())) {
+      if (!online) {
         const now = new Date().toISOString();
         const roster = allMembers.map(
           (m) =>
@@ -309,145 +361,175 @@ export default function EditMembersSheet({
   }, [members, lockedMembers]);
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[100]}>
-      <ActionsheetBackdrop />
-      <ActionsheetContent className="p-0">
-        <KeyboardAvoidingSheet>
-        <VStack
-          className={cn(
-            "w-full flex-1",
-            Platform.OS === "android" ? "pt-[3rem]" : "pt-[4.5rem]"
-          )}
-        >
-          <Pressable onPress={handleClose}>
-            <HStack className="p-4 items-center">
-              <Icon as="arrow-back-ios" className="text-secondary-950" />
-              <Text bold className="text-xl">
-                Edit Members
-              </Text>
-            </HStack>
-          </Pressable>
-          <LoadingWrapper text="Loading members..." isLoading={loading}>
-            <VStack className="w-full gap-y-4 pb-4">
-              <VStack>
-                <HStack className="px-4">
-                  <Text className="text-sm text-secondary-950 flex-1">
-                    {formattedMembers.length} member
-                    {formattedMembers.length > 1 ? "s" : ""} selected
-                  </Text>
-                </HStack>
-                <FlatList
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  className="w-full px-4"
-                  data={formattedMembers}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => {
-                    const isCreator = item.id === userDetails?.id;
-                    const isLocked = lockedMembers.some(
-                      (member) => member.id === item.id
-                    );
-
-                    return (
-                      <SelectedMemberItem
-                        key={item.id}
-                        member={item}
-                        disabled={isCreator || isLocked}
-                        onRemoveMember={() => handleRemoveMember(item.id)}
+    <>
+      <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[100]}>
+        <ActionsheetBackdrop />
+        <ActionsheetContent className="p-0">
+          <KeyboardAvoidingSheet>
+            <VStack
+              className={cn(
+                "w-full flex-1",
+                Platform.OS === "android" ? "pt-[3rem]" : "pt-[4.5rem]"
+              )}
+            >
+              <HStack className="items-center justify-between w-full pt-4 px-4">
+                <Pressable onPress={handleClose}>
+                  <HStack className="items-center">
+                    <Icon as="arrow-back-ios" className="text-secondary-950" />
+                    <Text bold className="text-xl">
+                      Edit Members
+                    </Text>
+                  </HStack>
+                </Pressable>
+                {isOnline && (
+                  <FormButton
+                    variant="link"
+                    size="md"
+                    text="Add from Contacts"
+                    icon={
+                      <UserRoundPlus
+                        size={18}
+                        color={getPrimaryHex("text-primary-400", colorScheme)}
                       />
-                    );
-                  }}
-                />
-                <VStack className="w-full px-4">
-                  <Text className="text-sm text-secondary-950">
-                    Members with a lock icon have pending expenses and must
-                    settle all payments before they can be removed.
-                  </Text>
+                    }
+                    onPress={() => setContactPickerOpen(true)}
+                  />
+                )}
+              </HStack>
+              <LoadingWrapper text="Loading members..." isLoading={loading}>
+                <VStack className="w-full gap-y-4 pb-4">
+                  <VStack>
+                    {formattedMembers.length > 0 && (
+                      <HStack className="px-4">
+                        <Text className="text-sm text-secondary-950 flex-1">
+                          {formattedMembers.length} member
+                          {formattedMembers.length > 1 ? "s" : ""} selected
+                        </Text>
+                      </HStack>
+                    )}
+
+                    <FlatList
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      className="w-full px-4"
+                      data={formattedMembers}
+                      keyExtractor={(item) => item.id.toString()}
+                      renderItem={({ item }) => {
+                        const isCreator = item.id === userDetails?.id;
+                        const isLocked = lockedMembers.some(
+                          (member) => member.id === item.id
+                        );
+
+                        return (
+                          <SelectedMemberItem
+                            key={item.id}
+                            member={item}
+                            disabled={isCreator || isLocked}
+                            onRemoveMember={() => handleRemoveMember(item.id)}
+                          />
+                        );
+                      }}
+                    />
+                    {formattedMembers.length > 0 && (
+                      <VStack className="w-full px-4">
+                        <Text className="text-sm text-secondary-950">
+                          Members with a lock icon have pending expenses and
+                          must settle all payments before they can be removed.
+                        </Text>
+                      </VStack>
+                    )}
+                  </VStack>
+                  <Box className="px-4">
+                    <SearchInput
+                      placeholder="Search users to add or remove"
+                      value={searchInput}
+                      onChangeText={(val) => setSearchInput(val)}
+                      onSetSearching={setSearching}
+                    />
+                  </Box>
+                  {!isOnline && (
+                    <Box className="px-4">
+                      <Text className="text-xs text-secondary-950">
+                        You're offline — showing saved contacts only
+                      </Text>
+                    </Box>
+                  )}
+                  {!searching && (
+                    <RecentFavoritesTab tab={tab} onTabChange={setTab} />
+                  )}
                 </VStack>
-              </VStack>
-              <Box className="px-4">
-                <SearchInput
-                  placeholder="Search users to add or remove"
-                  value={searchInput}
-                  onChangeText={(val) => setSearchInput(val)}
-                  onSetSearching={setSearching}
-                />
-              </Box>
-              {!isOnline && (
-                <Box className="px-4">
-                  <Text className="text-xs text-secondary-950">
-                    You're offline — showing saved contacts only
-                  </Text>
-                </Box>
-              )}
-              {!searching && (
-                <RecentFavoritesTab tab={tab} onTabChange={setTab} />
-              )}
+                <ScrollView className="flex-1 w-full">
+                  {displayUsers.length === 0 && (
+                    <VStack className="p-4 justify-center items-center">
+                      <Text className="text-sm text-secondary-950">
+                        {searching
+                          ? "No results found on your search."
+                          : tab === "favorites"
+                            ? "No favorites added yet."
+                            : "No recent users."}
+                      </Text>
+                    </VStack>
+                  )}
+                  <CheckboxGroup
+                    className="w-full"
+                    value={formattedMembers.map((member) => member.id)}
+                    onChange={handleChangeMembers}
+                  >
+                    <FlatList
+                      scrollEnabled={false}
+                      className="flex-1"
+                      data={displayUsers}
+                      keyExtractor={(item) => item.id.toString()}
+                      renderItem={({ item }) => {
+                        const isLocked = lockedMembers.some(
+                          (member) => member.id === item.id
+                        );
+                        const isCreator = item.id === userDetails?.id;
+
+                        return (
+                          <UserCheckboxItem
+                            key={item.id}
+                            item={item}
+                            disabled={isCreator || isLocked}
+                            isFavorite={favoriteIds.has(item.id)}
+                            onToggleFavorite={handleToggleFavorite}
+                          />
+                        );
+                      }}
+                      ItemSeparatorComponent={ListDivider}
+                    />
+                  </CheckboxGroup>
+                </ScrollView>
+              </LoadingWrapper>
             </VStack>
-            <ScrollView className="flex-1 w-full">
-              {displayUsers.length === 0 && (
-                <VStack className="p-4 justify-center items-center">
-                  <Text className="text-sm text-secondary-950">
-                    {searching
-                      ? "No results found on your search."
-                      : tab === "favorites"
-                        ? "No favorites added yet."
-                        : "No recent users."}
-                  </Text>
-                </VStack>
-              )}
-              <CheckboxGroup
-                className="w-full"
-                value={formattedMembers.map((member) => member.id)}
-                onChange={handleChangeMembers}
-              >
-                <FlatList
-                  scrollEnabled={false}
+            <Box className="items-center justify-center p-4">
+              <HStack className="gap-x-2">
+                <FormButton
                   className="flex-1"
-                  data={displayUsers}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => {
-                    const isLocked = lockedMembers.some(
-                      (member) => member.id === item.id
-                    );
-                    const isCreator = item.id === userDetails?.id;
-
-                    return (
-                      <UserCheckboxItem
-                        key={item.id}
-                        item={item}
-                        disabled={isCreator || isLocked}
-                        isFavorite={favoriteIds.has(item.id)}
-                        onToggleFavorite={handleToggleFavorite}
-                      />
-                    );
-                  }}
-                  ItemSeparatorComponent={ListDivider}
+                  variant="outline"
+                  text="Cancel"
+                  disabled={submitting}
+                  onPress={handleClose}
                 />
-              </CheckboxGroup>
-            </ScrollView>
-          </LoadingWrapper>
-        </VStack>
-        <Box className="items-center justify-center p-4">
-          <HStack className="gap-x-2">
-            <FormButton
-              className="flex-1"
-              variant="outline"
-              text="Cancel"
-              disabled={submitting}
-              onPress={handleClose}
-            />
-            <FormButton
-              className="flex-1"
-              text="Update Members"
-              disabled={formattedMembers.length === 0 || submitting}
-              loading={submitting}
-              onPress={handleUpdateMembers}
-            />
-          </HStack>
-        </Box>
-        </KeyboardAvoidingSheet>
-      </ActionsheetContent>
-    </Actionsheet>
+                <FormButton
+                  className="flex-1"
+                  text="Update Members"
+                  disabled={formattedMembers.length === 0 || submitting}
+                  loading={submitting}
+                  onPress={handleUpdateMembers}
+                />
+              </HStack>
+            </Box>
+          </KeyboardAvoidingSheet>
+        </ActionsheetContent>
+      </Actionsheet>
+
+      <ContactPickerSheet
+        isOpen={contactPickerOpen}
+        onClose={() => setContactPickerOpen(false)}
+        excludePhones={excludePhones}
+        onAdd={handleAddContacts}
+      />
+    </>
   );
 }
