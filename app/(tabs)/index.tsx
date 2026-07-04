@@ -753,7 +753,7 @@ const FriendCard = React.memo(function FriendCard({
   return (
     <PressableListItem
       onPress={handlePress}
-      className="border min-w-40 border-secondary-500 rounded-lg p-4"
+      className="border min-w-40 border-secondary-500 bg-secondary-50 rounded-lg p-4"
     >
       <VStack className="gap-y-2">
         <AppAvatar name={name} uri={friend.avatar || undefined} size="sm" />

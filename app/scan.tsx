@@ -1,14 +1,15 @@
+import FormButton from "@/components/FormButton";
 import { Box } from "@/components/ui/box";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import FormButton from "@/components/FormButton";
 import useAppToast from "@/hooks/use-app-toast";
+import { getPrimaryHex } from "@/utils/getColorHex";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { ScanLine, X } from "lucide-react-native";
 import { useRef, useState } from "react";
-import { Linking, StyleSheet } from "react-native";
+import { Linking, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Group invite QRs encode `ambagan://join/<token>`. Pull the token out of that
@@ -27,6 +28,7 @@ export default function ScanJoinScreen() {
   // Guards against the camera firing onBarcodeScanned repeatedly for the same
   // code while we navigate away.
   const handledRef = useRef(false);
+  const colorScheme = useColorScheme() ?? "light";
 
   const handleClose = () => router.back();
 
@@ -40,7 +42,7 @@ export default function ScanJoinScreen() {
       toast({
         title: "Not an Ambagan invite",
         description: "That QR code isn't a group invite. Try another.",
-        type: "warning",
+        type: "warning"
       });
       setTimeout(() => {
         handledRef.current = false;
@@ -60,9 +62,12 @@ export default function ScanJoinScreen() {
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView className="bg-secondary-0" style={{ flex: 1 }}>
         <VStack className="flex-1 items-center justify-center gap-y-4 p-6">
-          <ScanLine size={48} className="text-primary-400" />
+          <ScanLine
+            size={48}
+            color={getPrimaryHex("text-primary-500", colorScheme)}
+          />
           <VStack className="gap-y-2">
             <Text bold className="text-xl text-center">
               Camera access needed
