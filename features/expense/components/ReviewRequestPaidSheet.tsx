@@ -28,6 +28,7 @@ import { ReceiptText } from "lucide-react-native";
 import { Fragment, ReactNode, useState } from "react";
 import { useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
+import SettlementBreakdown from "./SettlementBreakdown";
 import StatusBadge from "./StatusBadge";
 
 export default function ReviewRequestPaidSheet({
@@ -237,6 +238,8 @@ export default function ReviewRequestPaidSheet({
                     </Text>
                   </VStack>
                 </VStack>
+
+                <SettlementBreakdown payment={payment} />
 
                 <Box className="bg-secondary-100 rounded-xl">
                   <DetailRow

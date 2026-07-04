@@ -33,6 +33,7 @@ import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
 import { useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
+import SettlementBreakdown from "./SettlementBreakdown";
 
 export default function MarkAsSettledSheet({
   isOpen,
@@ -139,6 +140,8 @@ export default function MarkAsSettledSheet({
                   <Text className="text-secondary-950">You receive</Text>
                 </VStack>
               </VStack>
+
+              <SettlementBreakdown payment={payment} />
 
               {payment.rejected_at && (
                 <VStack className="bg-secondary-100 rounded-xl p-4 gap-y-1">
