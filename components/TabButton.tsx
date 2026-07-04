@@ -3,7 +3,7 @@ import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import {
   ArrowLeftRight,
-  CircleUserRound,
+  CircleUser,
   HouseHeart,
   UsersRound,
   Wallet
@@ -42,7 +42,7 @@ export default function TabButton(
       icon = <ArrowLeftRight size={24} color={color} />;
       break;
     case "Profile":
-      icon = <CircleUserRound size={24} color={color} />;
+      icon = <CircleUser size={24} color={color} />;
       break;
     default:
       icon = null;

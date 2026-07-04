@@ -33,7 +33,7 @@ import * as offlineQueue from "@/utils/offlineQueue";
 import { normalizePhone } from "@/utils/phone";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import { UserRoundPlus } from "lucide-react-native";
+import { UserPlus } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Platform, useColorScheme } from "react-native";
 import RecentFavoritesTab from "./RecentFavoritesTab";
@@ -396,7 +396,7 @@ export default function EditMembersSheet({
                     size="md"
                     text="Add from Contacts"
                     icon={
-                      <UserRoundPlus
+                      <UserPlus
                         size={18}
                         color={getPrimaryHex("text-primary-400", colorScheme)}
                       />

@@ -1,12 +1,7 @@
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import * as Haptics from "expo-haptics";
-import {
-  CircleUserRound,
-  HouseHeart,
-  UsersRound,
-  Wallet
-} from "lucide-react-native";
+import { CircleUser, HouseHeart, Users, Wallet } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";
 import { Platform, Pressable, Text, View, useColorScheme } from "react-native";
 import Animated, {
@@ -23,8 +18,8 @@ const BAR_PADDING_H = 16;
 const ICONS: Record<string, (color: string) => React.ReactElement | null> = {
   index: (color) => <Wallet size={22} color={color} />,
   groups: (color) => <HouseHeart size={22} color={color} />,
-  friends: (color) => <UsersRound size={22} color={color} />,
-  profile: (color) => <CircleUserRound size={22} color={color} />
+  friends: (color) => <Users size={22} color={color} />,
+  profile: (color) => <CircleUser size={22} color={color} />
 };
 
 const LABELS: Record<string, string> = {
