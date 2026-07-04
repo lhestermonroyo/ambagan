@@ -184,7 +184,7 @@ export default function SplitSelection({
             <VStack className="gap-y-1">
               {isLockedGroup && groupName && (
                 <Text
-                  className="text-sm text-secondary-950 uppercase flex-1"
+                  className="text-sm text-secondary-950 uppercase"
                   bold
                   numberOfLines={1}
                 >

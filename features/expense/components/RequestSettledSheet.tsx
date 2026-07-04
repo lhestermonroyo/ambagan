@@ -118,7 +118,7 @@ export default function RequestSettledSheet({
             <VStack className="gap-y-6">
               <VStack className="gap-y-1">
                 <Text
-                  className="text-sm text-secondary-950 uppercase flex-1"
+                  className="text-sm text-secondary-950 uppercase"
                   bold
                   numberOfLines={1}
                 >

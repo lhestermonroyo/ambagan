@@ -87,7 +87,7 @@ export default function AddExpenseStep({
           <VStack className="gap-y-1">
             {isLockedGroup && values.group && (
               <Text
-                className="text-sm text-secondary-950 uppercase flex-1"
+                className="text-sm text-secondary-950 uppercase"
                 bold
                 numberOfLines={1}
               >

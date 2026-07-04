@@ -126,7 +126,7 @@ export default function MarkAsSettledSheet({
               <VStack className="gap-y-1">
                 {payment.expense_description && (
                   <Text
-                    className="text-sm text-secondary-950 uppercase flex-1"
+                    className="text-sm text-secondary-950 uppercase"
                     bold
                     numberOfLines={1}
                   >
