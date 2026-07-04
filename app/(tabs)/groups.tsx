@@ -11,6 +11,7 @@ import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Fab, FabLabel } from "@/components/ui/fab";
 import { HStack } from "@/components/ui/hstack";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -21,9 +22,9 @@ import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
-import { getSecondaryHex } from "@/utils/getColorHex";
+import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
-import { HousePlus } from "lucide-react-native";
+import { HousePlus, ScanLine, X } from "lucide-react-native";
 import { Fragment, useMemo, useRef, useState } from "react";
 import { RefreshControl, useColorScheme } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
@@ -32,7 +33,7 @@ const TABS: { key: GroupFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "created", label: "Created" },
   { key: "joined", label: "Joined" },
-  { key: "archived", label: "Archived" }
+  { key: "archived", label: "Archived" },
 ];
 
 export default function GroupsScreen() {
@@ -48,6 +49,7 @@ export default function GroupsScreen() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [activeTab, setActiveTab] = useState<GroupFilter>("all");
+  const [fabOpen, setFabOpen] = useState(false);
 
   const activeTabRef = useRef<GroupFilter>("all");
 
@@ -63,8 +65,8 @@ export default function GroupsScreen() {
         if (!userDetails?.id) return;
         init(initialized, activeTabRef.current);
       },
-      [userDetails?.id, initialized]
-    )
+      [userDetails?.id, initialized],
+    ),
   );
 
   const init = async (isInitialized = false, filter: GroupFilter = "all") => {
@@ -75,7 +77,7 @@ export default function GroupsScreen() {
   const fetchGroup = async (
     pageNum: number,
     filter: GroupFilter,
-    isInitialized = false
+    isInitialized = false,
   ) => {
     if (!userDetails?.id) return;
     if (!isInitialized) setLoading(true);
@@ -83,17 +85,17 @@ export default function GroupsScreen() {
       const result = await services.group.getGroupsByUserIdPaginated(
         userDetails.id,
         pageNum,
-        filter
+        filter,
       );
       setGroups((prev) =>
-        pageNum === 0 ? result.data : [...prev, ...result.data]
+        pageNum === 0 ? result.data : [...prev, ...result.data],
       );
       setPage(pageNum);
       setHasMore(result.hasNext);
       if (filter === "all") {
         states.group.setState((prev) => ({
           ...prev,
-          list: pageNum === 0 ? result.data : [...prev.list, ...result.data]
+          list: pageNum === 0 ? result.data : [...prev.list, ...result.data],
         }));
       }
     } catch (error) {
@@ -128,7 +130,7 @@ export default function GroupsScreen() {
       toast({
         title: "Group archived",
         description: "You can find it in the Archived tab.",
-        type: "success"
+        type: "success",
       });
       await fetchGroup(0, activeTabRef.current, true);
     } catch (error) {
@@ -136,7 +138,7 @@ export default function GroupsScreen() {
       toast({
         title: "Error",
         description: "Failed to archive group. Please try again.",
-        type: "error"
+        type: "error",
       });
     } finally {
       setArchiving(false);
@@ -150,12 +152,12 @@ export default function GroupsScreen() {
       toast({
         title: "Group deleted",
         description: "The group has been permanently deleted.",
-        type: "success"
+        type: "success",
       });
       setGroups((prev) => prev.filter((g) => g.id !== groupId));
       states.group.setState((prev) => ({
         ...prev,
-        list: prev.list.filter((g) => g.id !== groupId)
+        list: prev.list.filter((g) => g.id !== groupId),
       }));
     } catch (error: any) {
       console.error("Failed to delete group:", error);
@@ -163,7 +165,7 @@ export default function GroupsScreen() {
         title: "Cannot delete group",
         description:
           error?.message ?? "Failed to delete group. Please try again.",
-        type: "error"
+        type: "error",
       });
     } finally {
       setDeleting(false);
@@ -177,7 +179,7 @@ export default function GroupsScreen() {
       toast({
         title: "Group restored",
         description: "Group has been moved back to your active groups.",
-        type: "success"
+        type: "success",
       });
       await fetchGroup(0, activeTabRef.current, true);
     } catch (error) {
@@ -185,7 +187,7 @@ export default function GroupsScreen() {
       toast({
         title: "Error",
         description: "Failed to restore group. Please try again.",
-        type: "error"
+        type: "error",
       });
     } finally {
       setArchiving(false);
@@ -198,8 +200,14 @@ export default function GroupsScreen() {
     setRefreshing(false);
   };
 
-  const handleAddGroup = () => {
+  const handleCreateGroup = () => {
+    setFabOpen(false);
     router.push("/groups/create");
+  };
+
+  const handleScanToJoin = () => {
+    setFabOpen(false);
+    router.push("/scan" as any);
   };
 
   const handleSearchChange = (text: string) => {
@@ -210,25 +218,64 @@ export default function GroupsScreen() {
   const filteredGroups = useMemo(() => {
     if (searchInput.length === 0) return groups;
     return groups.filter((g) =>
-      g.name.toLowerCase().includes(searchInput.toLowerCase())
+      g.name.toLowerCase().includes(searchInput.toLowerCase()),
     );
   }, [searchInput, groups]);
 
   return (
     <Fragment>
+      {fabOpen && (
+        <Pressable
+          className="absolute inset-0 z-40"
+          onPress={() => setFabOpen(false)}
+        />
+      )}
+      {fabOpen && (
+        <VStack className="absolute bottom-20 right-4 z-50 gap-2 items-end">
+          <Pressable
+            className="flex-row items-center gap-x-2 bg-white dark:bg-[#1F1F1F] px-4 py-2.5 rounded-full shadow-sm"
+            onPress={handleScanToJoin}
+          >
+            <ScanLine
+              size={18}
+              color={getPrimaryHex("text-primary-400", colorScheme)}
+            />
+            <Text className="font-semibold">Scan to Join</Text>
+          </Pressable>
+          <Pressable
+            className="flex-row items-center gap-x-2 bg-white dark:bg-[#1F1F1F] px-4 py-2.5 rounded-full shadow-sm"
+            onPress={handleCreateGroup}
+          >
+            <HousePlus
+              size={18}
+              color={getSecondaryHex("text-secondary-950", colorScheme)}
+            />
+            <Text className="font-semibold">Create Group</Text>
+          </Pressable>
+        </VStack>
+      )}
       <Fab
         placement="bottom right"
         className="px-6"
         isHovered={false}
         isDisabled={false}
         isPressed={false}
-        onPress={handleAddGroup}
+        onPress={() => setFabOpen((prev) => !prev)}
       >
-        <HousePlus
-          size={18}
-          color={getSecondaryHex("text-secondary-0", colorScheme)}
-        />
-        <FabLabel className="text-lg font-medium">Create Group</FabLabel>
+        {fabOpen ? (
+          <X
+            size={18}
+            color={getSecondaryHex("text-secondary-0", colorScheme)}
+          />
+        ) : (
+          <HousePlus
+            size={18}
+            color={getSecondaryHex("text-secondary-0", colorScheme)}
+          />
+        )}
+        <FabLabel className="text-lg font-medium">
+          {fabOpen ? "Close" : "Add Group"}
+        </FabLabel>
       </Fab>
       <TabLayout title="Groups">
         <VStack className="bg-background-0 pb-3 gap-y-3">

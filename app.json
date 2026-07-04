@@ -61,6 +61,12 @@
         {
           "contactsPermission": "Ambagan uses your contacts to add people to your expense groups."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Ambagan uses your camera to scan group invite QR codes so you can join a group."
+        }
       ]
     ],
     "experiments": {
