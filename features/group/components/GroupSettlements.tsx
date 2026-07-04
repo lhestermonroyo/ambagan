@@ -4,15 +4,14 @@ import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import SearchInput from "@/components/SearchInput";
 import { SettlementListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
-import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
-import { ScrollView } from "@/components/ui/scroll-view";
 import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -33,6 +32,9 @@ import DateRangeSheet, {
   dateRangeLabels,
   getDateRangeCutoff
 } from "@/features/group/components/DateRangeSheet";
+import StatusSheet, {
+  SettlementStatus
+} from "@/features/group/components/StatusSheet";
 import ViewBySheet, {
   ViewOption
 } from "@/features/group/components/ViewBySheet";
@@ -47,12 +49,29 @@ import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect } from "expo-router";
-import { CalendarRange, LayoutList, X } from "lucide-react-native";
+import {
+  CalendarRange,
+  ChevronDown,
+  LayoutList,
+  Search,
+  X
+} from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { useColorScheme } from "react-native";
+import {
+  LayoutAnimation,
+  Platform,
+  UIManager,
+  useColorScheme
+} from "react-native";
 
-const settlementTabs = ["All", "Pending", "Requested", "Settled"] as const;
-
+// LayoutAnimation needs to be opted into on old-architecture Android; it's a
+// no-op elsewhere. Guards the row swap when opening/closing search.
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function GroupSettlements({
   refreshTrigger = 0
@@ -77,12 +96,14 @@ export default function GroupSettlements({
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
   const [reviewSheetReadOnly, setReviewSheetReadOnly] = useState(false);
   const [reviewIsPayer, setReviewIsPayer] = useState(false);
-  const [settlementTab, setSettlementTab] =
-    useState<(typeof settlementTabs)[number]>("All");
+  const [settlementTab, setSettlementTab] = useState<SettlementStatus>("All");
+  const [statusSheetOpen, setStatusSheetOpen] = useState(false);
   const [viewBy, setViewBy] = useState<ViewOption>("By Date");
   const [viewSheetOpen, setViewSheetOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const initializedRef = useRef(false);
 
   useFocusEffect(
@@ -254,6 +275,22 @@ export default function GroupSettlements({
       filtered = [...activeFiltered, ...settledPayments];
     }
 
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      filtered = filtered.filter((p) => {
+        const description = (p.expense_description ?? "").toLowerCase();
+        const payerName =
+          `${p.payer.first_name} ${p.payer.last_name}`.toLowerCase();
+        const memberName =
+          `${p.member.first_name} ${p.member.last_name}`.toLowerCase();
+        return (
+          description.includes(query) ||
+          payerName.includes(query) ||
+          memberName.includes(query)
+        );
+      });
+    }
+
     if (viewBy === "By Expense") {
       return groupByExpenseId(filtered);
     }
@@ -285,7 +322,8 @@ export default function GroupSettlements({
     settlementTab,
     viewBy,
     userDetails,
-    dateRange
+    dateRange,
+    searchQuery
   ]);
 
   const handleSettlementItemPress = async (
@@ -355,6 +393,14 @@ export default function GroupSettlements({
     setReviewSheetOpen(true);
   };
 
+  // Swap the status/filter row for the full-width search field (and back).
+  // The query is kept when collapsing so it persists as a chip, mirroring how
+  // the date-range and group-by filters behave after their sheets close.
+  const toggleSearch = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSearchOpen((prev) => !prev);
+  };
+
   return (
     <Fragment>
       <VStack className="gap-y-6">
@@ -403,56 +449,96 @@ export default function GroupSettlements({
         </VStack>
 
         <VStack className="gap-y-4">
-          <HStack>
-            <ScrollView
-              horizontal
-              className="flex-1"
-              showsHorizontalScrollIndicator={false}
-            >
-              <HStack className="gap-x-2 px-4">
-                {settlementTabs.map((t) => (
-                  <FormButton
-                    key={t}
-                    size="sm"
-                    variant={t === settlementTab ? "solid" : "outline"}
-                    text={t}
-                    onPress={() => setSettlementTab(t)}
+          {searchOpen ? (
+            <Box className="px-4">
+              <SearchInput
+                autoFocus
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search by description or name"
+                rightIcon={X}
+                onPressRightIcon={toggleSearch}
+              />
+            </Box>
+          ) : (
+            <HStack className="px-4 items-center justify-between">
+              <FormButton
+                size="sm"
+                variant="outline"
+                text={settlementTab}
+                iconEnd={
+                  <ChevronDown
+                    size={16}
+                    color={getPrimaryHex("text-primary-500", colorScheme)}
                   />
-                ))}
+                }
+                onPress={() => setStatusSheetOpen(true)}
+              />
+              <HStack className="gap-x-6 items-center">
+                <Button
+                  variant="link"
+                  className="rounded-full"
+                  onPress={toggleSearch}
+                >
+                  <Search
+                    color={
+                      searchQuery
+                        ? getPrimaryHex("text-primary-400", colorScheme)
+                        : getSecondaryHex("text-secondary-950", colorScheme)
+                    }
+                  />
+                </Button>
+                <Button
+                  variant="link"
+                  className="rounded-full"
+                  onPress={() => setDateRangeSheetOpen(true)}
+                >
+                  <CalendarRange
+                    color={
+                      dateRange !== "All"
+                        ? getPrimaryHex("text-primary-400", colorScheme)
+                        : getSecondaryHex("text-secondary-950", colorScheme)
+                    }
+                  />
+                </Button>
+                <Button
+                  variant="link"
+                  className="rounded-full"
+                  onPress={() => setViewSheetOpen(true)}
+                >
+                  <LayoutList
+                    color={
+                      viewBy !== "By Date"
+                        ? getPrimaryHex("text-primary-400", colorScheme)
+                        : getSecondaryHex("text-secondary-950", colorScheme)
+                    }
+                  />
+                </Button>
               </HStack>
-            </ScrollView>
-            <HStack className="gap-x-6 px-4">
-              <Button
-                variant="link"
-                className="rounded-full"
-                onPress={() => setDateRangeSheetOpen(true)}
-              >
-                <CalendarRange
-                  color={
-                    dateRange !== "All"
-                      ? getPrimaryHex("text-primary-400", colorScheme)
-                      : getSecondaryHex("text-secondary-950", colorScheme)
-                  }
-                />
-              </Button>
-              <Button
-                variant="link"
-                className="rounded-full"
-                onPress={() => setViewSheetOpen(true)}
-              >
-                <LayoutList
-                  color={
-                    viewBy !== "By Date"
-                      ? getPrimaryHex("text-primary-400", colorScheme)
-                      : getSecondaryHex("text-secondary-950", colorScheme)
-                  }
-                />
-              </Button>
             </HStack>
-          </HStack>
+          )}
 
-          {(dateRange !== "All" || viewBy !== "By Date") && (
+          {(dateRange !== "All" ||
+            viewBy !== "By Date" ||
+            (!!searchQuery && !searchOpen)) && (
             <HStack className="gap-x-2 px-4 flex-wrap">
+              {!!searchQuery && !searchOpen && (
+                <Pressable
+                  onPress={() => setSearchQuery("")}
+                  className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                >
+                  <Text
+                    className="text-sm text-primary-600 max-w-[160px]"
+                    numberOfLines={1}
+                  >
+                    &ldquo;{searchQuery}&rdquo;
+                  </Text>
+                  <X
+                    size={12}
+                    color={getPrimaryHex("text-primary-600", colorScheme)}
+                  />
+                </Pressable>
+              )}
               {dateRange !== "All" && (
                 <Pressable
                   onPress={() => setDateRange("All")}
@@ -505,13 +591,15 @@ export default function GroupSettlements({
               ListEmptyComponent={() => (
                 <EmptyList
                   type={
-                    settlementTab === "Pending"
-                      ? EmptyType.SETTLEMENT_PENDING
-                      : settlementTab === "Requested"
-                        ? EmptyType.SETTLEMENT_REQUESTED
-                        : settlementTab === "Settled"
-                          ? EmptyType.SETTLEMENT_SETTLED
-                          : EmptyType.SETTLEMENT_ALL
+                    searchQuery
+                      ? EmptyType.SEARCH
+                      : settlementTab === "Pending"
+                        ? EmptyType.SETTLEMENT_PENDING
+                        : settlementTab === "Requested"
+                          ? EmptyType.SETTLEMENT_REQUESTED
+                          : settlementTab === "Settled"
+                            ? EmptyType.SETTLEMENT_SETTLED
+                            : EmptyType.SETTLEMENT_ALL
                   }
                 />
               )}
@@ -534,6 +622,12 @@ export default function GroupSettlements({
         </VStack>
       </VStack>
 
+      <StatusSheet
+        isOpen={statusSheetOpen}
+        onClose={() => setStatusSheetOpen(false)}
+        status={settlementTab}
+        onSelect={setSettlementTab}
+      />
       <DateRangeSheet
         isOpen={dateRangeSheetOpen}
         onClose={() => setDateRangeSheetOpen(false)}

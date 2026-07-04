@@ -454,7 +454,7 @@ export default function EditMembersSheet({
                   </VStack>
                   <Box className="px-4">
                     <SearchInput
-                      placeholder="Search users to add or remove"
+                      placeholder="Search users"
                       value={searchInput}
                       onChangeText={(val) => setSearchInput(val)}
                       onSetSearching={setSearching}
