@@ -614,7 +614,7 @@ export default function GroupDetailsScreen() {
               {fabOpen && (
                 <VStack className="absolute bottom-20 right-4 z-50 gap-2 items-end">
                   <Pressable
-                    className="flex-row items-center gap-x-2 bg-white dark:bg-[#1F1F1F] px-4 py-2.5 rounded-full shadow-sm"
+                    className="flex-row items-center gap-x-2 bg-white dark:bg-[#1F1F1F] p-4 rounded-full shadow-sm"
                     onPress={() => {
                       setFabOpen(false);
                       setQuickAddOpen(true);
@@ -627,7 +627,7 @@ export default function GroupDetailsScreen() {
                     <Text className="font-semibold">Quick Add</Text>
                   </Pressable>
                   <Pressable
-                    className="flex-row items-center gap-x-2 bg-white dark:bg-[#1F1F1F] px-4 py-2.5 rounded-full shadow-sm"
+                    className="flex-row items-center gap-x-2 bg-white dark:bg-[#1F1F1F] p-4 rounded-full shadow-sm"
                     onPress={() => {
                       setFabOpen(false);
                       router.push(`/groups/${groupId}/new-expense`);

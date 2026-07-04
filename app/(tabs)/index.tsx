@@ -44,9 +44,9 @@ import { useFocusEffect, useRouter } from "expo-router";
 import {
   Bell,
   CircleQuestionMark,
+  HousePlus,
   QrCode,
   SquarePen,
-  Users,
   Zap
 } from "lucide-react-native";
 import React, {
@@ -539,7 +539,7 @@ export default function HomeScreen() {
                   <ActionButton
                     icon={
                       <Zap
-                        size={22}
+                        size={24}
                         color={getSecondaryHex("text-secondary-0", colorScheme)}
                       />
                     }
@@ -549,7 +549,7 @@ export default function HomeScreen() {
                   <ActionButton
                     icon={
                       <SquarePen
-                        size={22}
+                        size={24}
                         color={getSecondaryHex("text-secondary-0", colorScheme)}
                       />
                     }
@@ -558,8 +558,8 @@ export default function HomeScreen() {
                   />
                   <ActionButton
                     icon={
-                      <Users
-                        size={22}
+                      <HousePlus
+                        size={24}
                         color={getSecondaryHex("text-secondary-0", colorScheme)}
                       />
                     }
@@ -569,7 +569,7 @@ export default function HomeScreen() {
                   <ActionButton
                     icon={
                       <QrCode
-                        size={22}
+                        size={24}
                         color={getSecondaryHex("text-secondary-0", colorScheme)}
                       />
                     }
@@ -707,18 +707,20 @@ function ActionButton({
       className="flex-1 basis-0 min-w-0 justify-center"
     >
       {({ pressed }) => (
-        <Box
-          className={cn(
-            pressed ? "bg-primary-600" : "bg-primary-500",
-            "items-center rounded-2xl p-4 gap-y-2"
-          )}
-        >
-          {icon}
+        <VStack className="items-center gap-y-2 px-4">
+          <Box
+            className={cn(
+              pressed ? "bg-primary-600" : "bg-primary-500",
+              "h-14 w-14 items-center justify-center rounded-full"
+            )}
+          >
+            {icon}
+          </Box>
 
           <Text className="text-background-0 text-sm font-medium text-center leading-tight">
             {label}
           </Text>
-        </Box>
+        </VStack>
       )}
     </Pressable>
   );
