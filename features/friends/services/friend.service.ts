@@ -152,7 +152,7 @@ export const getFriendsSummary = async (
   }
 };
 
-const FRIEND_SETTLEMENT_FIELDS = `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), amount, status, expense:expense_id(description, currency)`;
+const FRIEND_SETTLEMENT_FIELDS = `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), amount, status, proof_of_payment, member_note, payer_note, status_updated_at, requested_at, settled_at, rejected_at, expense:expense_id(description, currency)`;
 
 const mapFriendPaymentRows = (data: any[]): PaymentPreview[] =>
   data.map((item) => {

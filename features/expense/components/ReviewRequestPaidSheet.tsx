@@ -61,7 +61,9 @@ export default function ReviewRequestPaidSheet({
   }
 
   const handleMarkAsSettled = async () => {
-    if (!(await ensureOnline("Settling a request needs an internet connection.")))
+    if (
+      !(await ensureOnline("Settling a request needs an internet connection."))
+    )
       return;
     setApproving(true);
     try {
@@ -96,7 +98,9 @@ export default function ReviewRequestPaidSheet({
   };
 
   const handleRejectRequest = async () => {
-    if (!(await ensureOnline("Rejecting a request needs an internet connection.")))
+    if (
+      !(await ensureOnline("Rejecting a request needs an internet connection."))
+    )
       return;
     setRejecting(true);
     try {
@@ -126,7 +130,9 @@ export default function ReviewRequestPaidSheet({
   };
 
   const handleUndoRequest = async () => {
-    if (!(await ensureOnline("Undoing a request needs an internet connection.")))
+    if (
+      !(await ensureOnline("Undoing a request needs an internet connection."))
+    )
       return;
     setUndoing(true);
     try {
@@ -157,7 +163,9 @@ export default function ReviewRequestPaidSheet({
 
   const handleRevertSettledRequest = async () => {
     if (
-      !(await ensureOnline("Reopening a settlement needs an internet connection."))
+      !(await ensureOnline(
+        "Reopening a settlement needs an internet connection."
+      ))
     )
       return;
     setReverting(true);
@@ -232,13 +240,31 @@ export default function ReviewRequestPaidSheet({
 
                 <Box className="bg-secondary-100 rounded-xl">
                   <DetailRow
-                    label="Updated"
+                    label="Request Date"
                     value={
-                      <Text>
-                        {formatDate(payment.status_updated_at) || "N/A"}
-                      </Text>
+                      <Text>{formatDate(payment.requested_at || "") || "N/A"}</Text>
                     }
                   />
+                  <Box className="mx-4">
+                    <Divider className="border-secondary-200" />
+                  </Box>
+                  <DetailRow
+                    label="Mark Settled Date"
+                    value={
+                      <Text>{formatDate(payment.settled_at || "") || "N/A"}</Text>
+                    }
+                  />
+                  {payment.rejected_at && (
+                    <>
+                      <Box className="mx-4">
+                        <Divider className="border-secondary-200" />
+                      </Box>
+                      <DetailRow
+                        label="Rejection Date"
+                        value={<Text>{formatDate(payment.rejected_at)}</Text>}
+                      />
+                    </>
+                  )}
                   <Box className="mx-4">
                     <Divider className="border-secondary-200" />
                   </Box>

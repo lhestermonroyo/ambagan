@@ -288,8 +288,10 @@ export default function GroupSettlements({
     dateRange
   ]);
 
-  const handleSettlementItemPress = (payment: PaymentPreview | Payment) => {
-    const p = payment as Payment;
+  const handleSettlementItemPress = async (
+    payment: PaymentPreview | Payment
+  ) => {
+    let p = payment as Payment;
 
     // Settling / requesting needs the server — block while offline (and for
     // not-yet-synced offline settlements).
@@ -301,6 +303,19 @@ export default function GroupSettlements({
         type: "info"
       });
       return;
+    }
+
+    // A PaymentPreview omits proof_of_payment / notes, which the settlement
+    // sheets display. Hydrate it into a full Payment so those aren't empty.
+    if (p.proof_of_payment === undefined) {
+      try {
+        const full = await services.expense.getPaymentById(p.id);
+        if (full) {
+          p = full;
+        }
+      } catch (error) {
+        console.error("Error fetching payment details:", error);
+      }
     }
 
     const isUserMember = p.member.id === userDetails?.id;

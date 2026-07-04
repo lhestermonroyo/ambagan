@@ -3,6 +3,9 @@ import OfflineSync from "@/components/OfflineSync";
 import SlowConnectionBanner from "@/components/SlowConnectionBanner";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
+// Registers nativewind's className→style interop for expo-image so proof-of-
+// payment images (and any other expo-image usage) actually render.
+import "@/utils/nativewindInterop";
 import useAppToast, { ToastProvider } from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
 import { useNetworkHealth } from "@/hooks/useNetworkHealth";

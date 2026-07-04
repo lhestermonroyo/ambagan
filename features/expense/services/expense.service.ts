@@ -1,4 +1,5 @@
 import { createNotification } from "@/features/notifications/services/notification.service";
+import states from "@/states";
 import {
   Expense,
   ExpensePayer,
@@ -8,10 +9,14 @@ import {
   PaymentPreview
 } from "@/types/expenses";
 import { NotificationType } from "@/types/notifications";
-import states from "@/states";
 import { cacheService } from "@/utils/cacheService";
 import { splitTypes, tables } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
+import { sendPushNotification } from "@/utils/sendPushNotifications";
+import { supabase } from "@/utils/supabase";
+import { uploadFile } from "@/utils/upload";
+import { ImagePickerSuccessResult } from "expo-image-picker";
+import { v4 as uuid } from "uuid";
 
 const GHOST_USER = {
   id: "",
@@ -43,11 +48,6 @@ export const getDailyExpenseCount = async (userId: string): Promise<number> => {
   if (error) throw error;
   return count ?? 0;
 };
-import { supabase } from "@/utils/supabase";
-import { uploadFile } from "@/utils/upload";
-import { sendPushNotification } from "@/utils/sendPushNotifications";
-import { ImagePickerSuccessResult } from "expo-image-picker";
-import { v4 as uuid } from "uuid";
 
 export const saveExpense = async (
   expensePayload: {
@@ -105,7 +105,9 @@ export const saveExpense = async (
       proof_of_payment: proofUrl,
       split_type,
       currency: currency || "PHP",
-      expense_date: expense_date ? expense_date.toISOString() : new Date().toISOString()
+      expense_date: expense_date
+        ? expense_date.toISOString()
+        : new Date().toISOString()
     }
   ]);
 
@@ -203,8 +205,14 @@ export const saveDraftExpense = async (expensePayload: {
   }
 
   const expenseId = expensePayload.id ?? uuid();
-  const { amount, description, proof_of_payment, group_id, currency, expense_date } =
-    expensePayload;
+  const {
+    amount,
+    description,
+    proof_of_payment,
+    group_id,
+    currency,
+    expense_date
+  } = expensePayload;
 
   let proofUrl: string | null = null;
   if (proof_of_payment) {
@@ -353,9 +361,18 @@ export const updateExpense = async (
   // Replace payers / member splits / payment splits wholesale — everything was
   // still pending, so there's no settlement state to preserve.
   const clearResponses = await Promise.all([
-    supabase.from(tables.EXPENSE_PAYERS_TBL).delete().eq("expense_id", expenseId),
-    supabase.from(tables.MEMBER_SPLITS_TBL).delete().eq("expense_id", expenseId),
-    supabase.from(tables.PAYMENT_SPLITS_TBL).delete().eq("expense_id", expenseId)
+    supabase
+      .from(tables.EXPENSE_PAYERS_TBL)
+      .delete()
+      .eq("expense_id", expenseId),
+    supabase
+      .from(tables.MEMBER_SPLITS_TBL)
+      .delete()
+      .eq("expense_id", expenseId),
+    supabase
+      .from(tables.PAYMENT_SPLITS_TBL)
+      .delete()
+      .eq("expense_id", expenseId)
   ]);
 
   for (const response of clearResponses) {
@@ -499,9 +516,18 @@ export const finalizeDraft = async (
   // A draft has no children yet, but delete-then-insert keeps finalize
   // idempotent if a previous attempt partially wrote rows.
   const clearResponses = await Promise.all([
-    supabase.from(tables.EXPENSE_PAYERS_TBL).delete().eq("expense_id", expenseId),
-    supabase.from(tables.MEMBER_SPLITS_TBL).delete().eq("expense_id", expenseId),
-    supabase.from(tables.PAYMENT_SPLITS_TBL).delete().eq("expense_id", expenseId)
+    supabase
+      .from(tables.EXPENSE_PAYERS_TBL)
+      .delete()
+      .eq("expense_id", expenseId),
+    supabase
+      .from(tables.MEMBER_SPLITS_TBL)
+      .delete()
+      .eq("expense_id", expenseId),
+    supabase
+      .from(tables.PAYMENT_SPLITS_TBL)
+      .delete()
+      .eq("expense_id", expenseId)
   ]);
 
   for (const response of clearResponses) {
@@ -584,9 +610,8 @@ export const deleteExpense = async (expenseId: string, groupId?: string) => {
   if (!(await offlineQueue.isOnline())) {
     const resolvedGroupId =
       groupId ??
-      states.group
-        .getState()
-        .expenseList.find((e) => e.id === expenseId)?.group_id;
+      states.group.getState().expenseList.find((e) => e.id === expenseId)
+        ?.group_id;
     if (resolvedGroupId) {
       await offlineQueue.queueDeleteExpense(resolvedGroupId, expenseId);
       return {
@@ -692,7 +717,7 @@ export const getPaymentsByUserId = async (
     let query = supabase
       .from(tables.PAYMENT_SPLITS_TBL)
       .select(
-        `id, created_at, group_id, expense_id, member:member_id(id, email, phone, first_name, last_name, avatar), payer:payer_id(id, email, phone, first_name, last_name, avatar), amount, status, expense:expense_id(description, currency)`,
+        `id, created_at, group_id, expense_id, member:member_id(id, email, phone, first_name, last_name, avatar), payer:payer_id(id, email, phone, first_name, last_name, avatar), amount, status, proof_of_payment, member_note, payer_note, status_updated_at, requested_at, settled_at, rejected_at, expense:expense_id(description, currency)`,
         { count: withMetadata ? "exact" : undefined }
       )
       .order("created_at", { ascending: false })
@@ -967,7 +992,9 @@ export const getMemberSplitsByExpenseIds = async (
   if (error) throw error;
 
   return data.map((item) => {
-    const expense = Array.isArray(item.expense) ? item.expense[0] : item.expense;
+    const expense = Array.isArray(item.expense)
+      ? item.expense[0]
+      : item.expense;
     return {
       ...item,
       member: resolveUser(item.member),
@@ -995,7 +1022,9 @@ export const getPaymentsByExpenseIds = async (
   if (error) throw error;
 
   return data.map((item) => {
-    const expense = Array.isArray(item.expense) ? item.expense[0] : item.expense;
+    const expense = Array.isArray(item.expense)
+      ? item.expense[0]
+      : item.expense;
     return {
       ...item,
       member: resolveUser(item.member),
@@ -1040,12 +1069,17 @@ export const createSettledRequest = async (expensePayload: {
     receiptUrl = uploadResponse.data?.publicUrl || null;
   }
 
+  const now = new Date().toISOString();
   const splitResponse = await supabase
     .from(tables.PAYMENT_SPLITS_TBL)
     .update({
       status: "requested",
       member_note: note,
-      proof_of_payment: receiptUrl
+      proof_of_payment: receiptUrl,
+      requested_at: now,
+      status_updated_at: now
+      // rejected_at is intentionally left intact — if a prior request was
+      // rejected, keep that date so the rejection stays visible as history.
     })
     .eq("id", expenseSplitId)
     .select("payer_id")
@@ -1092,7 +1126,10 @@ export const undoSettledRequest = async (expenseSplitId: string) => {
     .update({
       status: "pending",
       member_note: null,
-      proof_of_payment: null
+      proof_of_payment: null,
+      // Request withdrawn — drop the request date.
+      requested_at: null,
+      status_updated_at: new Date().toISOString()
     })
     .eq("id", expenseSplitId);
 
@@ -1110,13 +1147,18 @@ export const rejectSettledRequest = async (expenseSplitId: string) => {
     throw new Error("User not authenticated");
   }
 
+  const rejectedNow = new Date().toISOString();
   const splitResponse = await supabase
     .from(tables.PAYMENT_SPLITS_TBL)
     .update({
       status: "pending",
       member_note: null,
       proof_of_payment: null,
-      status_updated_at: new Date().toISOString()
+      // Persist when the request was rejected (kept even though status reverts to
+      // pending) so the rejection date can be surfaced. requested_at is left in
+      // place so both "requested" and "rejected" dates remain visible.
+      rejected_at: rejectedNow,
+      status_updated_at: rejectedNow
     })
     .eq("id", expenseSplitId)
     .select("member_id")
@@ -1158,11 +1200,16 @@ export const revertSettledRequest = async (expenseSplitId: string) => {
     throw new Error("User not authenticated");
   }
 
+  const revertedNow = new Date().toISOString();
   const splitResponse = await supabase
     .from(tables.PAYMENT_SPLITS_TBL)
     .update({
       status: "requested",
-      status_updated_at: new Date().toISOString()
+      // Reopened for review — it's a pending request again, so restore a request
+      // date and clear the settled date.
+      requested_at: revertedNow,
+      settled_at: null,
+      status_updated_at: revertedNow
     })
     .eq("id", expenseSplitId)
     .select("member_id")
@@ -1219,14 +1266,24 @@ export const markAsSettled = async (expensePayload: {
     receiptUrl = uploadResponse.data?.publicUrl || null;
   }
 
+  // Only overwrite proof_of_payment when the payer actually attaches a new
+  // receipt. Approving a member's request comes through here with receipt=null,
+  // and blindly writing null would wipe the proof the member uploaded when they
+  // created the settlement request.
+  const settledNow = new Date().toISOString();
+  const updatePayload: Record<string, any> = {
+    status: "settled",
+    payer_note: note,
+    settled_at: settledNow,
+    status_updated_at: settledNow
+  };
+  if (receiptUrl) {
+    updatePayload.proof_of_payment = receiptUrl;
+  }
+
   const splitResponse = await supabase
     .from(tables.PAYMENT_SPLITS_TBL)
-    .update({
-      status: "settled",
-      payer_note: note,
-      proof_of_payment: receiptUrl,
-      status_updated_at: new Date().toISOString()
-    })
+    .update(updatePayload)
     .eq("id", expenseSplitId)
     .select("member_id")
     .single();
@@ -1283,7 +1340,9 @@ const PAYMENT_FIELDS = `*, member:member_id(id, email, phone, first_name, last_n
 
 const mapPaymentRows = (data: any[]): Payment[] =>
   data.map((item) => {
-    const expense = Array.isArray(item.expense) ? item.expense[0] : item.expense;
+    const expense = Array.isArray(item.expense)
+      ? item.expense[0]
+      : item.expense;
     return {
       ...item,
       expense_description: expense?.description ?? null,
@@ -1313,6 +1372,27 @@ export const getPaymentsByGroupAndUserId = async (
 
   if (error) throw error;
   return mapPaymentRows(data);
+};
+
+/**
+ * Fetch a single payment split as a full `Payment` (incl. proof_of_payment and
+ * notes). Used to hydrate a `PaymentPreview` — which omits those fields — before
+ * opening a settlement sheet that needs them.
+ */
+export const getPaymentById = async (
+  paymentId: string
+): Promise<Payment | null> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { data, error } = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(PAYMENT_FIELDS)
+    .eq("id", paymentId)
+    .single();
+
+  if (error) throw error;
+  return data ? mapPaymentRows([data])[0] : null;
 };
 
 export const getUnsettledPaymentsByGroupId = async (

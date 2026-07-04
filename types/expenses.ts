@@ -75,6 +75,13 @@ export type Payment = {
   payer_note: string | null;
   status: PaymentStatus;
   status_updated_at: string;
+  /** When the member requested settlement (status → requested). */
+  requested_at: string | null;
+  /** When the payer marked/approved the settlement (status → settled). */
+  settled_at: string | null;
+  /** When the payer rejected a request. Persists after the split reverts to
+   *  pending so a rejection date can still be shown. Cleared on re-request. */
+  rejected_at: string | null;
   /** True for a settlement generated from an offline expense, not yet synced. */
   pending?: boolean;
 };
@@ -92,6 +99,19 @@ export type PaymentPreview = Pick<
   | "status"
 > & {
   expense_description?: string | null;
+  /**
+   * Full-detail fields the home Recent Activity feed now selects alongside the
+   * preview (see getPaymentsByUserId). Optional because offline-generated
+   * previews omit them. When present, the settlement sheets render without a
+   * hydration round-trip.
+   */
+  proof_of_payment?: string | null;
+  member_note?: string | null;
+  payer_note?: string | null;
+  status_updated_at?: string;
+  requested_at?: string | null;
+  settled_at?: string | null;
+  rejected_at?: string | null;
   /** True for a settlement generated from an offline expense, not yet synced. */
   pending?: boolean;
 };

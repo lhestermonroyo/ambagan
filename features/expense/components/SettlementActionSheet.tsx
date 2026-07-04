@@ -14,12 +14,13 @@ import RequestSettledSheet from "@/features/expense/components/RequestSettledShe
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
 import StatusBadge from "@/features/expense/components/StatusBadge";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import services from "@/services";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useRouter } from "expo-router";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import SettlementAvatar from "./SettlementAvatar";
 
 function SettlementContent({
@@ -43,7 +44,36 @@ function SettlementContent({
 
   const { details: userDetails } = states.user();
 
-  const payment = item as Payment;
+  // The home Recent Activity feed supplies a PaymentPreview (via
+  // getPaymentsByUserId), which omits proof_of_payment / notes /
+  // status_updated_at. The settlement sheets below display those, so hydrate the
+  // preview into a full Payment once the sheet opens.
+  const [fullPayment, setFullPayment] = useState<Payment | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setFullPayment(null);
+
+    // Fast path: the home feed now selects proof_of_payment (and notes), so a
+    // preview that already carries it needs no round-trip. `undefined` means the
+    // field wasn't selected (older/offline preview) — only then do we fetch.
+    if (isOpen && item?.id && item.proof_of_payment === undefined) {
+      services.expense
+        .getPaymentById(item.id)
+        .then((full) => {
+          if (!cancelled && full) setFullPayment(full);
+        })
+        .catch((error) =>
+          console.error("Error hydrating payment details:", error)
+        );
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, item?.id]);
+
+  const payment = fullPayment ?? (item as Payment);
   const isUserMember = payment.member.id === userDetails?.id;
   const isUserPayer = payment.payer.id === userDetails?.id;
 

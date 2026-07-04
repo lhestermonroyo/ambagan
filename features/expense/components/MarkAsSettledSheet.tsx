@@ -27,6 +27,7 @@ import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
+import { formatDate } from "@/utils/formatDate";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
@@ -138,6 +139,18 @@ export default function MarkAsSettledSheet({
                   <Text className="text-secondary-950">You receive</Text>
                 </VStack>
               </VStack>
+
+              {payment.rejected_at && (
+                <VStack className="bg-secondary-100 rounded-xl p-4 gap-y-1">
+                  <Text bold className="text-error-500">
+                    Previously rejected
+                  </Text>
+                  <Text className="text-sm text-secondary-950">
+                    You rejected the last request on{" "}
+                    {formatDate(payment.rejected_at)}.
+                  </Text>
+                </VStack>
+              )}
 
               <FormControl size="md">
                 <VStack className="gap-y-1">

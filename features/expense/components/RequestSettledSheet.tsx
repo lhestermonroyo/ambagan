@@ -25,6 +25,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import { Payment } from "@/types/expenses";
+import { formatDate } from "@/utils/formatDate";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
@@ -129,6 +130,18 @@ export default function RequestSettledSheet({
                   <Text className="text-secondary-950">You pay</Text>
                 </VStack>
               </VStack>
+
+              {payment.rejected_at && (
+                <VStack className="bg-secondary-100 rounded-xl p-4 gap-y-1">
+                  <Text bold className="text-error-500">
+                    Previously rejected
+                  </Text>
+                  <Text className="text-sm text-secondary-950">
+                    Your last request was rejected on{" "}
+                    {formatDate(payment.rejected_at)}.
+                  </Text>
+                </VStack>
+              )}
 
               <FormControl size="md">
                 <VStack className="gap-y-1">
