@@ -16,13 +16,13 @@ import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
+import { Pressable } from "@/components/ui/pressable";
 import {
   ScrollView as HScrollView,
   ScrollView
 } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import NewExpensePickerSheet from "@/features/expense/components/NewExpensePickerSheet";
 import QuickAddExpenseSheet from "@/features/expense/components/QuickAddExpenseSheet";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
@@ -44,8 +44,10 @@ import { useFocusEffect, useRouter } from "expo-router";
 import {
   Bell,
   CircleQuestionMark,
-  HousePlus,
-  PlusCircle
+  QrCode,
+  SquarePen,
+  Users,
+  Zap
 } from "lucide-react-native";
 import React, {
   Fragment,
@@ -84,7 +86,6 @@ export default function HomeScreen() {
     null
   );
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
-  const [newExpensePickerOpen, setNewExpensePickerOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const { details: userDetails, session, defaultCurrency } = states.user();
@@ -366,14 +367,6 @@ export default function HomeScreen() {
   );
   const handleRefetch = useCallback(() => init(true), [userId]);
 
-  const handleOpenNewExpense = useCallback(
-    () => setNewExpensePickerOpen(true),
-    []
-  );
-  const handleCloseNewExpense = useCallback(
-    () => setNewExpensePickerOpen(false),
-    []
-  );
   const handleOpenQuickAdd = useCallback(() => setQuickAddOpen(true), []);
   const handleCloseQuickAdd = useCallback(() => setQuickAddOpen(false), []);
 
@@ -386,7 +379,6 @@ export default function HomeScreen() {
   }, [userId]);
 
   const handleCustomExpense = useCallback(() => {
-    setNewExpensePickerOpen(false);
     router.push("/groups/[groupId]/new-expense");
   }, [router]);
 
@@ -543,28 +535,46 @@ export default function HomeScreen() {
                 </VStack>
 
                 {/* Action Buttons */}
-                <HStack className="gap-x-2">
-                  <FormButton
-                    className="flex-1"
+                <HStack className="gap-x-2 justify-center">
+                  <ActionButton
                     icon={
-                      <PlusCircle
-                        size={18}
+                      <Zap
+                        size={22}
                         color={getSecondaryHex("text-secondary-0", colorScheme)}
                       />
                     }
-                    text="New Expense"
-                    onPress={handleOpenNewExpense}
+                    label="Quick Expense"
+                    onPress={handleOpenQuickAdd}
                   />
-                  <FormButton
-                    className="flex-1"
-                    text="Create Group"
+                  <ActionButton
                     icon={
-                      <HousePlus
-                        size={18}
+                      <SquarePen
+                        size={22}
                         color={getSecondaryHex("text-secondary-0", colorScheme)}
                       />
                     }
+                    label="Custom Expense"
+                    onPress={handleCustomExpense}
+                  />
+                  <ActionButton
+                    icon={
+                      <Users
+                        size={22}
+                        color={getSecondaryHex("text-secondary-0", colorScheme)}
+                      />
+                    }
+                    label="Create Group"
                     onPress={() => router.push("/groups/create")}
+                  />
+                  <ActionButton
+                    icon={
+                      <QrCode
+                        size={22}
+                        color={getSecondaryHex("text-secondary-0", colorScheme)}
+                      />
+                    }
+                    label="Scan to Join"
+                    onPress={() => router.push("/scan" as any)}
                   />
                 </HStack>
               </VStack>
@@ -671,12 +681,6 @@ export default function HomeScreen() {
         item={selectedPayment}
         onRefetch={handleRefetch}
       />
-      <NewExpensePickerSheet
-        isOpen={newExpensePickerOpen}
-        onClose={handleCloseNewExpense}
-        onQuickAdd={handleOpenQuickAdd}
-        onCustom={handleCustomExpense}
-      />
       <QuickAddExpenseSheet
         isOpen={quickAddOpen}
         group={groupList[0] ?? null}
@@ -685,6 +689,38 @@ export default function HomeScreen() {
         onSuccess={handleQuickAddSuccess}
       />
     </Fragment>
+  );
+}
+
+function ActionButton({
+  icon,
+  label,
+  onPress
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-1 basis-0 min-w-0 justify-center"
+    >
+      {({ pressed }) => (
+        <Box
+          className={cn(
+            pressed ? "bg-primary-600" : "bg-primary-500",
+            "items-center rounded-2xl p-4 gap-y-2"
+          )}
+        >
+          {icon}
+
+          <Text className="text-background-0 text-sm font-medium text-center leading-tight">
+            {label}
+          </Text>
+        </Box>
+      )}
+    </Pressable>
   );
 }
 
