@@ -1,7 +1,9 @@
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
+import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
+import PressableListItem from "@/components/PressableListItem";
 import StepperProgress from "@/components/StepperProgress";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
@@ -23,6 +25,7 @@ import {
   getAmountPerPerson,
   getPercentagePerPerson
 } from "../utils/split.util";
+import SplitMembersSheet from "./SplitMembersSheet";
 
 type Splits = {
   [userId: string]: {
@@ -73,55 +76,89 @@ export default function SplitSelection({
 
   const totalAmount = parseFloat(amount) || 0;
 
+  // Members excluded from this split. Seeded when editing an existing expense
+  // (members without a stored split are treated as excluded); empty for a fresh
+  // expense/draft where everyone starts included.
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(() => {
+    if (!skipInitialReset) return new Set<string>();
+    const excluded = new Set<string>();
+    members.forEach((member) => {
+      const split = splits[member.id];
+      if (!split || !(parseFloat(split.amount) > 0)) excluded.add(member.id);
+    });
+    return excluded;
+  });
+  const [membersSheetOpen, setMembersSheetOpen] = useState(false);
+
+  const includedMembers = useMemo(
+    () => members.filter((member) => !excludedIds.has(member.id)),
+    [members, excludedIds]
+  );
+
+  // Equal split: split the total evenly across the currently-included members;
+  // excluded members are zeroed so they drop from the final split.
+  const distributeEqual = (excluded: Set<string>): Splits => {
+    const included = members.filter((member) => !excluded.has(member.id));
+    const amountPerPerson = getAmountPerPerson(totalAmount, included.length);
+    const percentages = getPercentagePerPerson(included.length);
+    const next: Splits = {};
+    let idx = 0;
+    members.forEach((member) => {
+      if (excluded.has(member.id)) {
+        next[member.id] = { amount: "", percentage: "" };
+      } else {
+        next[member.id] = {
+          amount: amountPerPerson[idx]?.toFixed(2) || "",
+          percentage: percentages[idx]?.toFixed(2) || ""
+        };
+        idx++;
+      }
+    });
+    return next;
+  };
+
+  const clearAll = (): Splits => {
+    const next: Splits = {};
+    members.forEach((member) => {
+      next[member.id] = { amount: "", percentage: "" };
+    });
+    return next;
+  };
+
+  // Recompute splits from scratch on tab / amount / member changes: equal
+  // redistributes across included members, other tabs clear for re-entry.
   useEffect(() => {
     if (skipInitialReset && !initialResetSkipped.current) {
       initialResetSkipped.current = true;
       return;
     }
 
-    const initialSplits: {
-      [userId: string]: {
-        amount: string;
-        percentage: string;
-      };
-    } = {};
+    onSetSplits(
+      tab === "equal" ? distributeEqual(excludedIds) : clearAll(),
+      tab
+    );
+  }, [tab, totalAmount, members]);
 
-    members.forEach((member) => {
-      if (!initialSplits[member.id]) {
-        initialSplits[member.id] = {
-          amount:
-            tab === "equal" ? (totalAmount / members.length).toFixed(2) : "",
-          percentage: tab === "equal" ? (100 / members.length).toFixed(2) : ""
-        };
-      } else {
-        initialSplits[member.id] = splits[member.id];
-      }
-    });
+  const handleSaveIncludedMembers = (nextIncluded: Set<string>) => {
+    const nextExcluded = new Set(
+      members.map((member) => member.id).filter((id) => !nextIncluded.has(id))
+    );
+    setExcludedIds(nextExcluded);
 
     if (tab === "equal") {
-      const includedMembers = Object.keys(initialSplits);
-
-      const amountPerPerson = getAmountPerPerson(
-        totalAmount,
-        includedMembers.length
-      );
-      const percentages = getPercentagePerPerson(includedMembers.length);
-
-      let idx = 0;
-      Object.keys(initialSplits).forEach((userId) => {
-        initialSplits[userId].amount = amountPerPerson[idx]?.toFixed(2) || "";
-        initialSplits[userId].percentage = percentages[idx]?.toFixed(2) || "";
-        idx++;
-      });
+      onSetSplits(distributeEqual(nextExcluded), tab);
     } else {
-      Object.keys(initialSplits).forEach((userId) => {
-        initialSplits[userId].amount = "";
-        initialSplits[userId].percentage = "";
+      // Preserve amounts already entered for still-included members; only zero
+      // out the ones now excluded so they drop from the final split.
+      const next: Splits = { ...splits };
+      members.forEach((member) => {
+        if (nextExcluded.has(member.id) || !next[member.id]) {
+          next[member.id] = { amount: "", percentage: "" };
+        }
       });
+      onSetSplits(next, tab);
     }
-
-    onSetSplits(initialSplits, tab);
-  }, [tab, totalAmount, members]);
+  };
 
   const updateSplitAmount = (userId: string, amount: string) => {
     const newSplits = { ...splits };
@@ -164,16 +201,11 @@ export default function SplitSelection({
     0
   );
 
-  const expenseValues = useMemo(() => {
-    const includedCount = splits ? Object.values(splits).length : 0;
-
-    return {
-      amount: totalAmount,
-      equalSplits: getAmountPerPerson(totalAmount, includedCount),
-      includedCount
-    };
-  }, [splits]);
-  const { equalSplits, includedCount } = expenseValues;
+  const includedCount = includedMembers.length;
+  const equalSplits = useMemo(
+    () => getAmountPerPerson(totalAmount, includedCount),
+    [totalAmount, includedCount]
+  );
 
   return (
     <Fragment>
@@ -203,25 +235,41 @@ export default function SplitSelection({
           </VStack>
 
           <VStack className="gap-y-2">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <HStack className="gap-x-2 px-4">
-                {splitTypes.map((type) => (
-                  <FormButton
-                    size="sm"
-                    key={type.value}
-                    variant={type.value === tab ? "solid" : "outline"}
-                    className="flex-1 h-10"
-                    text={type.label}
-                    onPress={() => setTab(type.value)}
-                  />
-                ))}
-              </HStack>
-            </ScrollView>
+            <VStack className="gap-y-4">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <HStack className="gap-x-2 px-4">
+                  {splitTypes.map((type) => (
+                    <FormButton
+                      size="sm"
+                      key={type.value}
+                      variant={type.value === tab ? "solid" : "outline"}
+                      className="flex-1 h-10"
+                      text={type.label}
+                      onPress={() => setTab(type.value)}
+                    />
+                  ))}
+                </HStack>
+              </ScrollView>
+
+              <Box className="px-4">
+                <PressableListItem onPress={() => setMembersSheetOpen(true)}>
+                  <HStack className="items-center justify-between border border-background-200 rounded-lg p-3">
+                    <HStack className="items-center gap-x-2">
+                      <Icon as="group" className="text-secondary-950" />
+                      <Text className="text-base">
+                        Split among {includedCount} of {members.length}
+                      </Text>
+                    </HStack>
+                    <Icon as="expand-more" className="text-secondary-950" />
+                  </HStack>
+                </PressableListItem>
+              </Box>
+            </VStack>
 
             <FlatList
               scrollEnabled={false}
               className="flex-1 h-full"
-              data={members}
+              data={includedMembers}
               keyExtractor={(item) => item.id}
               ItemSeparatorComponent={ListDivider}
               ListEmptyComponent={() => <EmptyList type={EmptyType.MEMBER} />}
@@ -293,12 +341,21 @@ export default function SplitSelection({
           </VStack>
         )}
 
-        {includedCount < 2 && (
-          <Text className="text-red-500 text-sm mt-2">
-            Please include at least 2 members or more to split the expense.
+        {includedCount === 1 && (
+          <Text className="text-secondary-950 text-sm mt-2">
+            Only 1 member is included in this split — they'll cover the full
+            amount.
           </Text>
         )}
       </Box>
+
+      <SplitMembersSheet
+        isOpen={membersSheetOpen}
+        onClose={() => setMembersSheetOpen(false)}
+        members={members}
+        includedIds={new Set(includedMembers.map((member) => member.id))}
+        onSave={handleSaveIncludedMembers}
+      />
     </Fragment>
   );
 }
@@ -351,7 +408,9 @@ function MemberSplitItem({
               <Text className="text-lg">
                 {formatAmount(Number(split.amount) || 0, currency)}
               </Text>
-              <Text className="text-sm text-secondary-950">{split.percentage}%</Text>
+              <Text className="text-sm text-secondary-950">
+                {split.percentage}%
+              </Text>
             </VStack>
           )}
 
