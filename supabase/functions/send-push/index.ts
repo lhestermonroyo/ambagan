@@ -24,7 +24,7 @@ const NOTIF_PREF_KEY: Record<string, string> = {
   settlement_completed: "notif_settlement_completed",
   expense_inclusion: "notif_expense_inclusion",
   group_join: "notif_group_join",
-  group_leave: "notif_group_leave",
+  group_leave: "notif_group_leave"
 };
 
 Deno.serve(async (req) => {
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
     const {
-      data: { user },
+      data: { user }
     } = await caller.auth.getUser();
     if (!user) {
       return new Response("Unauthorized", { status: 401 });
@@ -65,10 +65,7 @@ Deno.serve(async (req) => {
         .select(prefKey)
         .eq("user_id", toUserId)
         .maybeSingle(),
-      admin
-        .from("user_push_tokens_tbl")
-        .select("token")
-        .eq("user_id", toUserId),
+      admin.from("user_push_tokens_tbl").select("token").eq("user_id", toUserId)
     ]);
 
     // Respect the recipient's notification preference.
@@ -84,20 +81,21 @@ Deno.serve(async (req) => {
       title: payload.title,
       body: payload.body,
       data: { type, referenceId: payload.referenceId, ...payload.data },
-      sound: "default",
+      sound: "default"
     }));
 
     await fetch(EXPO_PUSH_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Accept: "application/json",
+        Accept: "application/json"
       },
-      body: JSON.stringify(messages),
+      body: JSON.stringify(messages)
     });
 
     return new Response(JSON.stringify({ sent: true }), { status: 200 });
   } catch (e) {
+    console.error("Error sending push notification:", e);
     return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
   }
 });

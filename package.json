@@ -60,6 +60,7 @@
     "libphonenumber-js": "^1.13.1",
     "lucide-react-native": "^0.562.0",
     "nativewind": "^4.2.1",
+    "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-aria": "^3.45.0",
     "react-dom": "19.1.0",

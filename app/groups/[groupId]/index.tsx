@@ -923,8 +923,13 @@ export default function GroupDetailsScreen() {
         <GroupInviteSheet
           isOpen={inviteSheetOpen}
           onClose={() => setInviteSheetOpen(false)}
+          groupId={groupDetails.id}
           groupName={groupDetails.name}
+          creatorName={`${groupDetails.admin.first_name} ${
+            groupDetails.admin.last_name ?? ""
+          }`.trim()}
           inviteToken={groupDetails.invite_token}
+          inviteExpiresAt={groupDetails.invite_token_expires_at}
         />
       )}
       <LeaveGroupSheet

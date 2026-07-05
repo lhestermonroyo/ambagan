@@ -83,7 +83,7 @@ export default function SettlementItem({
         <SettlementAvatar isPayer={isUserPayer} />
         <VStack className="gap-y-2 flex-1">
           {item.expense_description && (
-            <HStack className="gap-x-4 items-center flex-1">
+            <HStack className="gap-x-4 items-center">
               <Text
                 className="text-sm text-secondary-950 uppercase flex-1"
                 bold
@@ -109,7 +109,11 @@ export default function SettlementItem({
                   {isUserMember && " (You)"}
                 </Text>
                 {item.member.is_placeholder && (
-                  <Icon as="schedule" size={14} className="text-secondary-950" />
+                  <Icon
+                    as="schedule"
+                    size={14}
+                    className="text-secondary-950"
+                  />
                 )}
               </HStack>
               <Text className="text-sm text-secondary-950">pays</Text>
@@ -119,7 +123,11 @@ export default function SettlementItem({
                   {isUserPayer && " (You)"}
                 </Text>
                 {item.payer.is_placeholder && (
-                  <Icon as="schedule" size={14} className="text-secondary-950" />
+                  <Icon
+                    as="schedule"
+                    size={14}
+                    className="text-secondary-950"
+                  />
                 )}
               </HStack>
             </VStack>

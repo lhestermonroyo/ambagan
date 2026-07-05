@@ -22,6 +22,9 @@ export type Group = {
   /** Stable invite token for the share link / QR. Present on group detail
    *  (getGroupById selects `*`); omitted from lighter list queries. */
   invite_token?: string;
+  /** When the invite token stops working. null/undefined = never expires.
+   *  Rotated via reset_group_invite. Present on group detail only. */
+  invite_token_expires_at?: string | null;
   /** True for a group created offline and not yet synced to the server. */
   pending?: boolean;
 };

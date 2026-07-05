@@ -1,10 +1,8 @@
 import AppAvatar from "@/components/AppAvatar";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
-import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import PressableListItem from "@/components/PressableListItem";
 import {
   FriendCardListSkeleton,
   GroupListSkeleton,
@@ -590,12 +588,9 @@ export default function HomeScreen() {
                 <Text bold className="text-2xl flex-1">
                   Friends
                 </Text>
-                <FormButton
-                  size="md"
-                  text="View All"
-                  variant="link"
-                  onPress={() => router.push("/friends")}
-                />
+                <Button variant="link" onPress={() => router.push("/friends")}>
+                  <Text className="text-primary-400 font-medium">View All</Text>
+                </Button>
               </HStack>
               <LoadingWrapper
                 isLoading={loading.friends}
@@ -652,12 +647,9 @@ export default function HomeScreen() {
                 <Text bold className="text-2xl">
                   Recent Groups
                 </Text>
-                <FormButton
-                  size="md"
-                  text="View All"
-                  variant="link"
-                  onPress={() => router.push("/groups")}
-                />
+                <Button variant="link" onPress={() => router.push("/groups")}>
+                  <Text className="text-primary-400 font-medium">View All</Text>
+                </Button>
               </HStack>
               <LoadingWrapper
                 isLoading={loading.groups}
@@ -758,31 +750,37 @@ const FriendCard = React.memo(function FriendCard({
   }, [friend.id, friend.email, friend.avatar, name, router]);
 
   return (
-    <PressableListItem
-      onPress={handlePress}
-      className="border min-w-40 border-secondary-500 bg-secondary-50 rounded-lg p-4"
-    >
-      <VStack className="gap-y-2">
-        <AppAvatar name={name} uri={friend.avatar || undefined} size="sm" />
-        <VStack>
-          <Text className="text-lg" numberOfLines={2}>
-            {name}
-          </Text>
-          {primary && (
-            <Text
-              className={cn(
-                "text-lg",
-                isNegative ? "text-error-400" : undefined
-              )}
-              numberOfLines={1}
-            >
-              {isNegative ? "-" : ""}
-              {formatAmount(Math.abs(primary.amount), primary.currency)}
-            </Text>
+    <Pressable onPress={handlePress}>
+      {({ pressed }) => (
+        <Box
+          className={cn(
+            pressed ? "bg-secondary-100" : "bg-secondary-50",
+            "min-w-40 border border-secondary-500 rounded-lg p-4"
           )}
-        </VStack>
-      </VStack>
-    </PressableListItem>
+        >
+          <VStack className="gap-y-2">
+            <AppAvatar name={name} uri={friend.avatar || undefined} size="sm" />
+            <VStack>
+              <Text className="text-lg" numberOfLines={2}>
+                {name}
+              </Text>
+              {primary && (
+                <Text
+                  className={cn(
+                    "text-lg",
+                    isNegative ? "text-error-400" : undefined
+                  )}
+                  numberOfLines={1}
+                >
+                  {isNegative ? "-" : ""}
+                  {formatAmount(Math.abs(primary.amount), primary.currency)}
+                </Text>
+              )}
+            </VStack>
+          </VStack>
+        </Box>
+      )}
+    </Pressable>
   );
 });
 

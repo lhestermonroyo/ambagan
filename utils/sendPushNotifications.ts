@@ -15,6 +15,8 @@ export async function sendPushNotification(
     data?: Record<string, unknown>;
   }
 ): Promise<void> {
+  console.log(JSON.stringify({ toUserId, type, payload }, null, 2));
+
   try {
     await supabase.functions.invoke("send-push", {
       body: { toUserId, type, payload }

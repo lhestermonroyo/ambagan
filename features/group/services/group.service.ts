@@ -465,6 +465,32 @@ export const joinGroupByToken = async (token: string): Promise<string> => {
   return data as string;
 };
 
+/**
+ * Rotate a group's invite token (admin only). Generating a fresh token
+ * invalidates the old QR/link. `ttlSeconds` sets an expiry that many seconds
+ * from now; null/0 means the link never expires. Returns the new token +
+ * expiry. Online-only (admin action).
+ */
+export const resetGroupInvite = async (
+  groupId: string,
+  ttlSeconds: number | null
+): Promise<{ invite_token: string; invite_token_expires_at: string | null }> => {
+  const { data, error } = await supabase.rpc("reset_group_invite", {
+    _group_id: groupId,
+    _ttl_seconds: ttlSeconds
+  });
+  if (error) throw error;
+  // The RPC RETURNS TABLE(...) → a single-row array.
+  const row = (Array.isArray(data) ? data[0] : data) as {
+    invite_token: string;
+    invite_token_expires_at: string | null;
+  };
+  return {
+    invite_token: row.invite_token,
+    invite_token_expires_at: row.invite_token_expires_at ?? null
+  };
+};
+
 export const archiveGroup = async (groupId: string) => {
   // Offline → queue + optimistic cache. The "delete group" action archives.
   if (!(await offlineQueue.isOnline())) {

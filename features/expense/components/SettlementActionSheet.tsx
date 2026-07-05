@@ -121,17 +121,15 @@ function SettlementContent({
 
   return (
     <Fragment>
-      <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[30]}>
+      <Actionsheet isOpen={isOpen} onClose={onClose}>
         <ActionsheetBackdrop />
         <ActionsheetContent className="p-0">
           <ActionsheetDragIndicatorWrapper>
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
 
-          <VStack className="w-full h-full gap-y-4">
-            <VStack className="flex-1">
-              <SettlementItem item={payment} />
-            </VStack>
+          <VStack className="w-full gap-y-8">
+            <SettlementItem item={payment} />
 
             <VStack className="gap-y-2 px-4 pb-4">
               <FormButton
