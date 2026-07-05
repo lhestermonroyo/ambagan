@@ -67,7 +67,8 @@
         {
           "cameraPermission": "Ambagan uses your camera to scan group invite QR codes so you can join a group."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
