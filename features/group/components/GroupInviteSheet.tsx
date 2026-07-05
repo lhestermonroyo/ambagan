@@ -34,6 +34,10 @@ const APP_SCHEME = "ambagan";
 const CARD_W = 720;
 const CARD_PAD = 56;
 const QR_TARGET = 460;
+// The saved PNG is snapshotted from an off-screen copy laid out at this
+// multiple of CARD_W, for a crisp, print-ready image. (react-native-svg
+// snapshots a view at its real layout bounds, not toDataURL's size opts.)
+const EXPORT_SCALE = 2;
 const CARD_COLORS = {
   bg: "#FFFFFF",
   qr: "#000000",
@@ -216,7 +220,9 @@ export default function GroupInviteSheet({
   const toast = useAppToast();
   const colorScheme = useColorScheme() ?? "light";
   const inviteUrl = buildInviteUrl(inviteToken);
-  const cardRef = useRef<Svg>(null);
+  // Ref points at the hidden full-resolution card (below), not the small
+  // on-screen preview — see handleDownloadQR.
+  const exportRef = useRef<Svg>(null);
   const [expirationSheetOpen, setExpirationSheetOpen] = useState(false);
 
   // On-screen preview width (also drives export resolution via the shared
@@ -285,10 +291,14 @@ export default function GroupInviteSheet({
   }, [inviteUrl, groupName, creatorName, inviteExpiresAt, isExpired]);
 
   const handleDownloadQR = () => {
-    if (!cardRef.current || !card.qrPath) return;
-    // Render at the full CARD_W resolution so the saved PNG is crisp
-    // regardless of the smaller on-screen preview / device scale.
-    cardRef.current.toDataURL(
+    if (!exportRef.current || !card.qrPath) return;
+    // Snapshot the hidden, off-screen card that is actually laid out at
+    // CARD_W * EXPORT_SCALE. react-native-svg draws a view at its real
+    // layout bounds (ignoring these width/height opts for content), so
+    // the preview's small bounds would otherwise yield a tiny image.
+    const exportW = CARD_W * EXPORT_SCALE;
+    const exportH = Math.round(card.height * EXPORT_SCALE);
+    exportRef.current.toDataURL(
       async (data: string) => {
         try {
           const filePath = `${FileSystem.cacheDirectory}ambagan-invite-qr.png`;
@@ -308,7 +318,7 @@ export default function GroupInviteSheet({
           });
         }
       },
-      { width: CARD_W, height: Math.round(card.height) }
+      { width: exportW, height: exportH }
     );
   };
 
@@ -360,7 +370,6 @@ export default function GroupInviteSheet({
                       card={card}
                       creatorName={creatorName}
                       width={previewW}
-                      svgRef={cardRef}
                     />
                   </Box>
 
@@ -440,6 +449,26 @@ export default function GroupInviteSheet({
                 </VStack>
               </VStack>
             </ScrollView>
+
+            {/* Off-screen full-resolution copy of the card, snapshotted by
+                "Download QR". It must be genuinely laid out at export size
+                because react-native-svg draws a view at its real bounds. */}
+            <Box
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                left: -100000,
+                top: 0,
+                opacity: 0
+              }}
+            >
+              <InviteCardSvg
+                card={card}
+                creatorName={creatorName}
+                width={CARD_W * EXPORT_SCALE}
+                svgRef={exportRef}
+              />
+            </Box>
           </VStack>
         </ActionsheetContent>
       </Actionsheet>
