@@ -5,6 +5,7 @@ import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import SearchInput from "@/components/SearchInput";
 import { SettlementListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
@@ -21,16 +22,14 @@ import {
   ModalHeader
 } from "@/components/ui/modal";
 import { Pressable } from "@/components/ui/pressable";
-import {
-  ScrollView as HScrollView,
-  ScrollView
-} from "@/components/ui/scroll-view";
+import { ScrollView } from "@/components/ui/scroll-view";
 import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
+import SettlementGroupCard from "@/features/expense/components/SettlementGroupCard";
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import {
@@ -42,6 +41,9 @@ import DateRangeSheet, {
   dateRangeLabels,
   getDateRangeCutoff
 } from "@/features/group/components/DateRangeSheet";
+import StatusSheet, {
+  SettlementStatus
+} from "@/features/group/components/StatusSheet";
 import ViewBySheet, {
   ViewOption
 } from "@/features/group/components/ViewBySheet";
@@ -62,13 +64,31 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   CalendarRange,
   CheckCheck,
+  ChevronDown,
   FileCheckCorner,
   Heart,
   LayoutList,
+  Search,
   X
 } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, RefreshControl, useColorScheme } from "react-native";
+import {
+  Animated,
+  LayoutAnimation,
+  Platform,
+  RefreshControl,
+  UIManager,
+  useColorScheme
+} from "react-native";
+
+// LayoutAnimation needs to be opted into on old-architecture Android; it's a
+// no-op elsewhere. Guards the row swap when opening/closing search.
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function FriendDetailScreen() {
   const { friendId, name, email, avatar, tab } = useLocalSearchParams<{
@@ -103,9 +123,12 @@ export default function FriendDetailScreen() {
     "settle" | "request" | null
   >(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [settlementTab, setSettlementTab] = useState<"Outstanding" | "History">(
-    tab === "History" ? "History" : "Outstanding"
+  const [settlementTab, setSettlementTab] = useState<SettlementStatus>(
+    tab === "History" ? "Settled" : "All"
   );
+  const [statusSheetOpen, setStatusSheetOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const initializedRef = useRef(false);
 
   const { details: userDetails, defaultCurrency } = states.user();
@@ -365,12 +388,50 @@ export default function FriendDetailScreen() {
   });
 
   const filteredSettlements = useMemo(() => {
-    if (settlementTab === "History") return settledSettlements;
     const cutoff = getDateRangeCutoff(dateRange);
-    return activeSettlements.filter(
-      (s) => !cutoff || new Date(s.created_at) >= cutoff
-    );
-  }, [activeSettlements, settledSettlements, settlementTab, dateRange]);
+
+    let filtered: PaymentPreview[];
+    if (settlementTab === "Settled") {
+      filtered = settledSettlements;
+    } else if (settlementTab === "Pending") {
+      filtered = activeSettlements
+        .filter((s) => s.status === "pending")
+        .filter((s) => !cutoff || new Date(s.created_at) >= cutoff);
+    } else if (settlementTab === "Requested") {
+      filtered = activeSettlements
+        .filter((s) => s.status === "requested")
+        .filter((s) => !cutoff || new Date(s.created_at) >= cutoff);
+    } else {
+      const activeFiltered = activeSettlements.filter(
+        (s) => !cutoff || new Date(s.created_at) >= cutoff
+      );
+      filtered = [...activeFiltered, ...settledSettlements];
+    }
+
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      filtered = filtered.filter((s) => {
+        const description = (s.expense_description ?? "").toLowerCase();
+        const payerName =
+          `${s.payer.first_name} ${s.payer.last_name}`.toLowerCase();
+        const memberName =
+          `${s.member.first_name} ${s.member.last_name}`.toLowerCase();
+        return (
+          description.includes(query) ||
+          payerName.includes(query) ||
+          memberName.includes(query)
+        );
+      });
+    }
+
+    return filtered;
+  }, [
+    activeSettlements,
+    settledSettlements,
+    settlementTab,
+    dateRange,
+    searchQuery
+  ]);
 
   const sections = useMemo(() => {
     if (viewBy === "By Expense") {
@@ -399,6 +460,30 @@ export default function FriendDetailScreen() {
 
     return groupByDate(filteredSettlements);
   }, [filteredSettlements, viewBy, userDetails]);
+
+  // Swap the status/filter row for the full-width search field (and back).
+  // The query is kept when collapsing so it persists as a chip, mirroring how
+  // the date-range and group-by filters behave after their sheets close.
+  const toggleSearch = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSearchOpen((prev) => !prev);
+  };
+
+  const emptyType = searchQuery
+    ? EmptyType.SEARCH
+    : settlementTab === "Pending"
+      ? EmptyType.SETTLEMENT_PENDING
+      : settlementTab === "Requested"
+        ? EmptyType.SETTLEMENT_REQUESTED
+        : settlementTab === "Settled"
+          ? EmptyType.SETTLEMENT_SETTLED
+          : EmptyType.SETTLEMENT_ALL;
+
+  const handleItemPress = (item: PaymentPreview) => {
+    if (!requireOnline()) return;
+    setSelectedPayment(item);
+    setActionSheetOpen(true);
+  };
 
   return (
     <>
@@ -592,58 +677,96 @@ export default function FriendDetailScreen() {
             </VStack>
 
             <VStack className="gap-y-4">
-              <HStack>
-                <HScrollView
-                  horizontal
-                  className="flex-1"
-                  showsHorizontalScrollIndicator={false}
-                >
-                  <HStack className="gap-x-2 px-4">
-                    {(["Outstanding", "History"] as const).map((tab) => (
-                      <FormButton
-                        key={tab}
-                        size="sm"
-                        variant={tab === settlementTab ? "solid" : "outline"}
-                        text={tab}
-                        onPress={() => setSettlementTab(tab)}
+              {searchOpen ? (
+                <Box className="px-4">
+                  <SearchInput
+                    autoFocus
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder="Search by description or name"
+                    rightIcon={X}
+                    onPressRightIcon={toggleSearch}
+                  />
+                </Box>
+              ) : (
+                <HStack className="px-4 items-center justify-between">
+                  <FormButton
+                    size="sm"
+                    variant="outline"
+                    text={settlementTab}
+                    iconEnd={
+                      <ChevronDown
+                        size={16}
+                        color={getPrimaryHex("text-primary-500", colorScheme)}
                       />
-                    ))}
+                    }
+                    onPress={() => setStatusSheetOpen(true)}
+                  />
+                  <HStack className="gap-x-6 items-center">
+                    <Button
+                      variant="link"
+                      className="rounded-full"
+                      onPress={toggleSearch}
+                    >
+                      <Search
+                        color={
+                          searchQuery
+                            ? getPrimaryHex("text-primary-400", colorScheme)
+                            : getSecondaryHex("text-secondary-950", colorScheme)
+                        }
+                      />
+                    </Button>
+                    <Button
+                      variant="link"
+                      className="rounded-full"
+                      onPress={() => setDateRangeSheetOpen(true)}
+                    >
+                      <CalendarRange
+                        color={
+                          dateRange !== "All"
+                            ? getPrimaryHex("text-primary-400", colorScheme)
+                            : getSecondaryHex("text-secondary-950", colorScheme)
+                        }
+                      />
+                    </Button>
+                    <Button
+                      variant="link"
+                      className="rounded-full"
+                      onPress={() => setViewSheetOpen(true)}
+                    >
+                      <LayoutList
+                        color={
+                          viewBy !== "By Date"
+                            ? getPrimaryHex("text-primary-400", colorScheme)
+                            : getSecondaryHex("text-secondary-950", colorScheme)
+                        }
+                      />
+                    </Button>
                   </HStack>
-                </HScrollView>
-                <HStack className="gap-x-6 px-4">
-                  <Button
-                    variant="link"
-                    size="lg"
-                    className="rounded-full"
-                    onPress={() => setDateRangeSheetOpen(true)}
-                  >
-                    <CalendarRange
-                      color={
-                        dateRange !== "All"
-                          ? getPrimaryHex("text-primary-400", colorScheme)
-                          : getSecondaryHex("text-secondary-950", colorScheme)
-                      }
-                    />
-                  </Button>
-                  <Button
-                    variant="link"
-                    size="lg"
-                    className="rounded-full"
-                    onPress={() => setViewSheetOpen(true)}
-                  >
-                    <LayoutList
-                      color={
-                        viewBy !== "By Date"
-                          ? getPrimaryHex("text-primary-400", colorScheme)
-                          : getSecondaryHex("text-secondary-950", colorScheme)
-                      }
-                    />
-                  </Button>
                 </HStack>
-              </HStack>
+              )}
 
-              {(dateRange !== "All" || viewBy !== "By Date") && (
+              {(dateRange !== "All" ||
+                viewBy !== "By Date" ||
+                (!!searchQuery && !searchOpen)) && (
                 <HStack className="gap-x-2 px-4 flex-wrap">
+                  {!!searchQuery && !searchOpen && (
+                    <Pressable
+                      onPress={() => setSearchQuery("")}
+                      className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                    >
+                      <Text
+                        className="text-sm text-primary-600 max-w-[160px]"
+                        numberOfLines={1}
+                      >
+                        &ldquo;{searchQuery}&rdquo;
+                      </Text>
+                      <X
+                        size={12}
+                        color={getPrimaryHex("text-primary-600", colorScheme)}
+                      />
+                    </Pressable>
+                  )}
                   {dateRange !== "All" && (
                     <Pressable
                       onPress={() => setDateRange("All")}
@@ -677,48 +800,61 @@ export default function FriendDetailScreen() {
                 isLoading={loading}
                 skeleton={<SettlementListSkeleton />}
               >
-                <SectionList
-                  scrollEnabled={false}
-                  sections={sections}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <SettlementItem
-                      item={item}
-                      onPress={() => {
-                        if (!requireOnline()) return;
-                        setSelectedPayment(item);
-                        setActionSheetOpen(true);
-                      }}
-                    />
-                  )}
-                  renderSectionHeader={({ section: { title } }) => (
-                    <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
-                      <Text className="text-sm text-secondary-950">
-                        {title}
-                      </Text>
-                    </Box>
-                  )}
-                  ItemSeparatorComponent={ListDivider}
-                  stickySectionHeadersEnabled={true}
-                  ListEmptyComponent={() => (
-                    <EmptyList
-                      type={
-                        settlementTab === "Outstanding"
-                          ? EmptyType.OUTSTANDING
-                          : EmptyType.HISTORY
-                      }
-                    />
-                  )}
-                  ListFooterComponent={() =>
-                    settlementTab === "History" && hasMoreSettled ? (
-                      <ListFooter
-                        hasNextPage={hasMoreSettled}
-                        loading={loadingMore}
-                        onLoadMore={loadMoreSettled}
+                {viewBy === "By Date" ? (
+                  <SectionList
+                    scrollEnabled={false}
+                    sections={sections}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                      <SettlementItem item={item} onPress={handleItemPress} />
+                    )}
+                    renderSectionHeader={({ section: { title } }) => (
+                      <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
+                        <Text className="text-sm text-secondary-950">
+                          {title}
+                        </Text>
+                      </Box>
+                    )}
+                    ItemSeparatorComponent={ListDivider}
+                    stickySectionHeadersEnabled={true}
+                    ListEmptyComponent={() => <EmptyList type={emptyType} />}
+                    ListFooterComponent={() =>
+                      (settlementTab === "Settled" ||
+                        settlementTab === "All") &&
+                      hasMoreSettled ? (
+                        <ListFooter
+                          hasNextPage={hasMoreSettled}
+                          loading={loadingMore}
+                          onLoadMore={loadMoreSettled}
+                        />
+                      ) : null
+                    }
+                  />
+                ) : sections.length === 0 ? (
+                  <EmptyList type={emptyType} />
+                ) : (
+                  <VStack className="gap-y-3 px-4">
+                    {sections.map((section) => (
+                      <SettlementGroupCard
+                        key={section.data[0].id}
+                        title={section.title}
+                        items={section.data}
+                        onItemPress={(item) =>
+                          handleItemPress(item as PaymentPreview)
+                        }
                       />
-                    ) : null
-                  }
-                />
+                    ))}
+                    {(settlementTab === "Settled" ||
+                      settlementTab === "All") &&
+                      hasMoreSettled && (
+                        <ListFooter
+                          hasNextPage={hasMoreSettled}
+                          loading={loadingMore}
+                          onLoadMore={loadMoreSettled}
+                        />
+                      )}
+                  </VStack>
+                )}
               </LoadingWrapper>
             </VStack>
           </VStack>
@@ -730,6 +866,12 @@ export default function FriendDetailScreen() {
         onClose={() => setActionSheetOpen(false)}
         item={selectedPayment}
         onRefetch={() => fetchAll(false)}
+      />
+      <StatusSheet
+        isOpen={statusSheetOpen}
+        onClose={() => setStatusSheetOpen(false)}
+        status={settlementTab}
+        onSelect={setSettlementTab}
       />
       <DateRangeSheet
         isOpen={dateRangeSheetOpen}

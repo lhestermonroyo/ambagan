@@ -20,6 +20,7 @@ import MarkAsSettledSheet from "@/features/expense/components/MarkAsSettledSheet
 import RequestSettledSheet from "@/features/expense/components/RequestSettledSheet";
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
+import SettlementGroupCard from "@/features/expense/components/SettlementGroupCard";
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import {
@@ -401,6 +402,16 @@ export default function GroupSettlements({
     setSearchOpen((prev) => !prev);
   };
 
+  const emptyType = searchQuery
+    ? EmptyType.SEARCH
+    : settlementTab === "Pending"
+      ? EmptyType.SETTLEMENT_PENDING
+      : settlementTab === "Requested"
+        ? EmptyType.SETTLEMENT_REQUESTED
+        : settlementTab === "Settled"
+          ? EmptyType.SETTLEMENT_SETTLED
+          : EmptyType.SETTLEMENT_ALL;
+
   return (
     <Fragment>
       <VStack className="gap-y-6">
@@ -572,52 +583,63 @@ export default function GroupSettlements({
             isLoading={loading}
             skeleton={<SettlementListSkeleton />}
           >
-            <SectionList
-              scrollEnabled={false}
-              sections={settlementSections}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <SettlementItem
-                  item={item}
-                  onPress={handleSettlementItemPress}
-                />
-              )}
-              renderSectionHeader={({ section: { title } }) => (
-                <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
-                  <Text className="text-sm text-secondary-950">{title}</Text>
-                </Box>
-              )}
-              ItemSeparatorComponent={ListDivider}
-              ListEmptyComponent={() => (
-                <EmptyList
-                  type={
-                    searchQuery
-                      ? EmptyType.SEARCH
-                      : settlementTab === "Pending"
-                        ? EmptyType.SETTLEMENT_PENDING
-                        : settlementTab === "Requested"
-                          ? EmptyType.SETTLEMENT_REQUESTED
-                          : settlementTab === "Settled"
-                            ? EmptyType.SETTLEMENT_SETTLED
-                            : EmptyType.SETTLEMENT_ALL
-                  }
-                />
-              )}
-              ListFooterComponent={() => (
-                <>
-                  {(settlementTab === "Settled" || settlementTab === "All") &&
-                    hasMoreSettled && (
-                      <ListFooter
-                        hasNextPage={hasMoreSettled}
-                        loading={loadingMore}
-                        onLoadMore={loadMoreSettled}
-                      />
-                    )}
-                  <Box className="h-16" />
-                </>
-              )}
-              stickySectionHeadersEnabled={true}
-            />
+            {viewBy === "By Date" ? (
+              <SectionList
+                scrollEnabled={false}
+                sections={settlementSections}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <SettlementItem
+                    item={item}
+                    onPress={handleSettlementItemPress}
+                  />
+                )}
+                renderSectionHeader={({ section: { title } }) => (
+                  <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
+                    <Text className="text-sm text-secondary-950">{title}</Text>
+                  </Box>
+                )}
+                ItemSeparatorComponent={ListDivider}
+                ListEmptyComponent={() => <EmptyList type={emptyType} />}
+                ListFooterComponent={() => (
+                  <>
+                    {(settlementTab === "Settled" ||
+                      settlementTab === "All") &&
+                      hasMoreSettled && (
+                        <ListFooter
+                          hasNextPage={hasMoreSettled}
+                          loading={loadingMore}
+                          onLoadMore={loadMoreSettled}
+                        />
+                      )}
+                    <Box className="h-16" />
+                  </>
+                )}
+                stickySectionHeadersEnabled={true}
+              />
+            ) : settlementSections.length === 0 ? (
+              <EmptyList type={emptyType} />
+            ) : (
+              <VStack className="gap-y-3 px-4">
+                {settlementSections.map((section) => (
+                  <SettlementGroupCard
+                    key={section.data[0].id.toString()}
+                    title={section.title}
+                    items={section.data}
+                    onItemPress={handleSettlementItemPress}
+                  />
+                ))}
+                {(settlementTab === "Settled" || settlementTab === "All") &&
+                  hasMoreSettled && (
+                    <ListFooter
+                      hasNextPage={hasMoreSettled}
+                      loading={loadingMore}
+                      onLoadMore={loadMoreSettled}
+                    />
+                  )}
+                <Box className="h-16" />
+              </VStack>
+            )}
           </LoadingWrapper>
         </VStack>
       </VStack>
