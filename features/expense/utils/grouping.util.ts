@@ -4,11 +4,12 @@ import { format, parseISO } from "date-fns";
 type Section<T> = { title: string; data: T[] };
 
 export function groupByDate<T extends { created_at: string }>(
-  items: T[]
+  items: T[],
+  getDate: (item: T) => string = (item) => item.created_at
 ): Section<T>[] {
   const grouped: Record<string, T[]> = {};
   items.forEach((item) => {
-    const dateKey = format(parseISO(item.created_at), "yyyy-MM-dd");
+    const dateKey = format(parseISO(getDate(item)), "yyyy-MM-dd");
     if (!grouped[dateKey]) grouped[dateKey] = [];
     grouped[dateKey].push(item);
   });

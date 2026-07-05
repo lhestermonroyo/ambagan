@@ -6,22 +6,16 @@ import {
   ActionsheetDragIndicator,
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
-import { HStack } from "@/components/ui/hstack";
-import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import MarkAsSettledSheet from "@/features/expense/components/MarkAsSettledSheet";
 import RequestSettledSheet from "@/features/expense/components/RequestSettledSheet";
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
-import StatusBadge from "@/features/expense/components/StatusBadge";
-import { formatAmount } from "@/features/expense/utils/formatAmount";
 import services from "@/services";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
-import { formatDate } from "@/utils/formatDate";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useRouter } from "expo-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import SettlementAvatar from "./SettlementAvatar";
+import SettlementItem from "./SettlementItem";
 
 function SettlementContent({
   isOpen,
@@ -134,61 +128,12 @@ function SettlementContent({
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
 
-          <VStack className="w-full h-full gap-y-4 p-4">
+          <VStack className="w-full h-full gap-y-4">
             <VStack className="flex-1">
-              <HStack className="gap-x-2 items-start">
-                <SettlementAvatar isPayer={isUserPayer} />
-                <VStack className="gap-y-2 flex-1">
-                  {item.expense_description && (
-                    <HStack className="gap-x-4 items-center">
-                      <Text
-                        className="text-sm text-secondary-950 uppercase flex-1"
-                        bold
-                        numberOfLines={1}
-                      >
-                        {item.expense_description}
-                      </Text>
-                      <Text className="text-sm text-secondary-950">
-                        {formatDate(item.created_at)}
-                      </Text>
-                    </HStack>
-                  )}
-                  <HStack className="gap-x-4">
-                    <VStack className="flex-1">
-                      <Text
-                        className={cn("text-lg", isUserMember && "font-medium")}
-                      >
-                        {item.member.first_name} {item.member.last_name}
-                        {isUserMember && " (You)"}
-                      </Text>
-                      <Text className="text-sm text-secondary-950">pays</Text>
-                      <Text
-                        className={cn("text-lg", isUserPayer && "font-medium")}
-                      >
-                        {item.payer.first_name} {item.payer.last_name}
-                        {isUserPayer && " (You)"}
-                      </Text>
-                    </VStack>
-                    <HStack className="gap-x-2 items-center">
-                      <VStack className="items-end">
-                        <Text
-                          className={cn(
-                            "text-lg",
-                            isUserMember ? "text-error-400" : undefined
-                          )}
-                        >
-                          {isUserMember && "-"}
-                          {formatAmount(item.amount, item.currency)}
-                        </Text>
-                        <StatusBadge status={item.status} size="md" />
-                      </VStack>
-                    </HStack>
-                  </HStack>
-                </VStack>
-              </HStack>
+              <SettlementItem item={payment} />
             </VStack>
 
-            <VStack className="gap-y-2">
+            <VStack className="gap-y-2 px-4 pb-4">
               <FormButton
                 variant="outline"
                 text="Open Group Settlement"

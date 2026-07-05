@@ -28,6 +28,7 @@ import {
   groupByExpenseId
 } from "@/features/expense/utils/grouping.util";
 import { sortPaymentsByStatus } from "@/features/expense/utils/payment.util";
+import { getSettlementUpdatedAt } from "@/features/expense/utils/settlementDate.util";
 import DateRangeSheet, {
   DateRangeOption,
   dateRangeLabels,
@@ -293,6 +294,16 @@ export default function GroupSettlements({
       });
     }
 
+    // Surface the most recently acted-on settlement first so that, after a
+    // request/settle/reject, switching tabs lands the item you just touched at
+    // the top. Ordering by the effective lifecycle date also flows into the
+    // grouped views below (groups keep insertion order of their first item).
+    filtered = [...filtered].sort(
+      (a, b) =>
+        new Date(getSettlementUpdatedAt(b)).getTime() -
+        new Date(getSettlementUpdatedAt(a)).getTime()
+    );
+
     if (viewBy === "By Expense") {
       return groupByExpenseId(filtered);
     }
@@ -317,7 +328,7 @@ export default function GroupSettlements({
       });
     }
 
-    return groupByDate(filtered);
+    return groupByDate(filtered, getSettlementUpdatedAt);
   }, [
     activePayments,
     settledPayments,

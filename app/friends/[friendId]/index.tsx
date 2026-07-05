@@ -36,6 +36,7 @@ import {
   groupByDate,
   groupByExpenseId
 } from "@/features/expense/utils/grouping.util";
+import { getSettlementUpdatedAt } from "@/features/expense/utils/settlementDate.util";
 import DateRangeSheet, {
   DateRangeOption,
   dateRangeLabels,
@@ -425,7 +426,14 @@ export default function FriendDetailScreen() {
       });
     }
 
-    return filtered;
+    // Most recently acted-on settlement first, so the item you just
+    // requested/settled/rejected surfaces at the top when switching tabs. Also
+    // orders the grouped views (groups keep insertion order of their first item).
+    return [...filtered].sort(
+      (a, b) =>
+        new Date(getSettlementUpdatedAt(b)).getTime() -
+        new Date(getSettlementUpdatedAt(a)).getTime()
+    );
   }, [
     activeSettlements,
     settledSettlements,
@@ -459,7 +467,7 @@ export default function FriendDetailScreen() {
       ].filter(Boolean) as { title: string; data: PaymentPreview[] }[];
     }
 
-    return groupByDate(filteredSettlements);
+    return groupByDate(filteredSettlements, getSettlementUpdatedAt);
   }, [filteredSettlements, viewBy, userDetails]);
 
   // Swap the status/filter row for the full-width search field (and back).
