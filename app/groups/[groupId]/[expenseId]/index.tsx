@@ -5,7 +5,7 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import PressableListItem from "@/components/PressableListItem";
+import { ExpenseDetailsSkeleton } from "@/components/SkeletonLoader";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,6 @@ import {
   Payment,
   SplitType
 } from "@/types/expenses";
-import { getUserSubtitle } from "@/utils/userDisplay";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { formatDate } from "@/utils/formatDate";
@@ -47,6 +46,7 @@ import {
   getPrimaryHex,
   getSecondaryHex
 } from "@/utils/getColorHex";
+import { getUserSubtitle } from "@/utils/userDisplay";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   Edit2,
@@ -450,7 +450,7 @@ export default function ExpenseDetailsScreen() {
           isLoading={
             !expenseDetails || !groupDetails || !payerList || !memberSplitList
           }
-          text="Loading expense details..."
+          skeleton={<ExpenseDetailsSkeleton />}
         >
           <ScrollView className="flex-1">
             {expenseDetails && (
@@ -698,94 +698,62 @@ function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
       }
     });
   };
-
-  const content = (
-    <HStack className="gap-x-2 items-center">
-      <AppAvatar
-        name={memberSplit.member.first_name}
-        uri={memberSplit.member.avatar!}
-        size="md"
-        isPlaceholder={memberSplit.member.is_placeholder}
-      />
-      <VStack className="flex-1">
-        <Text className="text-lg">
-          {memberSplit.member.first_name} {memberSplit.member.last_name}
-          {isMe && " (You)"}
-        </Text>
-        <Text className="text-sm text-secondary-950">
-          {getUserSubtitle(memberSplit.member)}
-        </Text>
-      </VStack>
-      <VStack className="items-end gap-y-1">
-        <Text className="text-lg">
-          {formatAmount(memberSplit.amount, memberSplit.currency)}
-        </Text>
-      </VStack>
-      {!isMe && <Icon as="chevron-right" className="text-secondary-950" />}
-    </HStack>
-  );
-
-  if (isMe) {
-    return <Box className="p-4">{content}</Box>;
-  }
-
   return (
-    <PressableListItem className="p-4" onPress={handlePress}>
-      {content}
-    </PressableListItem>
+    <Box className="p-4">
+      <HStack className="gap-x-2 items-center">
+        <AppAvatar
+          name={memberSplit.member.first_name}
+          uri={memberSplit.member.avatar!}
+          size="md"
+          isPlaceholder={memberSplit.member.is_placeholder}
+        />
+        <VStack className="flex-1">
+          <Text className="text-lg">
+            {memberSplit.member.first_name} {memberSplit.member.last_name}
+            {isMe && " (You)"}
+          </Text>
+          <Text className="text-sm text-secondary-950">
+            {getUserSubtitle(memberSplit.member)}
+          </Text>
+        </VStack>
+        <VStack className="items-end gap-y-1">
+          <Text className="text-lg">
+            {formatAmount(memberSplit.amount, memberSplit.currency)}
+          </Text>
+        </VStack>
+      </HStack>
+    </Box>
   );
 }
 
 function PayerItem({ payer }: { payer: ExpensePayer }) {
   const { details: userDetails } = states.user();
-  const router = useRouter();
   const isMe = payer.payer.id === userDetails?.id;
 
-  const handlePress = () => {
-    router.push({
-      pathname: "/friends/[friendId]",
-      params: {
-        friendId: payer.payer.id,
-        name: `${payer.payer.first_name} ${payer.payer.last_name}`,
-        email: payer.payer.email,
-        avatar: payer.payer.avatar || ""
-      }
-    });
-  };
-
-  const content = (
-    <HStack className="items-center gap-x-2">
-      <HStack className="gap-x-2 items-center flex-1">
-        <AppAvatar
-          name={payer.payer.first_name}
-          uri={payer.payer.avatar!}
-          size="md"
-          isPlaceholder={payer.payer.is_placeholder}
-        />
-        <VStack>
-          <Text className="text-lg">
-            {payer.payer.first_name} {payer.payer.last_name}
-            {isMe && " (You)"}
-          </Text>
-          <Text className="text-sm text-secondary-950">
-            {getUserSubtitle(payer.payer)}
-          </Text>
-        </VStack>
-      </HStack>
-      <Text className="text-lg">
-        {formatAmount(payer.amount, payer.currency)}
-      </Text>
-      {!isMe && <Icon as="chevron-right" className="text-secondary-950" />}
-    </HStack>
-  );
-
-  if (isMe) {
-    return <Box className="p-4">{content}</Box>;
-  }
-
   return (
-    <PressableListItem className="p-4" onPress={handlePress}>
-      {content}
-    </PressableListItem>
+    <Box className="p-4">
+      <HStack className="items-center gap-x-2">
+        <HStack className="gap-x-2 items-center flex-1">
+          <AppAvatar
+            name={payer.payer.first_name}
+            uri={payer.payer.avatar!}
+            size="md"
+            isPlaceholder={payer.payer.is_placeholder}
+          />
+          <VStack>
+            <Text className="text-lg">
+              {payer.payer.first_name} {payer.payer.last_name}
+              {isMe && " (You)"}
+            </Text>
+            <Text className="text-sm text-secondary-950">
+              {getUserSubtitle(payer.payer)}
+            </Text>
+          </VStack>
+        </HStack>
+        <Text className="text-lg">
+          {formatAmount(payer.amount, payer.currency)}
+        </Text>
+      </HStack>
+    </Box>
   );
 }

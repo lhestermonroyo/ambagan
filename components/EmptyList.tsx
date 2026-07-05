@@ -37,7 +37,7 @@ const TYPE_TO_IMAGE: Record<EmptyType, ImageKey> = {
   [EmptyType.EXPENSE]: "expense",
   [EmptyType.NOTIFICATION]: "notification",
   [EmptyType.SEARCH]: "search",
-  [EmptyType.FRIEND]: "expense",
+  [EmptyType.FRIEND]: "user",
   [EmptyType.USER]: "user",
   [EmptyType.FAVORITE]: "user",
   [EmptyType.MEMBER]: "user",
@@ -52,7 +52,14 @@ const TYPE_TO_IMAGE: Record<EmptyType, ImageKey> = {
   [EmptyType.HISTORY]: "expense"
 };
 
-const EmptyList = ({ type }: { type: EmptyType }) => {
+const EmptyList = ({
+  type,
+  content
+}: {
+  type: EmptyType;
+  // Optional copy override — falls back to the default text for `type`.
+  content?: string;
+}) => {
   const colorScheme = useColorScheme() ?? "light";
   const empty = emptyTypes.find((item) => item.type === type);
   const imageKey = TYPE_TO_IMAGE[type];
@@ -65,7 +72,9 @@ const EmptyList = ({ type }: { type: EmptyType }) => {
         style={{ width: 80, height: 80 }}
         resizeMode="contain"
       />
-      <Text className="text-center text-secondary-950">{empty?.content}</Text>
+      <Text className="text-center text-secondary-950">
+        {content ?? empty?.content}
+      </Text>
     </VStack>
   );
 };

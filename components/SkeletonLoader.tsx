@@ -475,3 +475,114 @@ export function ExpenseListSkeleton({ count = 5 }: { count?: number }) {
     </Animated.View>
   );
 }
+
+// ─────────────────────────────────────────────
+// ExpenseDetailsScreen skeleton
+// Header (description + amount) + detail card (4 rows) + Payers / Member Splits
+// ─────────────────────────────────────────────
+function ExpenseDetailRowSkeleton({
+  color,
+  valueW,
+  withAvatar = false
+}: {
+  color: string;
+  valueW: number;
+  withAvatar?: boolean;
+}) {
+  return (
+    <View
+      style={{
+        padding: 16,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8
+      }}
+    >
+      <Bone w={104} h={14} color={color} />
+      {withAvatar ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Bone w={24} h={24} radius={999} color={color} />
+          <Bone w={valueW} h={14} color={color} />
+        </View>
+      ) : (
+        <Bone w={valueW} h={14} color={color} />
+      )}
+    </View>
+  );
+}
+
+// Payer / Member-split row: avatar(40) | name + subtitle | amount
+function ExpensePersonRowSkeleton({ color }: { color: string }) {
+  return (
+    <View style={{ padding: 16, flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <Bone w={40} h={40} radius={999} color={color} />
+      <View style={{ flex: 1, gap: 6 }}>
+        <Bone w="50%" h={16} color={color} />
+        <Bone w="35%" h={12} color={color} />
+      </View>
+      <Bone w={72} h={16} color={color} />
+    </View>
+  );
+}
+
+export function ExpenseDetailsSkeleton() {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const divider = scheme === "dark" ? DIVIDER_DARK : DIVIDER_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  return (
+    <Animated.View style={[animStyle, { paddingVertical: 16, gap: 24 }]}>
+      {/* Header: description + amount */}
+      <View style={{ paddingHorizontal: 16, gap: 10 }}>
+        <Bone w={120} h={12} color={color} />
+        <Bone w={168} h={30} color={color} />
+      </View>
+
+      {/* Detail card: Expense Date / Created By / Split Type / Proof of Payment */}
+      <View
+        style={{
+          marginHorizontal: 16,
+          borderRadius: 12,
+          backgroundColor: color,
+          overflow: "hidden"
+        }}
+      >
+        <ExpenseDetailRowSkeleton color={divider} valueW={110} />
+        <View style={{ height: 1, backgroundColor: divider, marginHorizontal: 16 }} />
+        <ExpenseDetailRowSkeleton color={divider} valueW={120} withAvatar />
+        <View style={{ height: 1, backgroundColor: divider, marginHorizontal: 16 }} />
+        <ExpenseDetailRowSkeleton color={divider} valueW={72} />
+        <View style={{ height: 1, backgroundColor: divider, marginHorizontal: 16 }} />
+        <ExpenseDetailRowSkeleton color={divider} valueW={96} />
+      </View>
+
+      {/* Payers */}
+      <View style={{ gap: 8 }}>
+        <View style={{ paddingHorizontal: 16 }}>
+          <Bone w={80} h={20} color={color} />
+        </View>
+        {[0, 1].map((i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <SkeletonDivider color={divider} />}
+            <ExpensePersonRowSkeleton color={color} />
+          </React.Fragment>
+        ))}
+      </View>
+
+      {/* Member Splits */}
+      <View style={{ gap: 8 }}>
+        <View style={{ paddingHorizontal: 16 }}>
+          <Bone w={128} h={20} color={color} />
+        </View>
+        {[0, 1, 2].map((i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <SkeletonDivider color={divider} />}
+            <ExpensePersonRowSkeleton color={color} />
+          </React.Fragment>
+        ))}
+      </View>
+    </Animated.View>
+  );
+}

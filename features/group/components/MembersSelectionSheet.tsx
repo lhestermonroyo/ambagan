@@ -1,3 +1,4 @@
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
@@ -24,6 +25,7 @@ import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
+import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { filterContacts, getSavedContacts } from "@/utils/offlineContacts";
@@ -205,6 +207,12 @@ export default function MembersSelectionSheet({
       ? "No favorites added yet."
       : "No friends yet. Add members to a group to see them here.";
 
+  const emptyType = searching
+    ? EmptyType.SEARCH
+    : tab === "favorites"
+      ? EmptyType.FAVORITE
+      : EmptyType.FRIEND;
+
   return (
     <Fragment>
       <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[100]}>
@@ -304,11 +312,7 @@ export default function MembersSelectionSheet({
                   skeleton={<FriendListSkeleton />}
                 >
                   {displayUsers.length === 0 && (
-                    <VStack className="p-4 justify-center items-center">
-                      <Text className="text-sm text-secondary-950">
-                        {emptyText}
-                      </Text>
-                    </VStack>
+                    <EmptyList type={emptyType} content={emptyText} />
                   )}
                   <CheckboxGroup
                     className="w-full"

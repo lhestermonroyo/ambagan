@@ -1,3 +1,4 @@
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
@@ -25,6 +26,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
+import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
 import { getPrimaryHex } from "@/utils/getColorHex";
@@ -175,6 +177,18 @@ export default function EditMembersSheet({
     lockedMembers,
     members
   ]);
+
+  const emptyText = searching
+    ? "No results found on your search."
+    : tab === "favorites"
+      ? "No favorites added yet."
+      : "No recent users.";
+
+  const emptyType = searching
+    ? EmptyType.SEARCH
+    : tab === "favorites"
+      ? EmptyType.FAVORITE
+      : EmptyType.FRIEND;
 
   const handleChangeMembers = (selectedIds: (string | number)[]) => {
     // Additions only. displayUsers already excludes everyone selected (members +
@@ -473,15 +487,7 @@ export default function EditMembersSheet({
                 </VStack>
                 <ScrollView className="flex-1 w-full">
                   {displayUsers.length === 0 && (
-                    <VStack className="p-4 justify-center items-center">
-                      <Text className="text-sm text-secondary-950">
-                        {searching
-                          ? "No results found on your search."
-                          : tab === "favorites"
-                            ? "No favorites added yet."
-                            : "No recent users."}
-                      </Text>
-                    </VStack>
+                    <EmptyList type={emptyType} content={emptyText} />
                   )}
                   <CheckboxGroup
                     className="w-full"
