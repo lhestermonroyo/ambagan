@@ -8,15 +8,17 @@ import {
 
 export default function StatusBadge({
   status,
-  size = "sm"
+  size = "sm",
+  iconOnly = false
 }: {
   status: "settled" | "requested" | "pending" | "ongoing" | "completed";
   size?: "sm" | "md" | "lg";
+  iconOnly?: boolean;
 }) {
   let action: "success" | "info" | "muted" | "warning" = "warning";
   let text;
   let icon;
-  let iconSize = size === "sm" || size === "md" ? 12 : 16;
+  let iconSize = iconOnly ? 16 : size === "sm" || size === "md" ? 12 : 16;
 
   if (status === "settled") {
     action = "success";
@@ -41,6 +43,9 @@ export default function StatusBadge({
   }
 
   if (!text) return null;
+
+  // Compact settlement rows show the status as a bare glyph (no pill/label).
+  if (iconOnly) return icon ?? null;
 
   return (
     <AppBadge

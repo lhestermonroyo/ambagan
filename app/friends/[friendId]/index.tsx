@@ -131,7 +131,8 @@ export default function FriendDetailScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const initializedRef = useRef(false);
 
-  const { details: userDetails, defaultCurrency } = states.user();
+  const { details: userDetails, defaultCurrency, settlementView } =
+    states.user();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
@@ -804,6 +805,7 @@ export default function FriendDetailScreen() {
                   <SectionList
                     scrollEnabled={false}
                     sections={sections}
+                    extraData={settlementView}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                       <SettlementItem item={item} onPress={handleItemPress} />

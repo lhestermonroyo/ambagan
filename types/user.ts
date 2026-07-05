@@ -2,11 +2,14 @@ import { Session } from "@supabase/supabase-js";
 
 export type AppearanceMode = "light" | "dark" | "system";
 
+export type SettlementView = "full" | "compact";
+
 export type UserPreferences = {
   id: string;
   user_id: string;
   default_currency: string;
   appearance: AppearanceMode;
+  settlement_view: SettlementView;
   notif_settlement_request: boolean;
   notif_settlement_approved: boolean;
   notif_settlement_rejected: boolean;
@@ -34,10 +37,12 @@ export type UserState = {
   // state is known.
   routeIntent: RouteIntent;
   appearanceMode: AppearanceMode;
+  settlementView: SettlementView;
   notificationsEnabled: boolean;
   defaultCurrency: string;
   signOut: () => void;
   setAppearanceMode: (mode: AppearanceMode) => Promise<void>;
+  setSettlementView: (view: SettlementView) => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   setDefaultCurrency: (userId: string, currency: string) => Promise<void>;
   updatePreferences: (prefs: Partial<Omit<UserPreferences, "id" | "user_id" | "updated_at">>) => Promise<void>;

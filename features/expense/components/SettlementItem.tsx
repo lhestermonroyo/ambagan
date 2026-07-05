@@ -18,10 +18,64 @@ export default function SettlementItem({
   item: PaymentPreview | Payment;
   onPress: (payment: PaymentPreview | Payment) => void;
 }) {
-  const { details: userDetails } = states.user();
+  const { details: userDetails, settlementView } = states.user();
 
   const isUserPayer = item.payer.id === userDetails?.id;
   const isUserMember = item.member.id === userDetails?.id;
+
+  const memberLabel = isUserMember ? "You" : `${item.member.first_name}`;
+  const payerLabel = isUserPayer ? "You" : `${item.payer.first_name}`;
+
+  if (settlementView === "compact") {
+    return (
+      <PressableListItem className="p-4" onPress={() => onPress(item)}>
+        <HStack className="gap-x-3 items-start">
+          <SettlementAvatar isPayer={isUserPayer} />
+          <VStack className="flex-1 gap-y-2">
+            <HStack className="gap-x-2 items-center">
+              <Text
+                className="text-sm text-secondary-950 uppercase flex-1"
+                bold
+                numberOfLines={1}
+              >
+                {item.expense_description}
+              </Text>
+              <HStack className="gap-x-1 items-center">
+                {item.pending && (
+                  <Icon as="sync" size={12} className="text-primary-400" />
+                )}
+                <Text className="text-sm text-secondary-950">
+                  {formatDate(item.created_at)}
+                </Text>
+              </HStack>
+            </HStack>
+            <HStack className="gap-x-2 items-center">
+              <Text className="text-lg flex-1" numberOfLines={1}>
+                <Text className={cn("text-lg", isUserMember && "font-medium")}>
+                  {memberLabel}
+                </Text>{" "}
+                {isUserMember ? "pay" : "pays"}{" "}
+                <Text className={cn("text-lg", isUserPayer && "font-medium")}>
+                  {payerLabel}
+                </Text>
+              </Text>
+              <Text
+                className={cn(
+                  "text-lg",
+                  isUserMember ? "text-error-400" : undefined
+                )}
+              >
+                {isUserMember && "-"}
+                {formatAmount(item.amount, item.currency)}
+              </Text>
+              <StatusBadge status={item.status} iconOnly />
+              <Icon as="chevron-right" className="text-secondary-950" />
+            </HStack>
+          </VStack>
+        </HStack>
+      </PressableListItem>
+    );
+  }
 
   return (
     <PressableListItem className="p-4" onPress={() => onPress(item)}>

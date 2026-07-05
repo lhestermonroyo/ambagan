@@ -88,7 +88,12 @@ export default function HomeScreen() {
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
 
-  const { details: userDetails, session, defaultCurrency } = states.user();
+  const {
+    details: userDetails,
+    session,
+    defaultCurrency,
+    settlementView
+  } = states.user();
   // Use session.user.id as fallback — it's available immediately after login
   // without waiting for fetchDetails to complete
   const userId = userDetails?.id ?? session?.user?.id;
@@ -628,7 +633,9 @@ export default function HomeScreen() {
                 skeleton={<SettlementListSkeleton count={3} />}
               >
                 <FlatList
+                  key={settlementView}
                   data={activitiesPreview}
+                  extraData={settlementView}
                   scrollEnabled={false}
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={renderActivityItem}

@@ -80,7 +80,8 @@ export default function GroupSettlements({
   refreshTrigger?: number;
 }) {
   const { details, settlementRefreshToken } = states.group();
-  const { details: userDetails, defaultCurrency } = states.user();
+  const { details: userDetails, defaultCurrency, settlementView } =
+    states.user();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
   const { isOnline } = useNetwork();
@@ -587,6 +588,7 @@ export default function GroupSettlements({
               <SectionList
                 scrollEnabled={false}
                 sections={settlementSections}
+                extraData={settlementView}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => (
                   <SettlementItem

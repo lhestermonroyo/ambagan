@@ -6,7 +6,12 @@ import {
   getPreferences,
   updatePreferences as updatePreferencesInDB
 } from "@/features/user/services/preferences.service";
-import { AppearanceMode, UserPreferences, UserState } from "@/types/user";
+import {
+  AppearanceMode,
+  SettlementView,
+  UserPreferences,
+  UserState
+} from "@/types/user";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { supabase } from "@/utils/supabase";
 import { clearCachedUserSession } from "@/utils/userCache";
@@ -36,6 +41,7 @@ const USER_STATE = create<UserState>((set, get) => ({
   details: null,
   preferences: null,
   appearanceMode: "light",
+  settlementView: "full",
   notificationsEnabled: true,
   defaultCurrency: "PHP",
 
@@ -44,6 +50,7 @@ const USER_STATE = create<UserState>((set, get) => ({
       session: null,
       details: null,
       preferences: null,
+      settlementView: "full",
       defaultCurrency: "PHP"
     });
     // Drop the offline profile cache so the next account never hydrates ours.
@@ -66,6 +73,21 @@ const USER_STATE = create<UserState>((set, get) => ({
     } else {
       await offlineQueue.queueUpdatePreferences(details.id, {
         appearance: mode
+      });
+    }
+  },
+
+  setSettlementView: async (view: SettlementView) => {
+    const { details } = get();
+    if (!details?.id) return;
+    // Purely visual, so apply it immediately and let it sync. Offline → queue
+    // the change (flushed on reconnect) instead of failing the DB write.
+    set({ settlementView: view });
+    if (await offlineQueue.isOnline()) {
+      await updatePreferencesInDB(details.id, { settlement_view: view });
+    } else {
+      await offlineQueue.queueUpdatePreferences(details.id, {
+        settlement_view: view
       });
     }
   },
@@ -93,6 +115,9 @@ const USER_STATE = create<UserState>((set, get) => ({
       ...(prefs.appearance !== undefined && {
         appearanceMode: prefs.appearance
       }),
+      ...(prefs.settlement_view !== undefined && {
+        settlementView: prefs.settlement_view
+      }),
       ...(prefs.default_currency !== undefined && {
         defaultCurrency: prefs.default_currency
       })
@@ -114,6 +139,7 @@ const USER_STATE = create<UserState>((set, get) => ({
       if (!prefs) {
         prefs = await createPreferences(userId, {
           appearance: "light",
+          settlement_view: "full",
           default_currency: "PHP",
           ...NOTIF_ALL_ON
         });
@@ -123,6 +149,10 @@ const USER_STATE = create<UserState>((set, get) => ({
         preferences: prefs,
         appearanceMode:
           (pending?.appearance as AppearanceMode) ?? prefs.appearance,
+        settlementView:
+          (pending?.settlement_view as SettlementView) ??
+          prefs.settlement_view ??
+          "full",
         notificationsEnabled: isAnyNotifEnabled(prefs),
         defaultCurrency: prefs.default_currency
       });

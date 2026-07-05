@@ -14,6 +14,7 @@ import { VStack } from "@/components/ui/vstack";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import AppearanceSheet from "@/features/profile/components/AppearanceSheet";
 import NotificationsSheet from "@/features/profile/components/PushNotificationsSheet";
+import SettlementViewSheet from "@/features/profile/components/SettlementViewSheet";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import { useNetwork } from "@/hooks/useNetwork";
 import TabLayout from "@/layouts/TabLayout";
@@ -32,6 +33,7 @@ import {
   Copyright,
   Crown,
   Eye,
+  LayoutList,
   LogOut,
   MonitorCog,
   Moon,
@@ -48,6 +50,7 @@ export default function ProfileScreen() {
     details: userDetails,
     signOut,
     appearanceMode,
+    settlementView,
     defaultCurrency,
     setDefaultCurrency
   } = states.user();
@@ -58,6 +61,7 @@ export default function ProfileScreen() {
   const ensureOnline = useEnsureOnline();
 
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [settlementViewOpen, setSettlementViewOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [analyticsUpgradeOpen, setAnalyticsUpgradeOpen] = useState(false);
@@ -81,6 +85,8 @@ export default function ProfileScreen() {
         return "Light";
     }
   }, [appearanceMode]);
+
+  const settlementViewLabel = settlementView === "compact" ? "Compact" : "Full";
 
   const isPro = userDetails?.plan === "pro";
 
@@ -146,6 +152,17 @@ export default function ProfileScreen() {
             description: "Customize the look and feel of the app",
             value: <Text className="text-lg">{appearanceLabel}</Text>,
             onPress: () => setAppearanceOpen(true)
+          },
+          {
+            icon: (
+              <LayoutList
+                color={getPrimaryHex("text-primary-400", colorScheme)}
+              />
+            ),
+            label: "Settlement View",
+            description: "Choose full or compact settlement rows",
+            value: <Text className="text-lg">{settlementViewLabel}</Text>,
+            onPress: () => setSettlementViewOpen(true)
           }
         ]
       },
@@ -182,6 +199,7 @@ export default function ProfileScreen() {
     ],
     [
       appearanceLabel,
+      settlementViewLabel,
       currencyLabel,
       colorScheme,
       handleNotificationsOpen,
@@ -336,6 +354,11 @@ export default function ProfileScreen() {
       <AppearanceSheet
         isOpen={appearanceOpen}
         onClose={() => setAppearanceOpen(false)}
+      />
+
+      <SettlementViewSheet
+        isOpen={settlementViewOpen}
+        onClose={() => setSettlementViewOpen(false)}
       />
 
       <NotificationsSheet
