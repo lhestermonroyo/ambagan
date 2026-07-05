@@ -64,91 +64,105 @@ export default function SplitMembersSheet({
     });
   };
 
+  const allSelected = members.length > 0 && selected.size === members.length;
+
+  const toggleAll = () => {
+    setSelected(allSelected ? new Set() : new Set(members.map((m) => m.id)));
+  };
+
   const handleSave = () => {
     onSave(selected);
     onClose();
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose}>
+    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
         <ActionsheetDragIndicatorWrapper>
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full">
-          <VStack className="px-4 pt-2 pb-4 gap-y-1">
-            <Text bold className="text-xl">
-              Split among
-            </Text>
-            <Text className="text-sm text-secondary-950">
-              Pick who shares this expense. Unchecked members are excluded from
-              the split.
-            </Text>
-          </VStack>
-
-          <Box className="w-full" style={{ maxHeight: 420 }}>
-            <ScrollView>
-              <VStack>
-                {members.map((item, index) => {
-                  const isMe = item.id === userDetails?.id;
-                  const checked = selected.has(item.id);
-
-                  return (
-                    <Fragment key={item.id}>
-                      {index > 0 && <ListDivider />}
-                      <Pressable onPress={() => toggle(item.id)}>
-                        <HStack className="items-center gap-x-3 px-4 py-3">
-                          <AppAvatar
-                            name={item.first_name}
-                            uri={item.avatar || ""}
-                            isPlaceholder={item.is_placeholder}
-                          />
-                          <VStack className="flex-1">
-                            <Text className="text-lg">
-                              {item.first_name} {item.last_name}
-                              {isMe && " (You)"}
-                            </Text>
-                            <Text className="text-sm text-secondary-950">
-                              {getUserSubtitle(item)}
-                            </Text>
-                          </VStack>
-                          <Icon
-                            as={
-                              checked ? "check-box" : "check-box-outline-blank"
-                            }
-                            className={
-                              checked
-                                ? "text-primary-400"
-                                : "text-secondary-400"
-                            }
-                          />
-                        </HStack>
-                      </Pressable>
-                    </Fragment>
-                  );
-                })}
-              </VStack>
-            </ScrollView>
-          </Box>
-
-          <Box className="w-full p-4">
-            <HStack className="gap-x-2">
-              <FormButton
-                className="flex-1"
-                variant="outline"
-                text="Cancel"
-                onPress={onClose}
-              />
-              <FormButton
-                className="flex-1"
-                text="Done"
-                disabled={selected.size < 1}
-                onPress={handleSave}
-              />
+        <VStack className="w-full flex-1">
+          <Pressable onPress={onClose}>
+            <HStack className="p-4 items-center">
+              <Icon as="arrow-back-ios" className="text-secondary-950" />
+              <Text bold className="text-xl">
+                Split among
+              </Text>
             </HStack>
-          </Box>
+          </Pressable>
+          <Text className="text-sm text-secondary-950 px-4 pb-4">
+            Pick who shares this expense. Unchecked members are excluded from the
+            split.
+          </Text>
+
+          <HStack className="items-center px-4 pb-4">
+            <Text className="text-sm text-secondary-950 flex-1">
+              {selected.size} of {members.length} selected
+            </Text>
+            <Pressable onPress={toggleAll}>
+              <Text className="text-primary-400">
+                {allSelected ? "Unselect all" : "Select all"}
+              </Text>
+            </Pressable>
+          </HStack>
+
+          <ScrollView className="flex-1">
+            <VStack>
+              {members.map((item, index) => {
+                const isMe = item.id === userDetails?.id;
+                const checked = selected.has(item.id);
+
+                return (
+                  <Fragment key={item.id}>
+                    {index > 0 && <ListDivider />}
+                    <Pressable onPress={() => toggle(item.id)}>
+                      <HStack className="items-center gap-x-3 px-4 py-3">
+                        <AppAvatar
+                          name={item.first_name}
+                          uri={item.avatar || ""}
+                          isPlaceholder={item.is_placeholder}
+                        />
+                        <VStack className="flex-1">
+                          <Text className="text-lg">
+                            {item.first_name} {item.last_name}
+                            {isMe && " (You)"}
+                          </Text>
+                          <Text className="text-sm text-secondary-950">
+                            {getUserSubtitle(item)}
+                          </Text>
+                        </VStack>
+                        <Icon
+                          as={checked ? "check-box" : "check-box-outline-blank"}
+                          className={
+                            checked ? "text-primary-400" : "text-secondary-400"
+                          }
+                        />
+                      </HStack>
+                    </Pressable>
+                  </Fragment>
+                );
+              })}
+            </VStack>
+          </ScrollView>
         </VStack>
+
+        <Box className="sticky bottom-0 w-full px-4 pt-4">
+          <HStack className="gap-x-2">
+            <FormButton
+              className="flex-1"
+              variant="outline"
+              text="Cancel"
+              onPress={onClose}
+            />
+            <FormButton
+              className="flex-1"
+              text="Done"
+              disabled={selected.size < 1}
+              onPress={handleSave}
+            />
+          </HStack>
+        </Box>
       </ActionsheetContent>
     </Actionsheet>
   );

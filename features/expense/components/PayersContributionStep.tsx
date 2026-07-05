@@ -79,7 +79,6 @@ export default function PayersContributionStep({
             </VStack>
           </VStack>
           <FlatList
-            className="flex-1 h-full"
             scrollEnabled={false}
             data={formattedPayers}
             keyExtractor={(item) => item.id.toString()}
@@ -93,6 +92,7 @@ export default function PayersContributionStep({
                 onAmountChange={onPayerAmountChange}
               />
             )}
+            ListFooterComponent={() => <Box className="h-8" />}
           />
         </VStack>
       </ScrollView>

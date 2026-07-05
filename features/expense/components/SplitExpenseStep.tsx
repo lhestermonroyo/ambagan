@@ -268,11 +268,11 @@ export default function SplitSelection({
 
             <FlatList
               scrollEnabled={false}
-              className="flex-1 h-full"
               data={includedMembers}
               keyExtractor={(item) => item.id}
               ItemSeparatorComponent={ListDivider}
               ListEmptyComponent={() => <EmptyList type={EmptyType.MEMBER} />}
+              ListFooterComponent={() => <Box className="h-8" />}
               renderItem={({ item: member }) => (
                 <MemberSplitItem
                   currency={currency}
