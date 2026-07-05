@@ -310,6 +310,11 @@ export default function GroupInviteSheet({
             mimeType: "image/png",
             dialogTitle: "Save QR Code"
           });
+          toast({
+            title: "QR code saved",
+            description: "The invite QR code has been saved to your device.",
+            type: "success"
+          });
         } catch {
           toast({
             title: "Error",
@@ -324,9 +329,24 @@ export default function GroupInviteSheet({
 
   const handleShare = async () => {
     try {
-      await Share.share({
+      const result = await Share.share({
         message: `Join my group "${groupName}" on Ambagan PH!\n\n${inviteUrl}`,
         title: `Join ${groupName} on Ambagan PH`
+      });
+
+      if (result.action !== Share.sharedAction) return;
+
+      // iOS reports the chosen activity; surface a "copied" confirmation when
+      // the user tapped Copy. Android doesn't expose it, so fall back to a
+      // generic "shared" message.
+      const copied =
+        result.activityType === "com.apple.UIKit.activity.CopyToPasteboard";
+      toast({
+        title: copied ? "Link copied" : "Invite link shared",
+        description: copied
+          ? "The invite link has been copied to your clipboard."
+          : "Your group invite link has been shared.",
+        type: "success"
       });
     } catch {
       // user dismissed share sheet — ignore

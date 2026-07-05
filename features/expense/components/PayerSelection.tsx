@@ -25,7 +25,7 @@ import states from "@/states";
 import { Member } from "@/types/groups";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import { CircleIcon } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type PayerSelectionActionSheetProps = {
   isOpen: boolean;
@@ -42,7 +42,23 @@ export function PayerSelectionActionSheet({
   onClose,
   onSave
 }: PayerSelectionActionSheetProps) {
+  const { details: currentUser } = states.user();
+
+  if (!currentUser) {
+    return null;
+  }
+
   const [selectedId, setSelectedId] = useState(currentPayer?.id ?? "");
+
+  // Surface the current user at the top of the list for quick self-selection.
+  const orderedMembers = useMemo(() => {
+    if (!currentUser?.id) return members;
+    return [...members].sort((a, b) => {
+      if (a.id === currentUser.id) return -1;
+      if (b.id === currentUser.id) return 1;
+      return 0;
+    });
+  }, [members, currentUser?.id]);
 
   useEffect(() => {
     if (isOpen) setSelectedId(currentPayer?.id ?? "");
@@ -71,7 +87,7 @@ export function PayerSelectionActionSheet({
           >
             <FlatList
               className="flex-1"
-              data={members}
+              data={orderedMembers}
               renderItem={({ item }) => (
                 <PayerItem
                   member={item}
