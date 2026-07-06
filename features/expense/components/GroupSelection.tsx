@@ -24,6 +24,7 @@ import {
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
+import { hasEnoughMembersForExpense } from "@/features/group/utils/groupMembers";
 import { EmptyType } from "@/types/general";
 import { Group } from "@/types/groups";
 import { formatDate } from "@/utils/formatDate";
@@ -129,6 +130,9 @@ export function GroupSelectionActionSheet({
   const [selectedGroup, setSelectedGroup] = useState(currentGroup.id);
 
   const { list: groupList } = states.group.getState();
+  // Only groups with enough members can hold an expense — hide member-less
+  // groups so they can't be picked here.
+  const selectableGroups = groupList.filter(hasEnoughMembersForExpense);
 
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
@@ -155,7 +159,7 @@ export function GroupSelectionActionSheet({
           >
             <FlatList
               className="flex-1"
-              data={groupList}
+              data={selectableGroups}
               renderItem={({ item }) => (
                 <GroupItem
                   group={item}

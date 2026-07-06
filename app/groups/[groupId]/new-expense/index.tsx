@@ -10,6 +10,7 @@ import SplitExpenseStep from "@/features/expense/components/SplitExpenseStep";
 import { generatePaymentSplits } from "@/features/expense/utils/split.util";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
+import { hasEnoughMembersForExpense } from "@/features/group/utils/groupMembers";
 import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
@@ -72,7 +73,10 @@ export default function NewExpenseScreen() {
     useMemo(
       () => () => {
         if (groupList.length) {
-          let selectedGroup = groupList[0];
+          // Default to the most recent group that has enough members to hold an
+          // expense — skip member-less groups so they're never auto-selected.
+          let selectedGroup =
+            groupList.find(hasEnoughMembersForExpense) ?? groupList[0];
 
           if (groupId) {
             const found = groupList.find((g) => g.id === groupId);

@@ -27,6 +27,7 @@ import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
+import { hasEnoughMembersForExpense } from "@/features/group/utils/groupMembers";
 import services from "@/services";
 import states from "@/states";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
@@ -349,6 +350,14 @@ export default function HomeScreen() {
     await init(true);
     setRefreshing(false);
   };
+
+  // Quick Add defaults to the most recent group that can actually hold an
+  // expense — skip member-less groups (only the creator) so they're never
+  // auto-selected. groupList is already sorted most-recent-first.
+  const quickAddGroup = useMemo(
+    () => groupList.find(hasEnoughMembersForExpense) ?? null,
+    [groupList]
+  );
 
   const groupsPreview = useMemo(() => groupList.slice(0, 5), [groupList]);
   const activitiesPreview = useMemo(
@@ -679,7 +688,7 @@ export default function HomeScreen() {
       />
       <QuickAddExpenseSheet
         isOpen={quickAddOpen}
-        group={groupList[0] ?? null}
+        group={quickAddGroup}
         allowGroupChange
         onClose={handleCloseQuickAdd}
         onSuccess={handleQuickAddSuccess}
