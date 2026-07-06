@@ -65,6 +65,21 @@ export default function JoinGroupScreen() {
     try {
       const groupId = await services.group.joinGroupByToken(inviteToken);
       await clearPendingInviteToken();
+
+      // Refresh the cached group list so the just-joined group — now with the
+      // current user as a member — is immediately present for the rest of the
+      // app (e.g. the expense form's default-group pick) instead of only after
+      // a tab refocuses and refetches. Non-fatal: fall through to navigation if
+      // it fails; the list will refresh on next focus.
+      if (details?.id) {
+        try {
+          const groups = await services.group.getGroupsByUserId(details.id);
+          states.group.setState((prev) => ({ ...prev, list: groups }));
+        } catch {
+          // ignore — next focus will refetch
+        }
+      }
+
       router.replace(`/groups/${groupId}` as any);
     } catch (error: any) {
       setStatus("error");

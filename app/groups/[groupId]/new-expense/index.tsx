@@ -10,7 +10,7 @@ import SplitExpenseStep from "@/features/expense/components/SplitExpenseStep";
 import { generatePaymentSplits } from "@/features/expense/utils/split.util";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
-import { hasEnoughMembersForExpense } from "@/features/group/utils/groupMembers";
+import { defaultExpenseGroup } from "@/features/group/utils/groupMembers";
 import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
@@ -73,10 +73,13 @@ export default function NewExpenseScreen() {
     useMemo(
       () => () => {
         if (groupList.length) {
-          // Default to the most recent group that has enough members to hold an
-          // expense — skip member-less groups so they're never auto-selected.
+          // Default to the group the user most recently joined that has enough
+          // members to hold an expense — ranks by the user's own join time (not
+          // group creation date), so a group just joined via QR is preferred
+          // over an older self-made one. Skip member-less groups entirely; only
+          // fall back to the first group when none qualify.
           let selectedGroup =
-            groupList.find(hasEnoughMembersForExpense) ?? groupList[0];
+            defaultExpenseGroup(groupList, userDetails?.id) ?? groupList[0];
 
           if (groupId) {
             const found = groupList.find((g) => g.id === groupId);
@@ -89,7 +92,7 @@ export default function NewExpenseScreen() {
           fetchGroupMembers(selectedGroup.id);
         }
       },
-      [groupList.length, groupId]
+      [groupList.length, groupId, userDetails?.id]
     )
   );
 

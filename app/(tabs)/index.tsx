@@ -27,7 +27,7 @@ import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
-import { hasEnoughMembersForExpense } from "@/features/group/utils/groupMembers";
+import { defaultExpenseGroup } from "@/features/group/utils/groupMembers";
 import services from "@/services";
 import states from "@/states";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
@@ -43,8 +43,8 @@ import {
   Bell,
   CircleQuestionMark,
   HousePlus,
+  ListPlus,
   QrCode,
-  SquarePen,
   Zap
 } from "lucide-react-native";
 import React, {
@@ -351,12 +351,13 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  // Quick Add defaults to the most recent group that can actually hold an
-  // expense — skip member-less groups (only the creator) so they're never
-  // auto-selected. groupList is already sorted most-recent-first.
+  // Quick Add defaults to the group the user most recently joined that can
+  // actually hold an expense — skip member-less groups (only the creator) so
+  // they're never auto-selected. Ranks by the user's own join time (not group
+  // creation date) so a group just joined via QR wins over an older self-made one.
   const quickAddGroup = useMemo(
-    () => groupList.find(hasEnoughMembersForExpense) ?? null,
-    [groupList]
+    () => defaultExpenseGroup(groupList, userId),
+    [groupList, userId]
   );
 
   const groupsPreview = useMemo(() => groupList.slice(0, 5), [groupList]);
@@ -557,7 +558,7 @@ export default function HomeScreen() {
                   />
                   <ActionButton
                     icon={
-                      <SquarePen
+                      <ListPlus
                         size={24}
                         color={getSecondaryHex("text-secondary-0", colorScheme)}
                       />
