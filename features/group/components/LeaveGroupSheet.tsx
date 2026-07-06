@@ -1,5 +1,4 @@
 import AppAvatar from "@/components/AppAvatar";
-import ConfirmButton from "@/components/ConfirmButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
@@ -279,23 +278,13 @@ export default function LeaveGroupSheet({
                 onPress={onClose}
               />
               {!fetching && !hasUnsettled && (
-                <ConfirmButton
+                <FormButton
                   className="flex-1"
                   action="negative"
-                  text="Leave Group"
-                  isDelete
-                  confirmText={isSoleAdmin ? "Delete Group" : "Leave Group"}
+                  text={isSoleAdmin ? "Delete Group" : "Leave Group"}
                   loading={loading}
                   disabled={!canLeave}
-                  onConfirm={handleLeave}
-                  confirmTitle="Leave Group"
-                  confirmDescription={
-                    isSoleAdmin
-                      ? "This will permanently delete the group and all its data. Are you sure?"
-                      : selectedNewAdmin
-                        ? `Admin will be transferred to ${selectedNewAdmin.first_name} ${selectedNewAdmin.last_name}. Are you sure you want to leave?`
-                        : "Are you sure you want to leave this group?"
-                  }
+                  onPress={handleLeave}
                 />
               )}
             </HStack>
