@@ -44,7 +44,7 @@ export function PayerSelectionActionSheet({
 }: PayerSelectionActionSheetProps) {
   const { details: currentUser } = states.user();
 
-  if (!currentUser) {
+  if (!currentUser || !isOpen) {
     return null;
   }
 
