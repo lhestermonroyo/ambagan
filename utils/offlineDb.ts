@@ -59,6 +59,12 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       cached_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS cache_notifications (
+      user_id TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      cached_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS cache_expense_detail (
       expense_id TEXT PRIMARY KEY,
       expense_json TEXT NOT NULL,

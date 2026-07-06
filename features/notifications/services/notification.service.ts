@@ -1,4 +1,5 @@
 import { Notification, NotificationType } from "@/types/notifications";
+import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 
@@ -9,37 +10,68 @@ export const getNotificationsByUserId = async (
   page: number = 0,
   limit: number = 12
 ) => {
-  const user = await supabase.auth.getUser();
+  // Only the first page powers the offline notifications feed (paging back is
+  // online-only), mirroring the payments/groups cached-read pattern.
+  const canCache = page === 0;
 
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
+  try {
+    const user = await supabase.auth.getUser();
+
+    if (!user.data.user) {
+      throw new Error("User not authenticated");
+    }
+
+    const from = page * limit;
+    const to = from + limit - 1;
+
+    const { data, error, count } = await supabase
+      .from(tables.NOTIFICATIONS_TBL)
+      .select(
+        `id, created_at, type, reference_id, is_read,
+        from_user:from_user_id(${USER_FIELDS}),
+        to_user:to_user_id(${USER_FIELDS})`,
+        { count: "exact" }
+      )
+      .eq("to_user_id", userId)
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+
+    const totalCount = count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNext = page < totalPages - 1;
+
+    const result = {
+      data: data as unknown as Notification[],
+      pagination: { page, limit, totalCount, hasNext }
+    };
+
+    // Persist the fresh first page so the list is viewable offline.
+    if (canCache) {
+      cacheService.saveNotifications(userId, result.data).catch(() => {});
+    }
+
+    return result;
+  } catch (error) {
+    // Offline / fetch failure — hydrate the first page from cache rather than
+    // failing to an empty screen. No cached snapshot → surface the error.
+    if (canCache) {
+      const cached = await cacheService.getNotifications(userId);
+      if (cached) {
+        return {
+          data: cached as Notification[],
+          pagination: {
+            page,
+            limit,
+            totalCount: cached.length,
+            hasNext: false
+          }
+        };
+      }
+    }
+    throw error;
   }
-
-  const from = page * limit;
-  const to = from + limit - 1;
-
-  const { data, error, count } = await supabase
-    .from(tables.NOTIFICATIONS_TBL)
-    .select(
-      `id, created_at, type, reference_id, is_read,
-      from_user:from_user_id(${USER_FIELDS}),
-      to_user:to_user_id(${USER_FIELDS})`,
-      { count: "exact" }
-    )
-    .eq("to_user_id", userId)
-    .order("created_at", { ascending: false })
-    .range(from, to);
-
-  if (error) throw error;
-
-  const totalCount = count || 0;
-  const totalPages = Math.ceil(totalCount / limit);
-  const hasNext = page < totalPages - 1;
-
-  return {
-    data: data as unknown as Notification[],
-    pagination: { page, limit, totalCount, hasNext }
-  };
 };
 
 export const getNotificationById = async (

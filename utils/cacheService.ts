@@ -116,6 +116,23 @@ export const cacheService = {
     return row ? JSON.parse(row.data) : null;
   },
 
+  async saveNotifications(userId: string, data: any[]): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_notifications (user_id, data, cached_at) VALUES (?, ?, ?)",
+      [userId, JSON.stringify(data), Date.now()]
+    );
+  },
+
+  async getNotifications(userId: string): Promise<any[] | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{ data: string }>(
+      "SELECT data FROM cache_notifications WHERE user_id = ?",
+      [userId]
+    );
+    return row ? JSON.parse(row.data) : null;
+  },
+
   async saveExpenseDetail(
     expenseId: string,
     expense: any,

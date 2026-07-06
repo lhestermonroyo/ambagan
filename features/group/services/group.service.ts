@@ -187,6 +187,17 @@ export const updateGroup = async (
 };
 
 export const deleteGroup = async (groupId: string) => {
+  // Hard cascade delete — ONLINE ONLY. Unlike archive/unarchive there is no
+  // offline queue path: a destructive cascade must not run optimistically and
+  // then diverge from the server (e.g. if a member added an expense elsewhere
+  // before it syncs). Block it cleanly offline; the callers' catch blocks
+  // surface this message as a toast.
+  if (!(await offlineQueue.isOnline())) {
+    throw new Error(
+      "Deleting a group needs an internet connection. Please try again when you're back online."
+    );
+  }
+
   const user = await supabase.auth.getUser();
 
   if (!user.data.user) {
