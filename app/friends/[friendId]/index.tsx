@@ -92,13 +92,17 @@ if (
 }
 
 export default function FriendDetailScreen() {
-  const { friendId, name, email, avatar, tab } = useLocalSearchParams<{
-    friendId: string;
-    name: string;
-    email: string;
-    avatar: string;
-    tab?: string;
-  }>();
+  const { friendId, name, email, avatar, tab, settlementId } =
+    useLocalSearchParams<{
+      friendId: string;
+      name: string;
+      email: string;
+      avatar: string;
+      tab?: string;
+      // When present, this screen was opened from a settlement notification:
+      // auto-open that settlement's sheet and highlight its row.
+      settlementId?: string;
+    }>();
 
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -131,6 +135,12 @@ export default function FriendDetailScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const initializedRef = useRef(false);
+  // Deep-link from a settlement notification: the row to tint, a one-shot guard
+  // so the sheet only auto-opens on arrival, and a timer to fade the tint after
+  // the sheet is dismissed.
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const autoOpenHandledRef = useRef(false);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { details: userDetails, defaultCurrency, settlementView } =
     states.user();
@@ -167,6 +177,60 @@ export default function FriendDetailScreen() {
     setSettledPage(0);
     fetchSettled(0, cutoff);
   }, [dateRange]);
+
+  // Deep-link from a settlement notification: once the lists are loaded, open
+  // the referenced settlement's sheet and highlight its row. One-shot so it
+  // doesn't reopen on refetch/refocus. Falls back to fetching the split by id
+  // when it isn't on the loaded pages (e.g. an older settled item).
+  useEffect(() => {
+    if (autoOpenHandledRef.current) return;
+    if (!settlementId || !initialized) return;
+
+    autoOpenHandledRef.current = true;
+
+    const loaded = [...activeSettlements, ...settledSettlements].find(
+      (s) => s.id === settlementId
+    );
+
+    if (loaded) {
+      setSelectedPayment(loaded);
+      setHighlightId(loaded.id);
+      setActionSheetOpen(true);
+      return;
+    }
+
+    if (isOnline) {
+      services.expense
+        .getPaymentById(settlementId)
+        .then((full) => {
+          if (!full) return;
+          setSelectedPayment(full as PaymentPreview);
+          setHighlightId(full.id);
+          setActionSheetOpen(true);
+        })
+        .catch((error) =>
+          console.error("Failed to open settlement from notification:", error)
+        );
+    }
+  }, [settlementId, initialized, activeSettlements, settledSettlements, isOnline]);
+
+  // Clear any pending highlight-fade timer on unmount.
+  useEffect(
+    () => () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    },
+    []
+  );
+
+  // Dismissing the deep-linked sheet leaves the row tinted briefly so the eye
+  // can catch it, then fades.
+  const handleActionSheetClose = () => {
+    setActionSheetOpen(false);
+    if (highlightId) {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = setTimeout(() => setHighlightId(null), 2500);
+    }
+  };
 
   const fetchAll = async (showLoading = true) => {
     if (!userDetails?.id || !friendId) return;
@@ -816,7 +880,11 @@ export default function FriendDetailScreen() {
                     extraData={settlementView}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
-                      <SettlementItem item={item} onPress={handleItemPress} />
+                      <SettlementItem
+                        item={item}
+                        onPress={handleItemPress}
+                        highlighted={item.id === highlightId}
+                      />
                     )}
                     renderSectionHeader={({ section: { title } }) => (
                       <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
@@ -849,6 +917,7 @@ export default function FriendDetailScreen() {
                         key={section.data[0].id}
                         title={section.title}
                         items={section.data}
+                        highlightId={highlightId}
                         onItemPress={(item) =>
                           handleItemPress(item as PaymentPreview)
                         }
@@ -873,7 +942,7 @@ export default function FriendDetailScreen() {
 
       <SettlementActionSheet
         isOpen={actionSheetOpen}
-        onClose={() => setActionSheetOpen(false)}
+        onClose={handleActionSheetClose}
         item={selectedPayment}
         onRefetch={() => fetchAll(false)}
       />

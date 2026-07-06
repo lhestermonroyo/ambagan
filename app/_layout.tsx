@@ -9,9 +9,13 @@ import "@/global.css";
 import useAppToast, { ToastProvider } from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
 import { useNetworkHealth } from "@/hooks/useNetworkHealth";
+import { buildFriendSettlementRoute } from "@/features/notifications/utils/buildFriendSettlementRoute";
 import services from "@/services";
 import states from "@/states";
-import { NotificationType } from "@/types/notifications";
+import {
+  isSettlementNotification,
+  NotificationType
+} from "@/types/notifications";
 import { tables } from "@/utils/constants";
 import "@/utils/nativewindInterop";
 import { getDb } from "@/utils/offlineDb";
@@ -158,6 +162,32 @@ export default function RootLayout() {
           if (!data?.type || !data?.referenceId) return;
 
           try {
+            // Settlement taps mirror the in-app list: open the friend screen
+            // with the settlement's sheet auto-opened and its row highlighted.
+            if (isSettlementNotification(data.type)) {
+              const target =
+                await services.notification.getSettlementNotificationTarget(
+                  data.referenceId
+                );
+              if (target) {
+                router.push(
+                  buildFriendSettlementRoute(
+                    data.type,
+                    target.friend,
+                    target.settlementId
+                  ) as any
+                );
+              } else {
+                toast({
+                  title: "No longer available",
+                  description:
+                    "The settlement linked to this notification no longer exists.",
+                  type: "info"
+                });
+              }
+              return;
+            }
+
             const route = await services.notification.getNotificationRoute(
               data.type,
               data.referenceId

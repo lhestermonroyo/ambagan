@@ -14,11 +14,8 @@ import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
-import {
-  isSettlementNotification,
-  Notification,
-  NotificationType
-} from "@/types/notifications";
+import { buildFriendSettlementRoute } from "@/features/notifications/utils/buildFriendSettlementRoute";
+import { isSettlementNotification, Notification } from "@/types/notifications";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import useAppToast from "@/hooks/use-app-toast";
@@ -99,21 +96,13 @@ export default function NotificationsScreen() {
     const isSettlement = isSettlementNotification(notification.type);
 
     if (isSettlement) {
-      const friend = notification.from_user;
-      const openHistory = [
-        NotificationType.SETTLEMENT_APPROVED,
-        NotificationType.SETTLEMENT_COMPLETED
-      ].includes(notification.type);
-      router.push({
-        pathname: "/friends/[friendId]",
-        params: {
-          friendId: friend.id,
-          name: `${friend.first_name} ${friend.last_name}`,
-          email: friend.email,
-          avatar: friend.avatar || "",
-          ...(openHistory && { tab: "History" })
-        }
-      } as any);
+      router.push(
+        buildFriendSettlementRoute(
+          notification.type,
+          notification.from_user,
+          notification.reference_id
+        ) as any
+      );
     } else {
       const route = await services.notification.getNotificationRoute(
         notification.type,

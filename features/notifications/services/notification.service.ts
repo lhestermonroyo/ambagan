@@ -4,6 +4,7 @@ import {
   Notification,
   NotificationType
 } from "@/types/notifications";
+import { UserPreview } from "@/types/user";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
@@ -196,6 +197,40 @@ export const markAllNotificationsAsRead = async (userId: string) => {
   if (error) throw error;
 
   return { success: true };
+};
+
+/**
+ * Resolves the "friend" (the other party) and settlement id for a settlement
+ * notification from just its payment_split reference. Used by the push-tap
+ * handler, which — unlike the in-app list — only has the reference id in its
+ * payload and must derive the counterpart to open the friend screen.
+ */
+export const getSettlementNotificationTarget = async (
+  referenceId: string
+): Promise<{ friend: UserPreview; settlementId: string } | null> => {
+  const { data: userData } = await supabase.auth.getUser();
+  const currentUserId = userData.user?.id;
+  if (!currentUserId) return null;
+
+  const { data, error } = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(
+      `id,
+      payer:payer_id(${USER_FIELDS}),
+      member:member_id(${USER_FIELDS})`
+    )
+    .eq("id", referenceId)
+    .single();
+
+  if (error || !data) return null;
+
+  const payer = data.payer as unknown as UserPreview | null;
+  const member = data.member as unknown as UserPreview | null;
+  // The friend is whichever party isn't the current user.
+  const friend = payer?.id === currentUserId ? member : payer;
+
+  if (!friend?.id) return null;
+  return { friend, settlementId: (data as { id: string }).id };
 };
 
 export const getNotificationRoute = async (

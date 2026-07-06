@@ -23,12 +23,15 @@ export default function SettlementGroupCard({
   title,
   items,
   onItemPress,
-  defaultExpanded = true
+  defaultExpanded = true,
+  highlightId = null
 }: {
   title: string;
   items: (PaymentPreview | Payment)[];
   onItemPress: (item: PaymentPreview | Payment) => void;
   defaultExpanded?: boolean;
+  // Id of a settlement to highlight (deep-linked from a notification).
+  highlightId?: string | null;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -73,7 +76,11 @@ export default function SettlementGroupCard({
           {items.map((item, index) => (
             <Fragment key={item.id}>
               {index > 0 && <ListDivider />}
-              <SettlementItem item={item} onPress={onItemPress} />
+              <SettlementItem
+                item={item}
+                onPress={onItemPress}
+                highlighted={!!highlightId && item.id === highlightId}
+              />
             </Fragment>
           ))}
         </VStack>

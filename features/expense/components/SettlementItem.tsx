@@ -14,12 +14,16 @@ import { cn } from "@gluestack-ui/utils/nativewind-utils";
 
 export default function SettlementItem({
   item,
-  onPress
+  onPress,
+  highlighted = false
 }: {
   item: PaymentPreview | Payment;
   // Omit onPress for a display-only row — no press feedback and no chevron.
   // Used by confirmation lists (delete/leave) and the settlement summary sheet.
   onPress?: (payment: PaymentPreview | Payment) => void;
+  // Tints the row to draw the eye to it — used when deep-linked from a
+  // notification so the referenced settlement is unmistakable.
+  highlighted?: boolean;
 }) {
   const { details: userDetails, settlementView } = states.user();
 
@@ -154,11 +158,18 @@ export default function SettlementItem({
     );
 
   if (!pressable) {
-    return <Box className="p-4">{content}</Box>;
+    return (
+      <Box className={cn("p-4", highlighted && "bg-background-200")}>
+        {content}
+      </Box>
+    );
   }
 
   return (
-    <PressableListItem className="p-4" onPress={() => onPress!(item)}>
+    <PressableListItem
+      className={cn("p-4", highlighted && "bg-background-200")}
+      onPress={() => onPress!(item)}
+    >
       {content}
     </PressableListItem>
   );
