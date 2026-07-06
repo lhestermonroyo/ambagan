@@ -96,13 +96,26 @@ export default function NotificationsScreen() {
     const isSettlement = isSettlementNotification(notification.type);
 
     if (isSettlement) {
-      router.push(
-        buildFriendSettlementRoute(
-          notification.type,
-          notification.from_user,
-          notification.reference_id
-        ) as any
-      );
+      // settlement_status === null means it was resolved but the settlement no
+      // longer exists (deleted, or no longer visible to you) — surface a message
+      // instead of routing to a settlement that isn't there. undefined (offline,
+      // unresolved) still navigates; the friend screen backstops the miss.
+      if (notification.settlement_status === null) {
+        toast({
+          title: "No longer available",
+          description:
+            "The settlement linked to this notification no longer exists.",
+          type: "info"
+        });
+      } else {
+        router.push(
+          buildFriendSettlementRoute(
+            notification.type,
+            notification.from_user,
+            notification.reference_id
+          ) as any
+        );
+      }
     } else {
       const route = await services.notification.getNotificationRoute(
         notification.type,

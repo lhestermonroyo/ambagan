@@ -1,20 +1,26 @@
+import FormButton from "@/components/FormButton";
+import { Box } from "@/components/ui/box";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import services from "@/services";
 import states from "@/states";
+import { getErrorHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import {
   clearPendingInviteToken,
   setPendingInviteToken
 } from "@/utils/pendingInvite";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { AlertCircle } from "lucide-react-native";
 import { useEffect, useState } from "react";
+import { useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function JoinGroupScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
   const router = useRouter();
+  const colorScheme = useColorScheme() ?? "light";
   const [status, setStatus] = useState<"joining" | "error">("joining");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -81,7 +87,25 @@ export default function JoinGroupScreen() {
             </Text>
           </>
         ) : (
-          <Text className="text-center text-error-500">{errorMsg}</Text>
+          <VStack className="w-full items-center gap-y-5">
+            <Box className="h-16 w-16 items-center justify-center rounded-full bg-error-50">
+              <AlertCircle
+                size={32}
+                color={getErrorHex("text-error-500", colorScheme)}
+              />
+            </Box>
+            <VStack className="gap-y-1">
+              <Text bold className="text-xl text-center">
+                Couldn&apos;t join group
+              </Text>
+              <Text className="text-center text-secondary-950">{errorMsg}</Text>
+            </VStack>
+            <FormButton
+              className="w-full"
+              text="Back to Overview"
+              onPress={() => router.replace("/(tabs)")}
+            />
+          </VStack>
         )}
       </VStack>
     </SafeAreaView>

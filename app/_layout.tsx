@@ -6,10 +6,10 @@ import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
 // Registers nativewind's className→style interop for expo-image so proof-of-
 // payment images (and any other expo-image usage) actually render.
+import { buildFriendSettlementRoute } from "@/features/notifications/utils/buildFriendSettlementRoute";
 import useAppToast, { ToastProvider } from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
 import { useNetworkHealth } from "@/hooks/useNetworkHealth";
-import { buildFriendSettlementRoute } from "@/features/notifications/utils/buildFriendSettlementRoute";
 import services from "@/services";
 import states from "@/states";
 import {
@@ -448,10 +448,12 @@ export default function RootLayout() {
         <GluestackUIProvider mode={appearanceMode}>
           <ToastProvider>
             <ThemeProvider value={DefaultTheme}>
-              {!isOnline ||
-                (isOnline && isDegraded && (
-                  <Box className={Platform.OS === "android" ? "h-4" : "h-8"} />
-                ))}
+              {!isOnline && (
+                <Box className={Platform.OS === "android" ? "h-4" : "h-8"} />
+              )}
+              {isOnline && isDegraded && (
+                <Box className={Platform.OS === "android" ? "h-4" : "h-8"} />
+              )}
               <Stack
                 screenOptions={{
                   headerShown: false,

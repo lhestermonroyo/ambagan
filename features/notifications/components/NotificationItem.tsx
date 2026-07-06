@@ -58,11 +58,17 @@ export default function NotificationItem({
             <Text className="text-sm text-secondary-950">
               {formatDate(item.created_at)}
             </Text>
-            {/* The message is a frozen record of the event; this badge shows the
-                settlement's live status so a since-resolved request reads right. */}
-            {item.settlement_status && (
+            {/* The message is a frozen record of the event; the badge shows the
+                settlement's live status so a since-resolved request reads right.
+                An explicit null means the settlement was resolved but no longer
+                exists — flag it so the row doesn't look like a live tap target. */}
+            {item.settlement_status ? (
               <StatusBadge status={item.settlement_status} size="sm" />
-            )}
+            ) : item.settlement_status === null ? (
+              <Text className="text-sm text-secondary-500">
+                No longer available
+              </Text>
+            ) : null}
           </HStack>
         </VStack>
         <HStack className="items-center justify-center">

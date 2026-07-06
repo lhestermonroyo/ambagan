@@ -52,7 +52,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I create a group?",
         answer:
-          "Go to the Groups tab and tap the + button. Give your group a name, pick a category (Trip, Household, etc.), add members, and hit Create."
+          "Go to the Groups tab, tap Add Group, then choose Create Group. Give your group a name, pick a category (Trip, Household, etc.), add members, and hit Create."
       },
       {
         question: "Can I add members after a group is created?",
@@ -73,6 +73,41 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "How do I restore an archived group?",
         answer:
           "Go to the Groups tab and switch to the Archived filter. Swipe left on the group and tap the restore button, or open the group and tap the menu then select Unarchive. The group will move back to your active list."
+      }
+    ]
+  },
+  {
+    title: "Inviting & Joining Groups",
+    items: [
+      {
+        question: "How do I invite someone to my group?",
+        answer:
+          "Open the group and tap the share icon in the top-right corner (available to the group admin). Ambagan creates a unique invite link and a matching QR code for the group. Tap Share Invite Link to send it through any app, or Download QR to save the QR card as an image. Anyone with the link or QR can join, so only share it with people you want in the group."
+      },
+      {
+        question: "How do I join a group I've been invited to?",
+        answer:
+          "There are three ways: tap the invite link someone shared with you (it opens Ambagan and adds you to the group), scan the group's QR code using Scan to Join, or upload a screenshot of the QR. Joining needs an internet connection. If you're not signed in yet, Ambagan remembers the invite and adds you to the group automatically right after you finish signing up."
+      },
+      {
+        question: "How do I scan a QR code to join a group?",
+        answer:
+          "Go to the Groups tab, tap Add Group, then choose Scan to Join. Point your camera at the group's QR code and you'll be added automatically. You can turn on the flashlight for dim rooms, or tap Upload QR from Photos to join from a saved screenshot instead of using the camera. Ambagan will ask for camera permission the first time — allow it when prompted."
+      },
+      {
+        question: "Can I download or print the group QR code?",
+        answer:
+          "Yes. On the Share Group screen, tap Download QR to save a clean, print-ready card showing the group name and who's inviting. It's saved as an image through your device's share sheet, so you can print it, post it in a chat, or add it to an event page for people to scan."
+      },
+      {
+        question: "How do I reset a group's invite link?",
+        answer:
+          "Open the group, tap the share icon, then tap Link Expiration under 'Reset invite link'. Choose how long the new link stays valid — Never, 1 hour, 24 hours, or 7 days — and tap Reset Link. A brand-new link and QR are generated and the old one stops working immediately. Reset the link if it has been shared too widely. Only the group admin can reset it, and the group must be active (not archived)."
+      },
+      {
+        question: "Why does it say the invite link has expired?",
+        answer:
+          "Invite links can be set to expire after a chosen time. Once expired, the link and QR stop working and the Share and Download buttons are disabled. The group admin can generate a fresh link anytime from the Share Group screen by resetting the invite link. If someone gave you a link that's invalid or expired, ask them to share a new one."
       }
     ]
   },
@@ -103,6 +138,11 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "What split types are available?",
         answer:
           "You can split expenses equally among all members, by a percentage you define per person, or with a fully custom amount for each participant. Split type selection is available in the Custom expense form."
+      },
+      {
+        question: "Can I split an expense among only some members?",
+        answer:
+          "Yes. On the Custom expense form's split step, tap the 'Split among' selector — it shows how many of the group's members are currently included (e.g. 'Split among 3 of 5'). Check the people who share this expense and uncheck anyone who doesn't, then tap Done. Use Select all / Unselect all to toggle everyone at once. Excluded members are left out, and the amount is divided only among those included. This works with equal, percentage, and custom splits; at least one member must be included."
       },
       {
         question: "Can I attach proof of payment to an expense?",
@@ -213,6 +253,22 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "What is the daily settlement reminder?",
         answer:
           "The daily settlement reminder is a local notification that fires every day at 9 AM if you have outstanding unpaid settlements. It is automatically cancelled once all your settlements are cleared. You can enable or disable it in Profile → Push Notifications → Reminders."
+      },
+      {
+        question:
+          "A notification shows a different status than when I received it — why?",
+        answer:
+          "Each notification is a record of what happened at the time — for example, 'requested a settlement.' The status badge on a settlement notification always reflects the settlement's current state, so if that request has since been approved, the notification shows a Settled badge. In short: the message is the history, and the badge is the live status."
+      },
+      {
+        question: "What happens when I tap a settlement notification?",
+        answer:
+          "Tapping a settlement notification takes you straight to that exact settlement — it opens the settlement's details and highlights it in the list — so you can review or act on it right away without searching through your history. This works whether you tap it in the in-app Notifications list or a push notification on your lock screen."
+      },
+      {
+        question: "Can I view my notifications without an internet connection?",
+        answer:
+          "Yes. Your most recent notifications are saved on your device, so you can open the Notifications screen and read them while offline. Loading older notifications and opening the settlement a notification links to still need a connection."
       }
     ]
   },
@@ -247,7 +303,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What happens when I lose internet connection?",
         answer:
-          "A blue 'Offline Mode — Showing cached data' banner appears at the top, and you can keep using the app with your last synced data. Most actions work offline and sync automatically when you reconnect: adding, editing, and deleting expenses; creating groups and editing a group's name or category; archiving a group; adding or removing members (group admin); managing favorites; and changing the app appearance. A few things need a live connection: settling up, finalizing a draft, leaving a group, logging out, editing your profile or account, changing your default currency or notification preferences, and uploading images (payment proofs and photos). You'll see a short message if you try one of those while offline."
+          "A blue 'Offline Mode — Showing cached data' banner appears at the top, and you can keep using the app with your last synced data. Most actions work offline and sync automatically when you reconnect: adding, editing, and deleting expenses; creating groups and editing a group's name or category; archiving a group; adding or removing members (group admin); managing favorites; and changing the app appearance. A few things need a live connection: settling up, finalizing a draft, joining a group or scanning an invite, resetting a group's invite link, leaving a group, logging out, editing your profile or account, changing your default currency or notification preferences, and uploading images (payment proofs and photos). You'll see a short message if you try one of those while offline."
       },
       {
         question: "Why does it say 'Slow connection — showing saved data'?",
@@ -274,6 +330,11 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "How do I change the app appearance?",
         answer:
           "Go to Profile → App Appearance. You can switch between Light, Dark, or System (follows your device setting)."
+      },
+      {
+        question: "What is the Settlement View setting?",
+        answer:
+          "Settlement View controls how settlement lists look throughout the app — on the home Recent Activity feed, a group's Settlements tab, and friends' detail pages. Go to Profile → Settlement View and pick Full for roomy cards with full member, payer, and status details, or Compact for dense two-line rows that fit more on screen at a glance. Your choice applies everywhere settlements are listed."
       },
       {
         question: "How do I update my name or profile photo?",

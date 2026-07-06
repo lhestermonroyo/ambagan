@@ -200,17 +200,34 @@ export default function FriendDetailScreen() {
     }
 
     if (isOnline) {
+      const notifyGone = () =>
+        toast({
+          title: "No longer available",
+          description:
+            "The settlement linked to this notification no longer exists.",
+          type: "info"
+        });
+
       services.expense
         .getPaymentById(settlementId)
         .then((full) => {
-          if (!full) return;
+          if (!full) {
+            notifyGone();
+            return;
+          }
           setSelectedPayment(full as PaymentPreview);
           setHighlightId(full.id);
           setActionSheetOpen(true);
         })
-        .catch((error) =>
-          console.error("Failed to open settlement from notification:", error)
-        );
+        .catch((error) => {
+          // .single() throws PGRST116 when the row is gone (or RLS-hidden);
+          // treat that as "no longer available" rather than a silent failure.
+          if (error?.code === "PGRST116") {
+            notifyGone();
+            return;
+          }
+          console.error("Failed to open settlement from notification:", error);
+        });
     }
   }, [settlementId, initialized, activeSettlements, settledSettlements, isOnline]);
 
