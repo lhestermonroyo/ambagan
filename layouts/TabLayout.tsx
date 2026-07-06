@@ -2,7 +2,6 @@ import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
 import { Text } from "@/components/ui/text";
-import { useNetwork } from "@/hooks/useNetwork";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { Fragment } from "react";
 import { Platform } from "react-native";
@@ -16,15 +15,12 @@ export default function TabLayout({
   title: string;
   actions?: React.ReactNode[];
 }) {
-  const { isOnline } = useNetwork();
-
   return (
     <Fragment>
       <KeyboardAvoidingView
         className="flex-1 bg-background-0"
         behavior="padding"
       >
-        {!isOnline && <Box className="h-6" />}
         <Box
           className={cn(
             "sticky top-0 px-4 pb-2",

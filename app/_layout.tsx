@@ -1,11 +1,11 @@
 import OfflineBanner from "@/components/OfflineBanner";
 import OfflineSync from "@/components/OfflineSync";
 import SlowConnectionBanner from "@/components/SlowConnectionBanner";
+import { Box } from "@/components/ui/box";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
 // Registers nativewind's className→style interop for expo-image so proof-of-
 // payment images (and any other expo-image usage) actually render.
-import "@/utils/nativewindInterop";
 import useAppToast, { ToastProvider } from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
 import { useNetworkHealth } from "@/hooks/useNetworkHealth";
@@ -13,17 +13,18 @@ import services from "@/services";
 import states from "@/states";
 import { NotificationType } from "@/types/notifications";
 import { tables } from "@/utils/constants";
+import "@/utils/nativewindInterop";
 import { getDb } from "@/utils/offlineDb";
+import {
+  clearPendingInviteToken,
+  getPendingInviteToken
+} from "@/utils/pendingInvite";
 import { supabase } from "@/utils/supabase";
 import {
   clearCachedUserSession,
   getCachedUserSession,
   setCachedUserSession
 } from "@/utils/userCache";
-import {
-  clearPendingInviteToken,
-  getPendingInviteToken
-} from "@/utils/pendingInvite";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { RealtimeChannel } from "@supabase/supabase-js";
@@ -33,6 +34,7 @@ import * as Notifications from "expo-notifications";
 import { SplashScreen, Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import {
@@ -416,6 +418,10 @@ export default function RootLayout() {
         <GluestackUIProvider mode={appearanceMode}>
           <ToastProvider>
             <ThemeProvider value={DefaultTheme}>
+              {!isOnline ||
+                (isOnline && isDegraded && (
+                  <Box className={Platform.OS === "android" ? "h-4" : "h-8"} />
+                ))}
               <Stack
                 screenOptions={{
                   headerShown: false,

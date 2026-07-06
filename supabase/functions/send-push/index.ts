@@ -7,7 +7,9 @@
 //
 // Deploy:   supabase functions deploy send-push
 // Secrets:  SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
-//           (the first three are injected automatically by Supabase)
+//           (all injected automatically by Supabase)
+//           EXPO_ACCESS_TOKEN — optional; only needed if "Enhanced push
+//           security" is enabled in your Expo account.
 //
 // Invoked from the app via supabase.functions.invoke("send-push", { body })
 
@@ -29,6 +31,10 @@ const NOTIF_PREF_KEY: Record<string, string> = {
 
 Deno.serve(async (req) => {
   try {
+    // Version marker — if you don't see this in the logs after a test, the
+    // dashboard is still running an older deploy of this function.
+    console.log("send-push v2 (per-token)");
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response("Unauthorized", { status: 401 });
@@ -70,30 +76,99 @@ Deno.serve(async (req) => {
 
     // Respect the recipient's notification preference.
     if (!prefs || !(prefs as Record<string, boolean>)[prefKey]) {
-      return new Response(JSON.stringify({ sent: false }), { status: 200 });
+      console.log(
+        JSON.stringify({ skipped: "pref_off_or_missing", toUserId, type })
+      );
+      return new Response(JSON.stringify({ sent: false, reason: "pref" }), {
+        status: 200
+      });
     }
     if (!tokens || tokens.length === 0) {
-      return new Response(JSON.stringify({ sent: false }), { status: 200 });
+      console.log(JSON.stringify({ skipped: "no_tokens", toUserId, type }));
+      return new Response(JSON.stringify({ sent: false, reason: "no_tokens" }), {
+        status: 200
+      });
     }
 
-    const messages = tokens.map((t: { token: string }) => ({
-      to: t.token,
-      title: payload.title,
-      body: payload.body,
-      data: { type, referenceId: payload.referenceId, ...payload.data },
-      sound: "default"
-    }));
+    const expoAccessToken = Deno.env.get("EXPO_ACCESS_TOKEN");
+    const headers = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(expoAccessToken ? { Authorization: `Bearer ${expoAccessToken}` } : {})
+    };
 
-    await fetch(EXPO_PUSH_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json"
-      },
-      body: JSON.stringify(messages)
-    });
+    // Send ONE request per token. Expo rejects a whole request that mixes
+    // tokens from different projects/experience IDs
+    // (PUSH_TOO_MANY_EXPERIENCE_IDS) — which happens when a user has
+    // accumulated tokens across owner/build changes (e.g. @lhestermonroyo vs
+    // @lhestermonroyo.dev). Sending per token means one bad/stale token can
+    // never block delivery to the others, and lets us prune dead ones.
+    const deadTokens: string[] = [];
+    const tickets = await Promise.all(
+      tokens.map(async (t: { token: string }) => {
+        const message = {
+          to: t.token,
+          title: payload.title,
+          body: payload.body,
+          data: { type, referenceId: payload.referenceId, ...payload.data },
+          sound: "default"
+        };
 
-    return new Response(JSON.stringify({ sent: true }), { status: 200 });
+        let body: any = null;
+        let httpStatus = 0;
+        try {
+          const res = await fetch(EXPO_PUSH_URL, {
+            method: "POST",
+            headers,
+            body: JSON.stringify([message])
+          });
+          httpStatus = res.status;
+          body = await res.json().catch(() => null);
+        } catch (e) {
+          console.error(JSON.stringify({ fetchError: String(e), token: t.token }));
+          return { token: t.token, error: String(e) };
+        }
+
+        const ticket = Array.isArray(body?.data) ? body.data[0] : body?.data;
+
+        // A 200 does NOT mean delivered — inspect the ticket status. Top-level
+        // `errors` (e.g. bad token format) come back outside `data`.
+        console.log(
+          JSON.stringify({
+            token: t.token,
+            httpStatus,
+            ticket,
+            errors: body?.errors
+          })
+        );
+
+        if (ticket?.status === "error") {
+          console.error(
+            JSON.stringify({
+              pushError: ticket.details?.error ?? "unknown",
+              message: ticket.message,
+              token: t.token
+            })
+          );
+          // Prune tokens Expo says are gone so they stop failing forever
+          // (uninstalled apps, stale dev/simulator or old-project tokens).
+          if (ticket.details?.error === "DeviceNotRegistered") {
+            deadTokens.push(t.token);
+          }
+        }
+
+        return { token: t.token, ticket, errors: body?.errors };
+      })
+    );
+
+    if (deadTokens.length > 0) {
+      await admin.from("user_push_tokens_tbl").delete().in("token", deadTokens);
+    }
+
+    return new Response(
+      JSON.stringify({ sent: true, tickets, prunedTokens: deadTokens.length }),
+      { status: 200 }
+    );
   } catch (e) {
     console.error("Error sending push notification:", e);
     return new Response(JSON.stringify({ error: String(e) }), { status: 500 });

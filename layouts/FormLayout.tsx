@@ -31,7 +31,6 @@ export default function FormLayout({
         className="bg-background-0 flex-1"
         behavior="padding"
       >
-        {!isOnline && <Box className="h-6" />}
         <Box
           className={cn(
             "px-4 pb-2",

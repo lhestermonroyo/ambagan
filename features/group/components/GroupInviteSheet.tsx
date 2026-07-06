@@ -11,6 +11,8 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import LinkExpirationSheet from "@/features/group/components/LinkExpirationSheet";
 import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
+import { useNetworkHealth } from "@/hooks/useNetworkHealth";
 import {
   getErrorHex,
   getPrimaryHex,
@@ -225,6 +227,10 @@ export default function GroupInviteSheet({
   const exportRef = useRef<Svg>(null);
   const [expirationSheetOpen, setExpirationSheetOpen] = useState(false);
 
+  const { isOnline } = useNetwork();
+  const { isDegraded } = useNetworkHealth();
+  const showNetworkBanner = !isOnline || isDegraded;
+
   // On-screen preview width (also drives export resolution via the shared
   // ref). Clamped so it fits small screens inside the sheet's padding.
   const previewW = Math.min(300, Dimensions.get("window").width - 96);
@@ -357,6 +363,9 @@ export default function GroupInviteSheet({
     <>
       <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[100]}>
         <ActionsheetContent className="p-0">
+          {showNetworkBanner && (
+            <Box className={Platform.OS === "android" ? "h-4" : "h-[2.2rem]"} />
+          )}
           <VStack
             className={cn(
               "w-full flex-1",

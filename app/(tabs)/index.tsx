@@ -27,7 +27,6 @@ import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
-import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
@@ -118,7 +117,6 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
-  const { isOnline } = useNetwork();
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -408,7 +406,6 @@ export default function HomeScreen() {
         className="flex-1 bg-secondary-0"
         behavior="padding"
       >
-        {!isOnline && <Box className="h-6" />}
         <Box className="sticky top-0 bg-primary-400">
           <HStack
             className={cn(
