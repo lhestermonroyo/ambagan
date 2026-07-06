@@ -22,6 +22,7 @@ import { getPrimaryHex } from "@/utils/getColorHex";
 import { CircleIcon, Rows2, Rows4 } from "lucide-react-native";
 import { useMemo } from "react";
 import { useColorScheme } from "react-native";
+import useAppToast from "@/hooks/use-app-toast";
 
 export default function SettlementViewSheet({
   isOpen,
@@ -31,6 +32,7 @@ export default function SettlementViewSheet({
   onClose: () => void;
 }) {
   const { settlementView, setSettlementView } = states.user();
+  const toast = useAppToast();
 
   if (!settlementView || !setSettlementView) {
     return null;
@@ -63,6 +65,13 @@ export default function SettlementViewSheet({
 
   const handleSelect = async (view: SettlementView) => {
     await setSettlementView(view);
+
+    const label = options.find((option) => option.value === view)?.label;
+    toast({
+      title: "Settlement View Updated",
+      description: `Settlement view set to ${label}.`,
+      type: "success"
+    });
   };
 
   return (

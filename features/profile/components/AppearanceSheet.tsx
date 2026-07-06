@@ -23,6 +23,7 @@ import { CircleIcon, MonitorCog, Moon, Sun } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useMemo } from "react";
 import ListDivider from "@/components/ListDivider";
+import useAppToast from "@/hooks/use-app-toast";
 
 export default function AppearanceSheet({
   isOpen,
@@ -32,6 +33,7 @@ export default function AppearanceSheet({
   onClose: () => void;
 }) {
   const { appearanceMode, setAppearanceMode } = states.user();
+  const toast = useAppToast();
 
   if (!appearanceMode) return null;
 
@@ -73,6 +75,13 @@ export default function AppearanceSheet({
   const handleSelect = async (mode: AppearanceMode) => {
     setColorScheme(mode);
     await setAppearanceMode(mode);
+
+    const label = options.find((option) => option.value === mode)?.label;
+    toast({
+      title: "Theme Updated",
+      description: `App appearance set to ${label}.`,
+      type: "success"
+    });
   };
 
   return (

@@ -15,6 +15,7 @@ import UpgradeSheet from "@/components/UpgradeSheet";
 import AppearanceSheet from "@/features/profile/components/AppearanceSheet";
 import NotificationsSheet from "@/features/profile/components/PushNotificationsSheet";
 import SettlementViewSheet from "@/features/profile/components/SettlementViewSheet";
+import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import { useNetwork } from "@/hooks/useNetwork";
 import TabLayout from "@/layouts/TabLayout";
@@ -58,6 +59,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const { isOnline } = useNetwork();
+  const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
 
   const [appearanceOpen, setAppearanceOpen] = useState(false);
@@ -373,7 +375,16 @@ export default function ProfileScreen() {
         disabled={!isOnline}
         onClose={() => setCurrencyOpen(false)}
         onCurrencyChange={(currency) => {
-          if (userDetails?.id) setDefaultCurrency(userDetails.id, currency);
+          if (!userDetails?.id) return;
+
+          setDefaultCurrency(userDetails.id, currency);
+
+          const label = currencies.find((c) => c.value === currency)?.label;
+          toast({
+            title: "Default Currency Updated",
+            description: `Default currency set to ${label}.`,
+            type: "success"
+          });
         }}
       />
     </TabLayout>
