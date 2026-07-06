@@ -5,6 +5,7 @@ import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { CameraView, scanFromURLAsync, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
@@ -25,6 +26,7 @@ function parseInviteToken(raw: string): string | null {
 export default function ScanJoinScreen() {
   const router = useRouter();
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -36,12 +38,22 @@ export default function ScanJoinScreen() {
   const handleClose = () => router.back();
 
   // Reuse the deep-link join flow (auth/onboarding checks + join + routing).
-  const routeToJoin = (token: string) => {
+  // Joining hits the server, so bail with the standard offline toast (leaving
+  // handledRef unset so the caller can re-scan) when there's no connection.
+  const routeToJoin = async (token: string): Promise<boolean> => {
+    if (
+      !(await ensureOnline(
+        "You need an internet connection to join a group. Please try again when you're back online."
+      ))
+    ) {
+      return false;
+    }
     handledRef.current = true;
     router.replace(`/join/${token}` as any);
+    return true;
   };
 
-  const handleBarcodeScanned = ({ data }: { data: string }) => {
+  const handleBarcodeScanned = async ({ data }: { data: string }) => {
     if (handledRef.current) return;
 
     const token = parseInviteToken(data);
@@ -59,7 +71,15 @@ export default function ScanJoinScreen() {
       return;
     }
 
-    routeToJoin(token);
+    // Block re-entry while the async connectivity check runs so a stream of
+    // camera frames can't spam the offline toast; re-arm if we didn't route.
+    handledRef.current = true;
+    const routed = await routeToJoin(token);
+    if (!routed) {
+      setTimeout(() => {
+        handledRef.current = false;
+      }, 1500);
+    }
   };
 
   // Join from a saved/screenshotted invite QR instead of pointing the camera
@@ -94,7 +114,7 @@ export default function ScanJoinScreen() {
         .find((t): t is string => !!t);
 
       if (token) {
-        routeToJoin(token);
+        await routeToJoin(token);
         return;
       }
 

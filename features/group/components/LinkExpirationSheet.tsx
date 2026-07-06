@@ -18,6 +18,7 @@ import {
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
 import { formatDistanceToNow } from "date-fns";
@@ -44,6 +45,7 @@ export default function LinkExpirationSheet({
   groupId: string;
 }) {
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
   const [selectedTtl, setSelectedTtl] = useState<number | null>(null);
   const [resetting, setResetting] = useState(false);
 
@@ -53,6 +55,16 @@ export default function LinkExpirationSheet({
   }, [isOpen]);
 
   const handleReset = async () => {
+    // Rotating the token is an online-only admin action (RPC write). Bail with
+    // the standard offline toast instead of letting the request hang.
+    if (
+      !(await ensureOnline(
+        "Resetting the invite link needs an internet connection. Please try again when you're back online."
+      ))
+    ) {
+      return;
+    }
+
     setResetting(true);
     try {
       const result = await services.group.resetGroupInvite(

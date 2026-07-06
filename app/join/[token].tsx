@@ -3,6 +3,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import services from "@/services";
 import states from "@/states";
+import * as offlineQueue from "@/utils/offlineQueue";
 import {
   clearPendingInviteToken,
   setPendingInviteToken
@@ -40,6 +41,18 @@ export default function JoinGroupScreen() {
       // Logged in but hasn't completed onboarding yet
       await setPendingInviteToken(inviteToken);
       router.replace("/(auth)/onboarding");
+      return;
+    }
+
+    // Joining is server-only. Guard here too (not just at the scan entry) so a
+    // deep-link / pending-invite arrival while offline shows a clear message
+    // instead of an indefinite "Joining group…" spinner (writes aren't timed
+    // out by the degraded-network wrapper, so the request would just hang).
+    if (!(await offlineQueue.isOnline())) {
+      setStatus("error");
+      setErrorMsg(
+        "You're offline. Connect to the internet and open this invite link again to join."
+      );
       return;
     }
 
