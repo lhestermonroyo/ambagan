@@ -5,6 +5,7 @@ import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import StatusBadge from "@/features/expense/components/StatusBadge";
 import { Notification, NotificationType } from "@/types/notifications";
 import { formatDate } from "@/utils/formatDate";
 
@@ -53,9 +54,16 @@ export default function NotificationItem({
           <Text numberOfLines={3}>
             <Text className="font-medium">{fromName}</Text> {suffix}
           </Text>
-          <Text className="text-sm text-secondary-950">
-            {formatDate(item.created_at)}
-          </Text>
+          <HStack className="items-center gap-x-2">
+            <Text className="text-sm text-secondary-950">
+              {formatDate(item.created_at)}
+            </Text>
+            {/* The message is a frozen record of the event; this badge shows the
+                settlement's live status so a since-resolved request reads right. */}
+            {item.settlement_status && (
+              <StatusBadge status={item.settlement_status} size="sm" />
+            )}
+          </HStack>
         </VStack>
         <HStack className="items-center justify-center">
           {!item.is_read && (

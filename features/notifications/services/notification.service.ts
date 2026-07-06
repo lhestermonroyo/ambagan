@@ -1,9 +1,55 @@
-import { Notification, NotificationType } from "@/types/notifications";
+import { PaymentStatus } from "@/types/expenses";
+import {
+  isSettlementNotification,
+  Notification,
+  NotificationType
+} from "@/types/notifications";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 
 const USER_FIELDS = "id, email, phone, first_name, last_name, avatar";
+
+/**
+ * Resolves the *current* status of the payment_splits referenced by settlement
+ * notifications and attaches it as `settlement_status`, so a row reflects the
+ * live settlement state instead of the frozen event `type`. Mutates in place.
+ * Non-fatal: any failure leaves `settlement_status` undefined (no badge) rather
+ * than dropping the already-fetched feed.
+ */
+const attachSettlementStatuses = async (
+  notifications: Notification[]
+): Promise<void> => {
+  const referenceIds = Array.from(
+    new Set(
+      notifications
+        .filter((n) => isSettlementNotification(n.type))
+        .map((n) => n.reference_id)
+        .filter(Boolean)
+    )
+  );
+
+  if (referenceIds.length === 0) return;
+
+  const { data, error } = await supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select("id, status")
+    .in("id", referenceIds);
+
+  if (error || !data) return;
+
+  const statusById = new Map<string, PaymentStatus>(
+    data.map((s: any) => [s.id, s.status as PaymentStatus])
+  );
+
+  notifications.forEach((n) => {
+    if (isSettlementNotification(n.type)) {
+      // null (not undefined) marks "resolved but split is gone", so the UI can
+      // distinguish it from the offline "not yet resolved" case.
+      n.settlement_status = statusById.get(n.reference_id) ?? null;
+    }
+  });
+};
 
 export const getNotificationsByUserId = async (
   userId: string,
@@ -46,6 +92,14 @@ export const getNotificationsByUserId = async (
       data: data as unknown as Notification[],
       pagination: { page, limit, totalCount, hasNext }
     };
+
+    // Resolve live settlement statuses before caching so the offline snapshot
+    // carries the same badges. Isolated failure must not drop the feed.
+    try {
+      await attachSettlementStatuses(result.data);
+    } catch {
+      // Non-fatal — rows simply render without a status badge.
+    }
 
     // Persist the fresh first page so the list is viewable offline.
     if (canCache) {
@@ -149,12 +203,7 @@ export const getNotificationRoute = async (
   referenceId: string
 ): Promise<string | null> => {
   try {
-    if (
-      type === NotificationType.SETTLEMENT_REQUEST ||
-      type === NotificationType.SETTLEMENT_APPROVED ||
-      type === NotificationType.SETTLEMENT_REJECTED ||
-      type === NotificationType.SETTLEMENT_COMPLETED
-    ) {
+    if (isSettlementNotification(type)) {
       const { data, error } = await supabase
         .from(tables.PAYMENT_SPLITS_TBL)
         .select("group_id, expense_id")

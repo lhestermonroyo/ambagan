@@ -14,7 +14,11 @@ import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
-import { Notification, NotificationType } from "@/types/notifications";
+import {
+  isSettlementNotification,
+  Notification,
+  NotificationType
+} from "@/types/notifications";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import useAppToast from "@/hooks/use-app-toast";
@@ -92,12 +96,7 @@ export default function NotificationsScreen() {
   };
 
   const handlePress = async (notification: Notification) => {
-    const isSettlement = [
-      NotificationType.SETTLEMENT_REQUEST,
-      NotificationType.SETTLEMENT_APPROVED,
-      NotificationType.SETTLEMENT_REJECTED,
-      NotificationType.SETTLEMENT_COMPLETED
-    ].includes(notification.type);
+    const isSettlement = isSettlementNotification(notification.type);
 
     if (isSettlement) {
       const friend = notification.from_user;

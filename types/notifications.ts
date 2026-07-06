@@ -1,3 +1,4 @@
+import { PaymentStatus } from "./expenses";
 import { UserPreview } from "./user";
 
 export type NotificationState = {
@@ -13,6 +14,13 @@ export type Notification = {
   type: NotificationType;
   reference_id: string;
   is_read: boolean;
+  /**
+   * Live status of the referenced settlement (payment_split), resolved at fetch
+   * time so the row can reflect current state rather than the frozen event
+   * `type`. Null for non-settlement notifications or when the split (e.g. its
+   * expense) no longer exists. Undefined when not yet resolved (e.g. offline).
+   */
+  settlement_status?: PaymentStatus | null;
 };
 
 export enum NotificationType {
@@ -24,4 +32,22 @@ export enum NotificationType {
   EXPENSE_INCLUSION = "expense_inclusion",
   GROUP_JOIN = "group_join",
   GROUP_LEAVE = "group_leave"
+}
+
+/**
+ * Notification types whose `reference_id` points at a payment_split and whose
+ * live status can drift after the event. Single source of truth for the "is
+ * this a settlement notification?" check used across rendering and routing so
+ * new types (e.g. SETTLEMENT_REVERTED) can't be forgotten in one place.
+ */
+export const SETTLEMENT_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.SETTLEMENT_REQUEST,
+  NotificationType.SETTLEMENT_APPROVED,
+  NotificationType.SETTLEMENT_REJECTED,
+  NotificationType.SETTLEMENT_REVERTED,
+  NotificationType.SETTLEMENT_COMPLETED
+];
+
+export function isSettlementNotification(type: NotificationType): boolean {
+  return SETTLEMENT_NOTIFICATION_TYPES.includes(type);
 }
