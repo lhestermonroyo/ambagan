@@ -1,7 +1,6 @@
 import AppAvatar from "@/components/AppAvatar";
 import ConfirmButton from "@/components/ConfirmButton";
 import FormButton from "@/components/FormButton";
-import Icon from "@/components/Icon";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -12,7 +11,6 @@ import {
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
-import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -29,6 +27,7 @@ import { Fragment, ReactNode, useState } from "react";
 import { useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
 import SettlementBreakdown from "./SettlementBreakdown";
+import SettlementSheetHeader from "./SettlementSheetHeader";
 import StatusBadge from "./StatusBadge";
 
 export default function ReviewRequestPaidSheet({
@@ -37,7 +36,8 @@ export default function ReviewRequestPaidSheet({
   onRefetch,
   payment,
   isPayer = false,
-  readOnly = false
+  readOnly = false,
+  showGroupLink = true
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -45,6 +45,7 @@ export default function ReviewRequestPaidSheet({
   payment: Payment;
   isPayer?: boolean;
   readOnly?: boolean;
+  showGroupLink?: boolean;
 }) {
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -208,14 +209,12 @@ export default function ReviewRequestPaidSheet({
             <ActionsheetDragIndicator />
           </ActionsheetDragIndicatorWrapper>
           <VStack className="w-full flex-1">
-            <Pressable onPress={onClose}>
-              <HStack className="p-4 items-center">
-                <Icon as="arrow-back-ios" className="text-secondary-950" />
-                <Text bold className="text-xl">
-                  Review Settlement
-                </Text>
-              </HStack>
-            </Pressable>
+            <SettlementSheetHeader
+              title="Review Settlement"
+              onClose={onClose}
+              groupId={payment.group_id}
+              showGroupLink={showGroupLink}
+            />
 
             <ScrollView className="flex-1 px-4">
               <VStack className="gap-y-6">

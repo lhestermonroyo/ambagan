@@ -685,6 +685,7 @@ export default function GroupSettlements({
           }}
           payment={selectedPayment}
           onRefetch={fetchAll}
+          showGroupLink={false}
         />
       )}
       {selectedPayment && (
@@ -696,6 +697,7 @@ export default function GroupSettlements({
           }}
           payment={selectedPayment}
           onRefetch={fetchAll}
+          showGroupLink={false}
         />
       )}
       {selectedPayment && (
@@ -710,6 +712,7 @@ export default function GroupSettlements({
           onRefetch={fetchAll}
           isPayer={reviewIsPayer}
           readOnly={reviewSheetReadOnly}
+          showGroupLink={false}
         />
       )}
     </Fragment>

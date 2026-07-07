@@ -1,7 +1,6 @@
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
-import Icon from "@/components/Icon";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -17,7 +16,6 @@ import {
   FormControlLabelText
 } from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
-import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -34,17 +32,20 @@ import { useState } from "react";
 import { useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
 import SettlementBreakdown from "./SettlementBreakdown";
+import SettlementSheetHeader from "./SettlementSheetHeader";
 
 export default function MarkAsSettledSheet({
   isOpen,
   onClose,
   payment,
-  onRefetch
+  onRefetch,
+  showGroupLink = true
 }: {
   isOpen: boolean;
   onClose: () => void;
   payment: Payment;
   onRefetch: () => void;
+  showGroupLink?: boolean;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
@@ -111,15 +112,12 @@ export default function MarkAsSettledSheet({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full flex-1">
-          <Pressable onPress={onClose}>
-            <HStack className="p-4 items-center">
-              <Icon as="arrow-back-ios" className="text-secondary-950" />
-
-              <Text bold className="text-xl">
-                Mark as Settled
-              </Text>
-            </HStack>
-          </Pressable>
+          <SettlementSheetHeader
+            title="Mark as Settled"
+            onClose={onClose}
+            groupId={payment.group_id}
+            showGroupLink={showGroupLink}
+          />
 
           <ScrollView className="flex-1 px-4">
             <VStack className="gap-y-6">

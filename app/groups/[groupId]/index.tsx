@@ -7,7 +7,10 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
-import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import {
+  ExpenseListSkeleton,
+  HeaderActionSkeleton
+} from "@/components/SkeletonLoader";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
@@ -449,7 +452,9 @@ export default function GroupDetailsScreen() {
         title="Group Details"
         onBack={handleBack}
         actions={
-          isAdmin
+          loading
+            ? [<HeaderActionSkeleton key="skeleton" />]
+            : isAdmin
             ? [
                 ...(!groupDetails?.archived && groupDetails?.invite_token
                   ? [

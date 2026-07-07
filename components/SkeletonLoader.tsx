@@ -50,6 +50,26 @@ function SkeletonDivider({ color }: { color: string }) {
 }
 
 // ─────────────────────────────────────────────
+// Header action skeleton
+// Icon-sized bone(s) shown in place of header action buttons whose behavior
+// depends on the record still being fetched (e.g. the group-details leave /
+// menu icons), so they can't be tapped before the data is ready.
+// ─────────────────────────────────────────────
+export function HeaderActionSkeleton({ count = 1 }: { count?: number }) {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  return (
+    <Animated.View style={[animStyle, { flexDirection: "row", gap: 24 }]}>
+      {Array.from({ length: count }).map((_, i) => (
+        <Bone key={i} w={24} h={24} radius={999} color={color} />
+      ))}
+    </Animated.View>
+  );
+}
+
+// ─────────────────────────────────────────────
 // FriendRow skeleton
 // Layout: avatar(48) | name + email | amount + heart + chevron
 // ─────────────────────────────────────────────
@@ -163,6 +183,39 @@ export function GroupListSkeleton({ count = 5 }: { count?: number }) {
           <GroupSkeletonRow color={color} />
         </React.Fragment>
       ))}
+    </Animated.View>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Overview action buttons skeleton
+// Sits on the purple hero, so bones are white-tinted (independent of scheme).
+// Layout: N columns of circle(56) + label line — mirrors the ActionButton row.
+// Shown on the initial load so the buttons aren't tappable before groups (and
+// the expense forms' default group) have finished fetching.
+// ─────────────────────────────────────────────
+export function ActionButtonsSkeleton({ count = 4 }: { count?: number }) {
+  const animStyle = useSkeletonPulse();
+  const color = "rgba(255,255,255,0.3)";
+
+  return (
+    <Animated.View style={animStyle}>
+      <View style={{ flexDirection: "row", justifyContent: "center", gap: 8 }}>
+        {Array.from({ length: count }).map((_, i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              alignItems: "center",
+              gap: 8,
+              paddingHorizontal: 16
+            }}
+          >
+            <Bone w={56} h={56} radius={999} color={color} />
+            <Bone w="70%" h={10} radius={4} color={color} />
+          </View>
+        ))}
+      </View>
     </Animated.View>
   );
 }

@@ -92,7 +92,7 @@ export default function JoinGroupScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }} className="bg-secondary-0">
       <VStack className="flex-1 items-center justify-center gap-y-4 p-6">
         {status === "joining" ? (
           <>

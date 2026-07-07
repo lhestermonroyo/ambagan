@@ -1,7 +1,6 @@
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
-import Icon from "@/components/Icon";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -29,20 +28,22 @@ import { formatDate } from "@/utils/formatDate";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
-import { Pressable } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
 import SettlementBreakdown from "./SettlementBreakdown";
+import SettlementSheetHeader from "./SettlementSheetHeader";
 
 export default function RequestSettledSheet({
   isOpen,
   onClose,
   payment,
-  onRefetch
+  onRefetch,
+  showGroupLink = true
 }: {
   isOpen: boolean;
   onClose: () => void;
   payment: Payment;
   onRefetch: () => void;
+  showGroupLink?: boolean;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
@@ -106,14 +107,12 @@ export default function RequestSettledSheet({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full flex-1">
-          <Pressable onPress={onClose}>
-            <HStack className="p-4 items-center">
-              <Icon as="arrow-back-ios" className="text-secondary-950" />
-              <Text bold className="text-xl">
-                Request as Settled
-              </Text>
-            </HStack>
-          </Pressable>
+          <SettlementSheetHeader
+            title="Request as Settled"
+            onClose={onClose}
+            groupId={payment.group_id}
+            showGroupLink={showGroupLink}
+          />
           <ScrollView className="flex-1 px-4">
             <VStack className="gap-y-6">
               <VStack className="gap-y-1">

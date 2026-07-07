@@ -4,6 +4,7 @@ import EmptyList from "@/components/EmptyList";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import {
+  ActionButtonsSkeleton,
   FriendCardListSkeleton,
   GroupListSkeleton,
   SettlementListSkeleton
@@ -544,49 +545,68 @@ export default function HomeScreen() {
                   </HStack>
                 </VStack>
 
-                {/* Action Buttons */}
-                <HStack className="gap-x-2 justify-center">
-                  <ActionButton
-                    icon={
-                      <Zap
-                        size={24}
-                        color={getSecondaryHex("text-secondary-0", colorScheme)}
-                      />
-                    }
-                    label="Quick Expense"
-                    onPress={handleOpenQuickAdd}
-                  />
-                  <ActionButton
-                    icon={
-                      <ListPlus
-                        size={24}
-                        color={getSecondaryHex("text-secondary-0", colorScheme)}
-                      />
-                    }
-                    label="Custom Expense"
-                    onPress={handleCustomExpense}
-                  />
-                  <ActionButton
-                    icon={
-                      <HousePlus
-                        size={24}
-                        color={getSecondaryHex("text-secondary-0", colorScheme)}
-                      />
-                    }
-                    label="Create Group"
-                    onPress={() => router.push("/groups/create")}
-                  />
-                  <ActionButton
-                    icon={
-                      <QrCode
-                        size={24}
-                        color={getSecondaryHex("text-secondary-0", colorScheme)}
-                      />
-                    }
-                    label="Scan to Join"
-                    onPress={() => router.push("/scan" as any)}
-                  />
-                </HStack>
+                {/* Action Buttons — skeletoned on the initial load so they
+                    can't be tapped into the expense / group forms before
+                    groups (and the default-group pick) have finished loading. */}
+                <LoadingWrapper
+                  isLoading={loading.groups}
+                  skeleton={<ActionButtonsSkeleton />}
+                >
+                  <HStack className="gap-x-2 justify-center">
+                    <ActionButton
+                      icon={
+                        <Zap
+                          size={24}
+                          color={getSecondaryHex(
+                            "text-secondary-0",
+                            colorScheme
+                          )}
+                        />
+                      }
+                      label="Quick Expense"
+                      onPress={handleOpenQuickAdd}
+                    />
+                    <ActionButton
+                      icon={
+                        <ListPlus
+                          size={24}
+                          color={getSecondaryHex(
+                            "text-secondary-0",
+                            colorScheme
+                          )}
+                        />
+                      }
+                      label="Custom Expense"
+                      onPress={handleCustomExpense}
+                    />
+                    <ActionButton
+                      icon={
+                        <HousePlus
+                          size={24}
+                          color={getSecondaryHex(
+                            "text-secondary-0",
+                            colorScheme
+                          )}
+                        />
+                      }
+                      label="Create Group"
+                      onPress={() => router.push("/groups/create")}
+                    />
+                    <ActionButton
+                      icon={
+                        <QrCode
+                          size={24}
+                          color={getSecondaryHex(
+                            "text-secondary-0",
+                            colorScheme
+                          )}
+                        />
+                      }
+                      label="Scan to Join"
+                      onPress={() => router.push("/scan" as any)}
+                    />
+                  </HStack>
+                </LoadingWrapper>
               </VStack>
             </Box>
 

@@ -1,12 +1,3 @@
-import FormButton from "@/components/FormButton";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
-import { VStack } from "@/components/ui/vstack";
 import MarkAsSettledSheet from "@/features/expense/components/MarkAsSettledSheet";
 import RequestSettledSheet from "@/features/expense/components/RequestSettledSheet";
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
@@ -15,7 +6,37 @@ import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { useRouter } from "expo-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import SettlementItem from "./SettlementItem";
+
+// Which settlement sheet a payment should open, based on the viewer's role and
+// the payment status. Previously the user picked this from an intermediate
+// action sheet ("Settle Up" / "View Details"); now we resolve it up front and
+// open the destination sheet directly.
+type SettlementSheet =
+  | { kind: "request" }
+  | { kind: "markSettled" }
+  | { kind: "review"; isPayer: boolean; readOnly: boolean }
+  | { kind: "none" };
+
+function resolveSheet(payment: Payment, userId?: string): SettlementSheet {
+  const isUserMember = payment.member.id === userId;
+  const isUserPayer = payment.payer.id === userId;
+
+  if (isUserMember) {
+    if (payment.status === "pending") return { kind: "request" };
+    return {
+      kind: "review",
+      isPayer: false,
+      readOnly: payment.status === "settled"
+    };
+  }
+
+  if (isUserPayer) {
+    if (payment.status === "pending") return { kind: "markSettled" };
+    return { kind: "review", isPayer: true, readOnly: false };
+  }
+
+  return { kind: "none" };
+}
 
 function SettlementContent({
   isOpen,
@@ -28,15 +49,10 @@ function SettlementContent({
   item: PaymentPreview;
   onRefetch: () => void;
 }) {
-  const [requestSheetOpen, setRequestSheetOpen] = useState(false);
-  const [markAsSettledSheetOpen, setMarkAsSettledSheetOpen] = useState(false);
-  const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
-  const [reviewIsPayer, setReviewIsPayer] = useState(false);
-  const [reviewReadOnly, setReviewReadOnly] = useState(false);
-
   const router = useRouter();
-
   const { details: userDetails } = states.user();
+
+  if (!userDetails) return null;
 
   // The home Recent Activity feed supplies a PaymentPreview (via
   // getPaymentsByUserId), which omits proof_of_payment / notes /
@@ -68,108 +84,42 @@ function SettlementContent({
   }, [isOpen, item?.id]);
 
   const payment = fullPayment ?? (item as Payment);
-  const isUserMember = payment.member.id === userDetails?.id;
-  const isUserPayer = payment.payer.id === userDetails?.id;
+  const sheet = useMemo(
+    () => resolveSheet(payment, userDetails?.id),
+    [payment, userDetails?.id]
+  );
 
-  const getActionConfig = (): { label: string; onPress: () => void } | null => {
-    if (isUserMember) {
-      if (item.status === "pending") {
-        return {
-          label: "Settle Up",
-          onPress: () => {
-            onClose();
-            setRequestSheetOpen(true);
-          }
-        };
-      }
-      return {
-        label: "View Details",
-        onPress: () => {
-          onClose();
-          setReviewIsPayer(false);
-          setReviewReadOnly(item.status === "settled");
-          setReviewSheetOpen(true);
-        }
-      };
+  // Neither payer nor ower — there's no personal action to take, so send them
+  // straight to the group settlement screen (what the old sheet's only button
+  // did in this case).
+  useEffect(() => {
+    if (isOpen && userDetails?.id && sheet.kind === "none") {
+      onClose();
+      router.push(`/groups/${item.group_id}`);
     }
-
-    if (isUserPayer) {
-      if (item.status === "pending") {
-        return {
-          label: "Settle Up",
-          onPress: () => {
-            onClose();
-            setMarkAsSettledSheetOpen(true);
-          }
-        };
-      }
-      return {
-        label: "View Details",
-        onPress: () => {
-          onClose();
-          setReviewIsPayer(true);
-          setReviewReadOnly(false);
-          setReviewSheetOpen(true);
-        }
-      };
-    }
-
-    return null;
-  };
-
-  const actionConfig = useMemo(() => getActionConfig(), [item, userDetails]);
+  }, [isOpen, sheet.kind, userDetails?.id]);
 
   return (
     <Fragment>
-      <Actionsheet isOpen={isOpen} onClose={onClose}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-
-          <VStack className="w-full gap-y-8">
-            <SettlementItem item={payment} />
-
-            <VStack className="gap-y-2 px-4 pb-4">
-              <FormButton
-                variant="outline"
-                text="Open Group Settlement"
-                onPress={() => {
-                  onClose();
-                  router.push(`/groups/${item.group_id}`);
-                }}
-              />
-              {actionConfig && (
-                <FormButton
-                  text={actionConfig.label}
-                  onPress={actionConfig.onPress}
-                />
-              )}
-            </VStack>
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
-
       <RequestSettledSheet
-        isOpen={requestSheetOpen}
-        onClose={() => setRequestSheetOpen(false)}
+        isOpen={isOpen && sheet.kind === "request"}
+        onClose={onClose}
         payment={payment}
         onRefetch={onRefetch}
       />
       <MarkAsSettledSheet
-        isOpen={markAsSettledSheetOpen}
-        onClose={() => setMarkAsSettledSheetOpen(false)}
+        isOpen={isOpen && sheet.kind === "markSettled"}
+        onClose={onClose}
         payment={payment}
         onRefetch={onRefetch}
       />
       <ReviewRequestPaidSheet
-        isOpen={reviewSheetOpen}
-        onClose={() => setReviewSheetOpen(false)}
+        isOpen={isOpen && sheet.kind === "review"}
+        onClose={onClose}
         payment={payment}
         onRefetch={onRefetch}
-        isPayer={reviewIsPayer}
-        readOnly={reviewReadOnly}
+        isPayer={sheet.kind === "review" ? sheet.isPayer : false}
+        readOnly={sheet.kind === "review" ? sheet.readOnly : false}
       />
     </Fragment>
   );
