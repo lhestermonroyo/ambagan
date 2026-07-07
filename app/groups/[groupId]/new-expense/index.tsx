@@ -1,5 +1,6 @@
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import { ExpenseFormStepSkeleton } from "@/components/SkeletonLoader";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Text } from "@/components/ui/text";
@@ -29,7 +30,7 @@ export default function NewExpenseScreen() {
   const groupId = params.groupId as string | undefined;
   const isLocked = groupId !== "[groupId]";
 
-  const { list: groupList } = states.group();
+  const { list: groupList, initialized: groupsInitialized } = states.group();
   const { defaultCurrency, details: userDetails } = states.user();
   const isPro = userDetails?.plan === "pro";
 
@@ -614,32 +615,41 @@ export default function NewExpenseScreen() {
   }, [splits, values.amount]);
 
   if (!values.group) {
+    // The group list is populated elsewhere (overview / Groups tab). Until it's
+    // been fetched at least once, a null group means "still loading" — show a
+    // skeleton. Only treat it as "no groups" once the list is settled.
+    const hasNoGroups = groupsInitialized && groupList.length === 0;
+
     return (
       <FormLayout
         title="Custom Expense"
         onBack={() => router.back()}
         footer={[]}
       >
-        <VStack className="flex-1 p-4">
-          <VStack className="items-center justify-center flex-1 gap-y-4">
-            <Icon
-              as="sentiment-dissatisfied"
-              size={64}
-              className="text-primary-400"
-            />
-            <Text className="text-center">
-              You are not part of any group yet. Please join or create a group
-              to be able to add an expense.
-            </Text>
-            <FormButton
-              text="Create Group"
-              iconEnd={
-                <Icon as="chevron-right" className="text-background-0" />
-              }
-              onPress={() => router.push("/groups/create")}
-            />
+        {hasNoGroups ? (
+          <VStack className="flex-1 p-4">
+            <VStack className="items-center justify-center flex-1 gap-y-4">
+              <Icon
+                as="sentiment-dissatisfied"
+                size={64}
+                className="text-primary-400"
+              />
+              <Text className="text-center">
+                You are not part of any group yet. Please join or create a group
+                to be able to add an expense.
+              </Text>
+              <FormButton
+                text="Create Group"
+                iconEnd={
+                  <Icon as="chevron-right" className="text-background-0" />
+                }
+                onPress={() => router.push("/groups/create")}
+              />
+            </VStack>
           </VStack>
-        </VStack>
+        ) : (
+          <ExpenseFormStepSkeleton />
+        )}
       </FormLayout>
     );
   }

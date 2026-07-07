@@ -3,6 +3,9 @@ import { UserPreview } from "./user";
 
 export type GroupState = {
   list: (Group & { members: Member[] })[];
+  /** True once the group list has been fetched at least once, so consumers can
+   * tell "still loading" apart from "genuinely has no groups". */
+  initialized: boolean;
   details: Group | null;
   memberList: Member[];
   expenseList: ExpensePreview[];

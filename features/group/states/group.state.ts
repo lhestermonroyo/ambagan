@@ -3,6 +3,7 @@ import { create } from "zustand";
 
 const initialState: GroupState = {
   list: [],
+  initialized: false,
   details: null,
   memberList: [],
   expenseList: [],

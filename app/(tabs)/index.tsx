@@ -4,7 +4,6 @@ import EmptyList from "@/components/EmptyList";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import {
-  ActionButtonsSkeleton,
   FriendCardListSkeleton,
   GroupListSkeleton,
   SettlementListSkeleton
@@ -311,7 +310,8 @@ export default function HomeScreen() {
 
       states.group.setState((prev) => ({
         ...prev,
-        list: response
+        list: response,
+        initialized: true
       }));
 
       // On first load, quietly warm each group's offline cache in the
@@ -545,14 +545,10 @@ export default function HomeScreen() {
                   </HStack>
                 </VStack>
 
-                {/* Action Buttons — skeletoned on the initial load so they
-                    can't be tapped into the expense / group forms before
-                    groups (and the default-group pick) have finished loading. */}
-                <LoadingWrapper
-                  isLoading={loading.groups}
-                  skeleton={<ActionButtonsSkeleton />}
-                >
-                  <HStack className="gap-x-2 justify-center">
+                {/* Action Buttons stay live for instant entry — the expense
+                    flows below handle the still-loading case by skeletoning
+                    their own group / payer fields rather than blocking here. */}
+                <HStack className="gap-x-2 justify-center">
                     <ActionButton
                       icon={
                         <Zap
@@ -606,7 +602,6 @@ export default function HomeScreen() {
                       onPress={() => router.push("/scan" as any)}
                     />
                   </HStack>
-                </LoadingWrapper>
               </VStack>
             </Box>
 
@@ -710,6 +705,7 @@ export default function HomeScreen() {
       <QuickAddExpenseSheet
         isOpen={quickAddOpen}
         group={quickAddGroup}
+        groupsLoading={loading.groups}
         allowGroupChange
         onClose={handleCloseQuickAdd}
         onSuccess={handleQuickAddSuccess}

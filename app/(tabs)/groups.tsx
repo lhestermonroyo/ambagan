@@ -96,7 +96,8 @@ export default function GroupsScreen() {
       if (filter === "all") {
         states.group.setState((prev) => ({
           ...prev,
-          list: pageNum === 0 ? result.data : [...prev.list, ...result.data]
+          list: pageNum === 0 ? result.data : [...prev.list, ...result.data],
+          initialized: true
         }));
       }
     } catch (error) {

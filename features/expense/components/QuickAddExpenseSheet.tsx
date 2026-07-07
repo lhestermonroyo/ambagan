@@ -7,6 +7,10 @@ import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
 import {
+  GroupCardSkeleton,
+  PayerFieldSkeleton
+} from "@/components/SkeletonLoader";
+import {
   Actionsheet,
   ActionsheetBackdrop,
   ActionsheetContent,
@@ -68,6 +72,9 @@ import { v4 as uuid } from "uuid";
 type QuickAddExpenseSheetProps = {
   isOpen: boolean;
   group: Group | null;
+  /** True while the caller is still fetching the group list, so the sheet shows
+   * loading fields instead of the "no group" empty state on a cold open. */
+  groupsLoading?: boolean;
   allowGroupChange?: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -76,6 +83,7 @@ type QuickAddExpenseSheetProps = {
 export default function QuickAddExpenseSheet({
   isOpen,
   group,
+  groupsLoading = false,
   allowGroupChange = false,
   onClose,
   onSuccess
@@ -87,6 +95,7 @@ export default function QuickAddExpenseSheet({
   const [expenseDate, setExpenseDate] = useState(new Date());
   const [submitting, setSubmitting] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [selectedPayer, setSelectedPayer] = useState<Member | null>(null);
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   const [payerPickerOpen, setPayerPickerOpen] = useState(false);
@@ -134,6 +143,14 @@ export default function QuickAddExpenseSheet({
     }
   }, [selectedGroup?.id]);
 
+  // On a cold open the default group may still be loading; adopt it once the
+  // caller resolves it so the fields fill in without reopening the sheet.
+  useEffect(() => {
+    if (isOpen && group && !selectedGroup) {
+      setSelectedGroup(group);
+    }
+  }, [group?.id, isOpen]);
+
   const applyMembers = (result: Member[]) => {
     setMembers(result);
     const self = result.find((m) => m.id === currentUser?.id);
@@ -141,6 +158,7 @@ export default function QuickAddExpenseSheet({
   };
 
   const fetchMembers = async (groupId: string) => {
+    setMembersLoading(true);
     try {
       const result = await services.member.getMembersByGroupId(groupId);
       if (result) applyMembers(result);
@@ -155,6 +173,8 @@ export default function QuickAddExpenseSheet({
       } catch {
         // submit stays disabled if there's no cached member list either
       }
+    } finally {
+      setMembersLoading(false);
     }
   };
 
@@ -180,6 +200,15 @@ export default function QuickAddExpenseSheet({
     !!currentUser &&
     !!selectedGroup &&
     !!selectedPayer;
+
+  // A default group exists (even if not yet adopted into selectedGroup).
+  const hasGroup = !!group || !!selectedGroup;
+  // Genuinely no group to add to — not just still loading the group list.
+  const showEmptyState = !hasGroup && !groupsLoading;
+  // The group + payer fields depend on the member fetch, so skeleton them until
+  // the members (and default payer) are ready.
+  const fieldsLoading =
+    membersLoading || (!!group && !selectedGroup) || (!hasGroup && groupsLoading);
 
   const handleSubmit = async () => {
     if (!currentUser || !selectedGroup || !canSubmit) return;
@@ -358,7 +387,7 @@ export default function QuickAddExpenseSheet({
               )}
             </HStack>
 
-            {!group ? (
+            {showEmptyState ? (
               <VStack className="flex-1 p-4">
                 <VStack className="items-center justify-center flex-1 gap-y-4">
                   <Icon
@@ -447,7 +476,15 @@ export default function QuickAddExpenseSheet({
                       </PressableListItem>
                     </FormControl>
 
-                    {selectedPayer && (
+                    {fieldsLoading ? (
+                      <FormControl size="md">
+                        <FormControlLabel>
+                          <FormControlLabelText>Payer</FormControlLabelText>
+                        </FormControlLabel>
+                        <PayerFieldSkeleton />
+                      </FormControl>
+                    ) : (
+                      selectedPayer && (
                       <FormControl size="md">
                         <FormControlLabel>
                           <FormControlLabelText>Payer</FormControlLabelText>
@@ -483,9 +520,12 @@ export default function QuickAddExpenseSheet({
                           </HStack>
                         </PressableListItem>
                       </FormControl>
+                      )
                     )}
 
-                    {memberCount > 0 && (
+                    {fieldsLoading ? (
+                      <GroupCardSkeleton />
+                    ) : memberCount > 0 ? (
                       <Fragment>
                         {allowGroupChange ? (
                           <PressableListItem
@@ -572,7 +612,7 @@ export default function QuickAddExpenseSheet({
                           </Box>
                         )}
                       </Fragment>
-                    )}
+                    ) : null}
                   </VStack>
                 </ScrollView>
 

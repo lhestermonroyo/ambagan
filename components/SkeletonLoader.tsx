@@ -50,6 +50,102 @@ function SkeletonDivider({ color }: { color: string }) {
 }
 
 // ─────────────────────────────────────────────
+// Expense form field skeletons
+// Shown for the group + payer fields (and the whole first step) while the
+// group's members are still being fetched, so the entry points can stay
+// instant while only the data-dependent fields load.
+// ─────────────────────────────────────────────
+
+// Mirrors the Payer field: bordered box | avatar(40) + name/subtitle | chevron.
+export function PayerFieldSkeleton() {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  return (
+    <Animated.View
+      style={[
+        animStyle,
+        { borderWidth: 1, borderColor: color, borderRadius: 8, padding: 16 }
+      ]}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Bone w={40} h={40} radius={999} color={color} />
+        <View style={{ flex: 1, gap: 8 }}>
+          <Bone w="45%" h={16} color={color} />
+          <Bone w="30%" h={12} color={color} />
+        </View>
+        <Bone w={18} h={18} color={color} />
+      </View>
+    </Animated.View>
+  );
+}
+
+// Mirrors the group member card: name + overlapping avatars + member count |
+// per-person amount.
+export function GroupCardSkeleton() {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  return (
+    <Animated.View
+      style={[
+        animStyle,
+        { borderWidth: 1, borderColor: color, borderRadius: 8, padding: 16 }
+      ]}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={{ flex: 1, gap: 8 }}>
+          <Bone w="55%" h={12} color={color} />
+          <View style={{ flexDirection: "row" }}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={{ marginLeft: i === 0 ? 0 : -8 }}>
+                <Bone w={24} h={24} radius={999} color={color} />
+              </View>
+            ))}
+          </View>
+          <Bone w={64} h={12} color={color} />
+        </View>
+        <View style={{ alignItems: "flex-end", gap: 6 }}>
+          <Bone w={72} h={24} color={color} />
+          <Bone w={32} h={12} color={color} />
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
+// Mirrors the custom-expense first step (header + amount / description / date /
+// group / proof fields) while the default group is still being resolved.
+export function ExpenseFormStepSkeleton() {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  const Field = ({ labelW, h = 48 }: { labelW: number; h?: number }) => (
+    <View style={{ gap: 8 }}>
+      <Bone w={labelW} h={12} color={color} />
+      <Bone w="100%" h={h} radius={8} color={color} />
+    </View>
+  );
+
+  return (
+    <Animated.View style={[animStyle, { padding: 16, gap: 24 }]}>
+      <View style={{ gap: 8 }}>
+        <Bone w={160} h={22} color={color} />
+        <Bone w={200} h={12} color={color} />
+      </View>
+      <Field labelW={64} />
+      <Field labelW={88} h={80} />
+      <Field labelW={96} />
+      <Field labelW={56} />
+      <Field labelW={180} h={120} />
+    </Animated.View>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Header action skeleton
 // Icon-sized bone(s) shown in place of header action buttons whose behavior
 // depends on the record still being fetched (e.g. the group-details leave /
