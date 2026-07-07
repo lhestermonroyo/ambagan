@@ -6,7 +6,10 @@ import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
-import { SettlementListSkeleton } from "@/components/SkeletonLoader";
+import {
+  HeaderActionSkeleton,
+  SettlementListSkeleton
+} from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -580,38 +583,42 @@ export default function FriendDetailScreen() {
       <InnerLayout
         title="Friend Details"
         onBack={() => router.back()}
-        actions={[
-          <Button
-            key="favorite"
-            variant="link"
-            className="rounded-full"
-            onPress={() =>
-              handleToggleFavorite({
-                id: friendId!,
-                first_name: decodedName.split(" ")[0] ?? "",
-                last_name: decodedName.split(" ").slice(1).join(" ") ?? "",
-                email: decodedEmail,
-                avatar: decodedAvatar || null,
-                phone: null,
-                plan: "free"
-              })
-            }
-          >
-            <Heart
-              size={20}
-              color={
-                isFavorite
-                  ? getPrimaryHex("text-primary-400", colorScheme)
-                  : getSecondaryHex("text-secondary-950", colorScheme)
-              }
-              fill={
-                isFavorite
-                  ? getPrimaryHex("text-primary-400", colorScheme)
-                  : "none"
-              }
-            />
-          </Button>
-        ]}
+        actions={
+          loading
+            ? [<HeaderActionSkeleton key="skeleton" />]
+            : [
+                <Button
+                  key="favorite"
+                  variant="link"
+                  className="rounded-full"
+                  onPress={() =>
+                    handleToggleFavorite({
+                      id: friendId!,
+                      first_name: decodedName.split(" ")[0] ?? "",
+                      last_name: decodedName.split(" ").slice(1).join(" ") ?? "",
+                      email: decodedEmail,
+                      avatar: decodedAvatar || null,
+                      phone: null,
+                      plan: "free"
+                    })
+                  }
+                >
+                  <Heart
+                    size={20}
+                    color={
+                      isFavorite
+                        ? getPrimaryHex("text-primary-400", colorScheme)
+                        : getSecondaryHex("text-secondary-950", colorScheme)
+                    }
+                    fill={
+                      isFavorite
+                        ? getPrimaryHex("text-primary-400", colorScheme)
+                        : "none"
+                    }
+                  />
+                </Button>
+              ]
+        }
       >
         {/* Compact sticky stats */}
         <Animated.View
