@@ -46,6 +46,8 @@ app-example
 # internal docs
 GUIDE.md
 MARKETING.md
+CHANGELOG.md
 
 # database schema (kept local; run manually in Supabase)
 db.sql
+/migrations
