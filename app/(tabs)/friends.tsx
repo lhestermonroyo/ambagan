@@ -263,11 +263,10 @@ export default function FriendsScreen() {
                   </Text>
                 )}
                 ListEmptyComponent={() => <EmptyList type={EmptyType.SEARCH} />}
-                ListFooterComponent={() => <Box className="h-16" />}
               />
             ) : mainTab === "balances" ? (
               <FlatList
-                data={balanceList}
+                data={balanceList} // Duplicate for testing
                 keyExtractor={(item) => item.friend.id}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
@@ -281,7 +280,6 @@ export default function FriendsScreen() {
                 )}
                 ItemSeparatorComponent={ListDivider}
                 ListEmptyComponent={() => <EmptyList type={EmptyType.FRIEND} />}
-                ListFooterComponent={() => <Box className="h-16" />}
               />
             ) : (
               // Contacts directory — favorites pinned, then everyone else.
@@ -325,7 +323,6 @@ export default function FriendsScreen() {
                     }
                   />
                 </VStack>
-                <Box className="h-16" />
               </VStack>
             )}
           </LoadingWrapper>

@@ -323,7 +323,7 @@ export default function ProfileScreen() {
                   />
                 }
               />
-              <VStack className="gap-y-0.5">
+              <VStack className="gap-y-0.5 pb-6">
                 <HStack className="items-center justify-center gap-x-1">
                   <Copyright
                     size={12}
@@ -338,7 +338,6 @@ export default function ProfileScreen() {
             </VStack>
           </VStack>
         </VStack>
-        <Box className="h-16" />
       </ScrollView>
 
       <UpgradeSheet

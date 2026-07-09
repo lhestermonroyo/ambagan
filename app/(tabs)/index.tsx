@@ -32,7 +32,6 @@ import services from "@/services";
 import states from "@/states";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
-import { getSecondaryHex } from "@/utils/getColorHex";
 import { prefetchGroupDetails } from "@/utils/offlinePrefetch";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { getReminderEnabled } from "@/utils/reminderPreference";
@@ -425,8 +424,8 @@ export default function HomeScreen() {
             )}
           >
             <VStack className="flex-1">
-              <Text className="text-background-0/70">Hello,</Text>
-              <Text bold className="text-xl text-background-0">
+              <Text className="text-white/70">Hello,</Text>
+              <Text bold className="text-xl text-white">
                 {userDetails?.first_name} {userDetails?.last_name}
               </Text>
             </VStack>
@@ -436,9 +435,7 @@ export default function HomeScreen() {
                 className="rounded-full"
                 onPress={() => router.push("/profile/help-center")}
               >
-                <CircleQuestionMark
-                  color={getSecondaryHex("text-secondary-0", colorScheme)}
-                />
+                <CircleQuestionMark color="#fff" />
               </Button>
               <Button
                 variant="link"
@@ -446,9 +443,7 @@ export default function HomeScreen() {
                 onPress={() => router.push("/notifications")}
               >
                 <Box className="relative">
-                  <Bell
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
-                  />
+                  <Bell color="#fff" />
                   {unreadCount > 0 && (
                     <Box className="absolute -top-1 -right-1 bg-error-400 rounded-full flex px-1 min-w-4 h-4 items-center justify-center">
                       <Text className="text-white text-2xs font-semibold">
@@ -472,28 +467,28 @@ export default function HomeScreen() {
           >
             <HStack className="px-6 pt-2 gap-x-4 items-center justify-center">
               <VStack className="items-center flex-1">
-                <Text className="text-background-0/70 text-sm uppercase tracking-widest">
+                <Text className="text-white/70 text-sm uppercase tracking-widest">
                   Net
                 </Text>
-                <Text bold className="text-background-0 text-lg">
+                <Text bold className="text-white text-lg">
                   {formatAmount(primaryNet.amount, primaryNet.currency)}
                 </Text>
               </VStack>
               <Text className="text-white/20">|</Text>
               <VStack className="items-center flex-1">
-                <Text className="text-background-0/70 text-sm uppercase tracking-widest">
+                <Text className="text-white/70 text-sm uppercase tracking-widest">
                   Collect
                 </Text>
-                <Text bold className="text-background-0 text-lg">
+                <Text bold className="text-white text-lg">
                   {formatAmount(primaryReceive.amount, primaryReceive.currency)}
                 </Text>
               </VStack>
               <Text className="text-white/20">|</Text>
               <VStack className="items-center flex-1">
-                <Text className="text-background-0/70 text-sm uppercase tracking-widest">
+                <Text className="text-white/70 text-sm uppercase tracking-widest">
                   Pay
                 </Text>
-                <Text bold className="text-background-0 text-lg">
+                <Text bold className="text-white text-lg">
                   {formatAmount(primaryPay.amount, primaryPay.currency)}
                 </Text>
               </VStack>
@@ -549,59 +544,27 @@ export default function HomeScreen() {
                     flows below handle the still-loading case by skeletoning
                     their own group / payer fields rather than blocking here. */}
                 <HStack className="gap-x-2 justify-center">
-                    <ActionButton
-                      icon={
-                        <Zap
-                          size={24}
-                          color={getSecondaryHex(
-                            "text-secondary-0",
-                            colorScheme
-                          )}
-                        />
-                      }
-                      label="Quick Expense"
-                      onPress={handleOpenQuickAdd}
-                    />
-                    <ActionButton
-                      icon={
-                        <ListPlus
-                          size={24}
-                          color={getSecondaryHex(
-                            "text-secondary-0",
-                            colorScheme
-                          )}
-                        />
-                      }
-                      label="Custom Expense"
-                      onPress={handleCustomExpense}
-                    />
-                    <ActionButton
-                      icon={
-                        <HousePlus
-                          size={24}
-                          color={getSecondaryHex(
-                            "text-secondary-0",
-                            colorScheme
-                          )}
-                        />
-                      }
-                      label="Create Group"
-                      onPress={() => router.push("/groups/create")}
-                    />
-                    <ActionButton
-                      icon={
-                        <QrCode
-                          size={24}
-                          color={getSecondaryHex(
-                            "text-secondary-0",
-                            colorScheme
-                          )}
-                        />
-                      }
-                      label="Scan to Join"
-                      onPress={() => router.push("/scan" as any)}
-                    />
-                  </HStack>
+                  <ActionButton
+                    icon={<Zap size={24} color="#fff" />}
+                    label="Quick Expense"
+                    onPress={handleOpenQuickAdd}
+                  />
+                  <ActionButton
+                    icon={<ListPlus size={24} color="#fff" />}
+                    label="Custom Expense"
+                    onPress={handleCustomExpense}
+                  />
+                  <ActionButton
+                    icon={<HousePlus size={24} color="#fff" />}
+                    label="Create Group"
+                    onPress={() => router.push("/groups/create")}
+                  />
+                  <ActionButton
+                    icon={<QrCode size={24} color="#fff" />}
+                    label="Scan to Join"
+                    onPress={() => router.push("/scan" as any)}
+                  />
+                </HStack>
               </VStack>
             </Box>
 
@@ -739,7 +702,7 @@ function ActionButton({
             {icon}
           </Box>
 
-          <Text className="text-background-0 text-sm font-medium text-center leading-tight">
+          <Text className="text-white text-sm font-medium text-center leading-tight">
             {label}
           </Text>
         </VStack>
@@ -839,15 +802,15 @@ function StatItem({
     <VStack className="flex-1 gap-y-2">
       <HStack className="items-center gap-x-2">
         <SettlementAvatar isPayer={isReceive} light />
-        <Text className="text-background-0">{label}</Text>
+        <Text className="text-white">{label}</Text>
       </HStack>
       {isLoading ? (
-        <Text bold className="text-2xl text-background-0">
+        <Text bold className="text-2xl text-white">
           —
         </Text>
       ) : (
         <HStack className="items-center gap-x-2">
-          <Text bold className="text-2xl text-background-0">
+          <Text bold className="text-2xl text-white">
             {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
           </Text>
           <CurrencyCountButton
@@ -886,20 +849,20 @@ function NetBalanceRow({
 
   return (
     <VStack className="gap-y-2">
-      <Text bold className="text-sm text-background-0 uppercase">
+      <Text bold className="text-sm text-white uppercase">
         Net Balance
       </Text>
       {isLoading ? (
-        <Text bold className="text-4xl text-background-0">
+        <Text bold className="text-4xl text-white">
           —
         </Text>
       ) : (
         <HStack className="items-end gap-x-2">
-          <Text bold className="text-4xl text-background-0">
+          <Text bold className="text-4xl text-white">
             {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
           </Text>
           <HStack className="items-center gap-x-1 pb-1">
-            <Text className="text-background-0/70 text-base">
+            <Text className="text-white/70 text-base">
               {primary?.currency ?? primaryCurrency}
             </Text>
             <CurrencyCountButton
