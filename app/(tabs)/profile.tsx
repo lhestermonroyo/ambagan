@@ -323,7 +323,7 @@ export default function ProfileScreen() {
                   />
                 }
               />
-              <VStack className="gap-y-0.5 pb-6">
+              <VStack className="gap-y-0.5">
                 <HStack className="items-center justify-center gap-x-1">
                   <Copyright
                     size={12}
@@ -335,6 +335,7 @@ export default function ProfileScreen() {
                   </Text>
                 </HStack>
               </VStack>
+              <Box className="h-28" />
             </VStack>
           </VStack>
         </VStack>

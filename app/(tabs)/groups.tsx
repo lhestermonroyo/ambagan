@@ -238,9 +238,7 @@ export default function GroupsScreen() {
             {({ pressed }) => (
               <HStack
                 className={cn(
-                  pressed
-                    ? "bg-background-50"
-                    : "bg-white dark:bg-[#1F1F1F]",
+                  pressed ? "bg-background-50" : "bg-white dark:bg-[#1F1F1F]",
                   "flex-row items-center gap-x-2 p-4 rounded-full shadow-sm"
                 )}
               >
@@ -256,9 +254,7 @@ export default function GroupsScreen() {
             {({ pressed }) => (
               <HStack
                 className={cn(
-                  pressed
-                    ? "bg-background-50"
-                    : "bg-white dark:bg-[#1F1F1F]",
+                  pressed ? "bg-background-50" : "bg-white dark:bg-[#1F1F1F]",
                   "flex-row items-center gap-x-2 p-4 rounded-full shadow-sm"
                 )}
               >
@@ -274,7 +270,7 @@ export default function GroupsScreen() {
       )}
       <Fab
         placement="bottom right"
-        className="px-6"
+        className="px-6 bottom-28"
         isHovered={false}
         isDisabled={false}
         isPressed={false}
@@ -296,7 +292,7 @@ export default function GroupsScreen() {
         </FabLabel>
       </Fab>
       <TabLayout title="Groups">
-        <VStack className="bg-background-0 pb-3 gap-y-3">
+        <VStack className="bg-background-0 pb-4 gap-y-4">
           <Box className="px-4">
             <SearchInput
               onChangeText={handleSearchChange}
@@ -445,7 +441,7 @@ export default function GroupsScreen() {
                       onLoadMore={loadMore}
                     />
                   )}
-                  <Box className="h-16" />
+                  <Box className="h-44" />
                 </>
               )}
             />

@@ -190,7 +190,7 @@ export default function FriendsScreen() {
   return (
     <Fragment>
       <TabLayout title="Friends" actions={[]}>
-        <VStack className="bg-background-0 pb-3 gap-y-3">
+        <VStack className="bg-background-0 pb-4 gap-y-4">
           <Box className="px-4">
             <SearchInput
               value={searchInput}
@@ -263,10 +263,11 @@ export default function FriendsScreen() {
                   </Text>
                 )}
                 ListEmptyComponent={() => <EmptyList type={EmptyType.SEARCH} />}
+                ListFooterComponent={() => <Box className="h-28" />}
               />
             ) : mainTab === "balances" ? (
               <FlatList
-                data={balanceList} // Duplicate for testing
+                data={balanceList}
                 keyExtractor={(item) => item.friend.id}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
@@ -280,6 +281,7 @@ export default function FriendsScreen() {
                 )}
                 ItemSeparatorComponent={ListDivider}
                 ListEmptyComponent={() => <EmptyList type={EmptyType.FRIEND} />}
+                ListFooterComponent={() => <Box className="h-28" />}
               />
             ) : (
               // Contacts directory — favorites pinned, then everyone else.
@@ -298,6 +300,11 @@ export default function FriendsScreen() {
                       scrollEnabled={false}
                       renderItem={renderContactRow}
                       ItemSeparatorComponent={ListDivider}
+                      ListFooterComponent={() =>
+                        otherContacts.length === 0 ? (
+                          <Box className="h-28" />
+                        ) : null
+                      }
                     />
                   </VStack>
                 )}
@@ -321,6 +328,7 @@ export default function FriendsScreen() {
                         <EmptyList type={EmptyType.FRIEND} />
                       ) : null
                     }
+                    ListFooterComponent={() => <Box className="h-28" />}
                   />
                 </VStack>
               </VStack>

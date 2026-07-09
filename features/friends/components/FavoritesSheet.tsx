@@ -27,7 +27,7 @@ import { getUserSubtitle } from "@/utils/userDisplay";
 import { addRecentUser, getRecentUsers } from "@/utils/recentUsers";
 import { Heart } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { useColorScheme } from "react-native";
+import { ColorSchemeName, useColorScheme } from "react-native";
 
 export default function FavoritesSheet({
   isOpen,
@@ -181,7 +181,7 @@ function UserFavoriteItem({
 }: {
   item: UserPreview;
   isFavorite: boolean;
-  colorScheme: "light" | "dark";
+  colorScheme: ColorSchemeName;
   onToggle: (user: UserPreview) => void;
 }) {
   return (

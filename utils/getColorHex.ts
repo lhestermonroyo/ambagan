@@ -1,29 +1,37 @@
+import { ColorSchemeName } from "react-native";
+
+// RN 0.85 widened `useColorScheme()` to `ColorSchemeName` ("light" | "dark" |
+// "unspecified" | null). Normalize any non-dark value to "light" so callers can
+// pass the hook result directly.
+const normalizeScheme = (colorScheme: ColorSchemeName): "light" | "dark" =>
+  colorScheme === "dark" ? "dark" : "light";
+
 export const getSuccessHex = (
   className: keyof (typeof successColorMap)["light" | "dark"],
-  colorScheme: "light" | "dark" = "light"
+  colorScheme: ColorSchemeName = "light"
 ) => {
-  return successColorMap[colorScheme][className] || className;
+  return successColorMap[normalizeScheme(colorScheme)][className] || className;
 };
 
 export const getErrorHex = (
   className: keyof (typeof errorColorMap)["light" | "dark"],
-  colorScheme: "light" | "dark" = "light"
+  colorScheme: ColorSchemeName = "light"
 ) => {
-  return errorColorMap[colorScheme][className] || className;
+  return errorColorMap[normalizeScheme(colorScheme)][className] || className;
 };
 
 export const getPrimaryHex = (
   className: keyof (typeof primaryColorMap)["light" | "dark"],
-  colorScheme: "light" | "dark" = "light"
+  colorScheme: ColorSchemeName = "light"
 ) => {
-  return primaryColorMap[colorScheme][className] || className;
+  return primaryColorMap[normalizeScheme(colorScheme)][className] || className;
 };
 
 export const getSecondaryHex = (
   className: keyof (typeof secondaryColorMap)["light" | "dark"],
-  colorScheme: "light" | "dark" = "light"
+  colorScheme: ColorSchemeName = "light"
 ) => {
-  return secondaryColorMap[colorScheme][className] || className;
+  return secondaryColorMap[normalizeScheme(colorScheme)][className] || className;
 };
 
 const primaryColorMap = {

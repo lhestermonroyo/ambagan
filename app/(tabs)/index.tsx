@@ -495,169 +495,191 @@ export default function HomeScreen() {
             </HStack>
           </Animated.View>
         </Box>
-        <ScrollView
-          className="flex-1 bg-primary-400"
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false }
-          )}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
-        >
-          <VStack className="gap-y-4 bg-background-0 flex-1">
-            <Box className="bg-primary-400">
-              <VStack className="p-4 gap-y-6">
-                <VStack className="gap-y-4">
-                  {/* Net Balance Hero */}
-                  <NetBalanceRow
-                    isLoading={loading.stats}
-                    items={netBalance}
-                    primaryCurrency={defaultCurrency}
-                  />
-
-                  <Divider className="bg-white/20" />
-
-                  {/* Stat Columns */}
-                  <HStack className="items-stretch">
-                    <StatItem
-                      type="RECEIVE"
+        <Box className="flex-1 bg-background-0">
+          {/* The ScrollView itself is transparent. This white base is what the
+            translucent iOS 26 glass tab bar samples at the bottom, so it no
+            longer picks up purple. The purple backdrop below only fills the
+            top pull-to-refresh overscroll region — it never reaches the tabs,
+            and the native refresh spinner still renders over it. */}
+          <Box
+            className="absolute top-0 left-0 right-0 bg-primary-400"
+            style={{ height: 300 }}
+          />
+          <ScrollView
+            className="flex-1"
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: false }
+            )}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+              />
+            }
+          >
+            <VStack className="gap-y-4 bg-background-0 flex-1">
+              <Box className="bg-primary-400">
+                <VStack className="p-4 gap-y-6">
+                  <VStack className="gap-y-4">
+                    {/* Net Balance Hero */}
+                    <NetBalanceRow
                       isLoading={loading.stats}
-                      items={displayStats.toReceive}
+                      items={netBalance}
                       primaryCurrency={defaultCurrency}
                     />
-                    <Divider
-                      orientation="vertical"
-                      className="mx-4 bg-white/20"
+
+                    <Divider className="bg-white/20" />
+
+                    {/* Stat Columns */}
+                    <HStack className="items-stretch">
+                      <StatItem
+                        type="RECEIVE"
+                        isLoading={loading.stats}
+                        items={displayStats.toReceive}
+                        primaryCurrency={defaultCurrency}
+                      />
+                      <Divider
+                        orientation="vertical"
+                        className="mx-4 bg-white/20"
+                      />
+                      <StatItem
+                        type="PAY"
+                        isLoading={loading.stats}
+                        items={displayStats.toPay}
+                        primaryCurrency={defaultCurrency}
+                      />
+                    </HStack>
+                  </VStack>
+
+                  {/* Action Buttons stay live for instant entry — the expense
+                    flows below handle the still-loading case by skeletoning
+                    their own group / payer fields rather than blocking here. */}
+                  <HStack className="gap-x-2 justify-center">
+                    <ActionButton
+                      icon={<Zap size={24} color="#fff" />}
+                      label="Quick Expense"
+                      onPress={handleOpenQuickAdd}
                     />
-                    <StatItem
-                      type="PAY"
-                      isLoading={loading.stats}
-                      items={displayStats.toPay}
-                      primaryCurrency={defaultCurrency}
+                    <ActionButton
+                      icon={<ListPlus size={24} color="#fff" />}
+                      label="Custom Expense"
+                      onPress={handleCustomExpense}
+                    />
+                    <ActionButton
+                      icon={<HousePlus size={24} color="#fff" />}
+                      label="Create Group"
+                      onPress={() => router.push("/groups/create")}
+                    />
+                    <ActionButton
+                      icon={<QrCode size={24} color="#fff" />}
+                      label="Scan to Join"
+                      onPress={() => router.push("/scan" as any)}
                     />
                   </HStack>
                 </VStack>
+              </Box>
 
-                {/* Action Buttons stay live for instant entry — the expense
-                    flows below handle the still-loading case by skeletoning
-                    their own group / payer fields rather than blocking here. */}
-                <HStack className="gap-x-2 justify-center">
-                  <ActionButton
-                    icon={<Zap size={24} color="#fff" />}
-                    label="Quick Expense"
-                    onPress={handleOpenQuickAdd}
-                  />
-                  <ActionButton
-                    icon={<ListPlus size={24} color="#fff" />}
-                    label="Custom Expense"
-                    onPress={handleCustomExpense}
-                  />
-                  <ActionButton
-                    icon={<HousePlus size={24} color="#fff" />}
-                    label="Create Group"
-                    onPress={() => router.push("/groups/create")}
-                  />
-                  <ActionButton
-                    icon={<QrCode size={24} color="#fff" />}
-                    label="Scan to Join"
-                    onPress={() => router.push("/scan" as any)}
-                  />
-                </HStack>
-              </VStack>
-            </Box>
-
-            <VStack>
-              <HStack className="items-center justify-between px-4">
-                <Text bold className="text-2xl flex-1">
-                  Friends
-                </Text>
-                <Button variant="link" onPress={() => router.push("/friends")}>
-                  <Text className="text-primary-400 font-medium">View All</Text>
-                </Button>
-              </HStack>
-              <LoadingWrapper
-                isLoading={loading.friends}
-                skeleton={<FriendCardListSkeleton />}
-              >
-                {friends.length > 0 ? (
-                  <HScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
+              <VStack>
+                <HStack className="items-center justify-between px-4">
+                  <Text bold className="text-2xl flex-1">
+                    Friends
+                  </Text>
+                  <Button
+                    variant="link"
+                    onPress={() => router.push("/friends")}
                   >
-                    <HStack className="gap-x-2 px-4">
-                      {friendsPreview.map((item) => (
-                        <FriendCard
-                          key={item.friend.id}
-                          item={item}
-                          router={router}
-                        />
-                      ))}
-                    </HStack>
-                  </HScrollView>
-                ) : (
-                  <EmptyList type={EmptyType.FRIEND} />
-                )}
-              </LoadingWrapper>
-            </VStack>
-
-            <VStack>
-              <HStack className="items-center justify-between px-4">
-                <Text bold className="text-2xl">
-                  Recent Activities
-                </Text>
-              </HStack>
-              <LoadingWrapper
-                isLoading={loading.activities}
-                skeleton={<SettlementListSkeleton count={3} />}
-              >
-                <FlatList
-                  key={settlementView}
-                  data={activitiesPreview}
-                  extraData={settlementView}
-                  scrollEnabled={false}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={renderActivityItem}
-                  ItemSeparatorComponent={ListDivider}
-                  ListEmptyComponent={() => (
-                    <EmptyList type={EmptyType.ACTIVITY} />
+                    <Text className="text-primary-400 font-medium">
+                      View All
+                    </Text>
+                  </Button>
+                </HStack>
+                <LoadingWrapper
+                  isLoading={loading.friends}
+                  skeleton={<FriendCardListSkeleton />}
+                >
+                  {friends.length > 0 ? (
+                    <HScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                    >
+                      <HStack className="gap-x-2 px-4">
+                        {friendsPreview.map((item) => (
+                          <FriendCard
+                            key={item.friend.id}
+                            item={item}
+                            router={router}
+                          />
+                        ))}
+                      </HStack>
+                    </HScrollView>
+                  ) : (
+                    <EmptyList type={EmptyType.FRIEND} />
                   )}
-                />
-              </LoadingWrapper>
-            </VStack>
+                </LoadingWrapper>
+              </VStack>
 
-            <VStack>
-              <HStack className="items-center justify-between px-4">
-                <Text bold className="text-2xl">
-                  Recent Groups
-                </Text>
-                <Button variant="link" onPress={() => router.push("/groups")}>
-                  <Text className="text-primary-400 font-medium">View All</Text>
-                </Button>
-              </HStack>
-              <LoadingWrapper
-                isLoading={loading.groups}
-                skeleton={<GroupListSkeleton count={3} />}
-              >
-                <FlatList
-                  data={groupsPreview}
-                  scrollEnabled={false}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={renderGroupItem}
-                  ItemSeparatorComponent={ListDivider}
-                  ListEmptyComponent={() => (
-                    <EmptyList type={EmptyType.GROUP} />
-                  )}
-                />
-              </LoadingWrapper>
+              <VStack>
+                <HStack className="items-center justify-between px-4">
+                  <Text bold className="text-2xl">
+                    Recent Activities
+                  </Text>
+                </HStack>
+                <LoadingWrapper
+                  isLoading={loading.activities}
+                  skeleton={<SettlementListSkeleton count={3} />}
+                >
+                  <FlatList
+                    key={settlementView}
+                    data={activitiesPreview}
+                    extraData={settlementView}
+                    scrollEnabled={false}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={renderActivityItem}
+                    ItemSeparatorComponent={ListDivider}
+                    ListEmptyComponent={() => (
+                      <EmptyList type={EmptyType.ACTIVITY} />
+                    )}
+                  />
+                </LoadingWrapper>
+              </VStack>
+
+              <VStack>
+                <HStack className="items-center justify-between px-4">
+                  <Text bold className="text-2xl">
+                    Recent Groups
+                  </Text>
+                  <Button variant="link" onPress={() => router.push("/groups")}>
+                    <Text className="text-primary-400 font-medium">
+                      View All
+                    </Text>
+                  </Button>
+                </HStack>
+                <LoadingWrapper
+                  isLoading={loading.groups}
+                  skeleton={<GroupListSkeleton count={3} />}
+                >
+                  <FlatList
+                    data={groupsPreview}
+                    scrollEnabled={false}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={renderGroupItem}
+                    ItemSeparatorComponent={ListDivider}
+                    ListEmptyComponent={() => (
+                      <EmptyList type={EmptyType.GROUP} />
+                    )}
+                  />
+                </LoadingWrapper>
+              </VStack>
+              <Box
+                className="absolute left-0 right-0 bg-background-0"
+                style={{ bottom: -500, height: 500 }}
+              />
             </VStack>
-            <Box
-              className="absolute left-0 right-0 bg-background-0"
-              style={{ bottom: -500, height: 500 }}
-            />
-          </VStack>
-        </ScrollView>
+            <Box className="h-28" />
+          </ScrollView>
+        </Box>
       </KeyboardAvoidingView>
       <SettlementActionSheet
         isOpen={actionSheetOpen}

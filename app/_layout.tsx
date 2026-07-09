@@ -30,12 +30,17 @@ import {
   setCachedUserSession
 } from "@/utils/userCache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import Constants from "expo-constants";
 import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
-import { SplashScreen, Stack, useRouter } from "expo-router";
+import {
+  DefaultTheme,
+  SplashScreen,
+  Stack,
+  ThemeProvider,
+  useRouter
+} from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";

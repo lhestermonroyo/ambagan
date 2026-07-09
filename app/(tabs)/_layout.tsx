@@ -1,12 +1,14 @@
-import CustomTabBar from "@/components/CustomTabBar";
+import { LucideIcon } from "@/components/LucideIcon";
 import { View } from "@/components/ui/view";
 import PushNotificationPermissionSheet from "@/features/user/components/PushNotificationPermissionSheet";
 import services from "@/services";
 import states from "@/states";
+import { getPrimaryHex } from "@/utils/getColorHex";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import { Tabs } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { useEffect, useState } from "react";
+import { useColorScheme } from "react-native";
 
 const PUSH_ASKED_KEY = "@push_permission_asked";
 
@@ -53,20 +55,50 @@ export default function TabLayout() {
     } catch {}
   };
 
+  const colorScheme = useColorScheme() ?? "light";
+  // Brand purple for the selected tab; light/dark handled by getPrimaryHex.
+  const tintColor = getPrimaryHex("text-primary-600", colorScheme);
+
   return (
     <View style={{ flex: 1 }}>
-      <Tabs
-        tabBar={(props) => <CustomTabBar {...props} />}
-        screenOptions={{
-          headerShown: false,
-          animation: "none"
-        }}
-      >
-        <Tabs.Screen name="index" />
-        <Tabs.Screen name="groups" />
-        <Tabs.Screen name="friends" />
-        <Tabs.Screen name="profile" />
-      </Tabs>
+      <NativeTabs tintColor={tintColor} minimizeBehavior="onScrollDown">
+        <NativeTabs.Trigger name="index">
+          <NativeTabs.Trigger.Icon
+            renderingMode="template"
+            src={<NativeTabs.Trigger.VectorIcon family={LucideIcon} name="wallet" />}
+          />
+          <NativeTabs.Trigger.Label>Overview</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger name="groups">
+          <NativeTabs.Trigger.Icon
+            renderingMode="template"
+            src={<NativeTabs.Trigger.VectorIcon family={LucideIcon} name="house" />}
+          />
+          <NativeTabs.Trigger.Label>Groups</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger name="friends">
+          <NativeTabs.Trigger.Icon
+            renderingMode="template"
+            src={<NativeTabs.Trigger.VectorIcon family={LucideIcon} name="users" />}
+          />
+          <NativeTabs.Trigger.Label>Friends</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger name="profile">
+          <NativeTabs.Trigger.Icon
+            renderingMode="template"
+            src={
+              <NativeTabs.Trigger.VectorIcon
+                family={LucideIcon}
+                name="circle-user"
+              />
+            }
+          />
+          <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+      </NativeTabs>
 
       <PushNotificationPermissionSheet
         isOpen={permissionSheetOpen}
