@@ -559,22 +559,22 @@ export default function HomeScreen() {
                   <HStack className="gap-x-2 justify-center">
                     <ActionButton
                       icon={<Zap size={24} color="#fff" />}
-                      label="Quick Expense"
+                      label={`Quick\n\ Expense`}
                       onPress={handleOpenQuickAdd}
                     />
                     <ActionButton
                       icon={<ListPlus size={24} color="#fff" />}
-                      label="Custom Expense"
+                      label={`Custom\n\ Expense`}
                       onPress={handleCustomExpense}
                     />
                     <ActionButton
                       icon={<HousePlus size={24} color="#fff" />}
-                      label="Create Group"
+                      label={`Create\n\ Group`}
                       onPress={() => router.push("/groups/create")}
                     />
                     <ActionButton
                       icon={<QrCode size={24} color="#fff" />}
-                      label="Scan to Join"
+                      label={`Scan to\n\ Join`}
                       onPress={() => router.push("/scan" as any)}
                     />
                   </HStack>
@@ -711,7 +711,7 @@ function ActionButton({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-1 basis-0 min-w-0 justify-center"
+      className="flex-1 basis-0 min-w-0 justify-start"
     >
       {({ pressed }) => (
         <VStack className="items-center gap-y-2 px-4">

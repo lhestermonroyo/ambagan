@@ -5,16 +5,15 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import SearchInput from "@/components/SearchInput";
+import SearchDrawer from "@/components/SearchDrawer";
 import { GroupListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
-import { Fab, FabLabel } from "@/components/ui/fab";
 import { HStack } from "@/components/ui/hstack";
-import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import GroupAddSheet from "@/features/group/components/GroupAddSheet";
 import GroupItem from "@/features/group/components/GroupItem";
 import { GroupFilter } from "@/features/group/services/group.service";
 import useAppToast from "@/hooks/use-app-toast";
@@ -22,12 +21,9 @@ import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect, useRouter } from "expo-router";
-import { HousePlus, QrCode, X } from "lucide-react-native";
-import { Fragment, useMemo, useRef, useState } from "react";
-import { RefreshControl, useColorScheme } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { RefreshControl } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 const TABS: { key: GroupFilter; label: string }[] = [
@@ -44,19 +40,19 @@ export default function GroupsScreen() {
   const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [searchVisible, setSearchVisible] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [initialized, setInitialized] = useState(false);
   const [groups, setGroups] = useState<any[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [activeTab, setActiveTab] = useState<GroupFilter>("all");
-  const [fabOpen, setFabOpen] = useState(false);
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
 
   const activeTabRef = useRef<GroupFilter>("all");
 
   const { details: userDetails } = states.user();
 
-  const colorScheme = useColorScheme() ?? "light";
   const router = useRouter();
   const toast = useAppToast();
 
@@ -203,18 +199,24 @@ export default function GroupsScreen() {
   };
 
   const handleCreateGroup = () => {
-    setFabOpen(false);
+    setAddSheetOpen(false);
     router.push("/groups/create");
   };
 
   const handleScanToJoin = () => {
-    setFabOpen(false);
+    setAddSheetOpen(false);
     router.push("/scan" as any);
   };
 
   const handleSearchChange = (text: string) => {
     setSearchInput(text);
     setSearching(text.length > 0);
+  };
+
+  const handleCancelSearch = () => {
+    setSearchInput("");
+    setSearching(false);
+    setSearchVisible(false);
   };
 
   const filteredGroups = useMemo(() => {
@@ -225,105 +227,49 @@ export default function GroupsScreen() {
   }, [searchInput, groups]);
 
   return (
-    <Fragment>
-      {fabOpen && (
-        <Pressable
-          className="absolute inset-0 z-40"
-          onPress={() => setFabOpen(false)}
-        />
-      )}
-      {fabOpen && (
-        <VStack className="absolute bottom-20 right-4 z-50 gap-2 items-end">
-          <Pressable className="rounded-full" onPress={handleScanToJoin}>
-            {({ pressed }) => (
-              <HStack
-                className={cn(
-                  pressed ? "bg-background-50" : "bg-white dark:bg-[#1F1F1F]",
-                  "flex-row items-center gap-x-2 p-4 rounded-full shadow-sm"
-                )}
-              >
-                <QrCode
-                  size={18}
-                  color={getPrimaryHex("text-primary-400", colorScheme)}
-                />
-                <Text className="font-semibold">Scan to Join</Text>
-              </HStack>
-            )}
-          </Pressable>
-          <Pressable className="rounded-full" onPress={handleCreateGroup}>
-            {({ pressed }) => (
-              <HStack
-                className={cn(
-                  pressed ? "bg-background-50" : "bg-white dark:bg-[#1F1F1F]",
-                  "flex-row items-center gap-x-2 p-4 rounded-full shadow-sm"
-                )}
-              >
-                <HousePlus
-                  size={18}
-                  color={getSecondaryHex("text-secondary-950", colorScheme)}
-                />
-                <Text className="font-semibold">Create Group</Text>
-              </HStack>
-            )}
-          </Pressable>
-        </VStack>
-      )}
-      <Fab
-        placement="bottom right"
-        className="px-6 bottom-28"
-        isHovered={false}
-        isDisabled={false}
-        isPressed={false}
-        onPress={() => setFabOpen((prev) => !prev)}
-      >
-        {fabOpen ? (
-          <X
-            size={18}
-            color={getSecondaryHex("text-secondary-0", colorScheme)}
-          />
-        ) : (
-          <HousePlus
-            size={18}
-            color={getSecondaryHex("text-secondary-0", colorScheme)}
-          />
-        )}
-        <FabLabel className="text-lg font-medium">
-          {fabOpen ? "Close" : "Add Group"}
-        </FabLabel>
-      </Fab>
-      <TabLayout title="Groups">
-        <VStack className="bg-background-0 pb-4 gap-y-4">
-          <Box className="px-4">
-            <SearchInput
-              onChangeText={handleSearchChange}
-              value={searchInput}
-              placeholder="Search groups"
-            />
-          </Box>
-
-          {!searching && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <HStack className="gap-x-2 px-4">
-                {TABS.map((tab) => (
-                  <FormButton
-                    key={tab.key}
-                    size="sm"
-                    variant={activeTab === tab.key ? "solid" : "outline"}
-                    text={tab.label}
-                    onPress={() => handleTabChange(tab.key)}
-                  />
-                ))}
-              </HStack>
-            </ScrollView>
-          )}
-        </VStack>
-
+    <TabLayout
+      title="Groups"
+      actions={[
+        {
+          key: "search",
+          sf: "magnifyingglass",
+          label: "Search groups",
+          onPress: () => setSearchVisible(true)
+        },
+        {
+          key: "add",
+          sf: "plus",
+          label: "Add group",
+          onPress: () => setAddSheetOpen(true)
+        }
+      ]}
+    >
+      <Box className="flex-1 bg-background-0">
         <ScrollView
           className="flex-1"
+          contentInsetAdjustmentBehavior="automatic"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
+          <VStack className="bg-background-0 pb-4 gap-y-4 pt-2">
+            {!searching && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <HStack className="gap-x-2 px-4">
+                  {TABS.map((tab) => (
+                    <FormButton
+                      key={tab.key}
+                      size="sm"
+                      variant={activeTab === tab.key ? "solid" : "outline"}
+                      text={tab.label}
+                      onPress={() => handleTabChange(tab.key)}
+                    />
+                  ))}
+                </HStack>
+              </ScrollView>
+            )}
+          </VStack>
+
           <LoadingWrapper isLoading={loading} skeleton={<GroupListSkeleton />}>
             <SwipeListView
               className="flex-1"
@@ -441,13 +387,28 @@ export default function GroupsScreen() {
                       onLoadMore={loadMore}
                     />
                   )}
-                  <Box className="h-44" />
                 </>
               )}
             />
           </LoadingWrapper>
         </ScrollView>
-      </TabLayout>
-    </Fragment>
+
+        <GroupAddSheet
+          isOpen={addSheetOpen}
+          onClose={() => setAddSheetOpen(false)}
+          onCreate={handleCreateGroup}
+          onScan={handleScanToJoin}
+        />
+
+        <SearchDrawer
+          isOpen={searchVisible}
+          onClose={() => setSearchVisible(false)}
+          onCancel={handleCancelSearch}
+          value={searchInput}
+          onChangeText={handleSearchChange}
+          placeholder="Search groups"
+        />
+      </Box>
+    </TabLayout>
   );
 }

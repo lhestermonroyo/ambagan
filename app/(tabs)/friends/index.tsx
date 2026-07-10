@@ -2,7 +2,7 @@ import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import SearchInput from "@/components/SearchInput";
+import SearchDrawer from "@/components/SearchDrawer";
 import { FriendListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
@@ -20,7 +20,7 @@ import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { RefreshControl } from "react-native";
 
 type MainTab = "balances" | "contacts";
@@ -43,6 +43,7 @@ export default function FriendsScreen() {
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [recentFriends, setRecentFriends] = useState<UserPreview[]>([]);
   const [searchInput, setSearchInput] = useState("");
+  const [searchVisible, setSearchVisible] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [mainTab, setMainTab] = useState<MainTab>("balances");
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
@@ -98,6 +99,11 @@ export default function FriendsScreen() {
       loadRecentFriends()
     ]);
     setRefreshing(false);
+  };
+
+  const handleCancelSearch = () => {
+    setSearchInput("");
+    setSearchVisible(false);
   };
 
   const handlePress = useCallback(
@@ -188,57 +194,62 @@ export default function FriendsScreen() {
   );
 
   return (
-    <Fragment>
-      <TabLayout title="Friends" actions={[]}>
-        <VStack className="bg-background-0 pb-4 gap-y-4">
-          <Box className="px-4">
-            <SearchInput
-              value={searchInput}
-              onChangeText={setSearchInput}
-              placeholder="Search friends"
-            />
-          </Box>
-
-          {/* Balances / Contacts tabs under the search */}
-          {!isSearchActive && (
-            <HStack className="px-4 gap-x-2">
-              {MAIN_TABS.map((tab) => (
-                <FormButton
-                  key={tab.key}
-                  className="flex-1"
-                  size="sm"
-                  variant={mainTab === tab.key ? "solid" : "outline"}
-                  text={tab.label}
-                  onPress={() => setMainTab(tab.key)}
-                />
-              ))}
-            </HStack>
-          )}
-
-          {/* Balance direction filter — only on the Balances tab, not searching */}
-          {!isSearchActive && mainTab === "balances" && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <HStack className="gap-x-2 px-4">
-                {BALANCE_FILTERS.map((filter) => (
-                  <FormButton
-                    key={filter.key}
-                    size="sm"
-                    variant={balanceFilter === filter.key ? "solid" : "outline"}
-                    text={filter.label}
-                    onPress={() => setBalanceFilter(filter.key)}
-                  />
-                ))}
-              </HStack>
-            </ScrollView>
-          )}
-        </VStack>
-
+    <TabLayout
+      title="Friends"
+      actions={[
+        {
+          key: "search",
+          sf: "magnifyingglass",
+          label: "Search friends",
+          onPress: () => setSearchVisible(true)
+        }
+      ]}
+    >
+      <Box className="flex-1 bg-background-0">
         <ScrollView
           className="flex-1"
+          contentInsetAdjustmentBehavior="automatic"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
+          <VStack className="bg-background-0 pb-4 gap-y-4 pt-2">
+            {/* Balances / Contacts tabs under the search */}
+            {!isSearchActive && (
+              <HStack className="px-4 gap-x-2">
+                {MAIN_TABS.map((tab) => (
+                  <FormButton
+                    key={tab.key}
+                    className="flex-1"
+                    size="sm"
+                    variant={mainTab === tab.key ? "solid" : "outline"}
+                    text={tab.label}
+                    onPress={() => setMainTab(tab.key)}
+                  />
+                ))}
+              </HStack>
+            )}
+
+            {/* Balance direction filter — only on the Balances tab, not searching */}
+            {!isSearchActive && mainTab === "balances" && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <HStack className="gap-x-2 px-4">
+                  {BALANCE_FILTERS.map((filter) => (
+                    <FormButton
+                      key={filter.key}
+                      size="sm"
+                      variant={
+                        balanceFilter === filter.key ? "solid" : "outline"
+                      }
+                      text={filter.label}
+                      onPress={() => setBalanceFilter(filter.key)}
+                    />
+                  ))}
+                </HStack>
+              </ScrollView>
+            )}
+          </VStack>
+
           <LoadingWrapper isLoading={loading} skeleton={<FriendListSkeleton />}>
             {isSearchActive ? (
               // Unified global search across balances + contacts.
@@ -263,7 +274,6 @@ export default function FriendsScreen() {
                   </Text>
                 )}
                 ListEmptyComponent={() => <EmptyList type={EmptyType.SEARCH} />}
-                ListFooterComponent={() => <Box className="h-28" />}
               />
             ) : mainTab === "balances" ? (
               <FlatList
@@ -281,7 +291,6 @@ export default function FriendsScreen() {
                 )}
                 ItemSeparatorComponent={ListDivider}
                 ListEmptyComponent={() => <EmptyList type={EmptyType.FRIEND} />}
-                ListFooterComponent={() => <Box className="h-28" />}
               />
             ) : (
               // Contacts directory — favorites pinned, then everyone else.
@@ -300,11 +309,6 @@ export default function FriendsScreen() {
                       scrollEnabled={false}
                       renderItem={renderContactRow}
                       ItemSeparatorComponent={ListDivider}
-                      ListFooterComponent={() =>
-                        otherContacts.length === 0 ? (
-                          <Box className="h-28" />
-                        ) : null
-                      }
                     />
                   </VStack>
                 )}
@@ -328,14 +332,22 @@ export default function FriendsScreen() {
                         <EmptyList type={EmptyType.FRIEND} />
                       ) : null
                     }
-                    ListFooterComponent={() => <Box className="h-28" />}
                   />
                 </VStack>
               </VStack>
             )}
           </LoadingWrapper>
         </ScrollView>
-      </TabLayout>
-    </Fragment>
+
+        <SearchDrawer
+          isOpen={searchVisible}
+          onClose={() => setSearchVisible(false)}
+          onCancel={handleCancelSearch}
+          value={searchInput}
+          onChangeText={setSearchInput}
+          placeholder="Search friends"
+        />
+      </Box>
+    </TabLayout>
   );
 }

@@ -235,7 +235,8 @@ export default function ProfileScreen() {
 
   return (
     <TabLayout title="Profile">
-      <ScrollView className="flex-1">
+      <Box className="flex-1 bg-background-0">
+        <ScrollView className="flex-1" contentInsetAdjustmentBehavior="automatic">
         <VStack className="gap-y-6 pt-4">
           <VStack className="gap-y-4">
             <HStack className="px-4 gap-x-4 items-center">
@@ -387,6 +388,7 @@ export default function ProfileScreen() {
           });
         }}
       />
+      </Box>
     </TabLayout>
   );
 }
