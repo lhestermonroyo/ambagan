@@ -40,6 +40,7 @@ export default function TabLayout({
         options={{
           headerShown: true,
           headerLargeTitle: false,
+          headerShadowVisible: false,
           headerTitle: () => (
             <Text bold className="flex-1 text-3xl">
               {title}
@@ -50,7 +51,7 @@ export default function TabLayout({
 
       {/* SF Symbols are iOS-only; on Android the header shows just the title. */}
       {Platform.OS === "ios" && actions && actions.length > 0 && (
-        <Stack.Toolbar placement="right">
+        <Stack.Toolbar placement="right" tintColor="red">
           {actions.map((action) => (
             <Stack.Toolbar.Button
               key={action.key}

@@ -236,158 +236,166 @@ export default function ProfileScreen() {
   return (
     <TabLayout title="Profile">
       <Box className="flex-1 bg-background-0">
-        <ScrollView className="flex-1" contentInsetAdjustmentBehavior="automatic">
-        <VStack className="gap-y-6 pt-4">
-          <VStack className="gap-y-4">
-            <HStack className="px-4 gap-x-4 items-center">
-              <VStack>
-                <AppAvatar
-                  className="self-center"
-                  uri={userDetails?.avatar || ""}
-                  name={userDetails?.first_name || "User Avatar"}
-                  size="lg"
-                />
-              </VStack>
-              <VStack className="flex-1">
-                <HStack className="items-center gap-x-2">
-                  <Text bold className="text-2xl flex-shrink" numberOfLines={2}>
-                    {userDetails?.first_name} {userDetails?.last_name}
-                  </Text>
-                  {isPro && <ProBadge />}
-                </HStack>
-                <Text className="text-secondary-950">{userDetails?.email}</Text>
-              </VStack>
-            </HStack>
-            <Pressable
-              className="mx-4"
-              onPress={() => router.push("/profile/subscription")}
-            >
-              <Box
-                className={cn(
-                  "rounded-2xl p-4 flex-row items-center gap-x-2",
-                  isPro ? "bg-primary-400" : "bg-warning-400"
-                )}
-              >
-                <Box className="bg-background-0 rounded-full p-4">
-                  <Crown
-                    size={24}
-                    color={
-                      isPro
-                        ? getPrimaryHex("text-primary-400", colorScheme)
-                        : "#d97706"
-                    }
+        <ScrollView
+          className="flex-1"
+          contentInsetAdjustmentBehavior="automatic"
+        >
+          <VStack className="gap-y-6 pt-4">
+            <VStack className="gap-y-4">
+              <HStack className="px-4 gap-x-4 items-center">
+                <VStack>
+                  <AppAvatar
+                    className="self-center"
+                    uri={userDetails?.avatar || ""}
+                    name={userDetails?.first_name || "User Avatar"}
+                    size="lg"
                   />
-                </Box>
+                </VStack>
                 <VStack className="flex-1">
-                  <Text bold className="text-background-0 text-xl">
-                    {isPro ? "You're on Pro!" : "Upgrade to Pro!"}
-                  </Text>
-                  <Text className="text-background-0 opacity-80">
-                    {isPro
-                      ? "Manage your active subscription"
-                      : "No daily limits, CSV exports & more"}
+                  <HStack className="items-center gap-x-2">
+                    <Text
+                      bold
+                      className="text-2xl flex-shrink"
+                      numberOfLines={2}
+                    >
+                      {userDetails?.first_name} {userDetails?.last_name}
+                    </Text>
+                    {isPro && <ProBadge />}
+                  </HStack>
+                  <Text className="text-secondary-950">
+                    {userDetails?.email}
                   </Text>
                 </VStack>
-                <Icon as="chevron-right" className="text-secondary-0" />
-              </Box>
-            </Pressable>
-          </VStack>
-
-          <VStack className="gap-y-2">
-            {menuSections.map((section) => (
-              <VStack key={section.title}>
-                <Text
-                  bold
-                  className="text-sm text-secondary-950 uppercase px-4 pb-2"
+              </HStack>
+              <Pressable
+                className="mx-4"
+                onPress={() => router.push("/profile/subscription")}
+              >
+                <Box
+                  className={cn(
+                    "rounded-2xl p-4 flex-row items-center gap-x-2",
+                    isPro ? "bg-primary-400" : "bg-warning-400"
+                  )}
                 >
-                  {section.title}
-                </Text>
-                <FlatList
-                  data={section.items}
-                  keyExtractor={(item) => item.label}
-                  scrollEnabled={false}
-                  renderItem={({ item }) => <MenuItem item={item} />}
-                  ItemSeparatorComponent={ListDivider}
-                />
-              </VStack>
-            ))}
+                  <Box className="bg-background-0 rounded-full p-4">
+                    <Crown
+                      size={24}
+                      color={
+                        isPro
+                          ? getPrimaryHex("text-primary-400", colorScheme)
+                          : "#d97706"
+                      }
+                    />
+                  </Box>
+                  <VStack className="flex-1">
+                    <Text bold className="text-background-0 text-xl">
+                      {isPro ? "You're on Pro!" : "Upgrade to Pro!"}
+                    </Text>
+                    <Text className="text-background-0 opacity-80">
+                      {isPro
+                        ? "Manage your active subscription"
+                        : "No daily limits, CSV exports & more"}
+                    </Text>
+                  </VStack>
+                  <Icon as="chevron-right" className="text-secondary-0" />
+                </Box>
+              </Pressable>
+            </VStack>
 
-            <VStack className="px-4 mt-8 gap-y-4">
-              <FormButton
-                text="Sign Out"
-                action="negative"
-                onPress={handleSignOut}
-                icon={
-                  <LogOut
-                    size={18}
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
-                  />
-                }
-              />
-              <VStack className="gap-y-0.5">
-                <HStack className="items-center justify-center gap-x-1">
-                  <Copyright
-                    size={12}
-                    color={getSecondaryHex("text-secondary-950", colorScheme)}
-                  />
-                  <Text className="text-center text-sm text-secondary-950">
-                    {new Date().getFullYear()} Ambagan &bull; v
-                    {Constants.expoConfig?.version ?? "1.0.0"}
+            <VStack className="gap-y-2">
+              {menuSections.map((section) => (
+                <VStack key={section.title}>
+                  <Text
+                    bold
+                    className="text-sm text-secondary-950 uppercase px-4 pb-2"
+                  >
+                    {section.title}
                   </Text>
-                </HStack>
+                  <FlatList
+                    data={section.items}
+                    keyExtractor={(item) => item.label}
+                    scrollEnabled={false}
+                    renderItem={({ item }) => <MenuItem item={item} />}
+                    ItemSeparatorComponent={ListDivider}
+                  />
+                </VStack>
+              ))}
+
+              <VStack className="px-4 mt-8 gap-y-4">
+                <FormButton
+                  text="Sign Out"
+                  action="negative"
+                  onPress={handleSignOut}
+                  icon={
+                    <LogOut
+                      size={18}
+                      color={getSecondaryHex("text-secondary-0", colorScheme)}
+                    />
+                  }
+                />
+                <VStack className="gap-y-0.5 pb-12">
+                  <HStack className="items-center justify-center gap-x-1">
+                    <Copyright
+                      size={12}
+                      color={getSecondaryHex("text-secondary-950", colorScheme)}
+                    />
+                    <Text className="text-center text-sm text-secondary-950">
+                      {new Date().getFullYear()} Ambagan &bull; v
+                      {Constants.expoConfig?.version ?? "1.0.0"}
+                    </Text>
+                  </HStack>
+                </VStack>
               </VStack>
-              <Box className="h-28" />
             </VStack>
           </VStack>
-        </VStack>
-      </ScrollView>
+        </ScrollView>
 
-      <UpgradeSheet
-        isOpen={analyticsUpgradeOpen}
-        onClose={() => setAnalyticsUpgradeOpen(false)}
-        description="Spending Analytics is a Pro feature. Upgrade to see where your money goes."
-      />
+        <UpgradeSheet
+          isOpen={analyticsUpgradeOpen}
+          onClose={() => setAnalyticsUpgradeOpen(false)}
+          description="Spending Analytics is a Pro feature. Upgrade to see where your money goes."
+        />
 
-      <UpgradeSheet
-        isOpen={currencyUpgradeOpen}
-        onClose={() => setCurrencyUpgradeOpen(false)}
-        description="Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
-      />
+        <UpgradeSheet
+          isOpen={currencyUpgradeOpen}
+          onClose={() => setCurrencyUpgradeOpen(false)}
+          description="Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
+        />
 
-      <AppearanceSheet
-        isOpen={appearanceOpen}
-        onClose={() => setAppearanceOpen(false)}
-      />
+        <AppearanceSheet
+          isOpen={appearanceOpen}
+          onClose={() => setAppearanceOpen(false)}
+        />
 
-      <SettlementViewSheet
-        isOpen={settlementViewOpen}
-        onClose={() => setSettlementViewOpen(false)}
-      />
+        <SettlementViewSheet
+          isOpen={settlementViewOpen}
+          onClose={() => setSettlementViewOpen(false)}
+        />
 
-      <NotificationsSheet
-        isOpen={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-      />
+        <NotificationsSheet
+          isOpen={notificationsOpen}
+          onClose={() => setNotificationsOpen(false)}
+        />
 
-      <CurrencySelectionSheet
-        isOpen={currencyOpen}
-        currency={defaultCurrency}
-        title="Select Default Currency"
-        disabled={!isOnline}
-        onClose={() => setCurrencyOpen(false)}
-        onCurrencyChange={(currency) => {
-          if (!userDetails?.id) return;
+        <CurrencySelectionSheet
+          isOpen={currencyOpen}
+          currency={defaultCurrency}
+          title="Select Default Currency"
+          disabled={!isOnline}
+          onClose={() => setCurrencyOpen(false)}
+          onCurrencyChange={(currency) => {
+            if (!userDetails?.id) return;
 
-          setDefaultCurrency(userDetails.id, currency);
+            setDefaultCurrency(userDetails.id, currency);
 
-          const label = currencies.find((c) => c.value === currency)?.label;
-          toast({
-            title: "Default Currency Updated",
-            description: `Default currency set to ${label}.`,
-            type: "success"
-          });
-        }}
-      />
+            const label = currencies.find((c) => c.value === currency)?.label;
+            toast({
+              title: "Default Currency Updated",
+              description: `Default currency set to ${label}.`,
+              type: "success"
+            });
+          }}
+        />
       </Box>
     </TabLayout>
   );

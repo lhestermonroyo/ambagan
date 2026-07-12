@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
-import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
 import { Pressable } from "@/components/ui/pressable";
 import {
   ScrollView as HScrollView,
@@ -32,12 +31,13 @@ import services from "@/services";
 import states from "@/states";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
+import { getPrimaryHex } from "@/utils/getColorHex";
 import { prefetchGroupDetails } from "@/utils/offlinePrefetch";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { getReminderEnabled } from "@/utils/reminderPreference";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import * as Notifications from "expo-notifications";
-import { useFocusEffect, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import {
   Bell,
   CircleQuestionMark,
@@ -118,6 +118,14 @@ export default function HomeScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
 
+  // Purple header that blends into the Net Balance card below (bg-primary-400).
+  // The greeting sits on that purple, so it renders white.
+  const headerBg = getPrimaryHex("text-primary-400", colorScheme);
+  const tintColor = "#fff";
+  const buttonBg = getPrimaryHex("text-primary-400", colorScheme);
+
+  // Drives the compact net-balance bar that fades in — pinned just under the
+  // native header — once the full hero card has scrolled out of view.
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const primaryNet = useMemo(() => {
@@ -153,7 +161,11 @@ export default function HomeScreen() {
     return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
   }, [displayStats.toPay, defaultCurrency]);
 
-  const COMPACT_THRESHOLD = 180;
+  // The hero card is ~250pt tall; start the fade partway through so the compact
+  // bar is fully in by the time the hero is gone. `contentInsetAdjustmentBehavior`
+  // seeds scrollY negative at rest, which only delays the fade — never triggers
+  // it early — so a fixed threshold is safe here.
+  const COMPACT_THRESHOLD = 200;
   const compactOpacity = scrollY.interpolate({
     inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
     outputRange: [0, 1],
@@ -162,11 +174,6 @@ export default function HomeScreen() {
   const compactTranslateY = scrollY.interpolate({
     inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
     outputRange: [-16, 0],
-    extrapolate: "clamp"
-  });
-  const compactHeight = scrollY.interpolate({
-    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
-    outputRange: [0, 60],
     extrapolate: "clamp"
   });
 
@@ -393,6 +400,15 @@ export default function HomeScreen() {
     router.push("/groups/[groupId]/new-expense");
   }, [router]);
 
+  const handleOpenHelp = useCallback(
+    () => router.push("/profile/help-center"),
+    [router]
+  );
+  const handleOpenNotifications = useCallback(
+    () => router.push("/notifications"),
+    [router]
+  );
+
   const renderActivityItem = useCallback(
     ({ item }: { item: PaymentPreview }) => (
       <SettlementItem item={item} onPress={() => handleOpenActionSheet(item)} />
@@ -412,275 +428,290 @@ export default function HomeScreen() {
 
   return (
     <Fragment>
-      <KeyboardAvoidingView
-        className="flex-1 bg-secondary-0"
-        behavior="padding"
-      >
-        <Box className="sticky top-0 bg-primary-400">
-          <HStack
-            className={cn(
-              "items-center justify-center px-4 pb-2",
-              Platform.OS === "android" ? "pt-[3.5rem]" : "pt-[5rem]"
-            )}
-          >
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerLargeTitle: false,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: headerBg },
+          headerTitle: () => (
             <VStack className="flex-1">
-              <Text className="text-white/70">Hello,</Text>
-              <Text bold className="text-xl text-white">
+              <Text className="text-sm text-white/70 leading-tight">
+                Hello,
+              </Text>
+              <Text
+                bold
+                className="text-xl text-white leading-tight"
+                numberOfLines={1}
+              >
                 {userDetails?.first_name} {userDetails?.last_name}
               </Text>
             </VStack>
-            <HStack className="gap-x-6">
-              <Button
-                variant="link"
-                className="rounded-full"
-                onPress={() => router.push("/profile/help-center")}
-              >
-                <CircleQuestionMark color="#fff" />
-              </Button>
-              <Button
-                variant="link"
-                className="rounded-full"
-                onPress={() => router.push("/notifications")}
-              >
-                <Box className="relative">
-                  <Bell color="#fff" />
-                  {unreadCount > 0 && (
-                    <Box className="absolute -top-1 -right-1 bg-error-400 rounded-full flex px-1 min-w-4 h-4 items-center justify-center">
-                      <Text className="text-white text-2xs font-semibold">
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </Text>
-                    </Box>
-                  )}
-                </Box>
-              </Button>
-            </HStack>
-          </HStack>
+          ),
+          headerRight:
+            Platform.OS === "android"
+              ? () => (
+                  <HStack className="items-center gap-x-4 pr-1">
+                    <Button
+                      variant="link"
+                      className="rounded-full"
+                      onPress={handleOpenHelp}
+                    >
+                      <CircleQuestionMark color={tintColor} />
+                    </Button>
+                    <Button
+                      variant="link"
+                      className="rounded-full"
+                      onPress={handleOpenNotifications}
+                    >
+                      <Box className="relative">
+                        <Bell color={tintColor} />
+                        {unreadCount > 0 && (
+                          <Box className="absolute -top-1 -right-1 bg-error-400 rounded-full flex px-1 min-w-4 h-4 items-center justify-center">
+                            <Text className="text-white text-2xs font-semibold">
+                              {unreadCount > 9 ? "9+" : unreadCount}
+                            </Text>
+                          </Box>
+                        )}
+                      </Box>
+                    </Button>
+                  </HStack>
+                )
+              : undefined
+        }}
+      />
 
-          {/* Compact sticky stats — fades in as card scrolls out */}
-          <Animated.View
-            style={{
-              height: compactHeight,
-              opacity: compactOpacity,
-              overflow: "hidden",
-              transform: [{ translateY: compactTranslateY }]
-            }}
-          >
-            <HStack className="px-6 pt-2 gap-x-4 items-center justify-center">
-              <VStack className="items-center flex-1">
-                <Text className="text-white/70 text-sm uppercase tracking-widest">
-                  Net
-                </Text>
-                <Text bold className="text-white text-lg">
-                  {formatAmount(primaryNet.amount, primaryNet.currency)}
-                </Text>
-              </VStack>
-              <Text className="text-white/20">|</Text>
-              <VStack className="items-center flex-1">
-                <Text className="text-white/70 text-sm uppercase tracking-widest">
-                  Collect
-                </Text>
-                <Text bold className="text-white text-lg">
-                  {formatAmount(primaryReceive.amount, primaryReceive.currency)}
-                </Text>
-              </VStack>
-              <Text className="text-white/20">|</Text>
-              <VStack className="items-center flex-1">
-                <Text className="text-white/70 text-sm uppercase tracking-widest">
-                  Pay
-                </Text>
-                <Text bold className="text-white text-lg">
-                  {formatAmount(primaryPay.amount, primaryPay.currency)}
-                </Text>
-              </VStack>
-            </HStack>
-          </Animated.View>
-        </Box>
-        <Box className="flex-1 bg-background-0">
-          {/* The ScrollView itself is transparent. This white base is what the
-            translucent iOS 26 glass tab bar samples at the bottom, so it no
-            longer picks up purple. The purple backdrop below only fills the
-            top pull-to-refresh overscroll region — it never reaches the tabs,
-            and the native refresh spinner still renders over it. */}
-          <Box
-            className="absolute top-0 left-0 right-0 bg-primary-400"
-            style={{ height: 300 }}
+      {/* iOS 26 native toolbar buttons in the `prominent` (filled glass) style —
+        `sharesBackground` (expo-router's default) keeps the two in a single
+        grouped background rather than two detached capsules. */}
+      {Platform.OS === "ios" && (
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            icon="questionmark.circle"
+            tintColor={buttonBg}
+            accessibilityLabel="Help center"
+            onPress={handleOpenHelp}
           />
-          <ScrollView
-            className="flex-1"
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: false }
-            )}
-            scrollEventThrottle={16}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-              />
-            }
-          >
-            <VStack className="gap-y-4 bg-background-0 flex-1">
-              <Box className="bg-primary-400">
-                <VStack className="p-4 gap-y-6">
-                  <VStack className="gap-y-4">
-                    {/* Net Balance Hero */}
-                    <NetBalanceRow
+          <Stack.Toolbar.Button
+            icon={unreadCount > 0 ? "bell.badge" : "bell"}
+            tintColor={buttonBg}
+            accessibilityLabel="Notifications"
+            onPress={handleOpenNotifications}
+          />
+        </Stack.Toolbar>
+      )}
+
+      <Box className="flex-1 bg-background-0">
+        <Box
+          className="absolute top-0 left-0 right-0 bg-primary-400"
+          style={{ height: 300 }}
+        />
+        <ScrollView
+          className="flex-1"
+          contentInsetAdjustmentBehavior="automatic"
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+          )}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
+          <VStack className="gap-y-4 bg-background-0 flex-1">
+            <Box className="bg-primary-400">
+              <VStack className="p-4 gap-y-6">
+                <VStack className="gap-y-4">
+                  {/* Net Balance Hero */}
+                  <NetBalanceRow
+                    isLoading={loading.stats}
+                    items={netBalance}
+                    primaryCurrency={defaultCurrency}
+                  />
+
+                  <Divider className="bg-white/20" />
+
+                  {/* Stat Columns */}
+                  <HStack className="items-stretch">
+                    <StatItem
+                      type="RECEIVE"
                       isLoading={loading.stats}
-                      items={netBalance}
+                      items={displayStats.toReceive}
                       primaryCurrency={defaultCurrency}
                     />
-
-                    <Divider className="bg-white/20" />
-
-                    {/* Stat Columns */}
-                    <HStack className="items-stretch">
-                      <StatItem
-                        type="RECEIVE"
-                        isLoading={loading.stats}
-                        items={displayStats.toReceive}
-                        primaryCurrency={defaultCurrency}
-                      />
-                      <Divider
-                        orientation="vertical"
-                        className="mx-4 bg-white/20"
-                      />
-                      <StatItem
-                        type="PAY"
-                        isLoading={loading.stats}
-                        items={displayStats.toPay}
-                        primaryCurrency={defaultCurrency}
-                      />
-                    </HStack>
-                  </VStack>
-
-                  {/* Action Buttons stay live for instant entry — the expense
-                    flows below handle the still-loading case by skeletoning
-                    their own group / payer fields rather than blocking here. */}
-                  <HStack className="gap-x-2 justify-center">
-                    <ActionButton
-                      icon={<Zap size={24} color="#fff" />}
-                      label={`Quick\n\ Expense`}
-                      onPress={handleOpenQuickAdd}
+                    <Divider
+                      orientation="vertical"
+                      className="mx-4 bg-white/20"
                     />
-                    <ActionButton
-                      icon={<ListPlus size={24} color="#fff" />}
-                      label={`Custom\n\ Expense`}
-                      onPress={handleCustomExpense}
-                    />
-                    <ActionButton
-                      icon={<HousePlus size={24} color="#fff" />}
-                      label={`Create\n\ Group`}
-                      onPress={() => router.push("/groups/create")}
-                    />
-                    <ActionButton
-                      icon={<QrCode size={24} color="#fff" />}
-                      label={`Scan to\n\ Join`}
-                      onPress={() => router.push("/scan" as any)}
+                    <StatItem
+                      type="PAY"
+                      isLoading={loading.stats}
+                      items={displayStats.toPay}
+                      primaryCurrency={defaultCurrency}
                     />
                   </HStack>
                 </VStack>
-              </Box>
 
-              <VStack>
-                <HStack className="items-center justify-between px-4">
-                  <Text bold className="text-2xl flex-1">
-                    Friends
-                  </Text>
-                  <Button
-                    variant="link"
-                    onPress={() => router.push("/friends")}
+                {/* Action Buttons stay live for instant entry — the expense
+                  flows below handle the still-loading case by skeletoning
+                  their own group / payer fields rather than blocking here. */}
+                <HStack className="gap-x-2 justify-center">
+                  <ActionButton
+                    icon={<Zap size={24} color="#fff" />}
+                    label={`Quick\n\ Expense`}
+                    onPress={handleOpenQuickAdd}
+                  />
+                  <ActionButton
+                    icon={<ListPlus size={24} color="#fff" />}
+                    label={`Custom\n\ Expense`}
+                    onPress={handleCustomExpense}
+                  />
+                  <ActionButton
+                    icon={<HousePlus size={24} color="#fff" />}
+                    label={`Create\n\ Group`}
+                    onPress={() => router.push("/groups/create")}
+                  />
+                  <ActionButton
+                    icon={<QrCode size={24} color="#fff" />}
+                    label={`Scan to\n\ Join`}
+                    onPress={() => router.push("/scan" as any)}
+                  />
+                </HStack>
+              </VStack>
+            </Box>
+
+            <VStack>
+              <HStack className="items-center justify-between px-4">
+                <Text bold className="text-2xl flex-1">
+                  Friends
+                </Text>
+                <Button variant="link" onPress={() => router.push("/friends")}>
+                  <Text className="text-primary-400 font-medium">View All</Text>
+                </Button>
+              </HStack>
+              <LoadingWrapper
+                isLoading={loading.friends}
+                skeleton={<FriendCardListSkeleton />}
+              >
+                {friends.length > 0 ? (
+                  <HScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
                   >
-                    <Text className="text-primary-400 font-medium">
-                      View All
-                    </Text>
-                  </Button>
-                </HStack>
-                <LoadingWrapper
-                  isLoading={loading.friends}
-                  skeleton={<FriendCardListSkeleton />}
-                >
-                  {friends.length > 0 ? (
-                    <HScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                    >
-                      <HStack className="gap-x-2 px-4">
-                        {friendsPreview.map((item) => (
-                          <FriendCard
-                            key={item.friend.id}
-                            item={item}
-                            router={router}
-                          />
-                        ))}
-                      </HStack>
-                    </HScrollView>
-                  ) : (
-                    <EmptyList type={EmptyType.FRIEND} />
-                  )}
-                </LoadingWrapper>
-              </VStack>
-
-              <VStack>
-                <HStack className="items-center justify-between px-4">
-                  <Text bold className="text-2xl">
-                    Recent Activities
-                  </Text>
-                </HStack>
-                <LoadingWrapper
-                  isLoading={loading.activities}
-                  skeleton={<SettlementListSkeleton count={3} />}
-                >
-                  <FlatList
-                    key={settlementView}
-                    data={activitiesPreview}
-                    extraData={settlementView}
-                    scrollEnabled={false}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={renderActivityItem}
-                    ItemSeparatorComponent={ListDivider}
-                    ListEmptyComponent={() => (
-                      <EmptyList type={EmptyType.ACTIVITY} />
-                    )}
-                  />
-                </LoadingWrapper>
-              </VStack>
-
-              <VStack>
-                <HStack className="items-center justify-between px-4">
-                  <Text bold className="text-2xl">
-                    Recent Groups
-                  </Text>
-                  <Button variant="link" onPress={() => router.push("/groups")}>
-                    <Text className="text-primary-400 font-medium">
-                      View All
-                    </Text>
-                  </Button>
-                </HStack>
-                <LoadingWrapper
-                  isLoading={loading.groups}
-                  skeleton={<GroupListSkeleton count={3} />}
-                >
-                  <FlatList
-                    data={groupsPreview}
-                    scrollEnabled={false}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={renderGroupItem}
-                    ItemSeparatorComponent={ListDivider}
-                    ListEmptyComponent={() => (
-                      <EmptyList type={EmptyType.GROUP} />
-                    )}
-                  />
-                </LoadingWrapper>
-              </VStack>
-              <Box
-                className="absolute left-0 right-0 bg-background-0"
-                style={{ bottom: -500, height: 500 }}
-              />
+                    <HStack className="gap-x-2 px-4">
+                      {friendsPreview.map((item) => (
+                        <FriendCard
+                          key={item.friend.id}
+                          item={item}
+                          router={router}
+                        />
+                      ))}
+                    </HStack>
+                  </HScrollView>
+                ) : (
+                  <EmptyList type={EmptyType.FRIEND} />
+                )}
+              </LoadingWrapper>
             </VStack>
-            <Box className="h-28" />
-          </ScrollView>
-        </Box>
-      </KeyboardAvoidingView>
+
+            <VStack>
+              <HStack className="items-center justify-between px-4">
+                <Text bold className="text-2xl">
+                  Recent Activities
+                </Text>
+              </HStack>
+              <LoadingWrapper
+                isLoading={loading.activities}
+                skeleton={<SettlementListSkeleton count={3} />}
+              >
+                <FlatList
+                  key={settlementView}
+                  data={activitiesPreview}
+                  extraData={settlementView}
+                  scrollEnabled={false}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={renderActivityItem}
+                  ItemSeparatorComponent={ListDivider}
+                  ListEmptyComponent={() => (
+                    <EmptyList type={EmptyType.ACTIVITY} />
+                  )}
+                />
+              </LoadingWrapper>
+            </VStack>
+
+            <VStack>
+              <HStack className="items-center justify-between px-4">
+                <Text bold className="text-2xl">
+                  Recent Groups
+                </Text>
+                <Button variant="link" onPress={() => router.push("/groups")}>
+                  <Text className="text-primary-400 font-medium">View All</Text>
+                </Button>
+              </HStack>
+              <LoadingWrapper
+                isLoading={loading.groups}
+                skeleton={<GroupListSkeleton count={3} />}
+              >
+                <FlatList
+                  data={groupsPreview}
+                  scrollEnabled={false}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={renderGroupItem}
+                  ItemSeparatorComponent={ListDivider}
+                  ListEmptyComponent={() => (
+                    <EmptyList type={EmptyType.GROUP} />
+                  )}
+                />
+              </LoadingWrapper>
+            </VStack>
+            <Box
+              className="absolute left-0 right-0 bg-background-0"
+              style={{ bottom: -500, height: 500 }}
+            />
+          </VStack>
+        </ScrollView>
+
+        {/* Compact net-balance bar — pinned just under the native header, fades
+          in as the hero card scrolls away. Purely informational, so it stays
+          non-interactive and lets scroll/touches pass through to the list. */}
+        <Animated.View
+          pointerEvents="none"
+          className="absolute top-0 left-0 right-0 bg-primary-400"
+          style={{
+            opacity: compactOpacity,
+            transform: [{ translateY: compactTranslateY }]
+          }}
+        >
+          <HStack className="px-6 py-3 gap-x-4 items-center justify-center">
+            <VStack className="items-center flex-1">
+              <Text className="text-white/70 text-sm uppercase tracking-widest">
+                Net
+              </Text>
+              <Text bold className="text-white text-lg">
+                {formatAmount(primaryNet.amount, primaryNet.currency)}
+              </Text>
+            </VStack>
+            <Text className="text-white/20">|</Text>
+            <VStack className="items-center flex-1">
+              <Text className="text-white/70 text-sm uppercase tracking-widest">
+                Collect
+              </Text>
+              <Text bold className="text-white text-lg">
+                {formatAmount(primaryReceive.amount, primaryReceive.currency)}
+              </Text>
+            </VStack>
+            <Text className="text-white/20">|</Text>
+            <VStack className="items-center flex-1">
+              <Text className="text-white/70 text-sm uppercase tracking-widest">
+                Pay
+              </Text>
+              <Text bold className="text-white text-lg">
+                {formatAmount(primaryPay.amount, primaryPay.currency)}
+              </Text>
+            </VStack>
+          </HStack>
+        </Animated.View>
+      </Box>
       <SettlementActionSheet
         isOpen={actionSheetOpen}
         onClose={handleCloseActionSheet}

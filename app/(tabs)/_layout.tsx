@@ -62,7 +62,7 @@ export default function TabLayout() {
   return (
     <View style={{ flex: 1 }}>
       <NativeTabs tintColor={tintColor} minimizeBehavior="onScrollDown">
-        <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger name="(home)">
           <NativeTabs.Trigger.Icon
             renderingMode="template"
             src={<NativeTabs.Trigger.VectorIcon family={LucideIcon} name="wallet" />}
