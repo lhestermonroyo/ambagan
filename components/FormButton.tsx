@@ -1,6 +1,7 @@
-import React, { FC } from "react";
+import { FC } from "react";
 import { Box } from "./ui/box";
 import { Button, ButtonSpinner, ButtonText } from "./ui/button";
+import { Text } from "./ui/text";
 
 interface IFormButtonProps {
   className?: string;
@@ -39,7 +40,11 @@ const FormButton: FC<IFormButtonProps> = ({
       {...props}
     >
       {icon && <Box className="ml-[-4px]">{icon}</Box>}
-      <ButtonText>{text}</ButtonText>
+      {variant === "link" ? (
+        <Text className="text-primary-400 font-medium">{text}</Text>
+      ) : (
+        <ButtonText>{text}</ButtonText>
+      )}
       {iconEnd && <Box className="mr-[-4px]">{iconEnd}</Box>}
       {loading && (
         <ButtonSpinner

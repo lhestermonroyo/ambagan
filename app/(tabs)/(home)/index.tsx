@@ -37,7 +37,7 @@ import { addRecentUsers } from "@/utils/recentUsers";
 import { getReminderEnabled } from "@/utils/reminderPreference";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import * as Notifications from "expo-notifications";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import {
   Bell,
   CircleQuestionMark,
@@ -116,13 +116,21 @@ export default function HomeScreen() {
   }, [displayStats.toReceive, displayStats.toPay]);
 
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? "light";
+  const liveColorScheme = useColorScheme() ?? "light";
+  const isFocused = useIsFocused();
 
-  // Purple header that blends into the Net Balance card below (bg-primary-400).
-  // The greeting sits on that purple, so it renders white.
+  const [colorScheme, setColorScheme] = useState(liveColorScheme);
+  useEffect(() => {
+    if (isFocused) setColorScheme(liveColorScheme);
+  }, [isFocused, liveColorScheme]);
+
+  const [toolbarUnread, setToolbarUnread] = useState(unreadCount);
+  useEffect(() => {
+    if (isFocused) setToolbarUnread(unreadCount);
+  }, [isFocused, unreadCount]);
+
   const headerBg = getPrimaryHex("text-primary-400", colorScheme);
   const tintColor = "#fff";
-  const buttonBg = getPrimaryHex("text-primary-400", colorScheme);
 
   // Drives the compact net-balance bar that fades in — pinned just under the
   // native header — once the full hero card has scrolled out of view.
@@ -481,24 +489,13 @@ export default function HomeScreen() {
         }}
       />
 
-      {/* iOS 26 native toolbar buttons in the `prominent` (filled glass) style —
-        `sharesBackground` (expo-router's default) keeps the two in a single
-        grouped background rather than two detached capsules. */}
       {Platform.OS === "ios" && (
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.Button
-            icon="questionmark.circle"
-            tintColor={buttonBg}
-            accessibilityLabel="Help center"
-            onPress={handleOpenHelp}
-          />
-          <Stack.Toolbar.Button
-            icon={unreadCount > 0 ? "bell.badge" : "bell"}
-            tintColor={buttonBg}
-            accessibilityLabel="Notifications"
-            onPress={handleOpenNotifications}
-          />
-        </Stack.Toolbar>
+        <HomeToolbar
+          buttonBg={headerBg}
+          unreadCount={toolbarUnread}
+          onHelp={handleOpenHelp}
+          onNotifications={handleOpenNotifications}
+        />
       )}
 
       <Box className="flex-1 bg-background-0">
@@ -729,6 +726,44 @@ export default function HomeScreen() {
     </Fragment>
   );
 }
+
+// iOS 26 native toolbar buttons in the `prominent` (filled glass) style —
+// `sharesBackground` (expo-router's default) keeps the two in a single grouped
+// background rather than two detached capsules.
+//
+// Memoized so it only re-renders — and therefore only re-registers with the
+// native header — when one of its own inputs actually changes. This is what
+// keeps a blurred re-render of HomeScreen (e.g. a theme switch made from
+// another tab) from recreating the toolbar's children off-screen, which would
+// otherwise drop the buttons until a later focus.
+const HomeToolbar = React.memo(function HomeToolbar({
+  buttonBg,
+  unreadCount,
+  onHelp,
+  onNotifications
+}: {
+  buttonBg: string;
+  unreadCount: number;
+  onHelp: () => void;
+  onNotifications: () => void;
+}) {
+  return (
+    <Stack.Toolbar placement="right">
+      <Stack.Toolbar.Button
+        icon="questionmark.circle"
+        tintColor={buttonBg}
+        accessibilityLabel="Help center"
+        onPress={onHelp}
+      />
+      <Stack.Toolbar.Button
+        icon={unreadCount > 0 ? "bell.badge" : "bell"}
+        tintColor={buttonBg}
+        accessibilityLabel="Notifications"
+        onPress={onNotifications}
+      />
+    </Stack.Toolbar>
+  );
+});
 
 function ActionButton({
   icon,

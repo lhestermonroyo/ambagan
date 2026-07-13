@@ -346,7 +346,36 @@ export default function FriendsScreen() {
           value={searchInput}
           onChangeText={setSearchInput}
           placeholder="Search friends"
-        />
+        >
+          {isSearchActive ? (
+            <FlatList
+              data={searchResults}
+              keyExtractor={(item) => item.id}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 24 }}
+              renderItem={({ item }) => (
+                <FriendRow
+                  user={item}
+                  balances={balanceByUserId.get(item.id)?.balances}
+                  isFavorite={favoriteIds.has(item.id)}
+                  onPress={(user) => {
+                    handleCancelSearch();
+                    handlePress(user);
+                  }}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              )}
+              ItemSeparatorComponent={ListDivider}
+              ListHeaderComponent={
+                <Text className="text-sm text-secondary-950 px-4 py-2" bold>
+                  {searchResults.length} result
+                  {searchResults.length !== 1 ? "s" : ""}
+                </Text>
+              }
+              ListEmptyComponent={<EmptyList type={EmptyType.SEARCH} />}
+            />
+          ) : null}
+        </SearchDrawer>
       </Box>
     </TabLayout>
   );

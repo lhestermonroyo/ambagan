@@ -9,6 +9,7 @@ import SearchDrawer from "@/components/SearchDrawer";
 import { GroupListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
+import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -407,7 +408,33 @@ export default function GroupsScreen() {
           value={searchInput}
           onChangeText={handleSearchChange}
           placeholder="Search groups"
-        />
+        >
+          {searching ? (
+            <FlatList
+              data={filteredGroups}
+              keyExtractor={(item) => item.id}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 24 }}
+              renderItem={({ item }) => (
+                <GroupItem
+                  details={item}
+                  onOpen={() => {
+                    handleCancelSearch();
+                    router.push(`/groups/${item.id}`);
+                  }}
+                />
+              )}
+              ItemSeparatorComponent={ListDivider}
+              ListHeaderComponent={
+                <Text className="text-sm text-secondary-950 px-4 py-2" bold>
+                  {filteredGroups.length} result
+                  {filteredGroups.length !== 1 ? "s" : ""}
+                </Text>
+              }
+              ListEmptyComponent={<EmptyList type={EmptyType.SEARCH} />}
+            />
+          ) : null}
+        </SearchDrawer>
       </Box>
     </TabLayout>
   );

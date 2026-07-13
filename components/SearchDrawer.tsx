@@ -2,7 +2,7 @@ import FormButton from "@/components/FormButton";
 import SearchInput from "@/components/SearchInput";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Modal, Pressable, StyleSheet } from "react-native";
 import Animated, {
   interpolate,
@@ -24,12 +24,21 @@ type SearchDrawerProps = {
   onSetSearching?: (searching: boolean) => void;
   placeholder?: string;
   cancelLabel?: string;
+  // The results to show once there is an active query. Rendered on a solid,
+  // interactive sheet below the input so the items stay tappable — unlike the
+  // dim backdrop, which sits over an inert (masked) screen behind the modal.
+  children?: ReactNode;
 };
 
 // A search "drawer" that slides down from the top over a dimming backdrop.
 // The overlay itself is a native `Modal` (so it renders above the native header,
 // like the iOS search bar), while the search field is our own `SearchInput` +
 // `FormButton` rather than the native UISearchBar.
+//
+// With no `children` (no active query) it's just the input over a dim backdrop
+// you can tap to dismiss. Once `children` are supplied they render on a solid
+// sheet filling the space under the input, so results remain fully interactive
+// instead of being masked by the backdrop.
 export default function SearchDrawer({
   isOpen,
   onClose,
@@ -38,13 +47,19 @@ export default function SearchDrawer({
   onChangeText,
   onSetSearching,
   placeholder = "Search",
-  cancelLabel = "Cancel"
+  cancelLabel = "Cancel",
+  children
 }: SearchDrawerProps) {
   const insets = useSafeAreaInsets();
   const progress = useSharedValue(0);
   // Seeded large so the panel starts fully hidden before onLayout measures it.
   const panelHeight = useSharedValue(300);
+  // The measured input-panel height (JS side), used to inset the results sheet
+  // so the list starts just below the input rather than behind it.
+  const [inputHeight, setInputHeight] = useState(insets.top + 64);
   const [mounted, setMounted] = useState(isOpen);
+
+  const hasResults = children != null && children !== false;
 
   useEffect(() => {
     if (isOpen) {
@@ -76,21 +91,31 @@ export default function SearchDrawer({
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      {/* Dim backdrop — tap to dismiss (keeps the current query). */}
-      <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
-        <Pressable
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: "rgba(0,0,0,0.35)" }
-          ]}
-          onPress={onClose}
-        />
-      </Animated.View>
+      {/* Transparent tap-catcher — tap outside the input to dismiss (keeps the
+        current query). Intentionally undimmed so the screen behind stays fully
+        visible. When results are showing it sits behind the solid sheet. */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
 
-      {/* Panel that slides down from the top edge. */}
+      {/* Solid, interactive results sheet — fills the area under the input so
+        the underlying screen is never in the way and every row stays tappable. */}
+      {hasResults && (
+        <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
+          <Box
+            className="bg-background-0 flex-1"
+            style={{ paddingTop: inputHeight }}
+          >
+            {children}
+          </Box>
+        </Animated.View>
+      )}
+
+      {/* Panel that slides down from the top edge, holding the input. Rendered
+        above the results sheet so the field stays visible and tappable. */}
       <Animated.View
         onLayout={(e) => {
-          panelHeight.value = e.nativeEvent.layout.height;
+          const { height } = e.nativeEvent.layout;
+          panelHeight.value = height;
+          setInputHeight(height);
         }}
         style={[styles.panel, panelStyle]}
       >
