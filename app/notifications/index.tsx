@@ -175,17 +175,20 @@ export default function NotificationsScreen() {
       title="Notifications"
       onBack={() => router.back()}
       actions={
-        unreadCount > 0 ? (
-          <Stack.Toolbar.Button
-            variant="plain"
-            tintColor={tintColor}
-            disabled={markingAll}
-            accessibilityLabel="Mark all notifications as read"
-            onPress={handleMarkAllRead}
-          >
-            {markingAll ? "Marking..." : "Mark all read"}
-          </Stack.Toolbar.Button>
-        ) : undefined
+        // Keep this button permanently mounted (disabled when there's nothing
+        // to mark) rather than unmounting it at unreadCount === 0. Removing the
+        // right toolbar makes the native header re-layout the custom title,
+        // which visibly shifts "Notifications" toward the center after the
+        // last unread is cleared.
+        <Stack.Toolbar.Button
+          variant="plain"
+          tintColor={tintColor}
+          disabled={markingAll || unreadCount === 0}
+          accessibilityLabel="Mark all notifications as read"
+          onPress={handleMarkAllRead}
+        >
+          {markingAll ? "Marking..." : "Mark all read"}
+        </Stack.Toolbar.Button>
       }
     >
       <LoadingWrapper isLoading={loading} skeleton={<NotificationListSkeleton />}>

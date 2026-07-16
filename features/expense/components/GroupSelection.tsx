@@ -174,7 +174,7 @@ export function GroupSelectionActionSheet({
             />
           </RadioGroup>
         </VStack>
-        <Box className="sticky bottom-0 w-full px-4 pt-4">
+        <Box className="sticky bottom-0 w-full p-4">
           <HStack className="gap-x-2">
             <FormButton
               className="flex-1"
