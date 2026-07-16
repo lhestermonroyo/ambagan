@@ -1,14 +1,11 @@
 import AppAvatar from "@/components/AppAvatar";
-import ConfirmIconButton from "@/components/ConfirmIconButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
-import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { ExpenseDetailsSkeleton } from "@/components/SkeletonLoader";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
-import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { Heading } from "@/components/ui/heading";
@@ -41,19 +38,15 @@ import {
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { formatDate } from "@/utils/formatDate";
-import {
-  getErrorHex,
-  getPrimaryHex,
-  getSecondaryHex
-} from "@/utils/getColorHex";
+import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { getUserSubtitle } from "@/utils/userDisplay";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
-  Edit2,
-  EllipsisVertical,
-  FileImage,
-  Trash2
-} from "lucide-react-native";
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter
+} from "expo-router";
+import { FileImage } from "lucide-react-native";
 import { Fragment, ReactNode, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -76,7 +69,6 @@ export default function ExpenseDetailsScreen() {
 
   const toast = useAppToast();
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -331,91 +323,55 @@ export default function ExpenseDetailsScreen() {
   // When both edit and delete are available, collapse them into a single
   // overflow menu (mirrors the group details screen). With only one action,
   // surface its icon button directly.
-  const renderActions = (): ReactNode[] => {
+  const renderActions = (): ReactNode => {
     // A draft has no payers, so deletion is gated on creator instead.
     const showEdit = canEdit;
     const showDelete = isDraft ? isCreator : isPayer;
 
+    if (!showEdit && !showDelete) return undefined;
+
     if (showEdit && showDelete) {
-      return [
-        <Menu
-          key="menu"
-          placement="left top"
-          closeOnSelect
-          isOpen={menuOpen}
-          onOpen={() => setMenuOpen(true)}
-          onClose={() => setMenuOpen(false)}
-          trigger={({ ...triggerProps }) => (
-            <Button variant="link" className="rounded-full" {...triggerProps}>
-              <EllipsisVertical
-                size={20}
-                color={getSecondaryHex("text-secondary-950", colorScheme)}
-              />
-            </Button>
-          )}
+      return (
+        <Stack.Toolbar.Menu
+          icon="ellipsis"
+          tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
+          accessibilityLabel="Expense options"
         >
-          <MenuItem
-            className="p-4 justify-between"
-            key="edit"
-            textValue="Edit"
-            onPress={() => {
-              setMenuOpen(false);
-              setTimeout(() => handleEdit(), 150);
-            }}
+          <Stack.Toolbar.MenuAction icon="pencil" onPress={handleEdit}>
+            Edit
+          </Stack.Toolbar.MenuAction>
+          <Stack.Toolbar.MenuAction
+            icon="trash"
+            destructive
+            onPress={() => setDeleteModalOpen(true)}
           >
-            <HStack className="gap-x-2">
-              <Edit2
-                size={20}
-                color={getPrimaryHex("text-primary-500", colorScheme)}
-              />
-              <MenuItemLabel>Edit</MenuItemLabel>
-            </HStack>
-          </MenuItem>
-          <MenuItem
-            className="p-4 justify-between"
-            key="delete"
-            textValue="Delete"
-            onPress={() => {
-              setMenuOpen(false);
-              setTimeout(() => setDeleteModalOpen(true), 150);
-            }}
-          >
-            <HStack className="gap-x-2">
-              <Trash2
-                size={20}
-                color={getErrorHex("text-error-500", colorScheme)}
-              />
-              <MenuItemLabel className="text-error-500">Delete</MenuItemLabel>
-            </HStack>
-          </MenuItem>
-        </Menu>
-      ];
+            Delete
+          </Stack.Toolbar.MenuAction>
+        </Stack.Toolbar.Menu>
+      );
     }
 
+    // Return an array (not a Fragment): the native toolbar flattens children
+    // via React.Children.toArray, which does not descend into a <Fragment>.
     return [
-      showEdit && (
-        <Button
+      showEdit ? (
+        <Stack.Toolbar.Button
           key="edit"
-          variant="link"
-          className="rounded-full"
+          icon="pencil"
+          tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
+          accessibilityLabel="Edit expense"
           onPress={handleEdit}
-        >
-          <Icon as="edit" className="text-secondary-950" />
-        </Button>
-      ),
-      showDelete && (
-        <ConfirmIconButton
-          key="delete"
-          variant="link"
-          className="rounded-full"
-          icon="delete"
-          isDelete
-          iconClassName="text-secondary-950"
-          confirmTitle="Delete Expense"
-          confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
-          onConfirm={() => handleDeleteExpense(expenseId)}
         />
-      )
+      ) : null,
+      showDelete ? (
+        <Stack.Toolbar.Button
+          key="delete"
+          icon="trash"
+          tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
+          accessibilityLabel="Delete expense"
+          onPress={() => setDeleteModalOpen(true)}
+        />
+      ) : null
     ];
   };
 

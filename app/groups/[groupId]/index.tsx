@@ -7,21 +7,11 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
-import {
-  ExpenseListSkeleton,
-  HeaderActionSkeleton
-} from "@/components/SkeletonLoader";
+import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
-import { Button } from "@/components/ui/button";
 import { Fab, FabLabel } from "@/components/ui/fab";
 import { HStack } from "@/components/ui/hstack";
-import {
-  Menu,
-  MenuItem,
-  MenuItemLabel,
-  MenuSeparator
-} from "@/components/ui/menu";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -43,28 +33,23 @@ import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
-import {
-  getErrorHex,
-  getPrimaryHex,
-  getSecondaryHex
-} from "@/utils/getColorHex";
+import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
-  Archive,
-  ArchiveRestore,
-  CirclePlus,
-  Edit2,
-  EllipsisVertical,
-  ListPlus,
-  LogOut,
-  Share,
-  Trash2,
-  X,
-  Zap
-} from "lucide-react-native";
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter
+} from "expo-router";
+import { Archive, CirclePlus, ListPlus, X, Zap } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, RefreshControl, useColorScheme } from "react-native";
+import {
+  Animated,
+  Modal,
+  Platform,
+  RefreshControl,
+  useColorScheme
+} from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 const tabs = ["Settlements", "Expenses", "Stats", "Group Info"] as const;
@@ -78,7 +63,6 @@ export default function GroupDetailsScreen() {
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
   const [inviteSheetOpen, setInviteSheetOpen] = useState(false);
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
@@ -446,240 +430,213 @@ export default function GroupDetailsScreen() {
     router.replace("/groups");
   };
 
+  // A group needs at least two members before an expense can be added. Returns
+  // false (and surfaces the reason) when blocked, so callers can bail early.
+  const ensureCanAddExpense = () => {
+    if (!canAddExpense) {
+      toast({
+        title: "Add a member first",
+        description:
+          "A group needs at least two members before you can add an expense. Add someone from Group Info → Edit Members.",
+        type: "info"
+      });
+      return false;
+    }
+    return true;
+  };
+
+  // Toggles the add-expense speed-dial (used by both the iOS native toolbar
+  // button and the Android FAB). Gated the same way when opening.
+  const handleFabPress = () => {
+    if (!fabOpen && !ensureCanAddExpense()) return;
+    setFabOpen((prev) => !prev);
+  };
+
   return (
     <Fragment>
       <InnerLayout
         title="Group Details"
         onBack={handleBack}
         actions={
-          loading
-            ? [<HeaderActionSkeleton key="skeleton" />]
-            : isAdmin
-            ? [
-                ...(!groupDetails?.archived && groupDetails?.invite_token
-                  ? [
-                      <Button
-                        variant="link"
-                        className="rounded-full"
-                        onPress={() => setInviteSheetOpen(true)}
-                      >
-                        <Share
-                          size={20}
-                          color={getSecondaryHex(
-                            "text-secondary-950",
-                            colorScheme
-                          )}
-                        />
-                      </Button>
-                    ]
-                  : []),
-                <Menu
-                  placement="left top"
-                  closeOnSelect
-                  isOpen={menuOpen}
-                  onOpen={() => setMenuOpen(true)}
-                  onClose={() => setMenuOpen(false)}
-                  trigger={({ ...triggerProps }) => (
-                    <Button
-                      variant="link"
-                      className="rounded-full"
-                      {...triggerProps}
-                    >
-                      <EllipsisVertical
-                        size={20}
-                        color={getSecondaryHex(
-                          "text-secondary-950",
-                          colorScheme
-                        )}
-                      />
-                    </Button>
-                  )}
-                >
-                  {!groupDetails?.archived && (
-                    <MenuItem
-                      className="p-4 justify-between"
-                      key="edit"
-                      textValue="Edit"
-                      onPress={() => {
-                        setMenuOpen(false);
-                        setTimeout(
-                          () => router.push(`/groups/${groupId}/edit`),
-                          150
-                        );
-                      }}
-                    >
-                      <HStack className="gap-x-2">
-                        <Edit2
-                          size={20}
-                          color={getPrimaryHex("text-primary-500", colorScheme)}
-                        />
-                        <MenuItemLabel>Edit</MenuItemLabel>
-                      </HStack>
-                    </MenuItem>
-                  )}
-                  <MenuItem
-                    className="p-4 justify-between"
-                    key="leave"
-                    textValue="Leave Group"
-                    onPress={() => {
-                      setMenuOpen(false);
-                      setTimeout(() => setLeaveSheetOpen(true), 150);
-                    }}
+          loading ? undefined : isAdmin ? (
+            [
+              !groupDetails?.archived && groupDetails?.invite_token ? (
+                <Stack.Toolbar.Button
+                  key="share"
+                  icon="square.and.arrow.up"
+                  tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
+                  accessibilityLabel="Share group invite"
+                  onPress={() => setInviteSheetOpen(true)}
+                />
+              ) : null,
+              <Stack.Toolbar.Menu
+                key="menu"
+                icon="ellipsis"
+                tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
+                accessibilityLabel="More group options"
+              >
+                {!groupDetails?.archived && (
+                  <Stack.Toolbar.MenuAction
+                    icon="pencil"
+                    onPress={() => router.push(`/groups/${groupId}/edit`)}
                   >
-                    <HStack className="gap-x-2">
-                      <LogOut
-                        size={20}
-                        color={getPrimaryHex("text-primary-500", colorScheme)}
-                      />
-                      <MenuItemLabel>Leave Group</MenuItemLabel>
-                    </HStack>
-                  </MenuItem>
-                  {groupDetails?.archived ? (
-                    <MenuItem
-                      className="p-4 justify-between"
-                      key="unarchive"
-                      textValue="Unarchive"
-                      onPress={() => {
-                        setMenuOpen(false);
-                        setTimeout(() => handleUnarchiveGroup(), 150);
-                      }}
-                    >
-                      <HStack className="gap-x-2">
-                        <ArchiveRestore
-                          size={20}
-                          color={getPrimaryHex("text-primary-500", colorScheme)}
-                        />
-                        <MenuItemLabel>Unarchive</MenuItemLabel>
-                      </HStack>
-                    </MenuItem>
-                  ) : (
-                    <MenuItem
-                      className="p-4 justify-between"
-                      key="archive"
-                      textValue="Archive"
-                      onPress={() => {
-                        setMenuOpen(false);
-                        setTimeout(() => handleArchiveGroup(), 150);
-                      }}
-                    >
-                      <HStack className="gap-x-2">
-                        <Archive
-                          size={20}
-                          color={getPrimaryHex("text-primary-500", colorScheme)}
-                        />
-                        <MenuItemLabel>Archive</MenuItemLabel>
-                      </HStack>
-                    </MenuItem>
-                  )}
-                  <MenuSeparator key="separator" />
-                  <MenuItem
-                    className="p-4 justify-between"
-                    key="delete"
-                    textValue="Delete Group"
-                    onPress={() => {
-                      setMenuOpen(false);
-                      setTimeout(() => setDeleteSheetOpen(true), 150);
-                    }}
-                  >
-                    <HStack className="gap-x-2">
-                      <Trash2
-                        size={20}
-                        color={getErrorHex("text-error-400", colorScheme)}
-                      />
-                      <MenuItemLabel className="text-error-400">
-                        Delete Group
-                      </MenuItemLabel>
-                    </HStack>
-                  </MenuItem>
-                </Menu>
-              ]
-            : [
-                <Button
-                  variant="link"
-                  className="rounded-full"
+                    Edit
+                  </Stack.Toolbar.MenuAction>
+                )}
+                <Stack.Toolbar.MenuAction
+                  icon="rectangle.portrait.and.arrow.right"
                   onPress={() => setLeaveSheetOpen(true)}
                 >
-                  <LogOut
-                    size={20}
-                    color={getSecondaryHex("text-secondary-950", colorScheme)}
-                  />
-                </Button>
-              ]
+                  Leave Group
+                </Stack.Toolbar.MenuAction>
+                {groupDetails?.archived ? (
+                  <Stack.Toolbar.MenuAction
+                    icon="tray.and.arrow.up"
+                    onPress={handleUnarchiveGroup}
+                  >
+                    Unarchive
+                  </Stack.Toolbar.MenuAction>
+                ) : (
+                  <Stack.Toolbar.MenuAction
+                    icon="archivebox"
+                    onPress={handleArchiveGroup}
+                  >
+                    Archive
+                  </Stack.Toolbar.MenuAction>
+                )}
+                <Stack.Toolbar.MenuAction
+                  icon="trash"
+                  destructive
+                  onPress={() => setDeleteSheetOpen(true)}
+                >
+                  Delete Group
+                </Stack.Toolbar.MenuAction>
+              </Stack.Toolbar.Menu>
+            ]
+          ) : (
+            <Stack.Toolbar.Button
+              icon="rectangle.portrait.and.arrow.right"
+              tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
+              accessibilityLabel="Leave group"
+              onPress={() => setLeaveSheetOpen(true)}
+            />
+          )
         }
       >
         {(tab === "Expenses" || tab === "Settlements") &&
           !groupDetails?.archived && (
             <>
-              {fabOpen && (
+              {/* Speed-dial rendered in a Modal so its dim masks the WHOLE
+                  window — including the native header and bottom toolbar —
+                  not just the scrollable content. Backdrop and menu are
+                  siblings so a tap on the menu's padding doesn't fall through
+                  to the dismiss handler. */}
+              <Modal
+                visible={fabOpen}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setFabOpen(false)}
+              >
                 <Pressable
-                  className="absolute inset-0 z-40"
                   onPress={() => setFabOpen(false)}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(0,0,0,0.5)"
+                  }}
                 />
-              )}
-              {fabOpen && (
-                <VStack className="absolute bottom-20 right-4 z-50 gap-2 items-end">
+                <Box
+                  className="absolute bottom-28 right-4"
+                  style={{
+                    width: 240,
+                    borderRadius: 14,
+                    overflow: "hidden",
+                    backgroundColor:
+                      colorScheme === "dark" ? "#2C2C2E" : "#FFFFFF",
+                    shadowColor: "#000",
+                    shadowOpacity: 0.2,
+                    shadowRadius: 16,
+                    shadowOffset: { width: 0, height: 6 },
+                    elevation: 8
+                  }}
+                >
                   <Pressable
-                    className="flex-row items-center gap-x-2 bg-white dark:bg-[#1F1F1F] p-4 rounded-full shadow-sm"
+                    className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
                     onPress={() => {
                       setFabOpen(false);
                       setQuickAddOpen(true);
                     }}
                   >
+                    <Text className="text-base">Quick Add</Text>
                     <Zap
-                      size={18}
-                      color={getPrimaryHex("text-primary-400", colorScheme)}
+                      size={20}
+                      color={getPrimaryHex("text-primary-500", colorScheme)}
                     />
-                    <Text className="font-semibold">Quick Add</Text>
                   </Pressable>
+                  <Box
+                    style={{
+                      height: 0.5,
+                      backgroundColor:
+                        colorScheme === "dark" ? "#3A3A3C" : "#E5E5EA"
+                    }}
+                  />
                   <Pressable
-                    className="flex-row items-center gap-x-2 bg-white dark:bg-[#1F1F1F] p-4 rounded-full shadow-sm"
+                    className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
                     onPress={() => {
                       setFabOpen(false);
                       router.push(`/groups/${groupId}/new-expense`);
                     }}
                   >
+                    <Text className="text-base">Custom Expense</Text>
                     <ListPlus
-                      size={18}
-                      color={getSecondaryHex("text-secondary-950", colorScheme)}
+                      size={20}
+                      color={getPrimaryHex("text-primary-500", colorScheme)}
                     />
-                    <Text className="font-semibold">Custom</Text>
                   </Pressable>
-                </VStack>
+                </Box>
+              </Modal>
+
+              {Platform.OS === "ios" ? (
+                <Stack.Toolbar placement="bottom">
+                  <Stack.Toolbar.Spacer />
+                  <Stack.Toolbar.Button
+                    icon={fabOpen ? "xmark" : "plus"}
+                    variant="prominent"
+                    tintColor={getPrimaryHex("text-primary-500", colorScheme)}
+                    accessibilityLabel={
+                      fabOpen ? "Close add menu" : "Add expense"
+                    }
+                    onPress={handleFabPress}
+                  />
+                </Stack.Toolbar>
+              ) : (
+                <Fab
+                  placement="bottom right"
+                  className="px-6"
+                  isHovered={false}
+                  isDisabled={false}
+                  isPressed={false}
+                  onPress={handleFabPress}
+                >
+                  {fabOpen ? (
+                    <X
+                      size={18}
+                      color={getSecondaryHex("text-secondary-0", colorScheme)}
+                    />
+                  ) : (
+                    <CirclePlus
+                      size={18}
+                      color={getSecondaryHex("text-secondary-0", colorScheme)}
+                    />
+                  )}
+                  <FabLabel className="text-lg font-medium">
+                    {fabOpen ? "Close" : "New Expense"}
+                  </FabLabel>
+                </Fab>
               )}
-              <Fab
-                placement="bottom right"
-                className="px-6"
-                isHovered={false}
-                isDisabled={false}
-                isPressed={false}
-                onPress={() => {
-                  if (!canAddExpense && !fabOpen) {
-                    toast({
-                      title: "Add a member first",
-                      description:
-                        "A group needs at least two members before you can add an expense. Add someone from Group Info → Edit Members.",
-                      type: "info"
-                    });
-                    return;
-                  }
-                  setFabOpen((prev) => !prev);
-                }}
-              >
-                {fabOpen ? (
-                  <X
-                    size={18}
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
-                  />
-                ) : (
-                  <CirclePlus
-                    size={18}
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
-                  />
-                )}
-                <FabLabel className="text-lg font-medium">
-                  {fabOpen ? "Close" : "New Expense"}
-                </FabLabel>
-              </Fab>
             </>
           )}
         {/* Compact sticky stats — Settlements tab only */}

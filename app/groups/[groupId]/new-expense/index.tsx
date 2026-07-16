@@ -19,7 +19,12 @@ import { cacheService } from "@/utils/cacheService";
 import { DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { ImagePickerSuccessResult } from "expo-image-picker";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import {
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter
+} from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
@@ -658,9 +663,11 @@ export default function NewExpenseScreen() {
     <>
       <FormLayout
         title="Custom Expense"
-        titleRight={
+        actions={
           !isPro ? (
-            <DailyLimitBadge count={dailyCount} limit={DAILY_EXPENSE_LIMIT} />
+            <Stack.Toolbar.View>
+              <DailyLimitBadge count={dailyCount} limit={DAILY_EXPENSE_LIMIT} />
+            </Stack.Toolbar.View>
           ) : undefined
         }
         onBack={() => router.back()}

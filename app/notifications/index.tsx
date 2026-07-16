@@ -1,5 +1,4 @@
 import EmptyList from "@/components/EmptyList";
-import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
@@ -16,7 +15,9 @@ import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { buildFriendSettlementRoute } from "@/features/notifications/utils/buildFriendSettlementRoute";
 import { isSettlementNotification, Notification } from "@/types/notifications";
-import { useRouter } from "expo-router";
+import { getPrimaryHex } from "@/utils/getColorHex";
+import { Stack, useRouter } from "expo-router";
+import { useColorScheme } from "nativewind";
 import { useEffect, useMemo, useState } from "react";
 import useAppToast from "@/hooks/use-app-toast";
 import { RefreshControl } from "react-native";
@@ -34,6 +35,8 @@ export default function NotificationsScreen() {
 
   const router = useRouter();
   const toast = useAppToast();
+  const { colorScheme } = useColorScheme();
+  const tintColor = getPrimaryHex("text-primary-600", colorScheme ?? "light");
 
   const sections = useMemo(() => groupByDate(list), [list]);
 
@@ -172,17 +175,17 @@ export default function NotificationsScreen() {
       title="Notifications"
       onBack={() => router.back()}
       actions={
-        unreadCount > 0
-          ? [
-              <FormButton
-                key="mark-all"
-                text={markingAll ? "Marking..." : "Mark all read"}
-                variant="link"
-                onPress={handleMarkAllRead}
-                disabled={markingAll}
-              />
-            ]
-          : undefined
+        unreadCount > 0 ? (
+          <Stack.Toolbar.Button
+            variant="plain"
+            tintColor={tintColor}
+            disabled={markingAll}
+            accessibilityLabel="Mark all notifications as read"
+            onPress={handleMarkAllRead}
+          >
+            {markingAll ? "Marking..." : "Mark all read"}
+          </Stack.Toolbar.Button>
+        ) : undefined
       }
     >
       <LoadingWrapper isLoading={loading} skeleton={<NotificationListSkeleton />}>

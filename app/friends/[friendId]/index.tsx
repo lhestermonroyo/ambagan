@@ -6,10 +6,7 @@ import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
-import {
-  HeaderActionSkeleton,
-  SettlementListSkeleton
-} from "@/components/SkeletonLoader";
+import { SettlementListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -64,13 +61,17 @@ import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import {
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter
+} from "expo-router";
 import {
   CalendarRange,
   CheckCheck,
   ChevronDown,
   FileCheckCorner,
-  Heart,
   LayoutList,
   Search,
   X
@@ -584,40 +585,30 @@ export default function FriendDetailScreen() {
         title="Friend Details"
         onBack={() => router.back()}
         actions={
-          loading
-            ? [<HeaderActionSkeleton key="skeleton" />]
-            : [
-                <Button
-                  key="favorite"
-                  variant="link"
-                  className="rounded-full"
-                  onPress={() =>
-                    handleToggleFavorite({
-                      id: friendId!,
-                      first_name: decodedName.split(" ")[0] ?? "",
-                      last_name: decodedName.split(" ").slice(1).join(" ") ?? "",
-                      email: decodedEmail,
-                      avatar: decodedAvatar || null,
-                      phone: null,
-                      plan: "free"
-                    })
-                  }
-                >
-                  <Heart
-                    size={20}
-                    color={
-                      isFavorite
-                        ? getPrimaryHex("text-primary-400", colorScheme)
-                        : getSecondaryHex("text-secondary-950", colorScheme)
-                    }
-                    fill={
-                      isFavorite
-                        ? getPrimaryHex("text-primary-400", colorScheme)
-                        : "none"
-                    }
-                  />
-                </Button>
-              ]
+          loading ? undefined : (
+            <Stack.Toolbar.Button
+              icon={isFavorite ? "heart.fill" : "heart"}
+              tintColor={
+                isFavorite
+                  ? getPrimaryHex("text-primary-400", colorScheme)
+                  : getSecondaryHex("text-secondary-950", colorScheme)
+              }
+              accessibilityLabel={
+                isFavorite ? "Remove from favorites" : "Add to favorites"
+              }
+              onPress={() =>
+                handleToggleFavorite({
+                  id: friendId!,
+                  first_name: decodedName.split(" ")[0] ?? "",
+                  last_name: decodedName.split(" ").slice(1).join(" ") ?? "",
+                  email: decodedEmail,
+                  avatar: decodedAvatar || null,
+                  phone: null,
+                  plan: "free"
+                })
+              }
+            />
+          )
         }
       >
         {/* Compact sticky stats */}

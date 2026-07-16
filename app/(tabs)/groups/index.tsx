@@ -11,10 +11,10 @@ import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import GroupAddSheet from "@/features/group/components/GroupAddSheet";
 import GroupItem from "@/features/group/components/GroupItem";
 import { GroupFilter } from "@/features/group/services/group.service";
 import useAppToast from "@/hooks/use-app-toast";
@@ -22,9 +22,12 @@ import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
+import { getPrimaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
+import { HousePlus, QrCode } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
-import { RefreshControl } from "react-native";
+import { Modal, RefreshControl, useColorScheme } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 const TABS: { key: GroupFilter; label: string }[] = [
@@ -48,7 +51,7 @@ export default function GroupsScreen() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [activeTab, setActiveTab] = useState<GroupFilter>("all");
-  const [addSheetOpen, setAddSheetOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
   const activeTabRef = useRef<GroupFilter>("all");
 
@@ -56,6 +59,8 @@ export default function GroupsScreen() {
 
   const router = useRouter();
   const toast = useAppToast();
+  const colorScheme = useColorScheme() ?? "light";
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useMemo(
@@ -200,12 +205,12 @@ export default function GroupsScreen() {
   };
 
   const handleCreateGroup = () => {
-    setAddSheetOpen(false);
+    setFabOpen(false);
     router.push("/groups/create");
   };
 
   const handleScanToJoin = () => {
-    setAddSheetOpen(false);
+    setFabOpen(false);
     router.push("/scan" as any);
   };
 
@@ -235,13 +240,21 @@ export default function GroupsScreen() {
           key: "search",
           sf: "magnifyingglass",
           label: "Search groups",
-          onPress: () => setSearchVisible(true)
+          // The dim backdrop can't cover the native header, so guard here:
+          // while the add menu is open, a search tap just dismisses it.
+          onPress: () => {
+            if (fabOpen) {
+              setFabOpen(false);
+              return;
+            }
+            setSearchVisible(true);
+          }
         },
         {
           key: "add",
-          sf: "plus",
-          label: "Add group",
-          onPress: () => setAddSheetOpen(true)
+          sf: fabOpen ? "xmark" : "plus",
+          label: fabOpen ? "Close add menu" : "Add group",
+          onPress: () => setFabOpen((prev) => !prev)
         }
       ]}
     >
@@ -394,12 +407,71 @@ export default function GroupsScreen() {
           </LoadingWrapper>
         </ScrollView>
 
-        <GroupAddSheet
-          isOpen={addSheetOpen}
-          onClose={() => setAddSheetOpen(false)}
-          onCreate={handleCreateGroup}
-          onScan={handleScanToJoin}
-        />
+        {/* Add-group speed-dial rendered in a Modal so its dim masks the WHOLE
+            window — native header included — matching the group-details menu.
+            The menu drops from just under the "+" header button (top-right),
+            offset below the native header via the safe-area top inset. Backdrop
+            and menu are siblings so a tap on the menu padding doesn't dismiss. */}
+        <Modal
+          visible={fabOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setFabOpen(false)}
+        >
+          <Pressable
+            onPress={() => setFabOpen(false)}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.5)"
+            }}
+          />
+          <Box
+            className="absolute right-4"
+            style={{
+              top: insets.top + 52,
+              width: 240,
+              borderRadius: 14,
+              overflow: "hidden",
+              backgroundColor: colorScheme === "dark" ? "#2C2C2E" : "#FFFFFF",
+              shadowColor: "#000",
+              shadowOpacity: 0.2,
+              shadowRadius: 16,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 8
+            }}
+          >
+            <Pressable
+              className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
+              onPress={handleCreateGroup}
+            >
+              <Text className="text-base">Create Group</Text>
+              <HousePlus
+                size={20}
+                color={getPrimaryHex("text-primary-500", colorScheme)}
+              />
+            </Pressable>
+            <Box
+              style={{
+                height: 0.5,
+                backgroundColor: colorScheme === "dark" ? "#3A3A3C" : "#E5E5EA"
+              }}
+            />
+            <Pressable
+              className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
+              onPress={handleScanToJoin}
+            >
+              <Text className="text-base">Scan to Join</Text>
+              <QrCode
+                size={20}
+                color={getPrimaryHex("text-primary-500", colorScheme)}
+              />
+            </Pressable>
+          </Box>
+        </Modal>
 
         <SearchDrawer
           isOpen={searchVisible}

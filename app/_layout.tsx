@@ -42,7 +42,8 @@ import {
   useRouter
 } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef } from "react";
+import { useColorScheme } from "nativewind";
+import { useEffect, useMemo, useRef } from "react";
 import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
@@ -74,6 +75,20 @@ export default function RootLayout() {
     "GoogleSans-BoldItalic": require("@/assets/fonts/GoogleSans-BoldItalic.ttf")
   });
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const isDark = (colorScheme ?? "light") === "dark";
+
+  const appBackground = isDark ? "#121212" : "#FFFFFF";
+  const navTheme = useMemo(
+    () => ({
+      ...DefaultTheme,
+      colors: {
+        ...DefaultTheme.colors,
+        background: appBackground
+      }
+    }),
+    [isDark, appBackground]
+  );
   const { loading, appearanceMode, loadPreferences, session } = states.user();
   const { isOnline } = useNetwork();
   const { isDegraded } = useNetworkHealth();
@@ -452,7 +467,7 @@ export default function RootLayout() {
       <BottomSheetModalProvider>
         <GluestackUIProvider mode={appearanceMode}>
           <ToastProvider>
-            <ThemeProvider value={DefaultTheme}>
+            <ThemeProvider value={navTheme}>
               {!isOnline && (
                 <Box className={Platform.OS === "android" ? "h-4" : "h-8"} />
               )}
@@ -462,7 +477,8 @@ export default function RootLayout() {
               <Stack
                 screenOptions={{
                   headerShown: false,
-                  animation: "simple_push"
+                  animation: "simple_push",
+                  contentStyle: { backgroundColor: appBackground }
                 }}
               />
               <StatusBar style="auto" />
