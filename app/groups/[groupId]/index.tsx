@@ -186,10 +186,15 @@ export default function GroupDetailsScreen() {
           return;
         }
 
-        const initialized = groupDetails?.id === groupId;
+        // Read details from the store (not the reactive value) so clearing
+        // `details` on delete doesn't recreate this callback and re-run the
+        // focus effect while the screen is still focused — that re-run would
+        // call init(), find the group gone, and fire a second router.replace,
+        // triggering the back-to-groups animation twice.
+        const initialized = states.group.getState().details?.id === groupId;
         init(groupId, initialized);
       },
-      [groupId, groupDetails?.id]
+      [groupId]
     )
   );
 
