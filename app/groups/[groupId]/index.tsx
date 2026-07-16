@@ -20,7 +20,6 @@ import QuickAddExpenseSheet from "@/features/expense/components/QuickAddExpenseS
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DeleteGroupSheet from "@/features/group/components/DeleteGroupSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
-import GroupInviteSheet from "@/features/group/components/GroupInviteSheet";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
 import GroupStatsTab from "@/features/group/components/GroupStatsTab";
 import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
@@ -61,7 +60,6 @@ export default function GroupDetailsScreen() {
   const [archiving, setArchiving] = useState(false);
   const [showArchiveBanner, setShowArchiveBanner] = useState(true);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
-  const [inviteSheetOpen, setInviteSheetOpen] = useState(false);
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -466,7 +464,7 @@ export default function GroupDetailsScreen() {
                   icon="square.and.arrow.up"
                   tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
                   accessibilityLabel="Share group invite"
-                  onPress={() => setInviteSheetOpen(true)}
+                  onPress={() => router.push(`/groups/${groupId}/share`)}
                 />
               ) : null,
               <Stack.Toolbar.Menu
@@ -880,19 +878,6 @@ export default function GroupDetailsScreen() {
           </ScrollView>
         </LoadingWrapper>
       </InnerLayout>
-      {groupDetails?.invite_token && (
-        <GroupInviteSheet
-          isOpen={inviteSheetOpen}
-          onClose={() => setInviteSheetOpen(false)}
-          groupId={groupDetails.id}
-          groupName={groupDetails.name}
-          creatorName={`${groupDetails.admin.first_name} ${
-            groupDetails.admin.last_name ?? ""
-          }`.trim()}
-          inviteToken={groupDetails.invite_token}
-          inviteExpiresAt={groupDetails.invite_token_expires_at}
-        />
-      )}
       <LeaveGroupSheet
         isOpen={leaveSheetOpen}
         onClose={() => setLeaveSheetOpen(false)}

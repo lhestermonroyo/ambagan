@@ -1,31 +1,29 @@
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
-import { Actionsheet, ActionsheetContent } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
-import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import LinkExpirationSheet from "@/features/group/components/LinkExpirationSheet";
 import useAppToast from "@/hooks/use-app-toast";
-import { useNetwork } from "@/hooks/useNetwork";
-import { useNetworkHealth } from "@/hooks/useNetworkHealth";
+import InnerLayout from "@/layouts/InnerLayout";
+import states from "@/states";
 import {
   getErrorHex,
   getPrimaryHex,
   getSecondaryHex
 } from "@/utils/getColorHex";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { format } from "date-fns";
 import * as FileSystem from "expo-file-system/legacy";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { AlertCircle, Download, Share2 } from "lucide-react-native";
 import QRCodeGen from "qrcode";
-import { Ref, useMemo, useRef, useState } from "react";
-import { Dimensions, Platform, Share, useColorScheme } from "react-native";
+import { Ref, useEffect, useMemo, useRef, useState } from "react";
+import { Dimensions, Share, useColorScheme } from "react-native";
 import Svg, { Path, Rect, Text as SvgText } from "react-native-svg";
 
 const APP_SCHEME = "ambagan";
@@ -202,37 +200,33 @@ function InviteCardSvg({
   );
 }
 
-export default function GroupInviteSheet({
-  isOpen,
-  onClose,
-  groupId,
-  groupName,
-  creatorName,
-  inviteToken,
-  inviteExpiresAt
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  groupId: string;
-  groupName: string;
-  creatorName?: string;
-  inviteToken: string;
-  inviteExpiresAt?: string | null;
-}) {
+export default function ShareGroupScreen() {
+  const params = useLocalSearchParams();
+  const router = useRouter();
+  const groupId = params.groupId as string;
+
+  const { details: groupDetails } = states.group();
+
   const toast = useAppToast();
   const colorScheme = useColorScheme() ?? "light";
-  const inviteUrl = buildInviteUrl(inviteToken);
+
+  const groupName = groupDetails?.name ?? "";
+  const creatorName = groupDetails?.admin
+    ? `${groupDetails.admin.first_name} ${
+        groupDetails.admin.last_name ?? ""
+      }`.trim()
+    : undefined;
+  const inviteToken = groupDetails?.invite_token;
+  const inviteExpiresAt = groupDetails?.invite_token_expires_at;
+  const inviteUrl = buildInviteUrl(inviteToken ?? "");
+
   // Ref points at the hidden full-resolution card (below), not the small
   // on-screen preview — see handleDownloadQR.
   const exportRef = useRef<Svg>(null);
   const [expirationSheetOpen, setExpirationSheetOpen] = useState(false);
 
-  const { isOnline } = useNetwork();
-  const { isDegraded } = useNetworkHealth();
-  const showNetworkBanner = !isOnline || isDegraded;
-
   // On-screen preview width (also drives export resolution via the shared
-  // ref). Clamped so it fits small screens inside the sheet's padding.
+  // ref). Clamped so it fits small screens inside the screen's padding.
   const previewW = Math.min(300, Dimensions.get("window").width - 96);
 
   const isExpired =
@@ -248,16 +242,14 @@ export default function GroupInviteSheet({
   // rendered as the preview and snapshotted for download — WYSIWYG.
   const card = useMemo((): InviteCardLayout => {
     let qrPath = "";
-    let qrX = CARD_PAD;
     let qrBottom = CARD_PAD + QR_TARGET;
     try {
       const qr = QRCodeGen.create(inviteUrl, { errorCorrectionLevel: "M" });
       const { size, data } = qr.modules;
       const cell = Math.max(1, Math.floor(QR_TARGET / size));
       const pixels = cell * size;
-      qrX = (CARD_W - pixels) / 2;
       qrBottom = CARD_PAD + pixels;
-      qrPath = buildQrPath(data, size, cell, qrX, CARD_PAD);
+      qrPath = buildQrPath(data, size, cell, (CARD_W - pixels) / 2, CARD_PAD);
     } catch {
       // Leave qrPath empty — download handler guards on it.
     }
@@ -295,6 +287,12 @@ export default function GroupInviteSheet({
       metaText
     };
   }, [inviteUrl, groupName, creatorName, inviteExpiresAt, isExpired]);
+
+  // This screen is only reachable via the admin "Share group" action; if the
+  // group/token isn't available (deep-link, or the link was removed), bail back.
+  useEffect(() => {
+    if (!inviteToken) router.back();
+  }, [inviteToken, router]);
 
   const handleDownloadQR = () => {
     if (!exportRef.current || !card.qrPath) return;
@@ -360,153 +358,132 @@ export default function GroupInviteSheet({
   };
 
   return (
-    <>
-      <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[100]}>
-        <ActionsheetContent className="p-0">
-          {showNetworkBanner && (
-            <Box className={Platform.OS === "android" ? "h-4" : "h-[2.2rem]"} />
-          )}
-          <VStack
-            className={cn(
-              "w-full flex-1",
-              Platform.OS === "android" ? "pt-[3rem]" : "pt-[4.5rem]"
-            )}
-          >
-            <HStack className="items-center justify-between w-full pt-4 px-4 pb-2">
-              <Pressable onPress={onClose}>
-                <HStack className="items-center">
-                  <Icon as="arrow-back-ios" className="text-secondary-950" />
-                  <Text bold className="text-xl">
-                    Share Group
+    <InnerLayout title="Share Group" onBack={() => router.back()}>
+      {inviteToken ? (
+        <ScrollView className="flex-1 px-4">
+          <VStack className="gap-y-6 py-4">
+            <VStack className="gap-y-2">
+              <Text className="text-secondary-950">
+                Invite members by sharing the link to your group -{" "}
+                <Text bold>{groupName}</Text>. Anyone with the link can join, so
+                reset it if it&apos;s shared too widely.
+              </Text>
+            </VStack>
+
+            <Box className="items-center py-2">
+              <Box className="rounded-2xl overflow-hidden border border-secondary-500">
+                <InviteCardSvg
+                  card={card}
+                  creatorName={creatorName}
+                  width={previewW}
+                />
+              </Box>
+
+              {isExpired && (
+                <HStack className="mt-4 gap-x-2 items-center">
+                  <AlertCircle
+                    size={16}
+                    color={getErrorHex("text-error-500", colorScheme)}
+                  />
+                  <Text className="text-error-500 text-sm">
+                    This link has expired — reset it to invite members.
                   </Text>
                 </HStack>
-              </Pressable>
+              )}
+            </Box>
+
+            <HStack className="gap-x-2">
+              <FormButton
+                className="flex-1"
+                text="Share Invite Link"
+                onPress={handleShare}
+                disabled={isExpired}
+                icon={
+                  <Share2
+                    size={18}
+                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                  />
+                }
+              />
+              <FormButton
+                className="flex-1"
+                variant="outline"
+                text="Download QR"
+                onPress={handleDownloadQR}
+                disabled={isExpired}
+                icon={
+                  <Download
+                    size={18}
+                    color={getPrimaryHex("text-primary-500", colorScheme)}
+                  />
+                }
+              />
             </HStack>
 
-            <ScrollView className="flex-1 px-4">
-              <VStack className="gap-y-6 pb-6">
-                <VStack className="gap-y-2">
-                  <Text className="text-secondary-950">
-                    Invite members by sharing the link to your group -{" "}
-                    <Text bold>{groupName}</Text>. Anyone with the link can
-                    join, so reset it if it's shared too widely.
-                  </Text>
-                </VStack>
+            <Divider className="border-secondary-200" />
 
-                <Box className="items-center py-2">
-                  <Box className="rounded-2xl overflow-hidden border border-secondary-500">
-                    <InviteCardSvg
-                      card={card}
-                      creatorName={creatorName}
-                      width={previewW}
-                    />
-                  </Box>
+            <VStack className="gap-y-4">
+              <VStack>
+                <Text bold className="text-xl">
+                  Reset invite link
+                </Text>
+                <Text className="text-sm text-secondary-950">
+                  Generate a new link and QR. The current one stops working
+                  immediately.
+                </Text>
+              </VStack>
 
-                  {isExpired && (
-                    <HStack className="mt-4 gap-x-2 items-center">
-                      <AlertCircle
-                        size={16}
-                        color={getErrorHex("text-error-500", colorScheme)}
-                      />
-                      <Text className="text-error-500 text-sm">
-                        This link has expired — reset it to invite members.
-                      </Text>
-                    </HStack>
-                  )}
-                </Box>
-
-                <HStack className="gap-x-2">
-                  <FormButton
-                    className="flex-1"
-                    text="Share Invite Link"
-                    onPress={handleShare}
-                    disabled={isExpired}
-                    icon={
-                      <Share2
-                        size={18}
-                        color={getSecondaryHex("text-secondary-0", colorScheme)}
-                      />
-                    }
-                  />
-                  <FormButton
-                    className="flex-1"
-                    variant="outline"
-                    text="Download QR"
-                    onPress={handleDownloadQR}
-                    disabled={isExpired}
-                    icon={
-                      <Download
-                        size={18}
-                        color={getPrimaryHex("text-primary-500", colorScheme)}
-                      />
-                    }
-                  />
-                </HStack>
-
-                <Divider className="border-secondary-200" />
-
-                <VStack className="gap-y-4">
-                  <VStack>
-                    <Text bold className="text-xl">
-                      Reset invite link
-                    </Text>
+              <PressableListItem
+                className="p-4 border border-background-200 rounded-lg"
+                onPress={() => setExpirationSheetOpen(true)}
+              >
+                <HStack className="items-center justify-between">
+                  <VStack className="flex-1">
+                    <Text className="text-xl">Link Expiration</Text>
                     <Text className="text-sm text-secondary-950">
-                      Generate a new link and QR. The current one stops working
-                      immediately.
+                      Currently set to: {currentExpiryLabel}
                     </Text>
                   </VStack>
-
-                  <PressableListItem
-                    className="p-4 border border-background-200 rounded-lg"
-                    onPress={() => setExpirationSheetOpen(true)}
-                  >
-                    <HStack className="items-center justify-between">
-                      <VStack className="flex-1">
-                        <Text className="text-xl">Link Expiration</Text>
-                        <Text className="text-sm text-secondary-950">
-                          Currently set to: {currentExpiryLabel}
-                        </Text>
-                      </VStack>
-                      <HStack className="items-center gap-x-2">
-                        <Text bold className="text-primary-500">
-                          Change
-                        </Text>
-                        <Icon as="chevron-right" className="text-primary-500" />
-                      </HStack>
-                    </HStack>
-                  </PressableListItem>
-                </VStack>
-              </VStack>
-            </ScrollView>
-
-            {/* Off-screen full-resolution copy of the card, snapshotted by
-                "Download QR". It must be genuinely laid out at export size
-                because react-native-svg draws a view at its real bounds. */}
-            <Box
-              pointerEvents="none"
-              style={{
-                position: "absolute",
-                left: -100000,
-                top: 0,
-                opacity: 0
-              }}
-            >
-              <InviteCardSvg
-                card={card}
-                creatorName={creatorName}
-                width={CARD_W * EXPORT_SCALE}
-                svgRef={exportRef}
-              />
-            </Box>
+                  <HStack className="items-center gap-x-2">
+                    <Text bold className="text-primary-500">
+                      Change
+                    </Text>
+                    <Icon as="chevron-right" className="text-primary-500" />
+                  </HStack>
+                </HStack>
+              </PressableListItem>
+            </VStack>
           </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
+
+          {/* Off-screen full-resolution copy of the card, snapshotted by
+              "Download QR". It must be genuinely laid out at export size
+              because react-native-svg draws a view at its real bounds. */}
+          <Box
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              left: -100000,
+              top: 0,
+              opacity: 0
+            }}
+          >
+            <InviteCardSvg
+              card={card}
+              creatorName={creatorName}
+              width={CARD_W * EXPORT_SCALE}
+              svgRef={exportRef}
+            />
+          </Box>
+        </ScrollView>
+      ) : (
+        <Box className="flex-1" />
+      )}
 
       <LinkExpirationSheet
         isOpen={expirationSheetOpen}
         onClose={() => setExpirationSheetOpen(false)}
         groupId={groupId}
       />
-    </>
+    </InnerLayout>
   );
 }
