@@ -29,6 +29,18 @@ const uriToBlob = async (uri: string): Promise<Blob> => {
   return decode(base64) as unknown as Blob;
 };
 
+// Compress a receipt image (same 1024px/0.8 profile as the upload path) and
+// return its base64 — used to send the photo to the scan-receipt Edge Function
+// without shipping a full-resolution image over the wire.
+export const getCompressedReceiptBase64 = async (
+  uri: string
+): Promise<string> => {
+  const compressedUri = await compressImage(uri, "receipts");
+  return FileSystem.readAsStringAsync(compressedUri, {
+    encoding: FileSystem.EncodingType.Base64
+  });
+};
+
 export const uploadFile = async (asset: ImagePickerAsset, bucket: Bucket) => {
   const compressedUri = await compressImage(asset.uri, bucket);
   const blob = await uriToBlob(compressedUri);

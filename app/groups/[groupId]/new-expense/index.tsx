@@ -16,7 +16,7 @@ import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
 import { cacheService } from "@/utils/cacheService";
-import { DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
+import { currencies, DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import {
@@ -47,14 +47,29 @@ export default function NewExpenseScreen() {
     string | undefined
   >(undefined);
   const [dailyCount, setDailyCount] = useState(0);
-  const [values, setValues] = useState({
-    currency: isPro ? defaultCurrency : "PHP",
-    amount: "",
-    description: "",
-    expense_date: new Date(),
-    proof_of_payment: null as ImagePickerSuccessResult | null,
-    group: null as Group | null,
-    split_type: splitTypes[0].value as (typeof splitTypes)[number]["value"]
+  // Seed from a Scan Receipt (Beta) hand-off if one is waiting. Read once at
+  // mount via a lazy initializer; the draft is cleared in the effect below so a
+  // back-out + re-entry starts clean.
+  const [values, setValues] = useState(() => {
+    const draft = states.expense.getState().scanDraft;
+    // Scanned currency is only honored for Pro (free = PHP-only) and only when
+    // it's a currency we actually support; otherwise fall back to the default.
+    const scannedCurrency =
+      isPro && draft?.currency && currencies.some((c) => c.value === draft.currency)
+        ? draft.currency
+        : null;
+    const scannedDate = draft?.date ? new Date(draft.date) : null;
+    return {
+      currency: scannedCurrency ?? (isPro ? defaultCurrency : "PHP"),
+      amount: draft?.amount ?? "",
+      description: draft?.description ?? "",
+      expense_date:
+        scannedDate && !isNaN(scannedDate.getTime()) ? scannedDate : new Date(),
+      proof_of_payment: (draft?.proof_of_payment ??
+        null) as ImagePickerSuccessResult | null,
+      group: null as Group | null,
+      split_type: splitTypes[0].value as (typeof splitTypes)[number]["value"]
+    };
   });
   const [formErrors, setFormErrors] = useState({
     amount: "",
@@ -115,6 +130,13 @@ export default function NewExpenseScreen() {
         .then(setDailyCount)
         .catch(() => {});
     }
+  }, []);
+
+  // The scan hand-off has been consumed by the initializer above — clear it so
+  // leaving and re-entering this screen doesn't re-seed a stale receipt.
+  useEffect(() => {
+    const { scanDraft, clearScanDraft } = states.expense.getState();
+    if (scanDraft) clearScanDraft();
   }, []);
 
   const applyGroupMembers = (raw: Member[]) => {

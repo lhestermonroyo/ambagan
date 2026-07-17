@@ -1,0 +1,295 @@
+import FormButton from "@/components/FormButton";
+import { Box } from "@/components/ui/box";
+import { HStack } from "@/components/ui/hstack";
+import { Pressable } from "@/components/ui/pressable";
+import { Spinner } from "@/components/ui/spinner";
+import { Text } from "@/components/ui/text";
+import { VStack } from "@/components/ui/vstack";
+import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
+import services from "@/services";
+import states from "@/states";
+import { getPrimaryHex } from "@/utils/getColorHex";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { ImageUp, ReceiptText, X, Zap, ZapOff } from "lucide-react-native";
+import { useRef, useState } from "react";
+import { Linking, StyleSheet, useColorScheme } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+// Below this we still autofill, but nudge the user to double-check the amount.
+const LOW_CONFIDENCE = 0.5;
+
+// The scan-receipt hand-off carries an ImagePickerSuccessResult (that's what the
+// new-expense form's proof_of_payment field takes), so a camera capture — which
+// comes back as a bare {uri,width,height} — gets wrapped to match.
+const toPickerResult = (asset: {
+  uri: string;
+  width: number;
+  height: number;
+}): ImagePicker.ImagePickerSuccessResult => ({
+  canceled: false,
+  assets: [
+    {
+      ...asset,
+      fileName: `receipt_${Date.now()}.jpg`,
+      mimeType: "image/jpeg",
+      type: "image"
+    }
+  ]
+});
+
+/**
+ * Scan Receipt (Beta): point the camera at a receipt (or pick one from Photos) →
+ * read it via the scan-receipt Edge Function → stash the parsed fields + image as
+ * a scanDraft → open the Custom Expense flow already filled in. Degrades
+ * gracefully: an unreadable receipt still opens the form (blank/partial) with a
+ * heads-up toast.
+ */
+export default function ScanReceiptScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  // When launched from a group, pre-locks that group in the new-expense flow.
+  const groupId = params.groupId as string | undefined;
+  const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
+  const { setScanDraft } = states.expense();
+  const [permission, requestPermission] = useCameraPermissions();
+  const [torch, setTorch] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const cameraRef = useRef<CameraView>(null);
+  const colorScheme = useColorScheme() ?? "light";
+
+  const handleClose = () => router.back();
+
+  // Shared by the shutter and the Photos picker: read the image, stash the
+  // draft, and hand off to the new-expense form. Failures leave the user on the
+  // camera so they can line the receipt up again and retry.
+  const handleScan = async (result: ImagePicker.ImagePickerSuccessResult) => {
+    if (
+      !(await ensureOnline(
+        "You need an internet connection to scan a receipt. Please try again when you're back online."
+      ))
+    ) {
+      return;
+    }
+
+    setScanning(true);
+    try {
+      const scan = await services.expense.scanReceipt(result.assets[0].uri);
+
+      const gotNothing =
+        !scan || (!scan.amount && !scan.description && !scan.merchant);
+
+      if (gotNothing) {
+        toast({
+          title: "Couldn't read that",
+          description:
+            "We couldn't read the receipt. You can still enter the expense manually.",
+          type: "warning"
+        });
+      } else if (scan.confidence < LOW_CONFIDENCE) {
+        toast({
+          title: "Please double-check",
+          description:
+            "The scan may not be accurate — review the amount before saving.",
+          type: "info"
+        });
+      }
+
+      setScanDraft({
+        amount: scan?.amount ?? null,
+        description: scan?.description ?? scan?.merchant ?? null,
+        currency: scan?.currency ?? null,
+        date: scan?.date ?? null,
+        proof_of_payment: result
+      });
+
+      setScanning(false);
+      // replace, not push — backing out of the form returns to whatever opened
+      // the scanner, not to a live camera.
+      router.replace(
+        (groupId
+          ? `/groups/${groupId}/new-expense`
+          : "/groups/[groupId]/new-expense") as any
+      );
+    } catch {
+      setScanning(false);
+      toast({
+        title: "Scan failed",
+        description:
+          "Something went wrong reading the receipt. Please try again.",
+        type: "error"
+      });
+    }
+  };
+
+  const handleCapture = async () => {
+    if (scanning) return;
+
+    try {
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 1 });
+      if (!photo) return;
+      await handleScan(toPickerResult(photo));
+    } catch {
+      toast({
+        title: "Couldn't take photo",
+        description: "Something went wrong with the camera. Please try again.",
+        type: "error"
+      });
+    }
+  };
+
+  // Scan a receipt already saved to the library instead of shooting a new one.
+  const handleUploadReceipt = async () => {
+    if (scanning) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      toast({
+        title: "Photo access needed",
+        description: "Allow photo library access to upload a receipt image.",
+        type: "warning"
+      });
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 1
+    });
+    if (result.canceled) return;
+
+    await handleScan(result);
+  };
+
+  // Permission still resolving on first mount.
+  if (!permission) {
+    return <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} />;
+  }
+
+  if (!permission.granted) {
+    return (
+      <SafeAreaView className="bg-secondary-0" style={{ flex: 1 }}>
+        <VStack className="flex-1 items-center justify-center gap-y-4 p-6">
+          <ReceiptText
+            size={48}
+            color={getPrimaryHex("text-primary-500", colorScheme)}
+          />
+          <VStack className="gap-y-2">
+            <Text bold className="text-xl text-center">
+              Camera access needed
+            </Text>
+            <Text className="text-secondary-950 text-center">
+              Ambagan needs your camera to scan a receipt.
+            </Text>
+          </VStack>
+          <VStack className="w-full gap-y-2">
+            <FormButton
+              text="Grant Camera Access"
+              onPress={() =>
+                permission.canAskAgain
+                  ? requestPermission()
+                  : Linking.openSettings()
+              }
+            />
+            <FormButton
+              variant="outline"
+              text={scanning ? "Reading receipt…" : "Upload Receipt from Photos"}
+              onPress={handleUploadReceipt}
+              disabled={scanning}
+            />
+            <FormButton variant="outline" text="Cancel" onPress={handleClose} />
+          </VStack>
+        </VStack>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <Box className="flex-1 bg-black">
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        facing="back"
+        enableTorch={torch}
+      />
+      <SafeAreaView style={{ flex: 1 }}>
+        <VStack className="flex-1">
+          <Box className="p-4">
+            <Pressable
+              onPress={handleClose}
+              className="h-10 w-10 items-center justify-center rounded-full bg-black/50"
+            >
+              <X size={22} color="#fff" />
+            </Pressable>
+          </Box>
+
+          <VStack className="flex-1 items-end justify-end">
+            <Text className="text-white text-center px-8 pb-6 w-full">
+              Point your camera at a receipt, then tap the shutter.
+            </Text>
+          </VStack>
+
+          <HStack className="items-center justify-center gap-x-10 p-6">
+            <Pressable
+              onPress={() => setTorch((prev) => !prev)}
+              accessibilityLabel={
+                torch ? "Turn off flashlight" : "Turn on flashlight"
+              }
+              className={`h-14 w-14 items-center justify-center rounded-full ${
+                torch ? "bg-white" : "bg-white/15"
+              }`}
+            >
+              {torch ? (
+                <Zap size={24} color="#000" />
+              ) : (
+                <ZapOff size={24} color="#fff" />
+              )}
+            </Pressable>
+
+            <Pressable
+              onPress={handleCapture}
+              disabled={scanning}
+              accessibilityLabel="Scan receipt"
+              className="h-20 w-20 items-center justify-center rounded-full border-4 border-white/80"
+            >
+              <Box className="h-16 w-16 rounded-full bg-white" />
+            </Pressable>
+
+            <Pressable
+              onPress={handleUploadReceipt}
+              disabled={scanning}
+              accessibilityLabel="Upload receipt from Photos"
+              className="h-14 w-14 items-center justify-center rounded-full bg-white/15"
+            >
+              <ImageUp size={24} color="#fff" />
+            </Pressable>
+          </HStack>
+        </VStack>
+      </SafeAreaView>
+
+      {/* Blocks the camera controls while the receipt is being read. */}
+      {scanning && (
+        <Box
+          className="items-center justify-center bg-black/70"
+          style={StyleSheet.absoluteFill}
+        >
+          <VStack className="items-center gap-y-4 px-8">
+            <Spinner
+              size="large"
+              color={getPrimaryHex("text-primary-400", colorScheme)}
+            />
+            <Text bold className="text-base text-white">
+              Reading receipt…
+            </Text>
+            <Text className="text-sm text-white/70 text-center">
+              Pulling the amount and details from your receipt.
+            </Text>
+          </VStack>
+        </Box>
+      )}
+    </Box>
+  );
+}

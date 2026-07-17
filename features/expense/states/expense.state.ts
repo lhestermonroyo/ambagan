@@ -1,4 +1,4 @@
-import { ExpenseState } from "@/types/expenses";
+import { ExpenseState, ScanDraft } from "@/types/expenses";
 import { create } from "zustand";
 
 const initialState: ExpenseState = {
@@ -11,10 +11,17 @@ const initialState: ExpenseState = {
 
 const EXPENSE_STATE = create<
   ExpenseState & {
+    // Transient hand-off from Scan Receipt (Beta) → new-expense form.
+    scanDraft: ScanDraft | null;
+    setScanDraft: (draft: ScanDraft) => void;
+    clearScanDraft: () => void;
     reset: () => void;
   }
 >((set) => ({
   ...initialState,
+  scanDraft: null,
+  setScanDraft: (draft) => set({ scanDraft: draft }),
+  clearScanDraft: () => set({ scanDraft: null }),
   reset: () => set(initialState)
 }));
 

@@ -44,6 +44,7 @@ import {
   HousePlus,
   ListPlus,
   QrCode,
+  ScanLine,
   Zap
 } from "lucide-react-native";
 import React, {
@@ -395,6 +396,7 @@ export default function HomeScreen() {
 
   const handleOpenQuickAdd = useCallback(() => setQuickAddOpen(true), []);
   const handleCloseQuickAdd = useCallback(() => setQuickAddOpen(false), []);
+  const handleOpenScan = useCallback(() => router.push("/scan-receipt" as any), []);
 
   const handleQuickAddSuccess = useCallback(() => {
     init(true);
@@ -562,6 +564,11 @@ export default function HomeScreen() {
                     icon={<ListPlus size={24} color="#fff" />}
                     label={`Custom\n\ Expense`}
                     onPress={handleCustomExpense}
+                  />
+                  <ActionButton
+                    icon={<ScanLine size={24} color="#fff" />}
+                    label={`Scan\n\ Receipt`}
+                    onPress={handleOpenScan}
                   />
                   <ActionButton
                     icon={<HousePlus size={24} color="#fff" />}
@@ -780,7 +787,7 @@ function ActionButton({
       className="flex-1 basis-0 min-w-0 justify-start"
     >
       {({ pressed }) => (
-        <VStack className="items-center gap-y-2 px-4">
+        <VStack className="items-center gap-y-2 px-1">
           <Box
             className={cn(
               pressed ? "bg-primary-600" : "bg-primary-500",

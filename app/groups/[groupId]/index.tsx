@@ -40,7 +40,14 @@ import {
   useLocalSearchParams,
   useRouter
 } from "expo-router";
-import { Archive, CirclePlus, ListPlus, X, Zap } from "lucide-react-native";
+import {
+  Archive,
+  CirclePlus,
+  ListPlus,
+  ScanLine,
+  X,
+  Zap
+} from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -595,6 +602,31 @@ export default function GroupDetailsScreen() {
                   >
                     <Text className="text-base">Custom Expense</Text>
                     <ListPlus
+                      size={20}
+                      color={getPrimaryHex("text-primary-500", colorScheme)}
+                    />
+                  </Pressable>
+                  <Box
+                    style={{
+                      height: 0.5,
+                      backgroundColor:
+                        colorScheme === "dark" ? "#3A3A3C" : "#E5E5EA"
+                    }}
+                  />
+                  <Pressable
+                    className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
+                    onPress={() => {
+                      setFabOpen(false);
+                      router.push(`/scan-receipt?groupId=${groupId}` as any);
+                    }}
+                  >
+                    <HStack className="items-center gap-x-2">
+                      <Text className="text-base">Scan Receipt</Text>
+                      <Badge size="sm" action="info" variant="solid">
+                        <BadgeText>Beta</BadgeText>
+                      </Badge>
+                    </HStack>
+                    <ScanLine
                       size={20}
                       color={getPrimaryHex("text-primary-500", colorScheme)}
                     />

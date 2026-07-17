@@ -6,7 +6,8 @@ import {
   ExpensePreview,
   MemberSplit,
   Payment,
-  PaymentPreview
+  PaymentPreview,
+  ScanResult
 } from "@/types/expenses";
 import { NotificationType } from "@/types/notifications";
 import { cacheService } from "@/utils/cacheService";
@@ -14,9 +15,27 @@ import { splitTypes, tables } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { sendPushNotification } from "@/utils/sendPushNotifications";
 import { supabase } from "@/utils/supabase";
-import { uploadFile } from "@/utils/upload";
+import { getCompressedReceiptBase64, uploadFile } from "@/utils/upload";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { v4 as uuid } from "uuid";
+
+/**
+ * Scan Receipt (Beta): compress the picked photo, send it to the scan-receipt
+ * Edge Function, and return the parsed amount/description/currency/etc. The AI
+ * vendor lives behind the Edge Function — this just speaks the normalized
+ * contract. Throws on a transport failure so the caller can toast + fall back.
+ */
+export const scanReceipt = async (uri: string): Promise<ScanResult> => {
+  const imageBase64 = await getCompressedReceiptBase64(uri);
+
+  const { data, error } = await supabase.functions.invoke("scan-receipt", {
+    body: { imageBase64, mimeType: "image/jpeg" }
+  });
+
+  if (error) throw error;
+
+  return data as ScanResult;
+};
 
 const GHOST_USER = {
   id: "",

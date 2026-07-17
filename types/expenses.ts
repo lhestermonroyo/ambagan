@@ -1,4 +1,33 @@
+import { ImagePickerSuccessResult } from "expo-image-picker";
 import { UserPreview } from "./user";
+
+/**
+ * Transient hand-off from Scan Receipt (Beta) to the new-expense form. Carries
+ * the fields parsed off the receipt plus the picked image (which doubles as the
+ * expense's proof-of-payment). Set right before navigating to new-expense and
+ * cleared once the form seeds itself. Kept in the store rather than route params
+ * because the picked-image object doesn't serialize cleanly through navigation.
+ */
+export type ScanDraft = {
+  amount: string | null;
+  description: string | null;
+  currency: string | null;
+  date: string | null;
+  proof_of_payment: ImagePickerSuccessResult;
+};
+
+/**
+ * Normalized result from the scan-receipt Edge Function. Shape is stable across
+ * AI-vendor swaps (Gemini Flash today, Claude Haiku later) — see the function.
+ */
+export type ScanResult = {
+  amount: string | null;
+  currency: string | null;
+  description: string | null;
+  merchant: string | null;
+  date: string | null;
+  confidence: number;
+};
 
 export type ExpenseState = {
   activityList: PaymentPreview[];
