@@ -617,7 +617,7 @@ export default function GroupDetailsScreen() {
                     className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
                     onPress={() => {
                       setFabOpen(false);
-                      router.push(`/scan-receipt?groupId=${groupId}` as any);
+                      router.push(`/groups/${groupId}/scan-receipt` as any);
                     }}
                   >
                     <HStack className="items-center gap-x-2">

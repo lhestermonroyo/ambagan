@@ -192,7 +192,7 @@ export default function ScanJoinScreen() {
           <Box className="p-4">
             <Pressable
               onPress={handleClose}
-              className="h-10 w-10 items-center justify-center rounded-full bg-black/50"
+              className="h-10 w-10 items-center justify-center rounded-full bg-black/50 active:opacity-60"
             >
               <X size={22} color="#fff" />
             </Pressable>
@@ -212,7 +212,7 @@ export default function ScanJoinScreen() {
             <Pressable
               onPress={handleUploadQR}
               disabled={uploading}
-              className="w-full"
+              className="w-full active:opacity-60"
             >
               <HStack className="items-center justify-center gap-x-2 px-4 py-3 rounded-full bg-white/15">
                 <ImageUp size={18} color="#fff" />
@@ -224,7 +224,7 @@ export default function ScanJoinScreen() {
 
             <Pressable
               onPress={() => setTorch((prev) => !prev)}
-              className="px-4 py-2 rounded-full bg-black/50"
+              className="px-4 py-2 rounded-full bg-black/50 active:opacity-60"
             >
               <Text className="text-white">
                 {torch ? "Turn off flashlight" : "Turn on flashlight"}

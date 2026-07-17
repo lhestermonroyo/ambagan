@@ -12,9 +12,9 @@ import states from "@/states";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import { ImageUp, ReceiptText, X, Zap, ZapOff } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Linking, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -40,6 +40,20 @@ const toPickerResult = (asset: {
   ]
 });
 
+type ScanReceiptViewProps = {
+  /** When set, pre-locks that group in the new-expense flow. */
+  groupId?: string;
+  /**
+   * Where the scanner is mounted, which decides how it hands off and dismisses:
+   * - `tab`: the Scan tab. Pushing the form covers the tab; replacing would
+   *   swap out the whole tab navigator this screen lives in.
+   * - `pushed`: stacked over the screen that opened it (a group). Replacing
+   *   drops the camera from the stack, so backing out of the form returns to
+   *   that screen rather than to a live camera.
+   */
+  presentation: "tab" | "pushed";
+};
+
 /**
  * Scan Receipt (Beta): point the camera at a receipt (or pick one from Photos) →
  * read it via the scan-receipt Edge Function → stash the parsed fields + image as
@@ -47,11 +61,11 @@ const toPickerResult = (asset: {
  * gracefully: an unreadable receipt still opens the form (blank/partial) with a
  * heads-up toast.
  */
-export default function ScanReceiptScreen() {
+export default function ScanReceiptView({
+  groupId,
+  presentation
+}: ScanReceiptViewProps) {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  // When launched from a group, pre-locks that group in the new-expense flow.
-  const groupId = params.groupId as string | undefined;
   const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
   const { setScanDraft } = states.expense();
@@ -60,8 +74,22 @@ export default function ScanReceiptScreen() {
   const [scanning, setScanning] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const colorScheme = useColorScheme() ?? "light";
+  // On the tab this screen stays mounted once visited, so tear the camera down
+  // when it's off screen instead of leaving it (and the torch) running.
+  const isFocused = useIsFocused();
 
-  const handleClose = () => router.back();
+  useFocusEffect(useCallback(() => () => setTorch(false), []));
+
+  // On the tab this is the only way out, since the tab bar is hidden. Tabs
+  // record their history, so back lands on the tab we came from; when pushed,
+  // the tab router declines and the parent stack pops to the opener instead.
+  const handleClose = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/(tabs)/(home)" as any);
+  };
 
   // Shared by the shutter and the Photos picker: read the image, stash the
   // draft, and hand off to the new-expense form. Failures leave the user on the
@@ -107,13 +135,17 @@ export default function ScanReceiptScreen() {
       });
 
       setScanning(false);
-      // replace, not push — backing out of the form returns to whatever opened
-      // the scanner, not to a live camera.
-      router.replace(
-        (groupId
+      const target = (
+        groupId
           ? `/groups/${groupId}/new-expense`
-          : "/groups/[groupId]/new-expense") as any
-      );
+          : "/groups/[groupId]/new-expense"
+      ) as any;
+      // See `presentation` — a tab can't be replaced out from under itself.
+      if (presentation === "tab") {
+        router.push(target);
+      } else {
+        router.replace(target);
+      }
     } catch {
       setScanning(false);
       toast({
@@ -196,7 +228,9 @@ export default function ScanReceiptScreen() {
             />
             <FormButton
               variant="outline"
-              text={scanning ? "Reading receipt…" : "Upload Receipt from Photos"}
+              text={
+                scanning ? "Reading receipt…" : "Upload Receipt from Photos"
+              }
               onPress={handleUploadReceipt}
               disabled={scanning}
             />
@@ -209,18 +243,20 @@ export default function ScanReceiptScreen() {
 
   return (
     <Box className="flex-1 bg-black">
-      <CameraView
-        ref={cameraRef}
-        style={StyleSheet.absoluteFill}
-        facing="back"
-        enableTorch={torch}
-      />
+      {isFocused && (
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          enableTorch={torch}
+        />
+      )}
       <SafeAreaView style={{ flex: 1 }}>
         <VStack className="flex-1">
           <Box className="p-4">
             <Pressable
               onPress={handleClose}
-              className="h-10 w-10 items-center justify-center rounded-full bg-black/50"
+              className="h-10 w-10 items-center justify-center rounded-full bg-black/50 active:opacity-60"
             >
               <X size={22} color="#fff" />
             </Pressable>
@@ -238,7 +274,7 @@ export default function ScanReceiptScreen() {
               accessibilityLabel={
                 torch ? "Turn off flashlight" : "Turn on flashlight"
               }
-              className={`h-14 w-14 items-center justify-center rounded-full ${
+              className={`h-14 w-14 items-center justify-center rounded-full active:opacity-60 ${
                 torch ? "bg-white" : "bg-white/15"
               }`}
             >
@@ -253,7 +289,7 @@ export default function ScanReceiptScreen() {
               onPress={handleCapture}
               disabled={scanning}
               accessibilityLabel="Scan receipt"
-              className="h-20 w-20 items-center justify-center rounded-full border-4 border-white/80"
+              className="h-20 w-20 items-center justify-center rounded-full border-4 border-white/80 active:opacity-60"
             >
               <Box className="h-16 w-16 rounded-full bg-white" />
             </Pressable>
@@ -262,7 +298,7 @@ export default function ScanReceiptScreen() {
               onPress={handleUploadReceipt}
               disabled={scanning}
               accessibilityLabel="Upload receipt from Photos"
-              className="h-14 w-14 items-center justify-center rounded-full bg-white/15"
+              className="h-14 w-14 items-center justify-center rounded-full bg-white/15 active:opacity-60"
             >
               <ImageUp size={24} color="#fff" />
             </Pressable>

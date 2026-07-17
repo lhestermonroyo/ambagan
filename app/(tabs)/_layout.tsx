@@ -6,6 +6,7 @@ import states from "@/states";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
+import { usePathname } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
@@ -59,13 +60,30 @@ export default function TabLayout() {
   // Brand purple for the selected tab; light/dark handled by getPrimaryHex.
   const tintColor = getPrimaryHex("text-primary-600", colorScheme);
 
+  // The scanner is a full-bleed camera, so drop the tab bar while it's up —
+  // its own close button is the way out.
+  const scanning = usePathname().startsWith("/scan-receipt");
+
   return (
     <View style={{ flex: 1 }}>
-      <NativeTabs tintColor={tintColor} minimizeBehavior="onScrollDown">
+      {/* `history` (over the default `initialRoute`) is what lets the scanner's
+        close button land back on the tab it was opened from, rather than
+        always on Overview. */}
+      <NativeTabs
+        tintColor={tintColor}
+        minimizeBehavior="onScrollDown"
+        backBehavior="history"
+        hidden={scanning}
+      >
         <NativeTabs.Trigger name="(home)">
           <NativeTabs.Trigger.Icon
             renderingMode="template"
-            src={<NativeTabs.Trigger.VectorIcon family={LucideIcon} name="wallet" />}
+            src={
+              <NativeTabs.Trigger.VectorIcon
+                family={LucideIcon}
+                name="wallet"
+              />
+            }
           />
           <NativeTabs.Trigger.Label>Overview</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
@@ -73,7 +91,9 @@ export default function TabLayout() {
         <NativeTabs.Trigger name="groups">
           <NativeTabs.Trigger.Icon
             renderingMode="template"
-            src={<NativeTabs.Trigger.VectorIcon family={LucideIcon} name="house" />}
+            src={
+              <NativeTabs.Trigger.VectorIcon family={LucideIcon} name="house" />
+            }
           />
           <NativeTabs.Trigger.Label>Groups</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
@@ -81,7 +101,9 @@ export default function TabLayout() {
         <NativeTabs.Trigger name="friends">
           <NativeTabs.Trigger.Icon
             renderingMode="template"
-            src={<NativeTabs.Trigger.VectorIcon family={LucideIcon} name="users" />}
+            src={
+              <NativeTabs.Trigger.VectorIcon family={LucideIcon} name="users" />
+            }
           />
           <NativeTabs.Trigger.Label>Friends</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
@@ -97,6 +119,19 @@ export default function TabLayout() {
             }
           />
           <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger name="scan-receipt" role="search">
+          <NativeTabs.Trigger.Icon
+            renderingMode="template"
+            src={
+              <NativeTabs.Trigger.VectorIcon
+                family={LucideIcon}
+                name="scan-line"
+              />
+            }
+          />
+          <NativeTabs.Trigger.Label>Scan Receipt</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
 
