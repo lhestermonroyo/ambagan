@@ -84,6 +84,9 @@ export default function HomeScreen() {
   );
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  // True when Quick Add is opened from a Scan Receipt (Beta) hand-off, so the
+  // sheet seeds itself from the scanDraft instead of starting blank.
+  const [quickAddSeedScan, setQuickAddSeedScan] = useState(false);
 
   const {
     details: userDetails,
@@ -95,7 +98,7 @@ export default function HomeScreen() {
   // without waiting for fetchDetails to complete
   const userId = userDetails?.id ?? session?.user?.id;
   const { list: groupList } = states.group();
-  const { activityList } = states.expense();
+  const { activityList, setPendingQuickAdd } = states.expense();
   const { unreadCount } = states.notification();
 
   const displayStats = stats;
@@ -394,7 +397,24 @@ export default function HomeScreen() {
   const handleRefetch = useCallback(() => init(true), [userId]);
 
   const handleOpenQuickAdd = useCallback(() => setQuickAddOpen(true), []);
-  const handleCloseQuickAdd = useCallback(() => setQuickAddOpen(false), []);
+  const handleCloseQuickAdd = useCallback(() => {
+    setQuickAddOpen(false);
+    setQuickAddSeedScan(false);
+  }, []);
+
+  // A scan chose "Quick Add" and returned here — open the sheet seeded from the
+  // stashed draft, then clear the flag so it doesn't reopen. Keyed to focus (not
+  // the flag) so only the focused screen consumes it: Home stays mounted behind
+  // a group route, and both hosts subscribe to the same flag.
+  useFocusEffect(
+    useCallback(() => {
+      if (states.expense.getState().pendingQuickAdd) {
+        setQuickAddSeedScan(true);
+        setQuickAddOpen(true);
+        setPendingQuickAdd(false);
+      }
+    }, [setPendingQuickAdd])
+  );
   const handleOpenScan = useCallback(
     () => router.push("/scan-receipt" as any),
     []
@@ -725,6 +745,7 @@ export default function HomeScreen() {
         group={quickAddGroup}
         groupsLoading={loading.groups}
         allowGroupChange
+        seedFromScan={quickAddSeedScan}
         onClose={handleCloseQuickAdd}
         onSuccess={handleQuickAddSuccess}
       />

@@ -49,10 +49,9 @@ export default function NewExpensePickerSheet({
         iconColor: getPrimaryHex("text-primary-400", colorScheme),
         label: "Quick Add",
         description: "Paid by you · Equal split · Dated today",
-        onPress: () => {
-          onClose();
-          setTimeout(onQuickAdd, 300);
-        }
+        // Callers own dismissal (onClose means "dismissed without choosing"), so
+        // route the choice straight through rather than closing here first.
+        onPress: onQuickAdd
       },
       {
         key: "custom",
@@ -74,8 +73,8 @@ export default function NewExpensePickerSheet({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full gap-y-4">
-          <Text bold className="text-xl px-4">
-            Add an Expense
+          <Text bold className="text-xl pt-4 px-4">
+            Choose Expense Flow
           </Text>
           <ActionsheetFlatList
             data={items}
@@ -99,7 +98,9 @@ export default function NewExpensePickerSheet({
                       <ActionsheetItemText className="text-lg font-semibold">
                         {label}
                       </ActionsheetItemText>
-                      <Text className="text-sm text-secondary-950">{description}</Text>
+                      <Text className="text-sm text-secondary-950">
+                        {description}
+                      </Text>
                     </VStack>
                   </HStack>
                 </ActionsheetItem>

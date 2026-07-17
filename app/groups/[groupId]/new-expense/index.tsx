@@ -755,6 +755,12 @@ export default function NewExpenseScreen() {
             setValues={setValues}
             formErrors={formErrors}
             isLockedGroup={isLocked}
+            // Show the scanned receipt as the initial proof preview (it seeds
+            // values.proof_of_payment on mount, but UploadImage only previews
+            // from defaultUri).
+            proofDefaultUri={
+              values.proof_of_payment?.assets?.[0]?.uri ?? null
+            }
             currencyLocked={!isPro}
             onCurrencyLockedPress={() => {
               setUpgradeDescription(

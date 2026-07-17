@@ -48,7 +48,7 @@ import {
   X,
   Zap
 } from "lucide-react-native";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Modal,
@@ -70,6 +70,9 @@ export default function GroupDetailsScreen() {
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  // True when Quick Add is opened from a Scan Receipt (Beta) hand-off, so the
+  // sheet seeds itself from the scanDraft instead of starting blank.
+  const [quickAddSeedScan, setQuickAddSeedScan] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
   const {
@@ -79,6 +82,7 @@ export default function GroupDetailsScreen() {
     memberList
   } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
+  const { setPendingQuickAdd } = states.expense();
 
   // A split needs at least two people, so expenses are gated until the group
   // has a second member (joined via invite, or added as a phone contact).
@@ -88,6 +92,19 @@ export default function GroupDetailsScreen() {
   const colorScheme = useColorScheme() ?? "light";
 
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  // A scan chose "Quick Add" and returned to this group — open the sheet seeded
+  // from the stashed draft, then clear the flag so it doesn't reopen. Keyed to
+  // focus so only the focused screen consumes the flag (Home also subscribes).
+  useFocusEffect(
+    useCallback(() => {
+      if (states.expense.getState().pendingQuickAdd) {
+        setQuickAddSeedScan(true);
+        setQuickAddOpen(true);
+        setPendingQuickAdd(false);
+      }
+    }, [setPendingQuickAdd])
+  );
 
   const activeSettlements = useMemo(
     () => settlementList.filter((p) => p.status !== "settled"),
@@ -936,7 +953,11 @@ export default function GroupDetailsScreen() {
       <QuickAddExpenseSheet
         isOpen={quickAddOpen}
         group={groupDetails}
-        onClose={() => setQuickAddOpen(false)}
+        seedFromScan={quickAddSeedScan}
+        onClose={() => {
+          setQuickAddOpen(false);
+          setQuickAddSeedScan(false);
+        }}
         onSuccess={() => {
           if (groupId) {
             init(groupId, true);
