@@ -6,23 +6,24 @@
 //
 // The AI vendor lives ENTIRELY behind this function — the app only ever calls
 // `supabase.functions.invoke("scan-receipt", ...)` and depends on the
-// normalized response shape below. Swapping the beta Gemini Flash call for
-// Claude Haiku (or anything else) later is a change to THIS file only, with no
-// app update required, as long as the returned shape stays the same.
+// normalized response shape below. This file uses Claude Haiku 4.5 via the
+// Anthropic Messages API; swapping it for another vendor later is a change to
+// THIS file only, with no app update required, as long as the returned shape
+// stays the same.
 //
 // Deploy:   supabase functions deploy scan-receipt
 // Secrets:  SUPABASE_URL, SUPABASE_ANON_KEY (injected automatically by Supabase)
-//           GEMINI_API_KEY — free key from Google AI Studio:
-//             supabase secrets set GEMINI_API_KEY=...
+//           ANTHROPIC_API_KEY — key from https://console.anthropic.com/:
+//             supabase secrets set ANTHROPIC_API_KEY=...
 //
 // Invoked from the app via
 //   supabase.functions.invoke("scan-receipt", { body: { imageBase64, mimeType } })
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const GEMINI_MODEL = "gemini-2.0-flash";
-const GEMINI_URL =
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
+const ANTHROPIC_VERSION = "2023-06-01";
 
 // The normalized contract the app depends on. Keep this stable across vendor
 // swaps. All fields nullable so a bad/unreadable receipt degrades gracefully.
@@ -48,24 +49,56 @@ const PROMPT =
   "You are reading a photo of a receipt or bill. Extract the final TOTAL " +
   "amount actually paid (after tax/service charge, not the subtotal), the " +
   "ISO 4217 currency code, the merchant/store name, a short human-readable " +
-  "description of the purchase (e.g. \"Dinner at Jollibee\"), and the receipt " +
+  'description of the purchase (e.g. "Dinner at Jollibee"), and the receipt ' +
   "date. Set confidence between 0 and 1 for how sure you are this is a " +
   "readable receipt. If it is not a receipt or you cannot read it, return " +
-  "nulls and confidence 0.";
+  "nulls and confidence 0. Call the record_receipt tool with your answer.";
 
-// Ask Gemini for strict JSON matching our shape.
-const RESPONSE_SCHEMA = {
-  type: "object",
-  properties: {
-    amount: { type: "string", nullable: true },
-    currency: { type: "string", nullable: true },
-    description: { type: "string", nullable: true },
-    merchant: { type: "string", nullable: true },
-    date: { type: "string", nullable: true },
-    confidence: { type: "number" }
-  },
-  required: ["confidence"]
+// A single tool whose input schema IS our result shape. Forcing this tool call
+// (tool_choice) makes Claude return strict JSON matching the contract.
+const RECEIPT_TOOL = {
+  name: "record_receipt",
+  description: "Record the fields extracted from the receipt photo.",
+  input_schema: {
+    type: "object",
+    properties: {
+      amount: {
+        type: ["string", "null"],
+        description:
+          'Total paid, digits only, e.g. "1250.50". Null if unreadable.'
+      },
+      currency: {
+        type: ["string", "null"],
+        description: 'ISO 4217 code, e.g. "PHP". Null if unknown.'
+      },
+      description: {
+        type: ["string", "null"],
+        description: "Short human-readable summary of the purchase."
+      },
+      merchant: {
+        type: ["string", "null"],
+        description: "Merchant/store name."
+      },
+      date: {
+        type: ["string", "null"],
+        description: "Receipt date in ISO 8601 (YYYY-MM-DD) if present."
+      },
+      confidence: {
+        type: "number",
+        description: "0–1 confidence this is a readable receipt."
+      }
+    },
+    required: ["confidence"]
+  }
 };
+
+// Anthropic's image block wants the base64 media type separately. Normalize a
+// few common values; default to jpeg.
+function normalizeMediaType(mimeType: unknown): string {
+  const t = typeof mimeType === "string" ? mimeType.toLowerCase() : "";
+  if (t === "image/png" || t === "image/webp" || t === "image/gif") return t;
+  return "image/jpeg";
+}
 
 // Strip currency symbols, spaces, and thousands separators so the value drops
 // straight into the app's AmountInput. Returns null if nothing numeric remains.
@@ -103,66 +136,68 @@ Deno.serve(async (req) => {
       return new Response("Bad request", { status: 400 });
     }
 
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) {
-      console.error("GEMINI_API_KEY not set");
+      console.error("ANTHROPIC_API_KEY not set");
       // Degrade to a blank form rather than surfacing an error to the user.
       return Response.json(EMPTY_RESULT, { status: 200 });
     }
 
-    let geminiRes: Response;
+    let aiRes: Response;
     try {
-      geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+      aiRes = await fetch(ANTHROPIC_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": ANTHROPIC_VERSION
+        },
         body: JSON.stringify({
-          contents: [
+          model: ANTHROPIC_MODEL,
+          max_tokens: 1024,
+          tools: [RECEIPT_TOOL],
+          tool_choice: { type: "tool", name: "record_receipt" },
+          messages: [
             {
               role: "user",
-              parts: [
-                { text: PROMPT },
+              content: [
+                { type: "text", text: PROMPT },
                 {
-                  inline_data: {
-                    mime_type: mimeType || "image/jpeg",
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: normalizeMediaType(mimeType),
                     data: imageBase64
                   }
                 }
               ]
             }
-          ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: RESPONSE_SCHEMA
-          }
+          ]
         })
       });
     } catch (e) {
-      console.error(JSON.stringify({ geminiFetchError: String(e) }));
+      console.error(JSON.stringify({ anthropicFetchError: String(e) }));
       return Response.json(EMPTY_RESULT, { status: 200 });
     }
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text().catch(() => "");
-      console.error(
-        JSON.stringify({ geminiStatus: geminiRes.status, errText })
-      );
+    if (!aiRes.ok) {
+      const errText = await aiRes.text().catch(() => "");
+      console.error(JSON.stringify({ anthropicStatus: aiRes.status, errText }));
       return Response.json(EMPTY_RESULT, { status: 200 });
     }
 
-    const body = await geminiRes.json().catch(() => null);
-    const text: string | undefined =
-      body?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const body = await aiRes.json().catch(() => null);
+    // The forced tool call carries the structured JSON in its `input`.
+    const toolUse = Array.isArray(body?.content)
+      ? body.content.find(
+          (block: { type?: string; name?: string }) =>
+            block?.type === "tool_use" && block?.name === "record_receipt"
+        )
+      : null;
+    const parsed: Record<string, unknown> | null = toolUse?.input ?? null;
 
-    if (!text) {
-      console.error(JSON.stringify({ geminiNoText: body }));
-      return Response.json(EMPTY_RESULT, { status: 200 });
-    }
-
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(text);
-    } catch (e) {
-      console.error(JSON.stringify({ geminiParseError: String(e), text }));
+    if (!parsed) {
+      console.error(JSON.stringify({ anthropicNoToolUse: body }));
       return Response.json(EMPTY_RESULT, { status: 200 });
     }
 
@@ -185,8 +220,7 @@ Deno.serve(async (req) => {
         typeof parsed.merchant === "string" && parsed.merchant
           ? parsed.merchant
           : null,
-      date:
-        typeof parsed.date === "string" && parsed.date ? parsed.date : null,
+      date: typeof parsed.date === "string" && parsed.date ? parsed.date : null,
       confidence
     };
 
