@@ -125,6 +125,7 @@ export default function AddExpenseScreen() {
   const [proofOfPayment, setProofOfPayment] =
     useState<ImagePickerSuccessResult | null>(seed.proofOfPayment);
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   // Who paid, as userId → contributed amount. Empty means the default "you paid
@@ -465,6 +466,112 @@ export default function AddExpenseScreen() {
     splitValid &&
     distinctInvolved >= 2;
 
+  // A draft only needs an amount, a description, and a group — no payers or
+  // split yet ("log now, split later"). Deliberately looser than canSubmit,
+  // which also requires a valid payer/split and 2+ people involved.
+  const canSaveDraft =
+    parsedAmount > 0 &&
+    description.trim().length > 0 &&
+    !savingDraft &&
+    !submitting &&
+    !!currentUser &&
+    !!selectedGroup;
+
+  const handleSaveDraft = async () => {
+    if (!currentUser || !selectedGroup) return;
+
+    // Drafts are a Pro feature — free users see the upgrade sheet.
+    if (!isPro) {
+      setUpgradeDescription(
+        "Draft Expenses is a Pro feature. Upgrade to log an expense now and finalize who paid and how to split it later."
+      );
+      setUpgradeSheetOpen(true);
+      return;
+    }
+
+    if (!canSaveDraft) return;
+
+    const creator = {
+      id: currentUser.id,
+      email: currentUser.email,
+      phone: currentUser.phone,
+      first_name: currentUser.first_name,
+      last_name: currentUser.last_name,
+      avatar: currentUser.avatar,
+      plan: currentUser.plan
+    };
+
+    // Offline → queue the draft optimistically. A draft has no payments, so
+    // only the expense preview is injected; proof can't be attached until we're
+    // back online (offline queues store a URL, not a pending upload).
+    const online = await offlineQueue.isOnline();
+    if (!online) {
+      const clientId = uuid();
+      const optimistic = offlineQueue.buildOptimisticDraft({
+        clientId,
+        groupId: selectedGroup.id,
+        amount: parsedAmount,
+        description: description.trim(),
+        currency,
+        creator
+      });
+
+      await offlineQueue.queueCreateDraft(
+        selectedGroup.id,
+        {
+          expensePayload: {
+            amount: parsedAmount,
+            description: description.trim(),
+            proof_of_payment: null,
+            group_id: selectedGroup.id,
+            currency,
+            expense_date: expenseDate.toISOString()
+          }
+        },
+        optimistic
+      );
+
+      toast({
+        title: "Draft saved offline",
+        description:
+          "This draft will sync automatically when you're back online.",
+        type: "info"
+      });
+      router.back();
+      return;
+    }
+
+    setSavingDraft(true);
+    try {
+      const response = await services.expense.saveDraftExpense({
+        amount: parsedAmount,
+        description: description.trim(),
+        proof_of_payment: proofOfPayment,
+        group_id: selectedGroup.id,
+        currency,
+        expense_date: expenseDate
+      });
+
+      if (!response) throw new Error("Failed to save draft");
+
+      toast({
+        title: "Draft Saved",
+        description: "Finalize it later to set who paid and split it.",
+        type: "success"
+      });
+      router.back();
+    } catch {
+      toast({
+        title: "Draft Save Failed",
+        description:
+          "An error occurred while saving the draft. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!currentUser || !selectedGroup || !canSubmit) return;
 
@@ -642,6 +749,15 @@ export default function AddExpenseScreen() {
         }
         onBack={() => router.back()}
         footer={[
+          <FormButton
+            key="add-expense-draft"
+            className="flex-1"
+            variant="outline"
+            text={isPro ? "Save Draft" : "Save Draft - Pro"}
+            loading={savingDraft}
+            disabled={!canSaveDraft}
+            onPress={handleSaveDraft}
+          />,
           <FormButton
             key="add-expense-submit"
             className="flex-1"

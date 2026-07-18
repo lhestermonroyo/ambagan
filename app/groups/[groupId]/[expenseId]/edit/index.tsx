@@ -1,36 +1,79 @@
+import AmountInput from "@/components/AmountInput";
+import AppAvatar from "@/components/AppAvatar";
+import AppAvatarGroup from "@/components/AppAvatarGroup";
+import CurrencySelection from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
+import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import UpgradeSheet from "@/components/UpgradeSheet";
+import PressableListItem from "@/components/PressableListItem";
+import {
+  Actionsheet,
+  ActionsheetBackdrop,
+  ActionsheetContent,
+  ActionsheetDragIndicator,
+  ActionsheetDragIndicatorWrapper
+} from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
+import {
+  FormControl,
+  FormControlLabel,
+  FormControlLabelText
+} from "@/components/ui/form-control";
+import { HStack } from "@/components/ui/hstack";
+import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import AddExpenseStep from "@/features/expense/components/AddExpenseStep";
-import PayersContributionStep from "@/features/expense/components/PayersContributionStep";
-import SplitExpenseStep from "@/features/expense/components/SplitExpenseStep";
-import { generatePaymentSplits } from "@/features/expense/utils/split.util";
+import UpgradeSheet from "@/components/UpgradeSheet";
+import UploadImage from "@/components/UploadImage";
+import PayerContributionSheet from "@/features/expense/components/PayerContributionSheet";
+import SplitExpenseSheet from "@/features/expense/components/SplitExpenseSheet";
+import { formatAmount } from "@/features/expense/utils/formatAmount";
+import {
+  generatePaymentSplits,
+  getAmountPerPerson,
+  getPercentagePerPerson
+} from "@/features/expense/utils/split.util";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
+import { User } from "@/types/user";
 import { cacheService } from "@/utils/cacheService";
 import { splitTypes } from "@/utils/constants";
+import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { format } from "date-fns";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { CalendarDays, Edit3, ListPlus } from "lucide-react-native";
+import { useCallback, useMemo, useState } from "react";
+import { useColorScheme } from "react-native";
 
 type SplitTypeValue = (typeof splitTypes)[number]["value"];
 
+/**
+ * Edit Expense: the same single-screen form as Add Expense (amount, description,
+ * date, a Paid-by row + Split card that each open a fullscreen sheet), but seeded
+ * from an existing expense and locked to its group. Doubles as the Finalize
+ * screen for a draft — same form, the primary action writes splits + notifies the
+ * group instead of just saving changes. Blocks when a settlement is already in
+ * progress, or when offline without a cached snapshot to edit from.
+ */
 export default function EditExpenseScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const groupId = params.groupId as string;
   const expenseId = params.expenseId as string;
 
-  const { details: userDetails, defaultCurrency } = states.user();
-  const isPro = userDetails?.plan === "pro";
+  const { details: currentUser } = states.user();
+  const userId = currentUser?.id;
+  const isPro = currentUser?.plan === "pro";
+
+  const toast = useAppToast();
+  const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -39,50 +82,40 @@ export default function EditExpenseScreen() {
   >(null);
   // A draft is finalized through this same screen — same form, different submit.
   const [isDraft, setIsDraft] = useState(false);
-  const [step, setStep] = useState(1);
+
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [currency, setCurrency] = useState("PHP");
+  const [expenseDate, setExpenseDate] = useState(new Date());
+  const [proofOfPayment, setProofOfPayment] =
+    useState<ImagePickerSuccessResult | null>(null);
+  const [existingProofUrl, setExistingProofUrl] = useState<string | null>(null);
+
+  const [members, setMembers] = useState<Member[]>([]);
+  // Who paid, as userId → contributed amount. Seeded from the expense's payer
+  // rows (a draft defaults to the creator paying the full amount).
+  const [payers, setPayers] = useState<Record<string, { amount: string }>>({});
+  // How the total is divided, seeded from the expense's member splits. Empty for
+  // a draft → the split sheet auto-distributes equally like a fresh expense.
+  const [splits, setSplits] = useState<
+    Record<string, { amount: string; percentage: string }>
+  >({});
+  const [splitType, setSplitType] = useState<SplitTypeValue>("equal");
+
+  const [payerSheetOpen, setPayerSheetOpen] = useState(false);
+  const [splitSheetOpen, setSplitSheetOpen] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
   const [upgradeDescription, setUpgradeDescription] = useState<
     string | undefined
   >(undefined);
 
-  const [values, setValues] = useState({
-    currency: defaultCurrency,
-    amount: "",
-    description: "",
-    expense_date: new Date(),
-    proof_of_payment: null as ImagePickerSuccessResult | null,
-    group: null as Group | null,
-    split_type: splitTypes[0].value as SplitTypeValue
-  });
-  const [existingProofUrl, setExistingProofUrl] = useState<string | null>(null);
-  const [formErrors, setFormErrors] = useState({
-    amount: "",
-    description: ""
-  }) as any;
-  const [members, setMembers] = useState<Member[]>([]);
-  const [splits, setSplits] = useState<{
-    [userId: string]: { amount: string; percentage: string };
-  }>({});
-  const [payers, setPayers] = useState<{
-    [userId: string]: { amount: string };
-  }>({});
+  const [dateSheetOpen, setDateSheetOpen] = useState(false);
+  const openDateSheet = useCallback(() => setDateSheetOpen(true), []);
+  const closeDateSheet = useCallback(() => setDateSheetOpen(false), []);
 
-  const toast = useAppToast();
-
-  useFocusEffect(
-    useMemo(
-      () => () => {
-        if (!groupId || !expenseId) {
-          router.back();
-          return;
-        }
-        init();
-      },
-      [groupId, expenseId]
-    )
-  );
-
-  const init = async () => {
+  const init = useCallback(async () => {
     setLoading(true);
 
     const online = await offlineQueue.isOnline();
@@ -165,49 +198,48 @@ export default function EditExpenseScreen() {
         return;
       }
 
-      const currentUserId = userDetails?.id;
       const sortedMembers = [...rawMembers].sort((a, b) =>
-        a.id === currentUserId ? -1 : b.id === currentUserId ? 1 : 0
+        a.id === userId ? -1 : b.id === userId ? 1 : 0
       );
 
-      const seededSplits: {
-        [userId: string]: { amount: string; percentage: string };
-      } = {};
-      const seededPayers: { [userId: string]: { amount: string } } = {};
-      sortedMembers.forEach((member) => {
-        seededSplits[member.id] = { amount: "", percentage: "" };
-        seededPayers[member.id] = { amount: "" };
+      // Seed only the members who actually paid / share the expense — the new
+      // form treats an unlisted member as excluded (an empty payer map means
+      // "you paid it all"; an empty split map means "split equally among all").
+      const seededPayers: Record<string, { amount: string }> = {};
+      payerList.forEach((payer) => {
+        seededPayers[payer.payer.id] = { amount: String(payer.amount) };
       });
+      const seededSplits: Record<
+        string,
+        { amount: string; percentage: string }
+      > = {};
       memberSplitList.forEach((split) => {
         seededSplits[split.member.id] = {
           amount: String(split.amount),
           percentage: String(split.percentage)
         };
       });
-      payerList.forEach((payer) => {
-        seededPayers[payer.payer.id] = { amount: String(payer.amount) };
-      });
 
-      // A draft has no payer rows yet — default the creator as the sole payer
-      // of the full amount so step 2 starts valid (the user can adjust).
-      if (expense.is_draft && currentUserId) {
-        seededPayers[currentUserId] = { amount: String(expense.amount) };
+      // A draft has no payer rows yet — default the creator as the sole payer of
+      // the full amount so the Paid-by row starts valid (the user can adjust).
+      if (expense.is_draft && userId) {
+        seededPayers[userId] = { amount: String(expense.amount) };
       }
 
       setIsDraft(Boolean(expense.is_draft));
+      setSelectedGroup(group as unknown as Group);
       setMembers(sortedMembers);
-      setSplits(seededSplits);
       setPayers(seededPayers);
+      setSplits(seededSplits);
+      setSplitType(
+        (expense.split_type as SplitTypeValue) ?? splitTypes[0].value
+      );
       setExistingProofUrl(expense.proof_of_payment ?? null);
-      setValues({
-        currency: expense.currency || "PHP",
-        amount: String(expense.amount),
-        description: expense.description,
-        expense_date: new Date(expense.expense_date ?? expense.created_at),
-        proof_of_payment: null,
-        group: group as unknown as Group,
-        split_type: (expense.split_type as SplitTypeValue) ?? splitTypes[0].value
-      });
+      setProofOfPayment(null);
+      setCurrency(expense.currency || "PHP");
+      setAmount(String(expense.amount));
+      setDescription(expense.description ?? "");
+      setExpenseDate(new Date(expense.expense_date ?? expense.created_at));
       setBlockReason(null);
     } catch (error) {
       console.log("Error loading expense for edit:", error);
@@ -215,85 +247,227 @@ export default function EditExpenseScreen() {
     } finally {
       setLoading(false);
     }
+  }, [expenseId, groupId, userId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!groupId || !expenseId) {
+        router.back();
+        return;
+      }
+      init();
+    }, [groupId, expenseId, init, router])
+  );
+
+  const parsedAmount = parseFloat(amount) || 0;
+  const memberCount = members.length;
+
+  // --- Paid by (who paid, how much) ---
+  const activePayers = useMemo(
+    () =>
+      Object.entries(payers)
+        .map(([id, v]) => ({ userId: id, amount: parseFloat(v.amount) || 0 }))
+        .filter((p) => p.amount > 0),
+    [payers]
+  );
+  const isMultiPayer = activePayers.length >= 2;
+  const payersSum = activePayers.reduce((s, p) => s + p.amount, 0);
+  // A single/default payer is always valid (we force their amount to the total);
+  // only a genuine multi-payer split has to add up.
+  const payersValid =
+    !isMultiPayer || Math.abs(payersSum - parsedAmount) < 0.01;
+
+  const payerMembers = useMemo(() => {
+    const ids = activePayers.map((p) => p.userId);
+    const self = members.find((m) => m.id === userId) ?? null;
+    const list = ids.length
+      ? members.filter((m) => ids.includes(m.id))
+      : self
+        ? [self]
+        : [];
+    return [...list].sort((a, b) =>
+      a.id === userId ? -1 : b.id === userId ? 1 : 0
+    );
+  }, [activePayers, members, userId]);
+
+  const selfFullName = currentUser
+    ? `${currentUser.first_name} ${currentUser.last_name ?? ""}`.trim()
+    : "You";
+  const leadPayerName = (m?: Member | null) => {
+    if (!m) return `${selfFullName} (You)`;
+    const full = `${m.first_name} ${m.last_name ?? ""}`.trim();
+    return m.id === userId ? `${full} (You)` : full;
+  };
+  const othersCount = payerMembers.length - 1;
+  const payerLabel = isMultiPayer
+    ? `${leadPayerName(payerMembers[0])} and ${othersCount} other${
+        othersCount > 1 ? "s" : ""
+      }`
+    : leadPayerName(payerMembers[0]);
+
+  const handleOpenPayerSheet = () => {
+    if (parsedAmount <= 0) {
+      toast({
+        title: "Enter an amount first",
+        description: "Add the expense amount before choosing payers.",
+        type: "info"
+      });
+      return;
+    }
+    setPayerSheetOpen(true);
   };
 
-  const handlePayerAmountChange = (userId: string, amount: string) => {
-    setPayers((prev) => ({ ...prev, [userId]: { amount } }));
+  const buildPayers = () =>
+    isMultiPayer
+      ? activePayers
+      : [
+          {
+            userId: activePayers[0]?.userId ?? currentUser!.id,
+            amount: parsedAmount
+          }
+        ];
+
+  // --- Split (who owes what) ---
+  const activeSplitMembers = members.filter((m) => {
+    const s = splits[m.id];
+    return (
+      s &&
+      ((parseFloat(s.amount) || 0) > 0 || (parseFloat(s.percentage) || 0) > 0)
+    );
+  });
+  const includedIds = activeSplitMembers.length
+    ? activeSplitMembers.map((m) => m.id)
+    : members.map((m) => m.id);
+
+  const effectiveSplits: Record<
+    string,
+    { amount: number; percentage: number }
+  > = {};
+  if (splitType === "equal") {
+    const amts = getAmountPerPerson(parsedAmount, includedIds.length);
+    const pcts = getPercentagePerPerson(includedIds.length);
+    includedIds.forEach((id, i) => {
+      effectiveSplits[id] = { amount: amts[i] || 0, percentage: pcts[i] || 0 };
+    });
+  } else if (splitType === "percentage") {
+    includedIds.forEach((id) => {
+      const pct = parseFloat(splits[id]?.percentage || "0") || 0;
+      effectiveSplits[id] = {
+        amount: (parsedAmount * pct) / 100,
+        percentage: pct
+      };
+    });
+  } else {
+    includedIds.forEach((id) => {
+      const amt = parseFloat(splits[id]?.amount || "0") || 0;
+      effectiveSplits[id] = {
+        amount: amt,
+        percentage: parsedAmount > 0 ? (amt / parsedAmount) * 100 : 0
+      };
+    });
+  }
+
+  const splitTotal = includedIds.reduce(
+    (s, id) => s + (parseFloat(splits[id]?.amount || "0") || 0),
+    0
+  );
+  const percentTotal = includedIds.reduce(
+    (s, id) => s + (parseFloat(splits[id]?.percentage || "0") || 0),
+    0
+  );
+  const splitValid =
+    includedIds.length >= 1 &&
+    (splitType === "equal" ||
+      (splitType === "percentage" && Math.abs(percentTotal - 100) < 0.01) ||
+      (splitType === "custom" && Math.abs(splitTotal - parsedAmount) < 0.01));
+
+  const buildMemberSplits = () =>
+    includedIds
+      .map((id) => ({
+        userId: id,
+        amount: effectiveSplits[id]?.amount ?? 0,
+        percentage: effectiveSplits[id]?.percentage ?? 0
+      }))
+      .filter((s) => s.amount > 0 && s.percentage > 0);
+
+  const payerIds = (
+    isMultiPayer
+      ? activePayers.map((p) => p.userId)
+      : [activePayers[0]?.userId ?? userId]
+  ).filter((id): id is string => !!id);
+
+  // An expense needs at least two distinct people across payers ∪ split members.
+  const involvedIds = new Set<string>(payerIds);
+  includedIds.forEach((id) => {
+    if ((effectiveSplits[id]?.amount ?? 0) > 0) involvedIds.add(id);
+  });
+  const distinctInvolved = involvedIds.size;
+
+  const perIncluded =
+    includedIds.length > 0 ? parsedAmount / includedIds.length : 0;
+
+  // --- Consolidated group + split card summary ---
+  const splitTypeLabel =
+    splitType === "equal"
+      ? "Split Equally"
+      : splitType === "percentage"
+        ? "By Percentage"
+        : "Customize Split";
+  const splitAmongText =
+    includedIds.length < memberCount
+      ? `Split among ${includedIds.length} of ${memberCount}`
+      : `${memberCount} member${memberCount !== 1 ? "s" : ""}`;
+  const splitAvatars = includedIds.map((id) => {
+    const m = members.find((mm) => mm.id === id);
+    return { id, name: m?.first_name ?? "", uri: m?.avatar || undefined };
+  });
+  const breakdownRows = includedIds.map((id) => {
+    const m = members.find((mm) => mm.id === id);
+    const s = effectiveSplits[id];
+    const full = m ? `${m.first_name} ${m.last_name ?? ""}`.trim() : "";
+    return {
+      id,
+      name: id === userId ? `${full} (You)` : full,
+      amount: s?.amount ?? 0,
+      percentage: s?.percentage ?? 0
+    };
+  });
+  const splitError =
+    splitType === "percentage"
+      ? "Percentages must total 100%."
+      : splitType === "custom"
+        ? `Amounts must add up to ${formatAmount(parsedAmount, currency)}.`
+        : "Select at least one member to split with.";
+
+  const handleOpenSplitSheet = () => {
+    if (parsedAmount <= 0) {
+      toast({
+        title: "Enter an amount first",
+        description: "Add the expense amount before customizing the split.",
+        type: "info"
+      });
+      return;
+    }
+    setSplitSheetOpen(true);
   };
 
-  const handleSetSplits = (
-    next: { [userId: string]: { amount: string; percentage: string } },
-    tab: SplitTypeValue
-  ) => {
-    setValues((prev) => ({ ...prev, split_type: tab }));
-    setSplits(next);
-  };
+  const canSubmit =
+    parsedAmount > 0 &&
+    description.trim().length > 0 &&
+    !submitting &&
+    memberCount >= 2 &&
+    !!currentUser &&
+    !!selectedGroup &&
+    payersValid &&
+    splitValid &&
+    distinctInvolved >= 2;
 
   const handleSubmit = async () => {
-    const errors: any = {};
-    if (!values.amount) errors.amount = "Amount is required";
-    if (!values.description) errors.description = "Description is required";
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      return;
-    }
+    if (!currentUser || !selectedGroup || !canSubmit) return;
 
-    if (!values.group || !userDetails) return;
-
-    const hasValidPayer = Object.values(payers).some(
-      (payer) => parseFloat(payer.amount) > 0
-    );
-    if (!hasValidPayer) {
-      toast({
-        title: "Invalid Payer Amount",
-        description: "At least one payer must have an amount greater than 0.",
-        type: "error"
-      });
-      return;
-    }
-
-    const hasValidSplit = Object.values(splits).some(
-      (split) =>
-        parseFloat(split.amount) > 0 && parseFloat(split.percentage) > 0
-    );
-    if (!hasValidSplit) {
-      toast({
-        title: "Invalid Split",
-        description:
-          "At least one member split must have an amount and percentage greater than 0.",
-        type: "error"
-      });
-      return;
-    }
-
-    const mappedSplits = Object.keys(splits)
-      .filter(
-        (userId) =>
-          parseFloat(splits[userId].amount) > 0 &&
-          parseFloat(splits[userId].percentage) > 0
-      )
-      .map((userId) => ({
-        userId,
-        amount: parseFloat(splits[userId].amount),
-        percentage: parseFloat(splits[userId].percentage)
-      }));
-    const mappedPayers = Object.keys(payers)
-      .filter((userId) => parseFloat(payers[userId].amount) > 0)
-      .map((userId) => ({ userId, amount: parseFloat(payers[userId].amount) }));
-
-    if (new Set([...mappedPayers, ...mappedSplits].map((m) => m.userId)).size < 2) {
-      toast({
-        title: "Invalid Expense",
-        description:
-          "An expense must involve at least two different members as payers or splits.",
-        type: "error"
-      });
-      return;
-    }
-
-    const online = await offlineQueue.isOnline();
-
-    const paymentSplits = generatePaymentSplits(mappedPayers, mappedSplits);
+    const memberSplits = buildMemberSplits();
+    const payersArr = buildPayers();
+    const paymentSplits = generatePaymentSplits(payersArr, memberSplits);
     if (paymentSplits.length === 0) {
       toast({
         title: "Invalid Expense",
@@ -303,6 +477,8 @@ export default function EditExpenseScreen() {
       });
       return;
     }
+
+    const online = await offlineQueue.isOnline();
 
     // Offline: finalizing a draft is online-only (it notifies members); a normal
     // edit is queued with an optimistic update + refreshed detail snapshot.
@@ -316,21 +492,18 @@ export default function EditExpenseScreen() {
         return;
       }
 
-      const groupId = values.group.id;
-      const amount = parseFloat(values.amount);
-
       const optimistic = offlineQueue.buildOptimisticExpense({
         clientId: expenseId,
-        groupId,
-        amount,
-        description: values.description,
-        currency: values.currency,
-        creator: userDetails as any,
-        payers: mappedPayers,
+        groupId: selectedGroup.id,
+        amount: parsedAmount,
+        description: description.trim(),
+        currency,
+        creator: currentUser as any,
+        payers: payersArr,
         members
       });
 
-      const detailMemberSplits = mappedSplits.map((s) => ({
+      const detailMemberSplits = memberSplits.map((s) => ({
         // Stable id so the detail screen's keyExtractor (item.id.toString()) works.
         id: `${expenseId}-${s.userId}`,
         expense_id: expenseId,
@@ -340,41 +513,48 @@ export default function EditExpenseScreen() {
       }));
       const detailPayments = offlineQueue.buildOptimisticPayments({
         expenseId,
-        groupId,
-        description: values.description,
-        currency: values.currency,
+        groupId: selectedGroup.id,
+        description: description.trim(),
+        currency,
         members,
-        currentUser: userDetails as any,
+        currentUser: currentUser as any,
         paymentSplits
       });
       const detailExpense = {
         ...optimistic,
-        split_type: values.split_type,
-        expense_date: values.expense_date.toISOString(),
+        split_type: splitType,
+        expense_date: expenseDate.toISOString(),
         proof_of_payment: existingProofUrl
       };
 
       const args: offlineQueue.UpdateExpenseArgs = {
         expensePayload: {
-          amount,
-          description: values.description,
+          amount: parsedAmount,
+          description: description.trim(),
+          // Offline can't upload a newly picked image — keep the existing URL.
           proof_of_payment: existingProofUrl,
-          group_id: groupId,
-          split_type: values.split_type,
-          currency: values.currency,
-          expense_date: values.expense_date.toISOString()
+          group_id: selectedGroup.id,
+          split_type: splitType,
+          currency,
+          expense_date: expenseDate.toISOString()
         },
-        payers: mappedPayers,
-        memberSplits: mappedSplits,
+        payers: payersArr,
+        memberSplits,
         paymentSplits
       };
 
-      await offlineQueue.queueUpdateExpense(groupId, expenseId, args, optimistic, {
-        expense: detailExpense,
-        payerList: optimistic.payer_list,
-        memberSplits: detailMemberSplits,
-        paymentSplits: detailPayments
-      });
+      await offlineQueue.queueUpdateExpense(
+        selectedGroup.id,
+        expenseId,
+        args,
+        optimistic,
+        {
+          expense: detailExpense,
+          payerList: optimistic.payer_list,
+          memberSplits: detailMemberSplits,
+          paymentSplits: detailPayments
+        }
+      );
 
       toast({
         title: "Saved offline",
@@ -388,28 +568,28 @@ export default function EditExpenseScreen() {
     setSubmitting(true);
     try {
       const expensePayload = {
-        amount: parseFloat(values.amount),
-        description: values.description,
-        proof_of_payment: values.proof_of_payment ?? existingProofUrl,
-        group_id: values.group.id,
-        split_type: values.split_type,
-        currency: values.currency,
-        expense_date: values.expense_date
+        amount: parsedAmount,
+        description: description.trim(),
+        proof_of_payment: proofOfPayment ?? existingProofUrl,
+        group_id: selectedGroup.id,
+        split_type: splitType,
+        currency,
+        expense_date: expenseDate
       };
 
       const response = isDraft
         ? await services.expense.finalizeDraft(
             expenseId,
             expensePayload,
-            mappedPayers,
-            mappedSplits,
+            payersArr,
+            memberSplits,
             paymentSplits
           )
         : await services.expense.updateExpense(
             expenseId,
             expensePayload,
-            mappedPayers,
-            mappedSplits,
+            payersArr,
+            memberSplits,
             paymentSplits
           );
 
@@ -450,49 +630,6 @@ export default function EditExpenseScreen() {
     }
   };
 
-  const isValidPayerContribution = useMemo(() => {
-    const totalPayerAmount = Object.values(payers).reduce(
-      (sum, payer) => sum + (parseFloat(payer.amount) || 0),
-      0
-    );
-    return Math.abs(totalPayerAmount - parseFloat(values.amount)) < 0.01;
-  }, [payers, values.amount]);
-
-  const isMultipleMembers = useMemo(
-    () =>
-      new Set([
-        ...Object.keys(payers).filter(
-          (userId) => parseFloat(payers[userId].amount) > 0
-        ),
-        ...Object.keys(splits).filter(
-          (userId) =>
-            parseFloat(splits[userId].amount) > 0 &&
-            parseFloat(splits[userId].percentage) > 0
-        )
-      ]).size >= 2,
-    [payers, splits]
-  );
-
-  const isValidMemberSplit = useMemo(() => {
-    const included = Object.keys(splits).filter(
-      (userId) =>
-        parseFloat(splits[userId].amount) > 0 &&
-        parseFloat(splits[userId].percentage) > 0
-    );
-    const totalSplitAmount = included.reduce(
-      (sum, userId) => sum + (parseFloat(splits[userId].amount) || 0),
-      0
-    );
-    const totalPercentage = included.reduce(
-      (sum, userId) => sum + (parseFloat(splits[userId].percentage) || 0),
-      0
-    );
-    return (
-      Math.abs(totalSplitAmount - parseFloat(values.amount)) < 0.01 &&
-      Math.abs(totalPercentage - 100) < 0.01
-    );
-  }, [splits, values.amount]);
-
   if (blockReason) {
     return (
       <FormLayout title="Edit Expense" onBack={() => router.back()} footer={[]}>
@@ -515,6 +652,8 @@ export default function EditExpenseScreen() {
     );
   }
 
+  const proofUri = proofOfPayment?.assets?.[0]?.uri ?? existingProofUrl ?? null;
+
   return (
     <>
       <FormLayout
@@ -524,112 +663,454 @@ export default function EditExpenseScreen() {
           loading
             ? []
             : [
-                step === 1 && (
-                  <FormButton
-                    key="step-1-next"
-                    className="flex-1"
-                    text="Continue"
-                    disabled={!values.amount || !values.description}
-                    onPress={() => setStep(2)}
-                  />
-                ),
-                step === 2 && [
-                  <FormButton
-                    key="step-2-back"
-                    className="flex-1"
-                    variant="outline"
-                    text="Back"
-                    disabled={submitting}
-                    onPress={() => setStep(1)}
-                  />,
-                  <FormButton
-                    key="step-2-next"
-                    className="flex-1"
-                    text="Continue"
-                    disabled={!isValidPayerContribution}
-                    onPress={() => setStep(3)}
-                  />
-                ],
-                step === 3 && [
-                  <FormButton
-                    key="step-3-back"
-                    className="flex-1"
-                    variant="outline"
-                    text="Back"
-                    disabled={submitting}
-                    onPress={() => setStep(2)}
-                  />,
-                  <FormButton
-                    key="step-3-submit"
-                    className="flex-1"
-                    text={isDraft ? "Finalize" : "Save Changes"}
-                    loading={submitting}
-                    disabled={!isValidMemberSplit || !isMultipleMembers}
-                    onPress={handleSubmit}
-                  />
-                ]
+                <FormButton
+                  key="edit-expense-submit"
+                  className="flex-1"
+                  text={isDraft ? "Finalize" : "Save Changes"}
+                  loading={submitting}
+                  disabled={!canSubmit}
+                  onPress={handleSubmit}
+                />
               ]
         }
       >
         <LoadingWrapper isLoading={loading} text="Loading expense...">
-          {values.group && (
-            <>
-              <Box className={step === 1 ? "flex-1" : "hidden"}>
-                <AddExpenseStep
-                  values={values}
-                  setValues={setValues}
-                  formErrors={formErrors}
-                  isLockedGroup
-                  currencyLocked={!isPro}
-                  proofDefaultUri={existingProofUrl}
-                  onCurrencyLockedPress={() => {
-                    setUpgradeDescription(
-                      "Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
-                    );
-                    setUpgradeSheetOpen(true);
-                  }}
-                  step={step}
-                />
-              </Box>
-              <Box className={step === 2 ? "flex-1" : "hidden"}>
-                <PayersContributionStep
-                  payers={payers}
-                  members={members}
-                  onPayerAmountChange={handlePayerAmountChange}
-                  amount={values.amount}
-                  currency={values.currency}
-                  step={step}
-                  isLockedGroup
-                  groupName={values.group.name}
-                />
-              </Box>
-              <Box className={step === 3 ? "flex-1" : "hidden"}>
-                <SplitExpenseStep
-                  amount={values.amount}
-                  currency={values.currency}
-                  groupId={values.group.id}
-                  members={members}
-                  splits={splits}
-                  onSetSplits={handleSetSplits}
-                  step={step}
-                  isLockedGroup
-                  groupName={values.group.name}
-                  initialTab={values.split_type}
-                  // A draft has no splits yet — let the step auto-distribute
-                  // like a fresh expense; editing preserves existing splits.
-                  skipInitialReset={!isDraft}
-                />
-              </Box>
-            </>
+          {selectedGroup && (
+            <ScrollableContent
+              amount={amount}
+              setAmount={setAmount}
+              description={description}
+              setDescription={setDescription}
+              currency={currency}
+              setCurrency={setCurrency}
+              isPro={isPro}
+              onCurrencyLockedPress={() => {
+                setUpgradeDescription(
+                  "Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
+                );
+                setUpgradeSheetOpen(true);
+              }}
+              expenseDate={expenseDate}
+              openDateSheet={openDateSheet}
+              colorScheme={colorScheme}
+              isMultiPayer={isMultiPayer}
+              payerMembers={payerMembers}
+              currentUser={currentUser}
+              payerLabel={payerLabel}
+              payersValid={payersValid}
+              parsedAmount={parsedAmount}
+              handleOpenPayerSheet={handleOpenPayerSheet}
+              memberCount={memberCount}
+              splitValid={splitValid}
+              selectedGroup={selectedGroup}
+              splitAvatars={splitAvatars}
+              splitAmongText={splitAmongText}
+              splitType={splitType}
+              perIncluded={perIncluded}
+              splitTypeLabel={splitTypeLabel}
+              splitError={splitError}
+              handleOpenSplitSheet={handleOpenSplitSheet}
+              showBreakdown={showBreakdown}
+              setShowBreakdown={setShowBreakdown}
+              breakdownRows={breakdownRows}
+              proofUri={proofUri}
+              setProofOfPayment={setProofOfPayment}
+            />
           )}
         </LoadingWrapper>
       </FormLayout>
+
+      <PayerContributionSheet
+        isOpen={payerSheetOpen}
+        members={members}
+        amount={amount}
+        currency={currency}
+        payers={payers}
+        isLockedGroup
+        groupName={selectedGroup?.name}
+        onClose={() => setPayerSheetOpen(false)}
+        onDone={(next) => {
+          setPayers(next);
+          setPayerSheetOpen(false);
+        }}
+      />
+      <SplitExpenseSheet
+        isOpen={splitSheetOpen}
+        members={members}
+        amount={amount}
+        currency={currency}
+        groupId={selectedGroup?.id ?? ""}
+        splits={splits}
+        splitType={splitType}
+        payerIds={payerIds}
+        isLockedGroup
+        groupName={selectedGroup?.name}
+        onClose={() => setSplitSheetOpen(false)}
+        onDone={(nextSplits, nextType) => {
+          setSplits(nextSplits);
+          setSplitType(nextType);
+          setSplitSheetOpen(false);
+        }}
+      />
 
       <UpgradeSheet
         isOpen={upgradeSheetOpen}
         onClose={() => setUpgradeSheetOpen(false)}
         description={upgradeDescription}
       />
+
+      <Actionsheet
+        isOpen={dateSheetOpen}
+        onClose={closeDateSheet}
+        snapPoints={[60]}
+      >
+        <ActionsheetBackdrop />
+        <ActionsheetContent className="p-0">
+          <ActionsheetDragIndicatorWrapper>
+            <ActionsheetDragIndicator />
+          </ActionsheetDragIndicatorWrapper>
+          <VStack className="w-full gap-y-2 items-center">
+            <VStack className="self-start px-4 pt-4">
+              <Text bold className="text-xl">
+                Select Expense Date
+              </Text>
+            </VStack>
+            <VStack className="pb-4">
+              <DateTimePicker
+                value={expenseDate}
+                mode="date"
+                display="inline"
+                themeVariant={colorScheme}
+                accentColor={getPrimaryHex("text-primary-400", colorScheme)}
+                onNeutralButtonPress={closeDateSheet}
+                onChange={(_, date) => {
+                  if (date) {
+                    setExpenseDate(date);
+                    closeDateSheet();
+                  }
+                }}
+              />
+            </VStack>
+          </VStack>
+        </ActionsheetContent>
+      </Actionsheet>
     </>
+  );
+}
+
+/**
+ * The scrollable form body. Extracted so the block/loading branches above stay
+ * readable — it's the same layout as Add Expense (amount, description, date, the
+ * Paid-by row, the consolidated group + split card, and the proof upload).
+ */
+function ScrollableContent(props: {
+  amount: string;
+  setAmount: (v: string) => void;
+  description: string;
+  setDescription: (v: string) => void;
+  currency: string;
+  setCurrency: (v: string) => void;
+  isPro: boolean;
+  onCurrencyLockedPress: () => void;
+  expenseDate: Date;
+  openDateSheet: () => void;
+  colorScheme: "light" | "dark";
+  isMultiPayer: boolean;
+  payerMembers: Member[];
+  currentUser: User | null;
+  payerLabel: string;
+  payersValid: boolean;
+  parsedAmount: number;
+  handleOpenPayerSheet: () => void;
+  memberCount: number;
+  splitValid: boolean;
+  selectedGroup: Group;
+  splitAvatars: { id: string; name: string; uri: string | undefined }[];
+  splitAmongText: string;
+  splitType: SplitTypeValue;
+  perIncluded: number;
+  splitTypeLabel: string;
+  splitError: string;
+  handleOpenSplitSheet: () => void;
+  showBreakdown: boolean;
+  setShowBreakdown: (fn: (prev: boolean) => boolean) => void;
+  breakdownRows: {
+    id: string;
+    name: string;
+    amount: number;
+    percentage: number;
+  }[];
+  proofUri: string | null;
+  setProofOfPayment: (v: ImagePickerSuccessResult | null) => void;
+}) {
+  const {
+    amount,
+    setAmount,
+    description,
+    setDescription,
+    currency,
+    setCurrency,
+    isPro,
+    onCurrencyLockedPress,
+    expenseDate,
+    openDateSheet,
+    colorScheme,
+    isMultiPayer,
+    payerMembers,
+    currentUser,
+    payerLabel,
+    payersValid,
+    parsedAmount,
+    handleOpenPayerSheet,
+    memberCount,
+    splitValid,
+    selectedGroup,
+    splitAvatars,
+    splitAmongText,
+    splitType,
+    perIncluded,
+    splitTypeLabel,
+    splitError,
+    handleOpenSplitSheet,
+    showBreakdown,
+    setShowBreakdown,
+    breakdownRows,
+    proofUri,
+    setProofOfPayment
+  } = props;
+
+  return (
+    <ScrollView className="flex-1 px-4">
+      <VStack className="gap-y-6 pt-2">
+        <FormControl size="md">
+          <FormControlLabel>
+            <FormControlLabelText>Amount</FormControlLabelText>
+          </FormControlLabel>
+          <HStack className="gap-x-2 items-end h-12">
+            <CurrencySelection
+              currency={currency}
+              onCurrencyChange={setCurrency}
+              locked={!isPro}
+              onLockedPress={onCurrencyLockedPress}
+            />
+            <VStack className="flex-1">
+              <AmountInput
+                className="h-full"
+                placeholder="0.00"
+                value={amount}
+                onChangeText={setAmount}
+              />
+            </VStack>
+          </HStack>
+        </FormControl>
+
+        <FormTextarea
+          label="Description"
+          placeholder="Enter description (e.g., Dinner at KFC Baguio)"
+          value={description}
+          onChangeText={setDescription}
+          autoCapitalize="none"
+          size="sm"
+        />
+
+        <FormControl size="md">
+          <FormControlLabel>
+            <FormControlLabelText>Expense Date</FormControlLabelText>
+          </FormControlLabel>
+          <PressableListItem
+            onPress={openDateSheet}
+            className="p-4 border border-background-200 rounded-lg"
+          >
+            <HStack className="items-center gap-x-2">
+              <CalendarDays
+                color={getSecondaryHex("text-secondary-950", colorScheme)}
+              />
+              <Text className="flex-1 text-lg">
+                {format(expenseDate, "MMMM dd, yyyy")}
+              </Text>
+              <Icon as="unfold-more" className="text-sm text-secondary-950" />
+            </HStack>
+          </PressableListItem>
+        </FormControl>
+
+        <FormControl size="md">
+          <FormControlLabel>
+            <FormControlLabelText>Paid by</FormControlLabelText>
+          </FormControlLabel>
+          <PressableListItem
+            className="p-4 border border-background-200 rounded-lg"
+            onPress={handleOpenPayerSheet}
+          >
+            <HStack className="justify-between items-center gap-x-2">
+              <HStack className="gap-x-3 items-center flex-1">
+                {isMultiPayer ? (
+                  <AppAvatarGroup
+                    items={payerMembers.map((m) => ({
+                      id: m.id,
+                      name: m.first_name,
+                      uri: m.avatar || undefined
+                    }))}
+                    size="sm"
+                    maxDisplay={3}
+                  />
+                ) : (
+                  <AppAvatar
+                    name={
+                      payerMembers[0]?.first_name ??
+                      currentUser?.first_name ??
+                      "You"
+                    }
+                    uri={payerMembers[0]?.avatar ?? currentUser?.avatar ?? ""}
+                  />
+                )}
+                <Text className="text-lg flex-1" numberOfLines={1}>
+                  {payerLabel}
+                </Text>
+              </HStack>
+              <Icon as="unfold-more" className="text-sm text-secondary-950" />
+            </HStack>
+          </PressableListItem>
+          {!payersValid && (
+            <Text className="text-sm text-error-500 mt-1">
+              Contributions must add up to{" "}
+              {formatAmount(parsedAmount, currency)}.
+            </Text>
+          )}
+        </FormControl>
+
+        {memberCount > 0 ? (
+          <FormControl size="md">
+            <VStack
+              className={`border rounded-lg overflow-hidden ${
+                !splitValid ? "border-error-300" : "border-background-200"
+              }`}
+            >
+              {/* Group name (locked — editing can't move an expense's group). */}
+              <Box className="px-4 pt-4">
+                <Text
+                  bold
+                  className="text-sm text-secondary-950 uppercase"
+                  numberOfLines={1}
+                >
+                  {selectedGroup.name}
+                </Text>
+              </Box>
+
+              {/* Included avatars + "split among" on the left, split-type summary
+                  on the right. */}
+              <HStack className="px-4 pt-4 justify-between items-start gap-x-3">
+                <VStack className="items-start gap-y-1 flex-1">
+                  <AppAvatarGroup
+                    items={splitAvatars}
+                    size="sm"
+                    maxDisplay={4}
+                  />
+                  <Text className="text-secondary-950 text-sm">
+                    {splitAmongText}
+                  </Text>
+                </VStack>
+                <VStack className="items-end justify-center gap-y-1">
+                  {splitType === "equal" && (
+                    <HStack className="gap-x-2">
+                      <Text
+                        bold
+                        className="text-2xl text-primary-500"
+                        numberOfLines={1}
+                      >
+                        {formatAmount(perIncluded, currency)}
+                      </Text>
+                      <Text className="text-secondary-950 text-sm self-end mb-1">
+                        each
+                      </Text>
+                    </HStack>
+                  )}
+                  <HStack className="items-center gap-x-1">
+                    <Icon
+                      as="call-split"
+                      size={18}
+                      className="text-sm text-secondary-950"
+                    />
+                    <Text className="text-secondary-950 text-sm">
+                      {splitTypeLabel}
+                    </Text>
+                  </HStack>
+                </VStack>
+              </HStack>
+
+              {!splitValid && (
+                <Text className="text-sm text-error-500 px-4 pt-2">
+                  {splitError}
+                </Text>
+              )}
+
+              {/* Actions: edit the split, or reveal the per-person breakdown. */}
+              <HStack className="gap-x-2 p-4">
+                <FormButton
+                  className="flex-1"
+                  size="sm"
+                  action={!splitValid ? "negative" : "primary"}
+                  icon={
+                    <Edit3
+                      size={16}
+                      color={getSecondaryHex("text-secondary-0", colorScheme)}
+                    />
+                  }
+                  text="Edit Split"
+                  onPress={handleOpenSplitSheet}
+                />
+                <FormButton
+                  className="flex-1"
+                  size="sm"
+                  variant="outline"
+                  icon={
+                    <ListPlus
+                      size={16}
+                      color={getPrimaryHex("text-primary-500", colorScheme)}
+                    />
+                  }
+                  text={showBreakdown ? "Hide breakdown" : "Show breakdown"}
+                  onPress={() => setShowBreakdown((prev) => !prev)}
+                />
+              </HStack>
+
+              {/* Toggled per-person breakdown: name + % + amount. */}
+              {showBreakdown && (
+                <VStack className="border-t border-background-200 gap-y-2 py-2">
+                  {breakdownRows.map((row) => (
+                    <HStack
+                      key={row.id}
+                      className="justify-between items-center gap-x-2 px-4 py-2"
+                    >
+                      <Text className="flex-1" numberOfLines={1}>
+                        {row.name}
+                      </Text>
+                      <Text className="text-secondary-950 text-sm w-14 text-right">
+                        {row.percentage.toFixed(1)}%
+                      </Text>
+                      <Text bold className="text-right">
+                        {formatAmount(row.amount, currency)}
+                      </Text>
+                    </HStack>
+                  ))}
+                </VStack>
+              )}
+            </VStack>
+          </FormControl>
+        ) : null}
+
+        <VStack className="gap-y-1 pb-4">
+          <UploadImage
+            title="Upload Proof of Payment"
+            key={proofUri ?? "none"}
+            defaultUri={proofUri}
+            onSelect={setProofOfPayment}
+          />
+          <Text className="text-secondary-950 text-sm">
+            Proof could be a photo of receipt, screenshot of online payment, or
+            any document that shows the expense details.
+          </Text>
+        </VStack>
+      </VStack>
+    </ScrollView>
   );
 }

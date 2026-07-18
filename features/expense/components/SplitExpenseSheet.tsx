@@ -11,8 +11,8 @@ import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { Member } from "@/types/groups";
 import { isPayerOnlySplit } from "@/features/expense/utils/split.util";
+import { Member } from "@/types/groups";
 import { splitTypes } from "@/utils/constants";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useEffect, useMemo, useState } from "react";
@@ -128,7 +128,7 @@ export default function SplitExpenseSheet({
           <VStack
             className={cn(
               "w-full flex-1",
-              Platform.OS === "android" ? "pt-[3rem]" : "pt-[4.5rem]"
+              Platform.OS === "android" ? "pt-[3rem]" : "pt-[4rem]"
             )}
           >
             <Pressable onPress={onClose}>
@@ -165,12 +165,20 @@ export default function SplitExpenseSheet({
           </VStack>
 
           <Box className="items-center justify-center p-4">
-            <FormButton
-              className="w-full"
-              text="Save Changes"
-              disabled={!valid}
-              onPress={() => onDone(draftSplits, draftTab)}
-            />
+            <HStack className="gap-x-2">
+              <FormButton
+                text="Cancel"
+                variant="outline"
+                className="flex-1"
+                onPress={onClose}
+              />
+              <FormButton
+                className="flex-1"
+                text="Save Changes"
+                disabled={!valid}
+                onPress={() => onDone(draftSplits, draftTab)}
+              />
+            </HStack>
           </Box>
         </KeyboardAvoidingSheet>
       </ActionsheetContent>

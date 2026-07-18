@@ -96,7 +96,7 @@ export default function PayerContributionSheet({
           <VStack
             className={cn(
               "w-full flex-1",
-              Platform.OS === "android" ? "pt-[3rem]" : "pt-[4.5rem]"
+              Platform.OS === "android" ? "pt-[3rem]" : "pt-[4rem]"
             )}
           >
             <Pressable onPress={onClose}>
@@ -126,12 +126,20 @@ export default function PayerContributionSheet({
           </VStack>
 
           <Box className="items-center justify-center p-4">
-            <FormButton
-              className="w-full"
-              text="Save Changes"
-              disabled={!valid}
-              onPress={() => onDone(draft)}
-            />
+            <HStack className="gap-x-2">
+              <FormButton
+                text="Cancel"
+                variant="outline"
+                className="flex-1"
+                onPress={onClose}
+              />
+              <FormButton
+                className="flex-1"
+                text="Save Changes"
+                disabled={!valid}
+                onPress={() => onDone(draft)}
+              />
+            </HStack>
           </Box>
         </KeyboardAvoidingSheet>
       </ActionsheetContent>

@@ -175,17 +175,26 @@ export function GroupSelectionActionSheet({
           </RadioGroup>
         </VStack>
         <Box className="sticky bottom-0 w-full p-4">
-          <FormButton
-            text="Save Group"
-            disabled={!selectedGroup}
-            onPress={() => {
-              const newGroup = groupList.find(
-                (g) => g.id.toString() === selectedGroup
-              );
-              if (newGroup) onChangeGroup(newGroup);
-              onClose();
-            }}
-          />
+          <HStack className="gap-x-2">
+            <FormButton
+              text="Cancel"
+              variant="outline"
+              className="flex-1"
+              onPress={onClose}
+            />
+            <FormButton
+              text="Save Group"
+              className="flex-1"
+              disabled={!selectedGroup}
+              onPress={() => {
+                const newGroup = groupList.find(
+                  (g) => g.id.toString() === selectedGroup
+                );
+                if (newGroup) onChangeGroup(newGroup);
+                onClose();
+              }}
+            />
+          </HStack>
         </Box>
       </ActionsheetContent>
     </Actionsheet>

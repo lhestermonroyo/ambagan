@@ -400,7 +400,7 @@ export default function EditMembersSheet({
             <VStack
               className={cn(
                 "w-full flex-1",
-                Platform.OS === "android" ? "pt-[3rem]" : "pt-[4.5rem]"
+                Platform.OS === "android" ? "pt-[3rem]" : "pt-[4rem]"
               )}
             >
               <HStack className="items-center justify-between w-full pt-4 px-4">
