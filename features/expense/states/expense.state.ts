@@ -11,8 +11,8 @@ const initialState: ExpenseState = {
 
 const EXPENSE_STATE = create<
   ExpenseState & {
-    // Transient hand-off from Scan Receipt (Beta) → the chosen expense flow.
-    // Both the Quick Add and Custom routes read this on mount and clear it.
+    // Transient hand-off from Scan Receipt (Beta) → the Add Expense screen,
+    // which reads this on mount and clears it.
     scanDraft: ScanDraft | null;
     setScanDraft: (draft: ScanDraft) => void;
     clearScanDraft: () => void;

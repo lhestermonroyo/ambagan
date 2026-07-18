@@ -23,7 +23,8 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { formatAmount } from "../utils/formatAmount";
 import {
   getAmountPerPerson,
-  getPercentagePerPerson
+  getPercentagePerPerson,
+  isPayerOnlySplit
 } from "../utils/split.util";
 import SplitMembersSheet from "./SplitMembersSheet";
 
@@ -45,6 +46,10 @@ type SplitExpenseStepProps = {
     splits: Splits,
     tab: (typeof splitTypes)[number]["value"]
   ) => void;
+  /** The expense's effective payer id(s). When a lone payer is also the only
+   * member in the split, the expense nets to zero — we flag it here. Optional so
+   * other callers (e.g. edit-expense) that don't pass it keep working. */
+  payerIds?: string[];
   isLockedGroup?: boolean;
   groupName?: string;
   /** Pre-select a split tab (e.g. when editing an existing expense). */
@@ -55,6 +60,12 @@ type SplitExpenseStepProps = {
    * changes still recompute as usual.
    */
   skipInitialReset?: boolean;
+  /** Hidden when embedded outside the multi-step Edit Expense flow (e.g. Add
+   * Expense's split sheet), where there's no wizard to show progress for. */
+  showStepper?: boolean;
+  /** Hidden when the host already supplies its own title/description header
+   * (e.g. Add Expense's split sheet). */
+  showHeader?: boolean;
 };
 
 export default function SplitSelection({
@@ -64,10 +75,13 @@ export default function SplitSelection({
   members,
   splits,
   onSetSplits,
+  payerIds = [],
   isLockedGroup = false,
   groupName,
   initialTab,
-  skipInitialReset = false
+  skipInitialReset = false,
+  showStepper = true,
+  showHeader = true
 }: SplitExpenseStepProps) {
   const [tab, setTab] = useState<(typeof splitTypes)[number]["value"]>(
     initialTab ?? splitTypes[0].value
@@ -207,32 +221,44 @@ export default function SplitSelection({
     [totalAmount, includedCount]
   );
 
+  // The lone payer is also the only member sharing the expense — nothing to
+  // settle. Blocks Save Changes in the host sheet (via its own check) and shows
+  // an inline reason here.
+  const payerOnly = isPayerOnlySplit(
+    payerIds,
+    includedMembers.map((member) => member.id)
+  );
+
   return (
     <Fragment>
       <ScrollView className="flex-1">
         <VStack className="gap-y-4">
-          <VStack className="px-4 gap-y-4">
-            <StepperProgress currentStep={step} steps={3} />
-            <VStack className="gap-y-1">
-              {isLockedGroup && groupName && (
-                <Text
-                  className="text-sm text-secondary-950 uppercase"
-                  bold
-                  numberOfLines={1}
-                >
-                  {groupName}
-                </Text>
+          {(showStepper || showHeader) && (
+            <VStack className="px-4 gap-y-4">
+              {showStepper && <StepperProgress currentStep={step} steps={3} />}
+              {showHeader && (
+                <VStack className="gap-y-1">
+                  {isLockedGroup && groupName && (
+                    <Text
+                      className="text-sm text-secondary-950 uppercase"
+                      bold
+                      numberOfLines={1}
+                    >
+                      {groupName}
+                    </Text>
+                  )}
+                  <VStack>
+                    <Text className="text-2xl" bold>
+                      Who owes what?
+                    </Text>
+                    <Text className="text-sm text-secondary-950">
+                      Set how the total is divided among each member.
+                    </Text>
+                  </VStack>
+                </VStack>
               )}
-              <VStack>
-                <Text className="text-2xl" bold>
-                  Who owes what?
-                </Text>
-                <Text className="text-sm text-secondary-950">
-                  Set how the total is divided among each member.
-                </Text>
-              </VStack>
             </VStack>
-          </VStack>
+          )}
 
           <VStack className="gap-y-2">
             <VStack className="gap-y-4">
@@ -341,12 +367,18 @@ export default function SplitSelection({
           </VStack>
         )}
 
-        {includedCount === 1 && (
-          <Text className="text-secondary-950 text-sm mt-2">
-            Only 1 member is included in this split — they'll cover the full
-            amount.
-          </Text>
-        )}
+        {includedCount === 1 &&
+          (payerOnly ? (
+            <Text className="text-error-500 text-sm mt-2">
+              This person also paid for the expense, so there&apos;s nothing to
+              settle. Include someone else to split with.
+            </Text>
+          ) : (
+            <Text className="text-secondary-950 text-sm mt-2">
+              Only 1 member is included in this split — they&apos;ll cover the
+              full amount.
+            </Text>
+          ))}
       </Box>
 
       <SplitMembersSheet

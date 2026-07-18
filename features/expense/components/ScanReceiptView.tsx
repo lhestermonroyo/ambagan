@@ -17,13 +17,12 @@ import { ImageUp, ReceiptText, X, Zap, ZapOff } from "lucide-react-native";
 import { useCallback, useRef, useState } from "react";
 import { Linking, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import NewExpensePickerSheet from "./NewExpensePickerSheet";
 
 // Below this we still autofill, but nudge the user to double-check the amount.
 const LOW_CONFIDENCE = 0.5;
 
 // The scan-receipt hand-off carries an ImagePickerSuccessResult (that's what the
-// new-expense form's proof_of_payment field takes), so a camera capture — which
+// Add Expense form's proof_of_payment field takes), so a camera capture — which
 // comes back as a bare {uri,width,height} — gets wrapped to match.
 const toPickerResult = (asset: {
   uri: string;
@@ -42,7 +41,7 @@ const toPickerResult = (asset: {
 });
 
 type ScanReceiptViewProps = {
-  /** When set, pre-locks that group in the new-expense flow. */
+  /** When set, pre-locks that group in the Add Expense flow. */
   groupId?: string;
   /**
    * Where the scanner is mounted, which decides how it hands off and dismisses:
@@ -58,7 +57,7 @@ type ScanReceiptViewProps = {
 /**
  * Scan Receipt (Beta): point the camera at a receipt (or pick one from Photos) →
  * read it via the scan-receipt Edge Function → stash the parsed fields + image as
- * a scanDraft → open the Custom Expense flow already filled in. Degrades
+ * a scanDraft → open the Add Expense screen already filled in. Degrades
  * gracefully: an unreadable receipt still opens the form (blank/partial) with a
  * heads-up toast.
  */
@@ -69,13 +68,10 @@ export default function ScanReceiptView({
   const router = useRouter();
   const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
-  const { setScanDraft, clearScanDraft } = states.expense();
+  const { setScanDraft } = states.expense();
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [scanning, setScanning] = useState(false);
-  // Opened once a scan is parsed: lets the user route the draft into Quick Add
-  // or the Custom flow. The draft is already stashed in the store by then.
-  const [pickerOpen, setPickerOpen] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const colorScheme = useColorScheme() ?? "light";
   // On the tab this screen stays mounted once visited, so tear the camera down
@@ -96,7 +92,7 @@ export default function ScanReceiptView({
   };
 
   // Shared by the shutter and the Photos picker: read the image, stash the
-  // draft, and hand off to the new-expense form. Failures leave the user on the
+  // draft, and hand off to the Add Expense form. Failures leave the user on the
   // camera so they can line the receipt up again and retry.
   const handleScan = async (result: ImagePicker.ImagePickerSuccessResult) => {
     if (
@@ -139,8 +135,8 @@ export default function ScanReceiptView({
       });
 
       setScanning(false);
-      // Hand the draft off to whichever flow the user picks next.
-      setPickerOpen(true);
+      // Hand the stashed draft straight to the Add Expense screen.
+      goToExpense();
     } catch {
       setScanning(false);
       toast({
@@ -191,32 +187,14 @@ export default function ScanReceiptView({
     await handleScan(result);
   };
 
-  // Custom flow: the new-expense route reads scanDraft on mount. A tab can't be
-  // replaced out from under itself (see `presentation`), so push there; when
-  // pushed over a group, replace so backing out returns to the group, not a
-  // live camera.
-  const handleChooseCustom = () => {
-    setPickerOpen(false);
+  // The Add Expense screen reads scanDraft on mount. A tab can't be replaced out
+  // from under itself (see `presentation`), so push there; when pushed over a
+  // group, replace so backing out returns to the group, not a live camera.
+  const goToExpense = () => {
     const target = (
       groupId
-        ? `/groups/${groupId}/new-expense`
-        : "/groups/[groupId]/new-expense"
-    ) as any;
-    if (presentation === "tab") {
-      router.push(target);
-    } else {
-      router.replace(target);
-    }
-  };
-
-  // Quick Add flow: the quick-add route reads scanDraft on mount, same as the
-  // Custom flow above. A tab can't be replaced out from under itself (see
-  // `presentation`), so push there; when pushed over a group, replace so backing
-  // out returns to the group, not a live camera.
-  const handleChooseQuickAdd = () => {
-    setPickerOpen(false);
-    const target = (
-      groupId ? `/groups/${groupId}/quick-add` : "/groups/[groupId]/quick-add"
+        ? `/groups/${groupId}/add-expense`
+        : "/groups/[groupId]/add-expense"
     ) as any;
     if (presentation === "tab") {
       router.push(target);
@@ -355,18 +333,6 @@ export default function ScanReceiptView({
           </VStack>
         </Box>
       )}
-
-      <NewExpensePickerSheet
-        isOpen={pickerOpen}
-        onClose={() => {
-          setPickerOpen(false);
-          // Dismissed without choosing a flow — drop the draft so a later normal
-          // entry into the Custom form doesn't seed from this stale scan.
-          clearScanDraft();
-        }}
-        onQuickAdd={handleChooseQuickAdd}
-        onCustom={handleChooseCustom}
-      />
     </Box>
   );
 }

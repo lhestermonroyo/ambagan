@@ -44,8 +44,7 @@ import {
   CirclePlus,
   ListPlus,
   ScanLine,
-  X,
-  Zap
+  X
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -575,30 +574,10 @@ export default function GroupDetailsScreen() {
                     className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
                     onPress={() => {
                       setFabOpen(false);
-                      router.push(`/groups/${groupId}/quick-add` as any);
+                      router.push(`/groups/${groupId}/add-expense` as any);
                     }}
                   >
-                    <Text className="text-base">Quick Add</Text>
-                    <Zap
-                      size={20}
-                      color={getPrimaryHex("text-primary-500", colorScheme)}
-                    />
-                  </Pressable>
-                  <Box
-                    style={{
-                      height: 0.5,
-                      backgroundColor:
-                        colorScheme === "dark" ? "#3A3A3C" : "#E5E5EA"
-                    }}
-                  />
-                  <Pressable
-                    className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
-                    onPress={() => {
-                      setFabOpen(false);
-                      router.push(`/groups/${groupId}/new-expense`);
-                    }}
-                  >
-                    <Text className="text-base">Custom Expense</Text>
+                    <Text className="text-base">Add Expense</Text>
                     <ListPlus
                       size={20}
                       color={getPrimaryHex("text-primary-500", colorScheme)}

@@ -25,6 +25,12 @@ type PayersContributionStepProps = {
   onPayerAmountChange: (userId: string, amount: string) => void;
   isLockedGroup?: boolean;
   groupName?: string;
+  /** Hidden when embedded outside the multi-step Edit Expense flow (e.g. Add
+   * Expense's payer sheet), where there's no wizard to show progress for. */
+  showStepper?: boolean;
+  /** Hidden when the host already supplies its own title/description header
+   * (e.g. Add Expense's payer sheet). */
+  showHeader?: boolean;
 };
 export default function PayersContributionStep({
   step,
@@ -34,14 +40,22 @@ export default function PayersContributionStep({
   payers,
   onPayerAmountChange,
   isLockedGroup = false,
-  groupName
+  groupName,
+  showStepper = true,
+  showHeader = true
 }: PayersContributionStepProps) {
+  const { details: userDetails } = states.user();
   const formattedPayers = useMemo(() => {
-    return members.map((member) => ({
-      ...member,
-      amount: payers[member.id]?.amount || ""
-    }));
-  }, [members, payers]);
+    return members
+      .map((member) => ({
+        ...member,
+        amount: payers[member.id]?.amount || ""
+      }))
+      // Always surface "you" at the top of the list.
+      .sort((a, b) =>
+        a.id === userDetails?.id ? -1 : b.id === userDetails?.id ? 1 : 0
+      );
+  }, [members, payers, userDetails?.id]);
 
   const remainingAmount = useMemo(() => {
     const totalPayerAmount = formattedPayers.reduce((total, payer) => {
@@ -58,26 +72,28 @@ export default function PayersContributionStep({
     <Fragment>
       <ScrollView className="flex-1">
         <VStack className="px-4 gap-y-4">
-          <StepperProgress currentStep={step} steps={3} />
-          <VStack className="gap-y-1">
-            {isLockedGroup && groupName && (
-              <Text
-                className="text-sm text-secondary-950 uppercase"
-                bold
-                numberOfLines={1}
-              >
-                {groupName}
-              </Text>
-            )}
-            <VStack>
-              <Text className="text-2xl" bold>
-                Who paid?
-              </Text>
-              <Text className="text-sm text-secondary-950">
-                Enter how much each person contributed to the expense.
-              </Text>
+          {showStepper && <StepperProgress currentStep={step} steps={3} />}
+          {showHeader && (
+            <VStack className="gap-y-1">
+              {isLockedGroup && groupName && (
+                <Text
+                  className="text-sm text-secondary-950 uppercase"
+                  bold
+                  numberOfLines={1}
+                >
+                  {groupName}
+                </Text>
+              )}
+              <VStack>
+                <Text className="text-2xl" bold>
+                  Who paid?
+                </Text>
+                <Text className="text-sm text-secondary-950">
+                  Enter how much each person contributed to the expense.
+                </Text>
+              </VStack>
             </VStack>
-          </VStack>
+          )}
           <FlatList
             scrollEnabled={false}
             data={formattedPayers}

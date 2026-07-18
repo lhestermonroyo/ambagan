@@ -42,7 +42,7 @@ import {
   HousePlus,
   ListPlus,
   QrCode,
-  Zap
+  ScanLine
 } from "lucide-react-native";
 import React, {
   Fragment,
@@ -381,11 +381,11 @@ export default function HomeScreen() {
   );
   const handleRefetch = useCallback(() => init(true), [userId]);
 
-  // Home reaches Quick Add through the literal "[groupId]" segment: the screen
+  // Home reaches Add Expense through the literal "[groupId]" segment: the screen
   // then defaults the group to the one most recently joined that can hold an
   // expense, and lets the user change it.
-  const handleOpenQuickAdd = useCallback(
-    () => router.push("/groups/[groupId]/quick-add"),
+  const handleOpenAddExpense = useCallback(
+    () => router.push("/groups/[groupId]/add-expense"),
     [router]
   );
 
@@ -393,10 +393,6 @@ export default function HomeScreen() {
     () => router.push("/scan-receipt" as any),
     []
   );
-
-  const handleCustomExpense = useCallback(() => {
-    router.push("/groups/[groupId]/new-expense");
-  }, [router]);
 
   const handleOpenHelp = useCallback(
     () => router.push("/profile/help-center"),
@@ -544,16 +540,15 @@ export default function HomeScreen() {
                   their own group / payer fields rather than blocking here. */}
                 <HStack className="gap-x-2 justify-center">
                   <ActionButton
-                    icon={<Zap size={24} color="#fff" />}
-                    label={`Quick\n\ Add`}
-                    onPress={handleOpenQuickAdd}
+                    icon={<ListPlus size={24} color="#fff" />}
+                    label={`Add\n\ Expense`}
+                    onPress={handleOpenAddExpense}
                   />
                   <ActionButton
-                    icon={<ListPlus size={24} color="#fff" />}
-                    label={`Custom\n\ Expense`}
-                    onPress={handleCustomExpense}
+                    icon={<ScanLine size={24} color="#fff" />}
+                    label={`Scan\n\ Receipt`}
+                    onPress={handleOpenScan}
                   />
-
                   <ActionButton
                     icon={<HousePlus size={24} color="#fff" />}
                     label={`Create\n\ Group`}

@@ -117,22 +117,17 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I add an expense?",
         answer:
-          "Open a group and tap the New Expense button. You can choose between two options: Quick Add for a fast, simplified entry, or Custom for full control over the date, split type, payer contributions, and proof of payment."
+          "Tap Add Expense — from the action buttons on your home screen, or the + button inside a group. Enter the amount and a short description, and you're done: by default the bill is paid by you, split equally among everyone in the group, and dated today. You can adjust any of that before saving."
       },
       {
-        question: "What is Quick Add and when should I use it?",
+        question: "Can I choose who paid?",
         answer:
-          "Quick Add is a streamlined way to log an expense in just a few taps. Enter the amount and a description, pick who paid, and the bill is automatically split equally among all group members and dated today. Use it when you're splitting a bill on the spot and everyone pays an equal share."
+          "Yes. Add Expense defaults to you as the payer, but you can tap the Paid by row to open a member list and pick someone else — or split the payment across several people who each covered part of the bill."
       },
       {
-        question: "Can I choose who paid in Quick Add?",
+        question: "How do I change the split, date, or attach a receipt?",
         answer:
-          "Yes. Quick Add defaults to you as the payer, but you can tap the Payer field to open a member list and select someone else. The subtitle at the top of the sheet updates to reflect the selected payer so you always know who the expense is attributed to."
-      },
-      {
-        question: "When should I use Custom instead of Quick Add?",
-        answer:
-          "Use Custom when you need to set a specific date, split the bill by percentage or custom amounts, have multiple payers contribute different amounts, or attach a proof of payment image. Quick Add covers the common equal-split case; Custom handles everything else."
+          "It's all on the same screen. Tap Edit Split to divide the bill equally, by percentage, or by exact amounts (and to leave anyone out who isn't part of it). You can also change the date and attach a proof of payment image before you save."
       },
       {
         question: "What split types are available?",

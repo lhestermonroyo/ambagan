@@ -72,6 +72,18 @@ export const getAmountPerPerson = (
   return amounts;
 };
 
+/**
+ * True when a single payer is also the only person sharing the expense — the
+ * expense nets to zero, so there's nothing to settle. A single *non-payer*
+ * sharer is fine (they owe the payer the whole amount), and any split with two
+ * or more sharers is fine too. `includedIds` is the set of members actually in
+ * the split.
+ */
+export const isPayerOnlySplit = (payerIds: string[], includedIds: string[]) =>
+  payerIds.length === 1 &&
+  includedIds.length === 1 &&
+  includedIds[0] === payerIds[0];
+
 export const getPercentagePerPerson = (peopleCount: number) => {
   if (peopleCount === 0) return [];
   const percentages: number[] = [];
