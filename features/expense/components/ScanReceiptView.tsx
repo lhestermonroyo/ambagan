@@ -250,7 +250,7 @@ export default function ScanReceiptView({
 
   return (
     <Box className="flex-1 bg-black">
-      {isFocused && (
+      {isFocused && !scanning && (
         <CameraView
           ref={cameraRef}
           style={StyleSheet.absoluteFill}
@@ -313,10 +313,11 @@ export default function ScanReceiptView({
         </VStack>
       </SafeAreaView>
 
-      {/* Blocks the camera controls while the receipt is being read. */}
+      {/* Fully blacks out the camera + controls while the receipt is being
+          read — the camera is also torn down above, so nothing shows through. */}
       {scanning && (
         <Box
-          className="items-center justify-center bg-black/70"
+          className="items-center justify-center bg-black"
           style={StyleSheet.absoluteFill}
         >
           <VStack className="items-center gap-y-4 px-8">

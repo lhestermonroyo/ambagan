@@ -15,19 +15,21 @@ import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import {
+  Actionsheet,
+  ActionsheetBackdrop,
+  ActionsheetContent,
+  ActionsheetDragIndicator,
+  ActionsheetDragIndicatorWrapper
+} from "@/components/ui/actionsheet";
 import UploadImage from "@/components/UploadImage";
 import { Group } from "@/types/groups";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetView
-} from "@gorhom/bottom-sheet";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { CalendarDays } from "lucide-react-native";
-import { useCallback, useRef } from "react";
+import { useCallback, useState } from "react";
 import { useColorScheme } from "react-native";
 import GroupSelection from "./GroupSelection";
 
@@ -75,9 +77,9 @@ export default function AddExpenseStep({
   step = 1
 }: AddExpenseStepProps) {
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
-  const dateSheetRef = useRef<BottomSheetModal>(null);
-  const openDateSheet = useCallback(() => dateSheetRef.current?.present(), []);
-  const closeDateSheet = useCallback(() => dateSheetRef.current?.dismiss(), []);
+  const [dateSheetOpen, setDateSheetOpen] = useState(false);
+  const openDateSheet = useCallback(() => setDateSheetOpen(true), []);
+  const closeDateSheet = useCallback(() => setDateSheetOpen(false), []);
 
   return (
     <>
@@ -201,33 +203,19 @@ export default function AddExpenseStep({
         </VStack>
       </ScrollView>
 
-      <BottomSheetModal
-        ref={dateSheetRef}
-        snapPoints={["60%"]}
-        backgroundStyle={{
-          backgroundColor: getSecondaryHex("text-secondary-0", colorScheme)
-        }}
-        handleIndicatorStyle={{
-          backgroundColor: getSecondaryHex("text-secondary-500", colorScheme)
-        }}
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop
-            {...props}
-            appearsOnIndex={0}
-            disappearsOnIndex={-1}
-          />
-        )}
+      <Actionsheet
+        isOpen={dateSheetOpen}
+        onClose={closeDateSheet}
+        snapPoints={[60]}
       >
-        <BottomSheetView>
-          <VStack className="gap-y-2 items-center">
+        <ActionsheetBackdrop />
+        <ActionsheetContent>
+          <ActionsheetDragIndicatorWrapper>
+            <ActionsheetDragIndicator />
+          </ActionsheetDragIndicatorWrapper>
+          <VStack className="w-full gap-y-2 items-center">
             <VStack className="self-start px-4">
-              <Text
-                bold
-                className="text-xl"
-                style={{
-                  color: colorScheme === "dark" ? "#F5F5F5" : "#141414"
-                }}
-              >
+              <Text bold className="text-xl">
                 Select Expense Date
               </Text>
             </VStack>
@@ -247,8 +235,8 @@ export default function AddExpenseStep({
               />
             </VStack>
           </VStack>
-        </BottomSheetView>
-      </BottomSheetModal>
+        </ActionsheetContent>
+      </Actionsheet>
     </>
   );
 }

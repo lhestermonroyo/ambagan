@@ -10,6 +10,13 @@ import {
   GroupCardSkeleton,
   PayerFieldSkeleton
 } from "@/components/SkeletonLoader";
+import {
+  Actionsheet,
+  ActionsheetBackdrop,
+  ActionsheetContent,
+  ActionsheetDragIndicator,
+  ActionsheetDragIndicatorWrapper
+} from "@/components/ui/actionsheet";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import {
@@ -44,11 +51,6 @@ import { currencies, DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetView
-} from "@gorhom/bottom-sheet";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { ImagePickerSuccessResult } from "expo-image-picker";
@@ -58,8 +60,8 @@ import {
   useLocalSearchParams,
   useRouter
 } from "expo-router";
-import { CalendarDays } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CalendarDays, Edit3, ListPlus } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
@@ -89,7 +91,6 @@ export default function AddExpenseScreen() {
 
   const toast = useAppToast();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
-  const dateSheetRef = useRef<BottomSheetModal>(null);
 
   // Seed from a Scan Receipt (Beta) hand-off if one is waiting. Read once at
   // mount via a lazy initializer; the draft is cleared in the effect below so a
@@ -148,8 +149,9 @@ export default function AddExpenseScreen() {
   >(undefined);
   const [dailyCount, setDailyCount] = useState(0);
 
-  const openDateSheet = useCallback(() => dateSheetRef.current?.present(), []);
-  const closeDateSheet = useCallback(() => dateSheetRef.current?.dismiss(), []);
+  const [dateSheetOpen, setDateSheetOpen] = useState(false);
+  const openDateSheet = useCallback(() => setDateSheetOpen(true), []);
+  const closeDateSheet = useCallback(() => setDateSheetOpen(false), []);
 
   // The scan hand-off has been consumed by the seed initializer above — clear it
   // so leaving and re-entering this screen doesn't re-seed a stale receipt.
@@ -873,6 +875,15 @@ export default function AddExpenseScreen() {
                       className="flex-1"
                       size="sm"
                       action={!splitValid ? "negative" : "primary"}
+                      icon={
+                        <Edit3
+                          size={16}
+                          color={getSecondaryHex(
+                            "text-secondary-0",
+                            colorScheme
+                          )}
+                        />
+                      }
                       text="Edit Split"
                       onPress={handleOpenSplitSheet}
                     />
@@ -880,6 +891,12 @@ export default function AddExpenseScreen() {
                       className="flex-1"
                       size="sm"
                       variant="outline"
+                      icon={
+                        <ListPlus
+                          size={16}
+                          color={getPrimaryHex("text-primary-500", colorScheme)}
+                        />
+                      }
                       text={showBreakdown ? "Hide breakdown" : "Show breakdown"}
                       onPress={() => setShowBreakdown((prev) => !prev)}
                     />
@@ -973,33 +990,19 @@ export default function AddExpenseScreen() {
         description={upgradeDescription}
       />
 
-      <BottomSheetModal
-        ref={dateSheetRef}
-        snapPoints={["60%"]}
-        backgroundStyle={{
-          backgroundColor: getSecondaryHex("text-secondary-0", colorScheme)
-        }}
-        handleIndicatorStyle={{
-          backgroundColor: getSecondaryHex("text-secondary-500", colorScheme)
-        }}
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop
-            {...props}
-            appearsOnIndex={0}
-            disappearsOnIndex={-1}
-          />
-        )}
+      <Actionsheet
+        isOpen={dateSheetOpen}
+        onClose={closeDateSheet}
+        snapPoints={[60]}
       >
-        <BottomSheetView>
-          <VStack className="gap-y-2 items-center">
-            <VStack className="self-start px-4">
-              <Text
-                bold
-                className="text-xl"
-                style={{
-                  color: colorScheme === "dark" ? "#F5F5F5" : "#141414"
-                }}
-              >
+        <ActionsheetBackdrop />
+        <ActionsheetContent className="p-0">
+          <ActionsheetDragIndicatorWrapper>
+            <ActionsheetDragIndicator />
+          </ActionsheetDragIndicatorWrapper>
+          <VStack className="w-full gap-y-2 items-center">
+            <VStack className="self-start px-4 pt-4">
+              <Text bold className="text-xl">
                 Select Expense Date
               </Text>
             </VStack>
@@ -1010,6 +1013,7 @@ export default function AddExpenseScreen() {
                 display="inline"
                 themeVariant={colorScheme}
                 accentColor={getPrimaryHex("text-primary-400", colorScheme)}
+                onNeutralButtonPress={closeDateSheet}
                 onChange={(_, date) => {
                   if (date) {
                     setExpenseDate(date);
@@ -1019,8 +1023,8 @@ export default function AddExpenseScreen() {
               />
             </VStack>
           </VStack>
-        </BottomSheetView>
-      </BottomSheetModal>
+        </ActionsheetContent>
+      </Actionsheet>
     </>
   );
 }

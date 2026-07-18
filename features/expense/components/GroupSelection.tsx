@@ -23,8 +23,8 @@ import {
 } from "@/components/ui/radio";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import states from "@/states";
 import { hasEnoughMembersForExpense } from "@/features/group/utils/groupMembers";
+import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { Group } from "@/types/groups";
 import { formatDate } from "@/utils/formatDate";
@@ -146,7 +146,7 @@ export function GroupSelectionActionSheet({
             <HStack className="p-4 items-center">
               <Icon as="arrow-back-ios" className="text-secondary-950" />
               <Text bold className="text-xl">
-                Select Group to Add Expense
+                Select Group
               </Text>
             </HStack>
           </Pressable>
@@ -175,26 +175,17 @@ export function GroupSelectionActionSheet({
           </RadioGroup>
         </VStack>
         <Box className="sticky bottom-0 w-full p-4">
-          <HStack className="gap-x-2">
-            <FormButton
-              className="flex-1"
-              variant="outline"
-              text="Cancel"
-              onPress={onClose}
-            />
-            <FormButton
-              className="flex-1"
-              text="Save Group"
-              disabled={!selectedGroup}
-              onPress={() => {
-                const newGroup = groupList.find(
-                  (g) => g.id.toString() === selectedGroup
-                );
-                if (newGroup) onChangeGroup(newGroup);
-                onClose();
-              }}
-            />
-          </HStack>
+          <FormButton
+            text="Save Group"
+            disabled={!selectedGroup}
+            onPress={() => {
+              const newGroup = groupList.find(
+                (g) => g.id.toString() === selectedGroup
+              );
+              if (newGroup) onChangeGroup(newGroup);
+              onClose();
+            }}
+          />
         </Box>
       </ActionsheetContent>
     </Actionsheet>
