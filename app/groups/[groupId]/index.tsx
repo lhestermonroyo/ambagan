@@ -16,7 +16,6 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import QuickAddExpenseSheet from "@/features/expense/components/QuickAddExpenseSheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DeleteGroupSheet from "@/features/group/components/DeleteGroupSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
@@ -48,7 +47,7 @@ import {
   X,
   Zap
 } from "lucide-react-native";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Modal,
@@ -69,10 +68,6 @@ export default function GroupDetailsScreen() {
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
-  // True when Quick Add is opened from a Scan Receipt (Beta) hand-off, so the
-  // sheet seeds itself from the scanDraft instead of starting blank.
-  const [quickAddSeedScan, setQuickAddSeedScan] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
   const {
@@ -82,7 +77,6 @@ export default function GroupDetailsScreen() {
     memberList
   } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
-  const { setPendingQuickAdd } = states.expense();
 
   // A split needs at least two people, so expenses are gated until the group
   // has a second member (joined via invite, or added as a phone contact).
@@ -92,19 +86,6 @@ export default function GroupDetailsScreen() {
   const colorScheme = useColorScheme() ?? "light";
 
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  // A scan chose "Quick Add" and returned to this group — open the sheet seeded
-  // from the stashed draft, then clear the flag so it doesn't reopen. Keyed to
-  // focus so only the focused screen consumes the flag (Home also subscribes).
-  useFocusEffect(
-    useCallback(() => {
-      if (states.expense.getState().pendingQuickAdd) {
-        setQuickAddSeedScan(true);
-        setQuickAddOpen(true);
-        setPendingQuickAdd(false);
-      }
-    }, [setPendingQuickAdd])
-  );
 
   const activeSettlements = useMemo(
     () => settlementList.filter((p) => p.status !== "settled"),
@@ -594,7 +575,7 @@ export default function GroupDetailsScreen() {
                     className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
                     onPress={() => {
                       setFabOpen(false);
-                      setQuickAddOpen(true);
+                      router.push(`/groups/${groupId}/quick-add` as any);
                     }}
                   >
                     <Text className="text-base">Quick Add</Text>
@@ -948,21 +929,6 @@ export default function GroupDetailsScreen() {
             settlementList: []
           }));
           router.replace("/groups");
-        }}
-      />
-      <QuickAddExpenseSheet
-        isOpen={quickAddOpen}
-        group={groupDetails}
-        seedFromScan={quickAddSeedScan}
-        onClose={() => {
-          setQuickAddOpen(false);
-          setQuickAddSeedScan(false);
-        }}
-        onSuccess={() => {
-          if (groupId) {
-            init(groupId, true);
-            setSettlementRefreshTrigger((prev) => prev + 1);
-          }
         }}
       />
       <DeleteGroupSheet

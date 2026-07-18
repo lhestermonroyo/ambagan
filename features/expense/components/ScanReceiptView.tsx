@@ -69,7 +69,7 @@ export default function ScanReceiptView({
   const router = useRouter();
   const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
-  const { setScanDraft, clearScanDraft, setPendingQuickAdd } = states.expense();
+  const { setScanDraft, clearScanDraft } = states.expense();
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -209,18 +209,19 @@ export default function ScanReceiptView({
     }
   };
 
-  // Quick Add lives as a sheet on the origin screen, not a route — so flag the
-  // draft for pick-up and return there: back to the group when pushed over it,
-  // or over to Home (which hosts a Quick Add sheet) from the standalone tab.
+  // Quick Add flow: the quick-add route reads scanDraft on mount, same as the
+  // Custom flow above. A tab can't be replaced out from under itself (see
+  // `presentation`), so push there; when pushed over a group, replace so backing
+  // out returns to the group, not a live camera.
   const handleChooseQuickAdd = () => {
     setPickerOpen(false);
-    setPendingQuickAdd(true);
-    if (presentation === "pushed" && router.canGoBack()) {
-      router.back();
-    } else if (presentation === "pushed" && groupId) {
-      router.replace(`/groups/${groupId}` as any);
+    const target = (
+      groupId ? `/groups/${groupId}/quick-add` : "/groups/[groupId]/quick-add"
+    ) as any;
+    if (presentation === "tab") {
+      router.push(target);
     } else {
-      router.replace("/(tabs)/(home)" as any);
+      router.replace(target);
     }
   };
 

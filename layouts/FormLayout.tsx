@@ -4,6 +4,7 @@ import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
 import { Pressable } from "@/components/ui/pressable";
 import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { Text } from "@/components/ui/text";
+import { VStack } from "@/components/ui/vstack";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { Stack } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
@@ -17,12 +18,14 @@ import { Platform } from "react-native";
 export default function FormLayout({
   children,
   title,
+  subtitle,
   onBack,
   footer,
   actions
 }: {
   children: React.ReactNode;
   title: string;
+  subtitle?: string;
   onBack: () => void;
   footer: React.ReactNode[];
   actions?: React.ReactNode;
@@ -44,9 +47,14 @@ export default function FormLayout({
           headerStyle: { backgroundColor: isDark ? "#121212" : "#FFFFFF" },
           headerTintColor: tintColor,
           headerTitle: () => (
-            <Text bold className="flex-1 text-xl">
-              {title}
-            </Text>
+            <VStack className="flex-1 items-start">
+              <Text bold className="text-xl">
+                {title}
+              </Text>
+              {subtitle && (
+                <Text className="text-sm text-secondary-950">{subtitle}</Text>
+              )}
+            </VStack>
           ),
           ...(Platform.OS === "android"
             ? {

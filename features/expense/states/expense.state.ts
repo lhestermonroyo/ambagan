@@ -12,15 +12,10 @@ const initialState: ExpenseState = {
 const EXPENSE_STATE = create<
   ExpenseState & {
     // Transient hand-off from Scan Receipt (Beta) → the chosen expense flow.
+    // Both the Quick Add and Custom routes read this on mount and clear it.
     scanDraft: ScanDraft | null;
     setScanDraft: (draft: ScanDraft) => void;
     clearScanDraft: () => void;
-    // Paired with scanDraft: when the post-scan picker chooses Quick Add, this
-    // signals the origin screen (home / group) to open its Quick Add sheet
-    // seeded from the draft. Custom needs no flag — its route reads scanDraft on
-    // mount directly.
-    pendingQuickAdd: boolean;
-    setPendingQuickAdd: (value: boolean) => void;
     reset: () => void;
   }
 >((set) => ({
@@ -28,8 +23,6 @@ const EXPENSE_STATE = create<
   scanDraft: null,
   setScanDraft: (draft) => set({ scanDraft: draft }),
   clearScanDraft: () => set({ scanDraft: null }),
-  pendingQuickAdd: false,
-  setPendingQuickAdd: (value) => set({ pendingQuickAdd: value }),
   reset: () => set(initialState)
 }));
 
