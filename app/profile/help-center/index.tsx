@@ -1,3 +1,5 @@
+import EmptyList from "@/components/EmptyList";
+import SearchDrawer from "@/components/SearchDrawer";
 import {
   Accordion,
   AccordionContent,
@@ -13,11 +15,29 @@ import { Divider } from "@/components/ui/divider";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { HStack } from "@/components/ui/hstack";
 import InnerLayout from "@/layouts/InnerLayout";
-import { useRouter } from "expo-router";
-import { ChevronDownIcon, ChevronUpIcon } from "lucide-react-native";
+import { EmptyType } from "@/types/general";
+import { getPrimaryHex } from "@/utils/getColorHex";
+import { Stack, useRouter } from "expo-router";
+import {
+  Check,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  X
+} from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { ReactNode, useMemo, useState } from "react";
 
-type FAQItem = { question: string; answer: string };
+type FAQItem = {
+  question: string;
+  // Plain-text answer. Always set — it's what search matches against and the
+  // default rendering. `content` may override how it's displayed.
+  answer: string;
+  // Optional rich rendering shown instead of the plain answer text (e.g. the
+  // offline feature checklist). `answer` is still used for search.
+  content?: ReactNode;
+};
 type FAQSection = { title: string; items: FAQItem[] };
 
 const FAQ_SECTIONS: FAQSection[] = [
@@ -43,6 +63,11 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "What does the Net Balance on the home screen mean?",
         answer:
           "The Net Balance on the home screen overview card is your total across all groups — how much you are owed (To Collect) minus how much you owe (To Pay). A positive number means you are owed more than you owe overall; a negative number means the opposite."
+      },
+      {
+        question: "How do I search this Help Center?",
+        answer:
+          "Tap the magnifying glass in the top-right corner of the Help Center to open a search field, then type a keyword like 'draft', 'QR', or 'currency'. Ambagan filters the questions and answers as you type so you can jump straight to the topic you need."
       }
     ]
   },
@@ -120,6 +145,12 @@ const FAQ_SECTIONS: FAQSection[] = [
           "Tap Add Expense — from the action buttons on your home screen, or the + button inside a group. Enter the amount and a short description, and you're done: by default the bill is paid by you, split equally among everyone in the group, and dated today. You can adjust any of that before saving."
       },
       {
+        question:
+          "Is there still a separate Quick and Custom expense form?",
+        answer:
+          "No. Ambagan now has a single Add Expense screen that covers everything. It opens ready to save with smart defaults (paid by you, split equally, dated today), and you only open the Paid by or Edit Split rows when you want to change who paid or how the bill is divided. The old separate Quick Add and Custom expense forms have been merged into this one screen."
+      },
+      {
         question: "Can I choose who paid?",
         answer:
           "Yes. Add Expense defaults to you as the payer, but you can tap the Paid by row to open a member list and pick someone else — or split the payment across several people who each covered part of the bill."
@@ -132,17 +163,17 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What split types are available?",
         answer:
-          "You can split expenses equally among all members, by a percentage you define per person, or with a fully custom amount for each participant. Split type selection is available in the Custom expense form."
+          "You can split expenses equally among all members, by a percentage you define per person, or with a fully custom amount for each participant. On the Add Expense screen, tap Edit Split to choose the split type."
       },
       {
         question: "Can I split an expense among only some members?",
         answer:
-          "Yes. On the Custom expense form's split step, tap the 'Split among' selector — it shows how many of the group's members are currently included (e.g. 'Split among 3 of 5'). Check the people who share this expense and uncheck anyone who doesn't, then tap Done. Use Select all / Unselect all to toggle everyone at once. Excluded members are left out, and the amount is divided only among those included. This works with equal, percentage, and custom splits; at least one member must be included."
+          "Yes. On the Add Expense screen, tap Edit Split, then tap the 'Split among' selector — it shows how many of the group's members are currently included (e.g. 'Split among 3 of 5'). Check the people who share this expense and uncheck anyone who doesn't, then tap Done. Use Select all / Unselect all to toggle everyone at once. Excluded members are left out, and the amount is divided only among those included. This works with equal, percentage, and custom splits; at least one member must be included."
       },
       {
         question: "Can I attach proof of payment to an expense?",
         answer:
-          "Yes. When adding an expense via the Custom form, you can upload an image as proof of payment (e.g. a receipt or bank transfer screenshot)."
+          "Yes. On the Add Expense screen you can attach an image as proof of payment (e.g. a receipt or bank transfer screenshot) before saving."
       },
       {
         question: "Can I use different currencies?",
@@ -157,12 +188,37 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is Save as Draft and how does it work?",
         answer:
-          "Save as Draft is a Pro feature that lets you log an expense with just the amount and description, then finalize who paid and how to split it later. On the Custom expense form, tap Save as Draft instead of Continue. Draft expenses appear at the top of the group's Expenses tab with an amber Draft badge and are only visible to you until finalized. Tap a draft and press Finalize Expense to complete the split."
+          "Save as Draft is a Pro feature that lets you log an expense with just the amount and description, then finalize who paid and how to split it later. On the Add Expense screen, tap Save Draft instead of Add Expense. Draft expenses appear at the top of the group's Expenses tab with an amber Draft badge and are only visible to you until finalized. Tap a draft and press Finalize Expense to complete the split."
       },
       {
         question: "Can other group members see my draft expenses?",
         answer:
           "No. Draft expenses are private — only you (the creator) can see them until you finalize the split. Once finalized, the expense becomes visible to all group members and they receive an expense inclusion notification."
+      }
+    ]
+  },
+  {
+    title: "Scanning Receipts",
+    items: [
+      {
+        question: "What is Scan Receipt?",
+        answer:
+          "Scan Receipt (Beta) lets you photograph a paper receipt and have Ambagan read the amount, description, and date for you, then drop them straight into the Add Expense screen — so you don't have to type them in. It's a faster way to log an expense when you have the receipt in hand."
+      },
+      {
+        question: "How do I scan a receipt?",
+        answer:
+          "Tap Scan Receipt — from the action buttons on your home screen, or the + speed-dial inside a group. Take a photo of the receipt, or tap to pick one from your Photos. Ambagan reads it and fills in the amount, description, and date on the Add Expense screen; from there you set who paid and how to split, then save. You'll be asked for camera permission the first time — allow it when prompted."
+      },
+      {
+        question: "Is scanning receipts free?",
+        answer:
+          "Yes. Scan Receipt is free for everyone while it's in beta, with no scan limit. The expense it creates still counts toward your 5-per-day limit on the free plan. Free scans read amounts in Philippine Peso (PHP); setting a different currency on a scanned expense is a Pro feature."
+      },
+      {
+        question: "What if the scan gets a detail wrong?",
+        answer:
+          "Everything the scan fills in is fully editable, so always check the amount, description, and date on the Add Expense screen before saving. The receipt reader is smart but not perfect. If a receipt is blurry or can't be read, Ambagan simply opens a blank Add Expense form for you to fill in manually — it never blocks you."
       }
     ]
   },
@@ -296,9 +352,26 @@ const FAQ_SECTIONS: FAQSection[] = [
           "The Stats tab in a group shows your net balance (To Collect minus To Pay), total group spendings, and the CSV export button — all filtered by your selected date range. Use the date pills at the top to switch between 1D, 1W, 1M, 3M, 1Y, and All time."
       },
       {
+        question:
+          "I already paid — how do I restore my Pro access on a new device?",
+        answer:
+          "Go to Profile → Subscription and tap Restore Purchase. Your active subscription will be restored automatically through the App Store at no additional charge."
+      }
+    ]
+  },
+  {
+    title: "Offline Mode",
+    items: [
+      {
+        question: "Which features work offline and which need a connection?",
+        answer:
+          "You can keep using most of Ambagan without a connection, and actions you take offline sync automatically when you're back online. Works offline: viewing your groups, expenses, settlements, friends, and notifications from your last synced data; adding, editing, and deleting expenses (attached receipts sync on reconnect); saving an expense as a draft; creating a group and editing its name or category; archiving or restoring a group; adding or removing members if you're the admin; adding or removing favorites; changing the app appearance and settlement view; toggling the daily reminder; and sharing an invite link or downloading a group QR code. Needs a connection: settling up (request, approve, reject, or mark as settled); finalizing a draft; joining a group or scanning a QR to join; scanning a receipt; resetting a group's invite link; leaving or permanently deleting a group; uploading a profile or group photo; editing your profile or account and changing your password; changing your default currency or notification preferences; and signing out. If you try something that needs a connection while offline, Ambagan shows a short message instead of leaving you stuck.",
+        content: <OfflineFeatureList />
+      },
+      {
         question: "What happens when I lose internet connection?",
         answer:
-          "A blue 'Offline Mode — Showing cached data' banner appears at the top, and you can keep using the app with your last synced data. Most actions work offline and sync automatically when you reconnect: adding, editing, and deleting expenses; creating groups and editing a group's name or category; archiving a group; adding or removing members (group admin); managing favorites; and changing the app appearance. A few things need a live connection: settling up, finalizing a draft, joining a group or scanning an invite, resetting a group's invite link, leaving a group, logging out, editing your profile or account, changing your default currency or notification preferences, and uploading images (payment proofs and photos). You'll see a short message if you try one of those while offline."
+          "A blue 'Offline Mode — Showing cached data' banner appears at the top, and you can keep using the app with your last synced data. Most actions work offline and sync automatically when you reconnect. A few things need a live connection — see the list of which features work offline above. You'll see a short message if you try one of those while offline."
       },
       {
         question: "Why does it say 'Slow connection — showing saved data'?",
@@ -306,10 +379,9 @@ const FAQ_SECTIONS: FAQSection[] = [
           "If your device is connected but the network is too slow or unresponsive to load fresh data, Ambagan shows your last saved data with an amber 'Slow connection' banner instead of leaving you stuck waiting. It refreshes automatically once the connection recovers."
       },
       {
-        question:
-          "I already paid — how do I restore my Pro access on a new device?",
+        question: "Do my offline changes really get saved?",
         answer:
-          "Go to Profile → Subscription and tap Restore Purchase. Your active subscription will be restored automatically through the App Store at no additional charge."
+          "Yes. Expenses, group edits, member changes, and favorites you make offline are queued on your device and marked with a 'Syncing…' badge. As soon as you reconnect — or reopen the app while online — Ambagan sends them to the server in order and clears the badge. The queue survives closing and reopening the app, so nothing is lost if you stay offline for a while."
       }
     ]
   },
@@ -364,11 +436,206 @@ const FAQ_SECTIONS: FAQSection[] = [
   }
 ];
 
-export default function HelpCenterScreen() {
-  const router = useRouter();
+// The offline capability matrix, kept in sync with the app's real offline
+// behaviour (queue-and-sync vs. connection-required). Also mirrored in prose in
+// the item's `answer` string so Help Center search can still find it.
+const OFFLINE_CAPABLE: string[] = [
+  "View groups, expenses, settlements, friends, and notifications (last synced data)",
+  "Add, edit, and delete expenses — attached receipts sync on reconnect",
+  "Save an expense as a draft",
+  "Create a group and edit its name or category",
+  "Archive or restore a group",
+  "Add or remove members (group admin)",
+  "Add or remove favorites",
+  "Change app appearance (theme) and settlement view",
+  "Toggle the daily settlement reminder",
+  "Share an invite link or download a group QR code"
+];
+
+const OFFLINE_BLOCKED: string[] = [
+  "Settle up — request, approve, reject, or mark as settled",
+  "Finalize a draft expense",
+  "Join a group or scan a QR code to join",
+  "Scan a receipt (the receipt reader needs a connection)",
+  "Reset a group's invite link or change its expiration",
+  "Leave a group, or permanently delete a group",
+  "Upload a profile photo or group cover photo",
+  "Edit your profile or account, or change your password",
+  "Change your default currency or notification preferences",
+  "Sign out"
+];
+
+function CapabilityRow({
+  label,
+  allowed,
+  scheme
+}: {
+  label: string;
+  allowed: boolean;
+  scheme: "light" | "dark";
+}) {
+  const color = allowed
+    ? scheme === "dark"
+      ? "#66B584"
+      : "#2A7948"
+    : scheme === "dark"
+      ? "#F96160"
+      : "#DC2626";
+  const GlyphIcon = allowed ? Check : X;
 
   return (
-    <InnerLayout title="Help Center" onBack={() => router.back()}>
+    <HStack className="gap-x-2 items-start">
+      <GlyphIcon size={18} color={color} style={{ marginTop: 2 }} />
+      <Text className="flex-1 text-base text-secondary-950">{label}</Text>
+    </HStack>
+  );
+}
+
+function OfflineFeatureList() {
+  const { colorScheme } = useColorScheme();
+  const scheme = colorScheme === "dark" ? "dark" : "light";
+
+  return (
+    <VStack className="gap-y-4 pt-1">
+      <Text className="text-base text-secondary-950">
+        You can keep using most of Ambagan without a connection. Actions you
+        take offline are saved and sync automatically when you're back online.
+        Here's the full breakdown:
+      </Text>
+
+      <VStack className="gap-y-2">
+        <Text bold className="text-sm text-success-600 uppercase">
+          Works offline
+        </Text>
+        <VStack className="gap-y-2">
+          {OFFLINE_CAPABLE.map((label) => (
+            <CapabilityRow
+              key={label}
+              label={label}
+              allowed
+              scheme={scheme}
+            />
+          ))}
+        </VStack>
+      </VStack>
+
+      <VStack className="gap-y-2">
+        <Text bold className="text-sm text-error-600 uppercase">
+          Needs a connection
+        </Text>
+        <VStack className="gap-y-2">
+          {OFFLINE_BLOCKED.map((label) => (
+            <CapabilityRow
+              key={label}
+              label={label}
+              allowed={false}
+              scheme={scheme}
+            />
+          ))}
+        </VStack>
+      </VStack>
+
+      <Text className="text-sm text-secondary-950">
+        If you try something that needs a connection while offline, Ambagan shows
+        a short message instead of leaving you stuck.
+      </Text>
+    </VStack>
+  );
+}
+
+// A single titled FAQ section rendered as a bordered accordion card. Shared by
+// the main list and the search results so the two never drift apart.
+function FaqSectionBlock({ section }: { section: FAQSection }) {
+  return (
+    <VStack className="gap-y-2">
+      <Text bold className="text-secondary-950 uppercase text-sm">
+        {section.title}
+      </Text>
+      <Box className="rounded-xl overflow-hidden border border-secondary-500">
+        <Accordion size="lg" variant="unfilled" type="multiple" isCollapsible>
+          {section.items.map((item, index) => (
+            <AccordionItem key={item.question} value={item.question}>
+              <AccordionHeader>
+                <AccordionTrigger>
+                  {({ isExpanded }: { isExpanded: boolean }) => (
+                    <>
+                      <AccordionTitleText className="flex-1 pr-2 text-base">
+                        {item.question}
+                      </AccordionTitleText>
+                      <AccordionIcon
+                        as={isExpanded ? ChevronUpIcon : ChevronDownIcon}
+                        className="text-sm text-secondary-950"
+                      />
+                    </>
+                  )}
+                </AccordionTrigger>
+              </AccordionHeader>
+              <AccordionContent>
+                {item.content ?? (
+                  <AccordionContentText className="text-secondary-950 text-base">
+                    {item.answer}
+                  </AccordionContentText>
+                )}
+              </AccordionContent>
+              {index < section.items.length - 1 && (
+                <Divider className="border-secondary-100" />
+              )}
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </Box>
+    </VStack>
+  );
+}
+
+export default function HelpCenterScreen() {
+  const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const tintColor = getPrimaryHex("text-primary-600", colorScheme ?? "light");
+
+  const [searchInput, setSearchInput] = useState("");
+  const [searchVisible, setSearchVisible] = useState(false);
+
+  const isSearchActive = searchInput.trim().length > 0;
+
+  // Keep only the sections (and items within them) whose question or answer
+  // matches the query; drop any section left empty.
+  const filteredSections = useMemo(() => {
+    if (!isSearchActive) return [];
+    const q = searchInput.toLowerCase().trim();
+    return FAQ_SECTIONS.map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) =>
+          item.question.toLowerCase().includes(q) ||
+          item.answer.toLowerCase().includes(q)
+      )
+    })).filter((section) => section.items.length > 0);
+  }, [isSearchActive, searchInput]);
+
+  const resultCount = useMemo(
+    () => filteredSections.reduce((sum, s) => sum + s.items.length, 0),
+    [filteredSections]
+  );
+
+  const handleCancelSearch = () => {
+    setSearchInput("");
+    setSearchVisible(false);
+  };
+
+  return (
+    <InnerLayout
+      title="Help Center"
+      onBack={() => router.back()}
+      actions={
+        <Stack.Toolbar.Button
+          icon="magnifyingglass"
+          tintColor={tintColor}
+          accessibilityLabel="Search FAQs"
+          onPress={() => setSearchVisible(true)}
+        />
+      }
+    >
       <ScrollView className="flex-1">
         <VStack className="p-4 gap-y-6 pb-10">
           <Text className="text-sm text-secondary-950">
@@ -381,52 +648,40 @@ export default function HelpCenterScreen() {
           </Text>
 
           {FAQ_SECTIONS.map((section) => (
-            <VStack key={section.title} className="gap-y-2">
-              <Text bold className="text-secondary-950 uppercase text-sm">
-                {section.title}
-              </Text>
-              <Box className="rounded-xl overflow-hidden border border-secondary-500">
-                <Accordion
-                  size="lg"
-                  variant="unfilled"
-                  type="multiple"
-                  isCollapsible
-                >
-                  {section.items.map((item, index) => (
-                    <AccordionItem key={item.question} value={item.question}>
-                      <AccordionHeader>
-                        <AccordionTrigger>
-                          {({ isExpanded }: { isExpanded: boolean }) => (
-                            <>
-                              <AccordionTitleText className="flex-1 pr-2 text-base">
-                                {item.question}
-                              </AccordionTitleText>
-                              <AccordionIcon
-                                as={
-                                  isExpanded ? ChevronUpIcon : ChevronDownIcon
-                                }
-                                className="text-sm text-secondary-950"
-                              />
-                            </>
-                          )}
-                        </AccordionTrigger>
-                      </AccordionHeader>
-                      <AccordionContent>
-                        <AccordionContentText className="text-secondary-950 text-base">
-                          {item.answer}
-                        </AccordionContentText>
-                      </AccordionContent>
-                      {index < section.items.length - 1 && (
-                        <Divider className="border-secondary-100" />
-                      )}
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </Box>
-            </VStack>
+            <FaqSectionBlock key={section.title} section={section} />
           ))}
         </VStack>
       </ScrollView>
+
+      <SearchDrawer
+        isOpen={searchVisible}
+        onClose={() => setSearchVisible(false)}
+        onCancel={handleCancelSearch}
+        value={searchInput}
+        onChangeText={setSearchInput}
+        placeholder="Search FAQs"
+      >
+        {isSearchActive ? (
+          <ScrollView
+            className="flex-1"
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 24 }}
+          >
+            <VStack className="p-4 gap-y-6">
+              <Text className="text-sm text-secondary-950" bold>
+                {resultCount} result{resultCount !== 1 ? "s" : ""}
+              </Text>
+              {resultCount > 0 ? (
+                filteredSections.map((section) => (
+                  <FaqSectionBlock key={section.title} section={section} />
+                ))
+              ) : (
+                <EmptyList type={EmptyType.SEARCH} />
+              )}
+            </VStack>
+          </ScrollView>
+        ) : null}
+      </SearchDrawer>
     </InnerLayout>
   );
 }
