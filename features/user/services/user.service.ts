@@ -1,6 +1,7 @@
 import { User, UserPreview } from "@/types/user";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
+import { isTestEmail, shouldHideTestEmails } from "@/utils/testEmails";
 import { uploadFile } from "@/utils/upload";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 
@@ -69,7 +70,17 @@ export const searchUsers = async (query: string) => {
     .limit(10);
 
   if (error) throw error;
-  return data as UserPreview[];
+
+  const users = data as UserPreview[];
+
+  // Keep seed/QA accounts (mailinator, test.com, disposable inboxes, …) out of
+  // search on production so real users never add them by accident. They stay
+  // visible in dev builds so the team can still use them.
+  if (shouldHideTestEmails()) {
+    return users.filter((u) => !isTestEmail(u.email));
+  }
+
+  return users;
 };
 
 /**

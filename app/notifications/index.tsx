@@ -9,17 +9,17 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { groupByDate } from "@/features/expense/utils/grouping.util";
 import NotificationItem from "@/features/notifications/components/NotificationItem";
+import { buildFriendSettlementRoute } from "@/features/notifications/utils/buildFriendSettlementRoute";
+import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
-import { buildFriendSettlementRoute } from "@/features/notifications/utils/buildFriendSettlementRoute";
 import { isSettlementNotification, Notification } from "@/types/notifications";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { Stack, useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useEffect, useMemo, useState } from "react";
-import useAppToast from "@/hooks/use-app-toast";
 import { RefreshControl } from "react-native";
 
 export default function NotificationsScreen() {
@@ -175,11 +175,6 @@ export default function NotificationsScreen() {
       title="Notifications"
       onBack={() => router.back()}
       actions={
-        // Keep this button permanently mounted (disabled when there's nothing
-        // to mark) rather than unmounting it at unreadCount === 0. Removing the
-        // right toolbar makes the native header re-layout the custom title,
-        // which visibly shifts "Notifications" toward the center after the
-        // last unread is cleared.
         <Stack.Toolbar.Button
           variant="plain"
           tintColor={tintColor}
@@ -191,7 +186,10 @@ export default function NotificationsScreen() {
         </Stack.Toolbar.Button>
       }
     >
-      <LoadingWrapper isLoading={loading} skeleton={<NotificationListSkeleton />}>
+      <LoadingWrapper
+        isLoading={loading}
+        skeleton={<NotificationListSkeleton />}
+      >
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.id}

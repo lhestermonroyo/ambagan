@@ -468,11 +468,6 @@ export default function FriendDetailScreen() {
     outputRange: [-16, 0],
     extrapolate: "clamp"
   });
-  const compactHeight = scrollY.interpolate({
-    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
-    outputRange: [0, 60],
-    extrapolate: "clamp"
-  });
 
   const filteredSettlements = useMemo(() => {
     const cutoff = getDateRangeCutoff(dateRange);
@@ -613,52 +608,6 @@ export default function FriendDetailScreen() {
           )
         }
       >
-        {/* Compact sticky stats */}
-        <Animated.View
-          style={{
-            height: compactHeight,
-            opacity: compactOpacity,
-            overflow: "hidden",
-            transform: [{ translateY: compactTranslateY }],
-            borderBottomWidth: 1,
-            borderBottomColor: "rgba(0,0,0,0.06)"
-          }}
-        >
-          <HStack className="px-6 pt-2 gap-x-4 items-center justify-center bg-background-0">
-            <VStack className="items-center flex-1">
-              <Text className="text-secondary-950 text-sm uppercase tracking-widest">
-                Net
-              </Text>
-              <Text
-                bold
-                className={`text-lg ${
-                  primaryNet.amount < 0 ? "text-error-400" : ""
-                }`}
-              >
-                {formatAmount(primaryNet.amount, primaryNet.currency)}
-              </Text>
-            </VStack>
-            <Text className="text-secondary-200">|</Text>
-            <VStack className="items-center flex-1">
-              <Text className="text-secondary-950 text-sm uppercase tracking-widest">
-                Collect
-              </Text>
-              <Text bold className="text-lg">
-                {formatAmount(primaryCollect.amount, primaryCollect.currency)}
-              </Text>
-            </VStack>
-            <Text className="text-secondary-200">|</Text>
-            <VStack className="items-center flex-1">
-              <Text className="text-secondary-950 text-sm uppercase tracking-widest">
-                Pay
-              </Text>
-              <Text bold className="text-lg text-error-400">
-                {formatAmount(primaryPay.amount, primaryPay.currency)}
-              </Text>
-            </VStack>
-          </HStack>
-        </Animated.View>
-
         <ScrollView
           className="flex-1"
           onScroll={Animated.event(
@@ -955,6 +904,56 @@ export default function FriendDetailScreen() {
             </VStack>
           </VStack>
         </ScrollView>
+
+        {/* Compact sticky stats. Pinned just under the native header as an
+            absolute overlay that fades in once the friend header scrolls away.
+            Like the group Settlements tab, it animates only opacity + translateY
+            (never height) and stays non-interactive, so it never reflows the
+            list and scroll/touches pass through. */}
+        <Animated.View
+          pointerEvents="none"
+          className="absolute top-0 left-0 right-0 bg-background-0"
+          style={{
+            opacity: compactOpacity,
+            transform: [{ translateY: compactTranslateY }],
+            borderBottomWidth: 1,
+            borderBottomColor: "rgba(0,0,0,0.06)"
+          }}
+        >
+          <HStack className="px-6 py-3 gap-x-4 items-center justify-center">
+            <VStack className="items-center flex-1">
+              <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                Net
+              </Text>
+              <Text
+                bold
+                className={`text-lg ${
+                  primaryNet.amount < 0 ? "text-error-400" : ""
+                }`}
+              >
+                {formatAmount(primaryNet.amount, primaryNet.currency)}
+              </Text>
+            </VStack>
+            <Text className="text-secondary-200">|</Text>
+            <VStack className="items-center flex-1">
+              <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                Collect
+              </Text>
+              <Text bold className="text-lg">
+                {formatAmount(primaryCollect.amount, primaryCollect.currency)}
+              </Text>
+            </VStack>
+            <Text className="text-secondary-200">|</Text>
+            <VStack className="items-center flex-1">
+              <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                Pay
+              </Text>
+              <Text bold className="text-lg text-error-400">
+                {formatAmount(primaryPay.amount, primaryPay.currency)}
+              </Text>
+            </VStack>
+          </HStack>
+        </Animated.View>
       </InnerLayout>
 
       <SettlementActionSheet
