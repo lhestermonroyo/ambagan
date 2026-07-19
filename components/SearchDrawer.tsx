@@ -2,6 +2,7 @@ import FormButton from "@/components/FormButton";
 import SearchInput from "@/components/SearchInput";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
+import { useNetwork } from "@/hooks/useNetwork";
 import { ReactNode, useEffect, useState } from "react";
 import { Modal, Pressable, StyleSheet } from "react-native";
 import Animated, {
@@ -51,6 +52,7 @@ export default function SearchDrawer({
   children
 }: SearchDrawerProps) {
   const insets = useSafeAreaInsets();
+  const { isOnline } = useNetwork();
   const progress = useSharedValue(0);
   // Seeded large so the panel starts fully hidden before onLayout measures it.
   const panelHeight = useSharedValue(300);
@@ -79,7 +81,9 @@ export default function SearchDrawer({
 
   const panelStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateY: interpolate(progress.value, [0, 1], [-panelHeight.value, 0]) }
+      {
+        translateY: interpolate(progress.value, [0, 1], [-panelHeight.value, 0])
+      }
     ]
   }));
 
@@ -119,7 +123,10 @@ export default function SearchDrawer({
         }}
         style={[styles.panel, panelStyle]}
       >
-        <Box className="bg-background-0" style={{ paddingTop: insets.top + 8 }}>
+        <Box
+          className="bg-background-0"
+          style={{ paddingTop: insets.top + (isOnline ? 8 : 100) }}
+        >
           <HStack className="items-center gap-x-2 px-4 pb-3">
             <Box className="flex-1">
               <SearchInput
