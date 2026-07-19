@@ -464,6 +464,22 @@ export const getGroupById = async (groupId: string) => {
 };
 
 /**
+ * Whether a group row exists, without throwing on not-found (unlike
+ * `getGroupById`). Idempotency guard for retrying a queued offline group create
+ * so a pinned-id row that already committed isn't re-inserted. Throws only on a
+ * real error so the caller can retry safely.
+ */
+export const groupExists = async (groupId: string): Promise<boolean> => {
+  const { count, error } = await supabase
+    .from(tables.GROUPS_TBL)
+    .select("id", { count: "exact", head: true })
+    .eq("id", groupId);
+
+  if (error) throw error;
+  return (count ?? 0) > 0;
+};
+
+/**
  * Join a group via its invite token (from a shared link / QR). Adds the current
  * user as a member and claims any phone-contact ghost matching their phone.
  * Returns the joined group's id. Online-only.

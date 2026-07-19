@@ -71,6 +71,11 @@ export default function ExpenseDetailsScreen() {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Whether the initial load has settled (server fetch + cache fallback). Kept
+  // separate from the presence of `expenseDetails` so the skeleton stops even
+  // when nothing could be resolved (e.g. an offline-created expense not yet
+  // synced with no cached snapshot) instead of spinning forever.
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useMemo(
@@ -86,6 +91,15 @@ export default function ExpenseDetailsScreen() {
   );
 
   const init = async (groupId: string, expenseId: string) => {
+    try {
+      await runInit(groupId, expenseId);
+    } finally {
+      // Load has settled — stop the skeleton regardless of what resolved.
+      setLoading(false);
+    }
+  };
+
+  const runInit = async (groupId: string, expenseId: string) => {
     const requests: Promise<void>[] = [
       fetchExpenseDetails(expenseId),
       fetchPayers(expenseId),
@@ -403,13 +417,23 @@ export default function ExpenseDetailsScreen() {
         actions={renderActions()}
       >
         <LoadingWrapper
-          isLoading={
-            !expenseDetails || !groupDetails || !payerList || !memberSplitList
-          }
+          isLoading={loading}
           skeleton={<ExpenseDetailsSkeleton />}
         >
-          <ScrollView className="flex-1">
-            {expenseDetails && (
+          {!expenseDetails ? (
+            <VStack className="flex-1 py-16">
+              <EmptyList
+                type={EmptyType.EXPENSE}
+                content={
+                  isOnline
+                    ? "This expense couldn't be loaded. Pull back and try again."
+                    : "This expense isn't available offline yet. It'll appear once you're back online and it syncs."
+                }
+              />
+            </VStack>
+          ) : (
+            <ScrollView className="flex-1">
+              {expenseDetails && (
               <VStack className="gap-y-6 py-4">
                 <VStack className="w-full gap-y-1 px-4">
                   <HStack className="items-center gap-x-2">
@@ -580,9 +604,10 @@ export default function ExpenseDetailsScreen() {
                     </VStack>
                   </>
                 )}
-              </VStack>
-            )}
-          </ScrollView>
+                </VStack>
+              )}
+            </ScrollView>
+          )}
         </LoadingWrapper>
       </InnerLayout>
 

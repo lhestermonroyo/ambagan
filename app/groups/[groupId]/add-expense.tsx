@@ -42,6 +42,7 @@ import {
 } from "@/features/expense/utils/split.util";
 import { defaultExpenseGroup } from "@/features/group/utils/groupMembers";
 import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
@@ -65,6 +66,33 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
+
+// Local-day key (not a UTC ISO date) so the cached daily count is compared
+// against the same calendar day the user is in.
+const dayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+};
+
+/**
+ * The user's expense count for today, usable offline. Online: the live server
+ * count, cached for later offline reads. Offline: the last cached server count
+ * for today (0 if missing or from another day) plus the ADD_EXPENSE ops queued
+ * today — so the free-tier daily limit stays enforced without a server round
+ * trip. The two never overlap: queued ops aren't in the cached server count
+ * until they sync, at which point the queue is empty again.
+ */
+async function resolveDailyCount(userId: string): Promise<number> {
+  if (await offlineQueue.isOnline()) {
+    const count = await services.expense.getDailyExpenseCount(userId);
+    await cacheService.saveDailyExpenseCount(userId, count, dayKey());
+    return count;
+  }
+  const cached = await cacheService.getDailyExpenseCount(userId);
+  const base = cached && cached.dayKey === dayKey() ? cached.count : 0;
+  const queuedToday = await offlineQueue.countExpensesQueuedToday();
+  return base + queuedToday;
+}
 
 /**
  * Add Expense: log an expense in one screen. Defaults to the quick path — paid
@@ -90,6 +118,7 @@ export default function AddExpenseScreen() {
   const isPro = currentUser?.plan === "pro";
 
   const toast = useAppToast();
+  const { isOnline } = useNetwork();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   // Seed from a Scan Receipt (Beta) hand-off if one is waiting. Read once at
@@ -163,10 +192,9 @@ export default function AddExpenseScreen() {
 
   useEffect(() => {
     if (!isPro && userId) {
-      services.expense
-        .getDailyExpenseCount(userId)
-        .then(setDailyCount)
-        .catch(() => {});
+      // Offline-aware: falls back to cached + queued-today so the badge still
+      // reflects the real remaining count without a server connection.
+      resolveDailyCount(userId).then(setDailyCount).catch(() => {});
     }
   }, [isPro, userId]);
 
@@ -502,8 +530,8 @@ export default function AddExpenseScreen() {
     };
 
     // Offline → queue the draft optimistically. A draft has no payments, so
-    // only the expense preview is injected; proof can't be attached until we're
-    // back online (offline queues store a URL, not a pending upload).
+    // only the expense preview is injected; any attached receipt is stashed and
+    // re-uploaded after the draft syncs (uploads are blocked offline).
     const online = await offlineQueue.isOnline();
     if (!online) {
       const clientId = uuid();
@@ -515,6 +543,11 @@ export default function AddExpenseScreen() {
         currency,
         creator
       });
+
+      const proofAsset = proofOfPayment?.assets?.[0];
+      const proofUpload = proofAsset
+        ? { uri: proofAsset.uri, fileName: proofAsset.fileName ?? null }
+        : undefined;
 
       await offlineQueue.queueCreateDraft(
         selectedGroup.id,
@@ -528,13 +561,15 @@ export default function AddExpenseScreen() {
             expense_date: expenseDate.toISOString()
           }
         },
-        optimistic
+        optimistic,
+        proofUpload
       );
 
       toast({
         title: "Draft saved offline",
-        description:
-          "This draft will sync automatically when you're back online.",
+        description: proofUpload
+          ? "This draft and its receipt will sync automatically when you're back online."
+          : "This draft will sync automatically when you're back online.",
         type: "info"
       });
       router.back();
@@ -575,10 +610,23 @@ export default function AddExpenseScreen() {
   const handleSubmit = async () => {
     if (!currentUser || !selectedGroup || !canSubmit) return;
 
-    // Offline → queue the expense optimistically and skip the daily-limit
-    // check (it can't be enforced without the server).
+    // Offline → queue the expense optimistically.
     const online = await offlineQueue.isOnline();
     if (!online) {
+      // The daily limit still applies offline — enforce it against the cached
+      // server count + expenses already queued today so free users can't bypass
+      // it by going offline (they all sync later against the same limit).
+      if (!isPro) {
+        const count = await resolveDailyCount(currentUser.id);
+        if (count >= DAILY_EXPENSE_LIMIT) {
+          setUpgradeDescription(
+            "You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
+          );
+          setUpgradeSheetOpen(true);
+          return;
+        }
+      }
+
       const memberSplits = buildMemberSplits();
       const payersArr = buildPayers();
       const paymentSplits = generatePaymentSplits(payersArr, memberSplits);
@@ -612,14 +660,22 @@ export default function AddExpenseScreen() {
         members
       });
 
+      // Stash any attached receipt so it re-uploads once we're back online — the
+      // expense row can't carry an uploaded image while offline, but the local
+      // file is kept and pushed on sync instead of being dropped.
+      const proofAsset = proofOfPayment?.assets?.[0];
+      const proofUpload = proofAsset
+        ? { uri: proofAsset.uri, fileName: proofAsset.fileName ?? null }
+        : undefined;
+
       await offlineQueue.queueAddExpense(
         selectedGroup.id,
         {
           expensePayload: {
             amount: parsedAmount,
             description: description.trim(),
-            // Offline queues store a URL, not a pending upload — so a scanned
-            // receipt image can't be attached until we're back online.
+            // The insert can't reference an uploaded image offline — the proof
+            // is re-uploaded from `proofUpload` after this op syncs.
             proof_of_payment: null,
             group_id: selectedGroup.id,
             split_type: splitType,
@@ -632,13 +688,15 @@ export default function AddExpenseScreen() {
         },
         optimistic,
         optimisticPayments,
-        members
+        members,
+        proofUpload
       );
 
       toast({
         title: "Saved offline",
-        description:
-          "This expense will sync automatically when you're back online.",
+        description: proofUpload
+          ? "This expense and its receipt will sync automatically when you're back online."
+          : "This expense will sync automatically when you're back online.",
         type: "info"
       });
       router.back();
@@ -646,7 +704,9 @@ export default function AddExpenseScreen() {
     }
 
     if (!isPro) {
-      const count = await services.expense.getDailyExpenseCount(currentUser.id);
+      // resolveDailyCount also refreshes the cached count that offline
+      // enforcement reads from.
+      const count = await resolveDailyCount(currentUser.id);
       if (count >= DAILY_EXPENSE_LIMIT) {
         setUpgradeDescription(
           "You've reached your 5 expense limit for today. Upgrade to Pro for unlimited expenses."
@@ -1041,7 +1101,38 @@ export default function AddExpenseScreen() {
                   )}
                 </VStack>
               </FormControl>
-            ) : null}
+            ) : (
+              // Members couldn't be resolved — offline with no cached roster for
+              // this group (never opened/prefetched while online), or a failed
+              // fetch. Explain it instead of leaving a silently-disabled submit,
+              // and keep a way to switch to a group we *can* load (the changer
+              // normally lives inside the split card, which is hidden here).
+              <VStack className="border border-background-200 rounded-lg p-4 gap-y-3 items-center">
+                <Icon
+                  as="cloud-off"
+                  size={40}
+                  className="text-secondary-400"
+                />
+                <VStack className="gap-y-1 items-center">
+                  <Text bold className="text-center">
+                    Members aren&apos;t available for this group
+                  </Text>
+                  <Text className="text-center text-sm text-secondary-950">
+                    {isOnline
+                      ? "We couldn't load this group's members. Check your connection and try again."
+                      : "You're offline and this group's members haven't been saved for offline use yet. Open it once while you're online, then you can add expenses here offline."}
+                  </Text>
+                </VStack>
+                {!isLocked && (
+                  <FormButton
+                    size="sm"
+                    variant="outline"
+                    text="Choose another group"
+                    onPress={() => setGroupPickerOpen(true)}
+                  />
+                )}
+              </VStack>
+            )}
 
             <VStack className="gap-y-1 pb-4">
               <UploadImage

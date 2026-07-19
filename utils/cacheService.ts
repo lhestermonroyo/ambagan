@@ -231,5 +231,32 @@ export const cacheService = {
       active: JSON.parse(row.active),
       settled: JSON.parse(row.settled)
     };
+  },
+
+  // The user's daily expense-creation count as last read from the server, tagged
+  // with the local day it was read on. Read offline (alongside the pending queue)
+  // to keep the free-tier daily limit enforced without a live server count.
+  async saveDailyExpenseCount(
+    userId: string,
+    count: number,
+    dayKey: string
+  ): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_daily_expense_count (user_id, count, day_key, cached_at) VALUES (?, ?, ?, ?)",
+      [userId, count, dayKey, Date.now()]
+    );
+  },
+
+  async getDailyExpenseCount(
+    userId: string
+  ): Promise<{ count: number; dayKey: string } | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{ count: number; day_key: string }>(
+      "SELECT count, day_key FROM cache_daily_expense_count WHERE user_id = ?",
+      [userId]
+    );
+    if (!row) return null;
+    return { count: row.count, dayKey: row.day_key };
   }
 };

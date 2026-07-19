@@ -81,6 +81,13 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       status TEXT NOT NULL DEFAULT 'pending',
       created_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS cache_daily_expense_count (
+      user_id TEXT PRIMARY KEY,
+      count INTEGER NOT NULL,
+      day_key TEXT NOT NULL,
+      cached_at INTEGER NOT NULL
+    );
   `);
   return _db;
 }

@@ -4,14 +4,18 @@ import states from "@/states";
 import * as offlineQueue from "@/utils/offlineQueue";
 import NetInfo from "@react-native-community/netinfo";
 import { useEffect, useRef } from "react";
+import { AppState } from "react-native";
 
 /**
  * Watches connectivity and flushes the offline write queue when the device
- * comes back online (and once on mount, in case ops survived a restart).
+ * comes back online (and once on mount / on app-foreground, in case ops
+ * survived a restart or NetInfo never emitted a transition).
  *
  * Processes queued operations in order via the same services as the online
- * path. Succeeded ops are removed and their optimistic items un-marked;
- * failed ops are flagged and skipped so one bad op never blocks the rest.
+ * path. Succeeded ops are removed and their optimistic items un-marked. A
+ * failed op is flagged and skipped so one bad op never blocks the rest, but it
+ * is RE-ATTEMPTED on the next flush (reconnect / foreground) — a transient
+ * failure on the first moment of reconnect must not strand a write forever.
  */
 export function useOfflineSync() {
   const toast = useAppToast();
@@ -26,28 +30,38 @@ export function useOfflineSync() {
 
       try {
         const ops = await offlineQueue.getQueue();
-        const pending = ops.filter((o) => o.status === "pending");
-        if (pending.length === 0) return;
+        // Retry failed ops alongside pending ones — nothing else ever resets a
+        // failed op, so excluding them here would strand it permanently.
+        const retryable = ops.filter(
+          (o) => o.status === "pending" || o.status === "failed"
+        );
+        if (retryable.length === 0) return;
 
         let success = 0;
         let failed = 0;
 
-        for (const op of pending) {
+        for (const op of retryable) {
           try {
             if (op.type === "ADD_EXPENSE") {
               const { args } = op.payload;
-              await services.expense.saveExpense(
-                {
-                  ...args.expensePayload,
-                  // Stored as an ISO string in the queue — rehydrate to a Date.
-                  expense_date: args.expensePayload.expense_date
-                    ? new Date(args.expensePayload.expense_date)
-                    : undefined
-                } as any,
-                args.payers,
-                args.memberSplits,
-                args.paymentSplits
-              );
+              // Idempotency guard for retries: if a prior attempt already
+              // committed this pinned-id expense, don't re-insert it (that would
+              // PK-conflict, and re-inserting children would double-count).
+              // `expenseExists` throws on a real error → op retries safely.
+              if (!(await services.expense.expenseExists(op.payload.clientId))) {
+                await services.expense.saveExpense(
+                  {
+                    ...args.expensePayload,
+                    // Stored as an ISO string in the queue — rehydrate to a Date.
+                    expense_date: args.expensePayload.expense_date
+                      ? new Date(args.expensePayload.expense_date)
+                      : undefined
+                  } as any,
+                  args.payers,
+                  args.memberSplits,
+                  args.paymentSplits
+                );
+              }
               await offlineQueue._internal.clearPendingExpense(
                 op.payload.groupId,
                 op.payload.clientId
@@ -57,21 +71,48 @@ export function useOfflineSync() {
                 op.payload.optimisticPayments ?? [],
                 states.user.getState().details?.id
               );
+              // Re-upload a receipt stashed while offline. Best-effort: the
+              // expense already synced, so a missing/failed image is dropped
+              // rather than failing (and retrying) the whole op forever.
+              if (op.payload.proofUpload) {
+                try {
+                  await services.expense.attachExpenseProof(
+                    op.payload.clientId,
+                    op.payload.proofUpload
+                  );
+                } catch (e) {
+                  console.warn("Failed to re-upload offline receipt:", e);
+                }
+              }
             } else if (op.type === "CREATE_DRAFT") {
               const { args } = op.payload;
-              await services.expense.saveDraftExpense({
-                ...args.expensePayload,
-                proof_of_payment: null,
-                // Pinned to the optimistic id; rehydrate the ISO date to a Date.
-                id: op.payload.clientId,
-                expense_date: args.expensePayload.expense_date
-                  ? new Date(args.expensePayload.expense_date)
-                  : undefined
-              });
+              // Idempotency guard for retries (see ADD_EXPENSE).
+              if (!(await services.expense.expenseExists(op.payload.clientId))) {
+                await services.expense.saveDraftExpense({
+                  ...args.expensePayload,
+                  proof_of_payment: null,
+                  // Pinned to the optimistic id; rehydrate the ISO date to a Date.
+                  id: op.payload.clientId,
+                  expense_date: args.expensePayload.expense_date
+                    ? new Date(args.expensePayload.expense_date)
+                    : undefined
+                });
+              }
               await offlineQueue._internal.clearPendingExpense(
                 op.payload.groupId,
                 op.payload.clientId
               );
+              // Re-upload a stashed receipt best-effort (see ADD_EXPENSE above).
+              if (op.payload.proofUpload) {
+                try {
+                  await services.expense.attachExpenseProof(
+                    op.payload.clientId,
+                    op.payload.proofUpload
+                  );
+                } catch (e) {
+                  console.warn("Failed to re-upload offline receipt:", e);
+                }
+              }
             } else if (op.type === "UPDATE_EXPENSE") {
               const { args } = op.payload;
               await services.expense.updateExpense(
@@ -93,7 +134,10 @@ export function useOfflineSync() {
             } else if (op.type === "DELETE_EXPENSE") {
               await services.expense.deleteExpense(op.payload.expenseId);
             } else if (op.type === "CREATE_GROUP") {
-              await services.group.saveGroup(op.payload.args);
+              // Idempotency guard for retries (see ADD_EXPENSE).
+              if (!(await services.group.groupExists(op.payload.clientId))) {
+                await services.group.saveGroup(op.payload.args);
+              }
               await offlineQueue._internal.clearPendingGroup(
                 op.payload.userId,
                 op.payload.clientId
@@ -193,6 +237,19 @@ export function useOfflineSync() {
       wasOnline.current = online;
     });
 
-    return unsubscribe;
+    // Also flush when the app returns to the foreground while online — covers a
+    // reconnect that happened while backgrounded (no NetInfo transition fires)
+    // and re-attempts any op left `failed` by an earlier flush.
+    const appStateSub = AppState.addEventListener("change", (next) => {
+      if (next !== "active") return;
+      offlineQueue.isOnline().then((online) => {
+        if (online) flush();
+      });
+    });
+
+    return () => {
+      unsubscribe();
+      appStateSub.remove();
+    };
   }, [toast]);
 }

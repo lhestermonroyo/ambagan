@@ -151,6 +151,11 @@ export default function RootLayout() {
           "You're in offline mode. You can still browse cached data.",
         type: "error"
       });
+    } else if (!prevIsOnline.current && isOnline) {
+      // Back online — refresh the plan so a subscription change made while
+      // offline is reflected without waiting for a cold launch.
+      const uid = states.user.getState().details?.id;
+      if (uid) refreshPlan(uid);
     }
     prevIsOnline.current = isOnline;
   }, [isOnline]);
@@ -335,6 +340,42 @@ export default function RootLayout() {
     }
   };
 
+  // Re-sync the RevenueCat entitlement into the user's plan and, crucially,
+  // RE-CACHE it afterward so the offline profile reflects the latest plan (the
+  // launch cache is written before this runs). Called on launch and again on
+  // reconnect, so a lapse/upgrade that happened while offline is picked up
+  // within seconds of coming back online instead of waiting for a cold launch.
+  const refreshPlan = async (id: string) => {
+    try {
+      const before = states.user.getState();
+      const customerInfo = await services.purchase.getCustomerInfo();
+      // Pass the stored window so an unexpired (non-renewing) 2-week pass
+      // survives the sync; an expired one reverts to free.
+      const { plan, plan_expires_at } =
+        await services.purchase.syncPlanToSupabase(customerInfo, {
+          currentWindowExpiresAt: before.details?.plan_expires_at ?? null
+        });
+      states.user.setState((prev) => ({
+        ...prev,
+        details: prev.details
+          ? { ...prev.details, plan, plan_expires_at }
+          : prev.details
+      }));
+
+      const after = states.user.getState();
+      if (after.details) {
+        await setCachedUserSession({
+          userId: id,
+          details: after.details,
+          appearanceMode: after.appearanceMode,
+          defaultCurrency: after.defaultCurrency
+        });
+      }
+    } catch (error) {
+      console.error("Failed to refresh plan:", error);
+    }
+  };
+
   const fetchDetails = async (id: string) => {
     // Hydrate from the local cache FIRST so the app is usable offline right away,
     // independent of the network (which may be down or slow on a cold launch).
@@ -406,23 +447,7 @@ export default function RootLayout() {
         defaultCurrency: current.defaultCurrency
       });
 
-      try {
-        const customerInfo = await services.purchase.getCustomerInfo();
-        // Pass the stored window so an unexpired (non-renewing) 2-week pass
-        // survives the launch sync; an expired one reverts to free.
-        const { plan, plan_expires_at } =
-          await services.purchase.syncPlanToSupabase(customerInfo, {
-            currentWindowExpiresAt: response.data?.plan_expires_at ?? null
-          });
-        states.user.setState((prev) => ({
-          ...prev,
-          details: prev.details
-            ? { ...prev.details, plan, plan_expires_at }
-            : prev.details
-        }));
-      } catch (error) {
-        console.error("Failed to sync plan on launch:", error);
-      }
+      await refreshPlan(id);
     } catch (error) {
       console.error("Error fetching user details:", error);
       // Likely offline or a transient error (an authoritative "no row" is

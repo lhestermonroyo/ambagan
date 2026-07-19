@@ -16,7 +16,7 @@ import * as offlineQueue from "@/utils/offlineQueue";
 import { sendPushNotification } from "@/utils/sendPushNotifications";
 import { supabase } from "@/utils/supabase";
 import { getCompressedReceiptBase64, uploadFile } from "@/utils/upload";
-import { ImagePickerSuccessResult } from "expo-image-picker";
+import { ImagePickerAsset, ImagePickerSuccessResult } from "expo-image-picker";
 import { v4 as uuid } from "uuid";
 
 /**
@@ -66,6 +66,53 @@ export const getDailyExpenseCount = async (userId: string): Promise<number> => {
 
   if (error) throw error;
   return count ?? 0;
+};
+
+/**
+ * Whether an expense row exists, without throwing on not-found (unlike
+ * `getExpenseById`, which uses `.single()`). Used as an idempotency guard when
+ * retrying a queued offline create: a pinned-id row that already committed must
+ * not be re-inserted. Throws only on a real error (e.g. offline) so the caller
+ * can retry safely.
+ */
+export const expenseExists = async (id: string): Promise<boolean> => {
+  const { count, error } = await supabase
+    .from(tables.EXPENSES_TBL)
+    .select("id", { count: "exact", head: true })
+    .eq("id", id);
+
+  if (error) throw error;
+  return (count ?? 0) > 0;
+};
+
+/**
+ * Upload a locally-stashed receipt image and attach it to an already-created
+ * expense. Used by the offline sync to re-upload a proof that couldn't be sent
+ * while offline, once the expense row itself exists. Kept separate from the
+ * insert path so a failed/missing image never blocks the expense from syncing.
+ */
+export const attachExpenseProof = async (
+  expenseId: string,
+  proof: { uri: string; fileName: string | null }
+): Promise<void> => {
+  const uploadResponse = await uploadFile(
+    { uri: proof.uri, fileName: proof.fileName } as ImagePickerAsset,
+    "receipts"
+  );
+
+  if (uploadResponse.error) {
+    throw new Error(uploadResponse.message ?? "Receipt upload failed");
+  }
+
+  const proofUrl = uploadResponse.data?.publicUrl;
+  if (!proofUrl) return;
+
+  const { error } = await supabase
+    .from(tables.EXPENSES_TBL)
+    .update({ proof_of_payment: proofUrl })
+    .eq("id", expenseId);
+
+  if (error) throw error;
 };
 
 export const saveExpense = async (

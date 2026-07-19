@@ -104,18 +104,32 @@ export type QueueOpType =
   | "UPDATE_PREFERENCES"
   | "UPDATE_MEMBERS";
 
+/**
+ * A local receipt image captured/attached while offline. The file can't be
+ * uploaded until we reconnect, so we stash its on-device uri (+ filename) and
+ * re-upload it best-effort once the expense itself has synced.
+ */
+export type ProofUpload = {
+  uri: string;
+  fileName: string | null;
+};
+
 export type AddExpensePayload = {
   clientId: string;
   groupId: string;
   args: AddExpenseArgs;
   /** Optimistic settlements injected offline; cleared on sync. */
   optimisticPayments?: Payment[];
+  /** Local receipt image to re-upload after the expense syncs, if any. */
+  proofUpload?: ProofUpload;
 };
 
 export type CreateDraftPayload = {
   clientId: string;
   groupId: string;
   args: CreateDraftArgs;
+  /** Local receipt image to re-upload after the draft syncs, if any. */
+  proofUpload?: ProofUpload;
 };
 
 export type UpdateExpensePayload = {
@@ -342,6 +356,24 @@ export async function getPendingCount(): Promise<number> {
   const db = await getDb();
   const row = await db.getFirstAsync<{ c: number }>(
     "SELECT COUNT(*) as c FROM pending_queue WHERE status = 'pending'"
+  );
+  return row?.c ?? 0;
+}
+
+/**
+ * How many expense-creating ops (ADD_EXPENSE) are queued for today (local time),
+ * pending or failed. Added to the last-known server count to keep the free-tier
+ * daily limit enforced while offline — a failed op still consumed a slot on the
+ * server's append-only creation log once it eventually syncs. Drafts don't count
+ * (draft creation is Pro-only, and the limit only applies to free users).
+ */
+export async function countExpensesQueuedToday(): Promise<number> {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ c: number }>(
+    "SELECT COUNT(*) as c FROM pending_queue WHERE type = 'ADD_EXPENSE' AND created_at >= ?",
+    [startOfDay.getTime()]
   );
   return row?.c ?? 0;
 }
@@ -807,7 +839,10 @@ export async function queueAddExpense(
   optimisticPayments: Payment[] = [],
   // Member list so the detail snapshot can carry member splits with full user
   // objects — without it, opening the offline expense shows an empty split.
-  members: UserPreview[] = []
+  members: UserPreview[] = [],
+  // Local receipt image to re-upload once the expense syncs (uploads are blocked
+  // offline, so the file is stashed rather than dropped).
+  proofUpload?: ProofUpload
 ): Promise<void> {
   const payload: AddExpensePayload = {
     clientId: optimistic.id,
@@ -818,7 +853,8 @@ export async function queueAddExpense(
       ...args,
       expensePayload: { ...args.expensePayload, id: optimistic.id }
     },
-    optimisticPayments
+    optimisticPayments,
+    proofUpload
   };
   await enqueue("ADD_EXPENSE", payload);
   await injectPendingExpense(groupId, optimistic);
@@ -861,7 +897,9 @@ export async function queueAddExpense(
 export async function queueCreateDraft(
   groupId: string,
   args: CreateDraftArgs,
-  optimistic: ExpensePreview
+  optimistic: ExpensePreview,
+  // Local receipt image to re-upload once the draft syncs (see queueAddExpense).
+  proofUpload?: ProofUpload
 ): Promise<void> {
   const payload: CreateDraftPayload = {
     clientId: optimistic.id,
@@ -870,7 +908,8 @@ export async function queueCreateDraft(
     args: {
       ...args,
       expensePayload: { ...args.expensePayload, id: optimistic.id }
-    }
+    },
+    proofUpload
   };
   await enqueue("CREATE_DRAFT", payload);
   // A draft has no payments, so only the expense preview is injected.
