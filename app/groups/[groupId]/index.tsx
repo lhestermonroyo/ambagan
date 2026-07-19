@@ -165,11 +165,6 @@ export default function GroupDetailsScreen() {
     outputRange: [-16, 0],
     extrapolate: "clamp"
   });
-  const compactHeight = scrollY.interpolate({
-    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
-    outputRange: [0, 60],
-    extrapolate: "clamp"
-  });
   const params = useLocalSearchParams();
   const groupId = params.groupId as string | undefined;
 
@@ -651,63 +646,6 @@ export default function GroupDetailsScreen() {
               )}
             </>
           )}
-        {/* Compact sticky stats — Settlements tab only */}
-        {tab === "Settlements" && (
-          <Animated.View
-            style={{
-              height: compactHeight,
-              opacity: compactOpacity,
-              overflow: "hidden",
-              transform: [{ translateY: compactTranslateY }],
-              borderBottomWidth: 1,
-              borderBottomColor: "rgba(0,0,0,0.06)"
-            }}
-          >
-            <HStack className="px-6 pt-2 gap-x-4 items-center justify-center bg-background-0">
-              <VStack className="items-center flex-1">
-                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
-                  Net
-                </Text>
-                <Text
-                  bold
-                  className={`text-lg ${
-                    primaryCompactNet.amount < 0 ? "text-error-400" : ""
-                  }`}
-                >
-                  {formatAmount(
-                    primaryCompactNet.amount,
-                    primaryCompactNet.currency
-                  )}
-                </Text>
-              </VStack>
-              <Text className="text-secondary-200">|</Text>
-              <VStack className="items-center flex-1">
-                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
-                  Collect
-                </Text>
-                <Text bold className="text-lg">
-                  {formatAmount(
-                    primaryCompactCollect.amount,
-                    primaryCompactCollect.currency
-                  )}
-                </Text>
-              </VStack>
-              <Text className="text-secondary-200">|</Text>
-              <VStack className="items-center flex-1">
-                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
-                  Pay
-                </Text>
-                <Text bold className="text-lg text-error-400">
-                  {formatAmount(
-                    primaryCompactPay.amount,
-                    primaryCompactPay.currency
-                  )}
-                </Text>
-              </VStack>
-            </HStack>
-          </Animated.View>
-        )}
-
         <LoadingWrapper isLoading={loading} skeleton={<ExpenseListSkeleton />}>
           <ScrollView
             className="flex-1"
@@ -891,6 +829,67 @@ export default function GroupDetailsScreen() {
             )}
           </ScrollView>
         </LoadingWrapper>
+
+        {/* Compact sticky stats — Settlements tab only. Pinned just under the
+            native header as an absolute overlay that fades in once the group
+            header scrolls away. Like the overview screen, it animates only
+            opacity + translateY (never height) and stays non-interactive, so
+            it never reflows the list and scroll/touches pass through. */}
+        {tab === "Settlements" && (
+          <Animated.View
+            pointerEvents="none"
+            className="absolute top-0 left-0 right-0 bg-background-0"
+            style={{
+              opacity: compactOpacity,
+              transform: [{ translateY: compactTranslateY }],
+              borderBottomWidth: 1,
+              borderBottomColor: "rgba(0,0,0,0.06)"
+            }}
+          >
+            <HStack className="px-6 py-3 gap-x-4 items-center justify-center">
+              <VStack className="items-center flex-1">
+                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                  Net
+                </Text>
+                <Text
+                  bold
+                  className={`text-lg ${
+                    primaryCompactNet.amount < 0 ? "text-error-400" : ""
+                  }`}
+                >
+                  {formatAmount(
+                    primaryCompactNet.amount,
+                    primaryCompactNet.currency
+                  )}
+                </Text>
+              </VStack>
+              <Text className="text-secondary-200">|</Text>
+              <VStack className="items-center flex-1">
+                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                  Collect
+                </Text>
+                <Text bold className="text-lg">
+                  {formatAmount(
+                    primaryCompactCollect.amount,
+                    primaryCompactCollect.currency
+                  )}
+                </Text>
+              </VStack>
+              <Text className="text-secondary-200">|</Text>
+              <VStack className="items-center flex-1">
+                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                  Pay
+                </Text>
+                <Text bold className="text-lg text-error-400">
+                  {formatAmount(
+                    primaryCompactPay.amount,
+                    primaryCompactPay.currency
+                  )}
+                </Text>
+              </VStack>
+            </HStack>
+          </Animated.View>
+        )}
       </InnerLayout>
       <LeaveGroupSheet
         isOpen={leaveSheetOpen}

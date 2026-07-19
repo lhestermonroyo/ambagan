@@ -541,22 +541,22 @@ export default function HomeScreen() {
                 <HStack className="gap-x-2 justify-center">
                   <ActionButton
                     icon={<ListPlus size={24} color="#fff" />}
-                    label={`Add\n\ Expense`}
+                    label={`Add\n\Expense`}
                     onPress={handleOpenAddExpense}
                   />
                   <ActionButton
                     icon={<ScanLine size={24} color="#fff" />}
-                    label={`Scan\n\ Receipt`}
+                    label={`Scan\n\Receipt`}
                     onPress={handleOpenScan}
                   />
                   <ActionButton
                     icon={<HousePlus size={24} color="#fff" />}
-                    label={`Create\n\ Group`}
+                    label={`Create\n\Group`}
                     onPress={() => router.push("/groups/create")}
                   />
                   <ActionButton
                     icon={<QrCode size={24} color="#fff" />}
-                    label={`Scan to\n\ Join`}
+                    label={`Scan to\n\Join`}
                     onPress={() => router.push("/scan" as any)}
                   />
                 </HStack>
