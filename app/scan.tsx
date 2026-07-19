@@ -7,7 +7,11 @@ import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import { getPrimaryHex } from "@/utils/getColorHex";
-import { CameraView, scanFromURLAsync, useCameraPermissions } from "expo-camera";
+import {
+  CameraView,
+  scanFromURLAsync,
+  useCameraPermissions
+} from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { ImageUp, ScanLine, X } from "lucide-react-native";
@@ -192,7 +196,7 @@ export default function ScanJoinScreen() {
           <Box className="p-4">
             <Pressable
               onPress={handleClose}
-              className="h-10 w-10 items-center justify-center rounded-full bg-black/50 active:opacity-60"
+              className="h-10 w-10 items-center justify-center rounded-full bg-black/50 active:opacity-50"
             >
               <X size={22} color="#fff" />
             </Pressable>
@@ -212,7 +216,7 @@ export default function ScanJoinScreen() {
             <Pressable
               onPress={handleUploadQR}
               disabled={uploading}
-              className="w-full active:opacity-60"
+              className="w-full active:opacity-50"
             >
               <HStack className="items-center justify-center gap-x-2 px-4 py-3 rounded-full bg-white/15">
                 <ImageUp size={18} color="#fff" />
@@ -224,7 +228,7 @@ export default function ScanJoinScreen() {
 
             <Pressable
               onPress={() => setTorch((prev) => !prev)}
-              className="px-4 py-2 rounded-full bg-black/50 active:opacity-60"
+              className="px-4 py-2 rounded-full bg-black/50 active:opacity-50"
             >
               <Text className="text-white">
                 {torch ? "Turn off flashlight" : "Turn on flashlight"}

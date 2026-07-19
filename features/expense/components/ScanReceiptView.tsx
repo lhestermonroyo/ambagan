@@ -281,7 +281,7 @@ export default function ScanReceiptView({
               accessibilityLabel={
                 torch ? "Turn off flashlight" : "Turn on flashlight"
               }
-              className={`h-14 w-14 items-center justify-center rounded-full active:opacity-60 ${
+              className={`h-14 w-14 items-center justify-center rounded-full active:opacity-50 ${
                 torch ? "bg-white" : "bg-white/15"
               }`}
             >
@@ -296,7 +296,7 @@ export default function ScanReceiptView({
               onPress={handleCapture}
               disabled={scanning}
               accessibilityLabel="Scan receipt"
-              className="h-20 w-20 items-center justify-center rounded-full border-4 border-white/80 active:opacity-60"
+              className="h-20 w-20 items-center justify-center rounded-full border-4 border-white/80 active:opacity-50"
             >
               <Box className="h-16 w-16 rounded-full bg-white" />
             </Pressable>
@@ -305,7 +305,7 @@ export default function ScanReceiptView({
               onPress={handleUploadReceipt}
               disabled={scanning}
               accessibilityLabel="Upload receipt from Photos"
-              className="h-14 w-14 items-center justify-center rounded-full bg-white/15 active:opacity-60"
+              className="h-14 w-14 items-center justify-center rounded-full bg-white/15 active:opacity-50"
             >
               <ImageUp size={24} color="#fff" />
             </Pressable>

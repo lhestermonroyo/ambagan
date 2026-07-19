@@ -118,7 +118,7 @@ export default function JoinGroupScreen() {
             <FormButton
               className="w-full"
               text="Back to Overview"
-              onPress={() => router.replace("/(tabs)")}
+              onPress={() => router.replace("/(tabs)/(home)")}
             />
           </VStack>
         )}
