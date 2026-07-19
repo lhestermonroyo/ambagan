@@ -39,6 +39,7 @@ const USER_STATE = create<UserState>((set, get) => ({
   routeIntent: "splash",
   session: null,
   details: null,
+  oauthName: null,
   preferences: null,
   appearanceMode: "light",
   settlementView: "full",

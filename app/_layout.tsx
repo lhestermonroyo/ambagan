@@ -107,6 +107,7 @@ export default function RootLayout() {
   useEffect(() => {
     loadPreferences();
     getDb().catch(() => {});
+    services.auth.configureGoogleSignIn();
   }, []);
 
   useEffect(() => {

@@ -19,19 +19,32 @@ import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useRouter } from "expo-router";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
-  const [values, setValues] = useState({
-    first_name: "",
-    last_name: "",
-    phone: "",
-    avatar: null as ImagePickerSuccessResult | null
+  // Seed the name from a Google/Apple sign-in (if any) so the user doesn't
+  // retype it. Read lazily from the store — Apple only ever returns it once.
+  const [values, setValues] = useState(() => {
+    const oauthName = states.user.getState().oauthName;
+    return {
+      first_name: oauthName?.firstName ?? "",
+      last_name: oauthName?.lastName ?? "",
+      phone: "",
+      avatar: null as ImagePickerSuccessResult | null
+    };
   });
 
   const router = useRouter();
+
+  // The stashed OAuth name was consumed into the initial form state above;
+  // clear it from the store so it can't leak into a later onboarding session.
+  useEffect(() => {
+    if (states.user.getState().oauthName) {
+      states.user.setState((prev) => ({ ...prev, oauthName: null }));
+    }
+  }, []);
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -80,7 +93,7 @@ export default function OnboardingScreen() {
         await clearPendingInviteToken();
       }
 
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/(home)");
     } catch (error) {
       console.error(error);
     } finally {

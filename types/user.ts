@@ -36,6 +36,10 @@ export type UserState = {
   // Resolved by fetchDetails so we never flash /(tabs) before the profile/auth
   // state is known.
   routeIntent: RouteIntent;
+  // Name captured from a Google/Apple sign-in, used once to pre-fill onboarding.
+  // Apple only returns the name on the FIRST authorization, so we stash it here
+  // the moment we get it. Cleared by onboarding after it reads the value.
+  oauthName: { firstName: string; lastName: string } | null;
   appearanceMode: AppearanceMode;
   settlementView: SettlementView;
   notificationsEnabled: boolean;

@@ -1,3 +1,4 @@
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { FC } from "react";
 import { Box } from "./ui/box";
 import { Button, ButtonSpinner, ButtonText } from "./ui/button";
@@ -43,7 +44,13 @@ const FormButton: FC<IFormButtonProps> = ({
       {variant === "link" ? (
         <Text className="text-primary-400 font-medium">{text}</Text>
       ) : (
-        <ButtonText>{text}</ButtonText>
+        <ButtonText
+          className={cn(
+            action === "secondary" && "text-inherit dark:text-secondary-950"
+          )}
+        >
+          {text}
+        </ButtonText>
       )}
       {iconEnd && <Box className="mr-[-4px]">{iconEnd}</Box>}
       {loading && (

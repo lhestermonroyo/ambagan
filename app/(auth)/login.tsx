@@ -1,5 +1,6 @@
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
+import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { HStack } from "@/components/ui/hstack";
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icon";
 import { Link } from "@/components/ui/link";
@@ -78,7 +79,7 @@ export default function LoginScreen() {
         session: response.session
       }));
 
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/(home)");
     } catch (error) {
       console.log("Error logging in:", error);
       toast({
@@ -137,6 +138,8 @@ export default function LoginScreen() {
         </Link>
 
         <FormButton text="Login" loading={submitting} onPress={handleSubmit} />
+
+        <SocialAuthButtons />
       </VStack>
     </AuthLayout>
   );

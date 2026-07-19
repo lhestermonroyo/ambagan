@@ -7,7 +7,7 @@ export default function Index() {
 
   switch (routeIntent) {
     case "tabs":
-      return <Redirect href="/(tabs)" />;
+      return <Redirect href="/(tabs)/(home)" />;
     case "onboarding":
       return <Redirect href="/onboarding" />;
     case "login":
