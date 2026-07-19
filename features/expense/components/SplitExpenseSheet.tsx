@@ -12,11 +12,10 @@ import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { isPayerOnlySplit } from "@/features/expense/utils/split.util";
+import { useBanner } from "@/hooks/useBanner";
 import { Member } from "@/types/groups";
 import { splitTypes } from "@/utils/constants";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useEffect, useMemo, useState } from "react";
-import { Platform } from "react-native";
 import SplitExpenseStep from "./SplitExpenseStep";
 
 type Splits = Record<string, { amount: string; percentage: string }>;
@@ -63,6 +62,7 @@ export default function SplitExpenseSheet({
   onClose,
   onDone
 }: SplitExpenseSheetProps) {
+  const { sheetTopInset } = useBanner();
   const [draftSplits, setDraftSplits] = useState<Splits>(splits);
   const [draftTab, setDraftTab] = useState<SplitType>(splitType);
   // Remount the (semi-uncontrolled) step on each open so its internal tab /
@@ -126,10 +126,8 @@ export default function SplitExpenseSheet({
       <ActionsheetContent className="p-0">
         <KeyboardAvoidingSheet>
           <VStack
-            className={cn(
-              "w-full flex-1",
-              Platform.OS === "android" ? "pt-[3rem]" : "pt-[4rem]"
-            )}
+            className="w-full flex-1"
+            style={{ paddingTop: sheetTopInset }}
           >
             <Pressable onPress={onClose}>
               <HStack className="items-center pt-4 px-4">

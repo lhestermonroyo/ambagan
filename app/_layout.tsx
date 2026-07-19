@@ -1,6 +1,5 @@
-import OfflineBanner from "@/components/OfflineBanner";
+import NetworkBanner from "@/components/NetworkBanner";
 import OfflineSync from "@/components/OfflineSync";
-import SlowConnectionBanner from "@/components/SlowConnectionBanner";
 import { Box } from "@/components/ui/box";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
@@ -8,8 +7,8 @@ import "@/global.css";
 // payment images (and any other expo-image usage) actually render.
 import { buildFriendSettlementRoute } from "@/features/notifications/utils/buildFriendSettlementRoute";
 import useAppToast, { ToastProvider } from "@/hooks/use-app-toast";
+import { useBanner } from "@/hooks/useBanner";
 import { useNetwork } from "@/hooks/useNetwork";
-import { useNetworkHealth } from "@/hooks/useNetworkHealth";
 import services from "@/services";
 import states from "@/states";
 import {
@@ -44,7 +43,6 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { useEffect, useMemo, useRef } from "react";
-import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import {
@@ -91,7 +89,7 @@ export default function RootLayout() {
   );
   const { loading, appearanceMode, loadPreferences, session } = states.user();
   const { isOnline } = useNetwork();
-  const { isDegraded } = useNetworkHealth();
+  const banner = useBanner();
   const toast = useAppToast();
   const overlayOpacity = useSharedValue(0);
   const isFirstRender = useRef(true);
@@ -493,12 +491,12 @@ export default function RootLayout() {
         <GluestackUIProvider mode={appearanceMode}>
           <ToastProvider>
             <ThemeProvider value={navTheme}>
-              {!isOnline && (
-                <Box className={Platform.OS === "android" ? "h-4" : "h-8"} />
-              )}
-              {isOnline && isDegraded && (
-                <Box className={Platform.OS === "android" ? "h-4" : "h-8"} />
-              )}
+              {/* Reserve the banner's full height (safe-area inset + content
+                  row) so the whole stack — and every native header inside it —
+                  drops clear of the absolutely-positioned banner below. A
+                  shorter spacer lets UIKit shrink each header's own top inset,
+                  landing its title/buttons back under the banner. */}
+              {banner.visible && <Box style={{ height: banner.height - 4 }} />}
               <Stack
                 screenOptions={{
                   headerShown: false,
@@ -508,8 +506,7 @@ export default function RootLayout() {
               />
               <StatusBar style="auto" />
               <OfflineSync />
-              {!isOnline && <OfflineBanner />}
-              {isOnline && isDegraded && <SlowConnectionBanner />}
+              <NetworkBanner />
             </ThemeProvider>
           </ToastProvider>
         </GluestackUIProvider>

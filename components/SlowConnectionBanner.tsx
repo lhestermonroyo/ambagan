@@ -8,11 +8,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
  * Amber, distinct from the blue true-offline banner — telling a user on WiFi
  * they're "offline" would be misleading. The data they see is the cached copy.
  */
-export default function SlowConnectionBanner() {
+// `topInset` overrides the safe-area top — see OfflineBanner for why.
+export default function SlowConnectionBanner({
+  topInset
+}: {
+  topInset?: number;
+}) {
   const { top } = useSafeAreaInsets();
 
   return (
-    <View style={[styles.banner, { paddingTop: top }]}>
+    <View style={[styles.banner, { paddingTop: topInset ?? top }]}>
       <CloudOff size={14} color="white" />
       <Text style={styles.text}>Slow connection — showing saved data</Text>
     </View>

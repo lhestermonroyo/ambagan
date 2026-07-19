@@ -23,6 +23,7 @@ import { CONTACTS_IMPORT_ENABLED } from "@/constants/features";
 import ContactPickerSheet from "@/features/group/components/ContactPickerSheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
+import { useBanner } from "@/hooks/useBanner";
 import { useNetwork } from "@/hooks/useNetwork";
 import { useNetworkHealth } from "@/hooks/useNetworkHealth";
 import services from "@/services";
@@ -35,7 +36,6 @@ import { filterContacts, getSavedContacts } from "@/utils/offlineContacts";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { normalizePhone } from "@/utils/phone";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { UserPlus } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Platform, useColorScheme } from "react-native";
@@ -50,6 +50,7 @@ export default function EditMembersSheet({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  const { sheetTopInset } = useBanner();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -398,10 +399,8 @@ export default function EditMembersSheet({
               />
             )}
             <VStack
-              className={cn(
-                "w-full flex-1",
-                Platform.OS === "android" ? "pt-[3rem]" : "pt-[4rem]"
-              )}
+              className="w-full flex-1"
+              style={{ paddingTop: sheetTopInset }}
             >
               <HStack className="items-center justify-between w-full pt-4 px-4">
                 <Pressable onPress={handleClose}>

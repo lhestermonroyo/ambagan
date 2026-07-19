@@ -3,16 +3,13 @@ import { CloseIcon, Icon } from "@/components/ui/icon";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { BANNER_CONTENT_HEIGHT } from "@/hooks/useBanner";
 import { useNetwork } from "@/hooks/useNetwork";
 import { useNetworkHealth } from "@/hooks/useNetworkHealth";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// Height the OfflineBanner occupies below the safe-area inset (icon/text row +
-// its bottom padding). Used to drop the toast clear of the banner when offline.
-const OFFLINE_BANNER_HEIGHT = 30;
 
 type ToastActionType =
   | "success"
@@ -183,7 +180,7 @@ const CustomToastContainer: React.FC<CustomToastContainerProps> = ({
   // online-but-slow banner), also clear it so the toast isn't hidden underneath.
   const showsBanner = !isOnline || isDegraded;
   const paddingTop =
-    insets.top + 12 + (showsBanner ? OFFLINE_BANNER_HEIGHT : 0);
+    insets.top + 12 + (showsBanner ? BANNER_CONTENT_HEIGHT : 0);
 
   return (
     <Box

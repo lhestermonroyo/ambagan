@@ -3,11 +3,14 @@ import { WifiOff } from "lucide-react-native";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function OfflineBanner() {
+// `topInset` overrides the safe-area top. Pass it when rendering inside a native
+// Modal (e.g. SearchDrawer), where `useSafeAreaInsets` is unreliable — the caller
+// reads the correct inset outside the modal and hands it down.
+export default function OfflineBanner({ topInset }: { topInset?: number }) {
   const { top } = useSafeAreaInsets();
 
   return (
-    <View style={[styles.banner, { paddingTop: top }]}>
+    <View style={[styles.banner, { paddingTop: topInset ?? top }]}>
       <WifiOff size={14} color="white" />
       <Text style={styles.text}>Offline Mode — Showing cached data</Text>
     </View>

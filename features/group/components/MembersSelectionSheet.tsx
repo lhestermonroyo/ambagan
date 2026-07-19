@@ -22,6 +22,7 @@ import { VStack } from "@/components/ui/vstack";
 import { CONTACTS_IMPORT_ENABLED } from "@/constants/features";
 import ContactPickerSheet from "@/features/group/components/ContactPickerSheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
+import { useBanner } from "@/hooks/useBanner";
 import { useNetwork } from "@/hooks/useNetwork";
 import { useNetworkHealth } from "@/hooks/useNetworkHealth";
 import services from "@/services";
@@ -36,7 +37,6 @@ import {
   addRecentUsers,
   getRecentUsers
 } from "@/utils/recentUsers";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { UserPlus } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Platform, useColorScheme } from "react-native";
@@ -55,6 +55,7 @@ export default function MembersSelectionSheet({
   members: UserPreview[];
   onSaveMembers: (members: UserPreview[]) => void;
 }) {
+  const { sheetTopInset } = useBanner();
   const [searching, setSearching] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [tab, setTab] = useState<"friends" | "favorites">("friends");
@@ -228,10 +229,8 @@ export default function MembersSelectionSheet({
               />
             )}
             <VStack
-              className={cn(
-                "w-full flex-1",
-                Platform.OS === "android" ? "pt-[3rem]" : "pt-[4rem]"
-              )}
+              className="w-full flex-1"
+              style={{ paddingTop: sheetTopInset }}
             >
               <HStack className="items-center justify-between w-full pt-4 px-4">
                 <Pressable onPress={handleClose}>

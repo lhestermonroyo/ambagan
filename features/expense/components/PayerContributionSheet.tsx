@@ -11,11 +11,10 @@ import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { useBanner } from "@/hooks/useBanner";
 import states from "@/states";
 import { Member } from "@/types/groups";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useEffect, useMemo, useState } from "react";
-import { Platform } from "react-native";
 import PayersContributionStep from "./PayersContributionStep";
 
 type Payers = Record<string, { amount: string }>;
@@ -54,6 +53,7 @@ export default function PayerContributionSheet({
   onDone
 }: PayerContributionSheetProps) {
   const { details: currentUser } = states.user();
+  const { sheetTopInset } = useBanner();
   const [draft, setDraft] = useState<Payers>(payers);
 
   // Seed the draft each time the sheet opens: adopt the committed payers if any
@@ -94,10 +94,8 @@ export default function PayerContributionSheet({
       <ActionsheetContent className="p-0">
         <KeyboardAvoidingSheet>
           <VStack
-            className={cn(
-              "w-full flex-1",
-              Platform.OS === "android" ? "pt-[3rem]" : "pt-[4rem]"
-            )}
+            className="w-full flex-1"
+            style={{ paddingTop: sheetTopInset }}
           >
             <Pressable onPress={onClose}>
               <HStack className="items-center pt-4 px-4">
