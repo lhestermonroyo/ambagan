@@ -1,6 +1,7 @@
 import MarkAsSettledSheet from "@/features/expense/components/MarkAsSettledSheet";
 import RequestSettledSheet from "@/features/expense/components/RequestSettledSheet";
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
+import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
@@ -51,6 +52,7 @@ function SettlementContent({
 }) {
   const router = useRouter();
   const { details: userDetails } = states.user();
+  const { isOnline } = useNetwork();
 
   if (!userDetails) return null;
 
@@ -66,8 +68,9 @@ function SettlementContent({
 
     // Fast path: the home feed now selects proof_of_payment (and notes), so a
     // preview that already carries it needs no round-trip. `undefined` means the
-    // field wasn't selected (older/offline preview) — only then do we fetch.
-    if (isOpen && item?.id && item.proof_of_payment === undefined) {
+    // field wasn't selected (older/offline preview) — only then do we fetch, and
+    // only when online (offline we view the cached preview as-is).
+    if (isOnline && isOpen && item?.id && item.proof_of_payment === undefined) {
       services.expense
         .getPaymentById(item.id)
         .then((full) => {
@@ -81,7 +84,7 @@ function SettlementContent({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, item?.id]);
+  }, [isOpen, item?.id, isOnline]);
 
   const payment = fullPayment ?? (item as Payment);
   const sheet = useMemo(

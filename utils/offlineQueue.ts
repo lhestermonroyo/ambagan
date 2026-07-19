@@ -597,6 +597,143 @@ async function clearPendingPaymentsForExpense(
   }
 }
 
+/**
+ * The still-active (pending/requested) settlements for an expense, read from the
+ * group's cached settlement snapshot. Used as the "before" payments when an
+ * offline edit or delete needs to back a synced expense's amounts out of the
+ * Overview stats. Returns [] when the group's settlements were never cached.
+ */
+async function getActivePaymentsForExpense(
+  groupId: string,
+  expenseId: string
+): Promise<Payment[]> {
+  try {
+    const cached = await cacheService.getGroupSettlements(groupId);
+    if (!cached) return [];
+    return (cached.active as Payment[]).filter(
+      (p) => p.expense_id === expenseId
+    );
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Swap an expense's settlements for a freshly computed set in the group's cached
+ * + live settlement lists (offline edit). Old rows are matched by `expense_id`
+ * (not payment id — an edit mints new optimistic ids), so a repeated edit reads
+ * the current amounts back via `getActivePaymentsForExpense` and the Settlements
+ * tab stays consistent with the edited expense detail. Only the current user's
+ * rows are kept, mirroring how the settlement views filter.
+ */
+async function replaceGroupSettlementPaymentsForExpense(
+  groupId: string,
+  expenseId: string,
+  newPayments: Payment[],
+  userId: string | undefined
+) {
+  if (!userId) return;
+  const userPayments = newPayments.filter(
+    (p) => p.member.id === userId || p.payer.id === userId
+  );
+  const otherExpense = (p: Payment) => p.expense_id !== expenseId;
+
+  try {
+    const cached = await cacheService.getGroupSettlements(groupId);
+    if (cached) {
+      await cacheService.saveGroupSettlements(
+        groupId,
+        [
+          ...userPayments,
+          ...(cached.active as Payment[]).filter(otherExpense)
+        ],
+        cached.settled
+      );
+    }
+  } catch {
+    // best-effort
+  }
+
+  states.group.setState((prev) => ({
+    ...prev,
+    settlementList:
+      prev.details?.id === groupId
+        ? [
+            ...userPayments,
+            ...prev.settlementList.filter((p) => otherExpense(p as Payment))
+          ]
+        : prev.settlementList,
+    settlementRefreshToken: prev.settlementRefreshToken + 1
+  }));
+}
+
+/**
+ * Adjust the cached Overview stats (toPay / toReceive) by a set of the current
+ * user's optimistic payments so the Net Balance / To Collect / To Pay reflect an
+ * offline add / edit / delete before it syncs. `add` payments raise the totals,
+ * `remove` payments lower them. Only pending/requested rows the user is part of
+ * move the numbers — mirroring `getStatsByUserId`. A draft expense generates no
+ * payments, so saving a draft never reaches here and leaves the amounts untouched.
+ * Best-effort: the stats self-correct on the next successful online fetch.
+ */
+async function adjustStatsForPayments(
+  userId: string | undefined,
+  add: Payment[],
+  remove: Payment[]
+): Promise<void> {
+  if (!userId || (add.length === 0 && remove.length === 0)) return;
+
+  try {
+    const cached = (await cacheService.getStats(userId)) as {
+      toPay: { currency: string; amount: number }[];
+      toReceive: { currency: string; amount: number }[];
+    } | null;
+    // No baseline (never fetched stats online) — nothing meaningful to adjust.
+    if (!cached) return;
+
+    const toPay = new Map(cached.toPay.map((i) => [i.currency, i.amount]));
+    const toReceive = new Map(
+      cached.toReceive.map((i) => [i.currency, i.amount])
+    );
+
+    const apply = (payments: Payment[], sign: 1 | -1) => {
+      for (const p of payments) {
+        if (
+          p.status !== PaymentStatus.PENDING &&
+          p.status !== PaymentStatus.REQUESTED
+        ) {
+          continue;
+        }
+        const currency = p.currency ?? "PHP";
+        if (p.member.id === userId) {
+          toPay.set(currency, (toPay.get(currency) ?? 0) + sign * p.amount);
+        } else if (p.payer.id === userId) {
+          toReceive.set(
+            currency,
+            (toReceive.get(currency) ?? 0) + sign * p.amount
+          );
+        }
+      }
+    };
+
+    apply(add, 1);
+    apply(remove, -1);
+
+    // Drop currencies that fall to (about) zero so cleared balances don't linger.
+    const toList = (map: Map<string, number>) =>
+      Array.from(map.entries())
+        .filter(([, amount]) => amount > 0.005)
+        .map(([currency, amount]) => ({ currency, amount }));
+
+    await cacheService.saveStats(userId, {
+      toPay: toList(toPay),
+      toReceive: toList(toReceive)
+    });
+  } catch {
+    // best-effort
+  }
+}
+
 async function injectPendingGroup(
   userId: string,
   group: Group & { members: Member[] }
@@ -856,13 +993,12 @@ export async function queueAddExpense(
     optimisticPayments,
     proofUpload
   };
+  const currentUserId = states.user.getState().details?.id;
   await enqueue("ADD_EXPENSE", payload);
   await injectPendingExpense(groupId, optimistic);
-  await injectPendingPayments(
-    groupId,
-    optimisticPayments,
-    states.user.getState().details?.id
-  );
+  await injectPendingPayments(groupId, optimisticPayments, currentUserId);
+  // Reflect the new settlements in the Overview's Net Balance / To Collect / To Pay.
+  await adjustStatsForPayments(currentUserId, optimisticPayments, []);
 
   // Warm a per-expense snapshot so the detail screen renders the full split
   // (payers + member splits + settlements) while offline, before any sync.
@@ -955,6 +1091,21 @@ export async function queueUpdateExpense(
 ): Promise<void> {
   const createOp = await findPendingExpenseCreate(expenseId);
 
+  // Back the pre-edit amounts out of the Overview stats and fold the new ones in
+  // (drafts carry no payment splits, so their edits leave the amounts untouched).
+  const editUserId = states.user.getState().details?.id;
+  const oldPayments = await getActivePaymentsForExpense(groupId, expenseId);
+  const newPayments = (detail?.paymentSplits as Payment[] | undefined) ?? [];
+  await adjustStatsForPayments(editUserId, newPayments, oldPayments);
+  // Keep the group's settlement cache/list in step so a repeat edit reads the
+  // current amounts and the Settlements tab matches the edited expense.
+  await replaceGroupSettlementPaymentsForExpense(
+    groupId,
+    expenseId,
+    newPayments,
+    editUserId
+  );
+
   if (createOp && createOp.type === "ADD_EXPENSE") {
     // Coalesce: rewrite the pending create with the edited values. An unsynced
     // expense can't have an uploaded proof, so it stays null.
@@ -973,7 +1124,13 @@ export async function queueUpdateExpense(
         payers: args.payers,
         memberSplits: args.memberSplits,
         paymentSplits: args.paymentSplits
-      }
+      },
+      // Keep the optimistic settlements in step with the edit so, once this
+      // create syncs, the right rows are cleared from the settlement caches
+      // (they were just replaced by `replaceGroupSettlementPaymentsForExpense`).
+      optimisticPayments: newPayments.length
+        ? newPayments
+        : createOp.payload.optimisticPayments
     };
     await updateQueuePayload(createOp.id, patched);
   } else {
@@ -998,24 +1155,32 @@ export async function queueDeleteExpense(
   expenseId: string
 ): Promise<void> {
   const createOp = await findPendingExpenseCreate(expenseId);
+  const userId = states.user.getState().details?.id;
+
+  // The settlements being removed, so their amounts can be backed out of the
+  // Overview stats. A pending create carries its optimistic payments inline; a
+  // synced expense's active payments come from the cached settlement snapshot.
+  let removedPayments: Payment[] = [];
 
   if (createOp) {
     await removeFromQueue(createOp.id);
     if (createOp.type === "ADD_EXPENSE") {
-      await clearPendingPaymentsForExpense(
-        groupId,
-        createOp.payload.optimisticPayments ?? [],
-        states.user.getState().details?.id
-      );
+      removedPayments = createOp.payload.optimisticPayments ?? [];
+      await clearPendingPaymentsForExpense(groupId, removedPayments, userId);
     }
   } else {
+    removedPayments = await getActivePaymentsForExpense(groupId, expenseId);
     await enqueue("DELETE_EXPENSE", {
       groupId,
       expenseId
     } as DeleteExpensePayload);
+    // Drop the deleted expense's settlements from the settlement caches/lists so
+    // the Settlements tab doesn't keep showing them offline.
+    await clearPendingPaymentsForExpense(groupId, removedPayments, userId);
   }
 
   await removeExpenseOptimistic(groupId, expenseId);
+  await adjustStatsForPayments(userId, [], removedPayments);
 }
 
 /**

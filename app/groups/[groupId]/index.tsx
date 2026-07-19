@@ -23,6 +23,7 @@ import GroupSettlements from "@/features/group/components/GroupSettlements";
 import GroupStatsTab from "@/features/group/components/GroupStatsTab";
 import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
@@ -176,6 +177,7 @@ export default function GroupDetailsScreen() {
   }, [params.tab]);
 
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
 
   useFocusEffect(
     useMemo(
@@ -587,8 +589,15 @@ export default function GroupDetailsScreen() {
                   />
                   <Pressable
                     className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
-                    onPress={() => {
+                    onPress={async () => {
                       setFabOpen(false);
+                      if (
+                        !(await ensureOnline(
+                          "You need an internet connection to scan a receipt. Please try again when you're back online."
+                        ))
+                      ) {
+                        return;
+                      }
                       router.push(`/groups/${groupId}/scan-receipt` as any);
                     }}
                   >

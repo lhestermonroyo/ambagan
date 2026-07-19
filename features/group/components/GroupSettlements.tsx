@@ -40,7 +40,6 @@ import StatusSheet, {
 import ViewBySheet, {
   ViewOption
 } from "@/features/group/components/ViewBySheet";
-import useAppToast from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
@@ -84,7 +83,6 @@ export default function GroupSettlements({
   const { details: userDetails, defaultCurrency, settlementView } =
     states.user();
   const colorScheme = useColorScheme() ?? "light";
-  const toast = useAppToast();
   const { isOnline } = useNetwork();
 
   const [loading, setLoading] = useState(false);
@@ -344,21 +342,13 @@ export default function GroupSettlements({
   ) => {
     let p = payment as Payment;
 
-    // Settling / requesting needs the server — block while offline (and for
-    // not-yet-synced offline settlements).
-    if (!isOnline || p.pending) {
-      toast({
-        title: "You're offline",
-        description:
-          "Settling and requests need a connection. Try again once you're back online.",
-        type: "info"
-      });
-      return;
-    }
-
     // A PaymentPreview omits proof_of_payment / notes, which the settlement
-    // sheets display. Hydrate it into a full Payment so those aren't empty.
-    if (p.proof_of_payment === undefined) {
+    // sheets display. Hydrate it into a full Payment so those aren't empty —
+    // but only when online. Viewing a settlement is allowed offline; each
+    // sheet's actions (mark settled / approve / reject / request) guard
+    // themselves and toast if the user tries them without a connection. A
+    // not-yet-synced offline settlement (p.pending) has nothing to hydrate.
+    if (isOnline && !p.pending && p.proof_of_payment === undefined) {
       try {
         const full = await services.expense.getPaymentById(p.id);
         if (full) {
@@ -473,16 +463,22 @@ export default function GroupSettlements({
 
         <VStack className="gap-y-4">
           {searchOpen ? (
-            <Box className="px-4">
-              <SearchInput
-                autoFocus
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search by description or name"
-                rightIcon={X}
-                onPressRightIcon={toggleSearch}
+            <HStack className="px-4 items-center gap-x-2">
+              <Box className="flex-1">
+                <SearchInput
+                  autoFocus
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search by description or name"
+                />
+              </Box>
+              <FormButton
+                size="md"
+                variant="link"
+                text="Cancel"
+                onPress={toggleSearch}
               />
-            </Box>
+            </HStack>
           ) : (
             <HStack className="px-4 items-center justify-between">
               <FormButton

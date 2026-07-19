@@ -25,6 +25,7 @@ import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
@@ -113,6 +114,7 @@ export default function HomeScreen() {
   }, [displayStats.toReceive, displayStats.toPay]);
 
   const router = useRouter();
+  const ensureOnline = useEnsureOnline();
   const liveColorScheme = useColorScheme() ?? "light";
   const isFocused = useIsFocused();
 
@@ -389,10 +391,27 @@ export default function HomeScreen() {
     [router]
   );
 
-  const handleOpenScan = useCallback(
-    () => router.push("/scan-receipt" as any),
-    []
-  );
+  const handleOpenScan = useCallback(async () => {
+    if (
+      !(await ensureOnline(
+        "You need an internet connection to scan a receipt. Please try again when you're back online."
+      ))
+    ) {
+      return;
+    }
+    router.push("/scan-receipt" as any);
+  }, [ensureOnline, router]);
+
+  const handleScanToJoin = useCallback(async () => {
+    if (
+      !(await ensureOnline(
+        "You need an internet connection to scan and join a group. Please try again when you're back online."
+      ))
+    ) {
+      return;
+    }
+    router.push("/scan" as any);
+  }, [ensureOnline, router]);
 
   const handleOpenHelp = useCallback(
     () => router.push("/profile/help-center"),
@@ -557,7 +576,7 @@ export default function HomeScreen() {
                   <ActionButton
                     icon={<QrCode size={24} color="#fff" />}
                     label={`Scan to\n\Join`}
-                    onPress={() => router.push("/scan" as any)}
+                    onPress={handleScanToJoin}
                   />
                 </HStack>
               </VStack>

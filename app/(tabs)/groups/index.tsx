@@ -18,6 +18,7 @@ import { VStack } from "@/components/ui/vstack";
 import GroupItem from "@/features/group/components/GroupItem";
 import { GroupFilter } from "@/features/group/services/group.service";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
@@ -59,6 +60,7 @@ export default function GroupsScreen() {
 
   const router = useRouter();
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
   const colorScheme = useColorScheme() ?? "light";
   const insets = useSafeAreaInsets();
 
@@ -209,8 +211,15 @@ export default function GroupsScreen() {
     router.push("/groups/create");
   };
 
-  const handleScanToJoin = () => {
+  const handleScanToJoin = async () => {
     setFabOpen(false);
+    if (
+      !(await ensureOnline(
+        "You need an internet connection to scan and join a group. Please try again when you're back online."
+      ))
+    ) {
+      return;
+    }
     router.push("/scan" as any);
   };
 

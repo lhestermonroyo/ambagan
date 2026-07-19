@@ -574,7 +574,9 @@ export default function FriendDetailScreen() {
           : EmptyType.SETTLEMENT_ALL;
 
   const handleItemPress = (item: PaymentPreview) => {
-    if (!requireOnline()) return;
+    // Viewing a settlement is allowed offline — the sheet's actions (mark
+    // settled / approve / reject / request) guard themselves and toast if the
+    // user tries them without a connection.
     setSelectedPayment(item);
     setActionSheetOpen(true);
   };
