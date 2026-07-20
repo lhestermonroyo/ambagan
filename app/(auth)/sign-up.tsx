@@ -58,6 +58,23 @@ export default function SignUpScreen() {
         password: values.password.trim()
       });
 
+      // Email already has an account (e.g. a Google-first user). When email
+      // confirmations are ON, Supabase obfuscates this as a user with an empty
+      // identities array and no session — treat that as "already registered".
+      const alreadyRegistered =
+        !!response.user && (response.user.identities?.length ?? 0) === 0;
+
+      if (alreadyRegistered) {
+        toast({
+          title: "Email already in use",
+          description:
+            "This email already has an account. Please log in instead.",
+          type: "error"
+        });
+        router.replace("/(auth)/login");
+        return;
+      }
+
       if (!response.session || !response.user) {
         throw new Error("Sign up failed");
       }
@@ -67,7 +84,25 @@ export default function SignUpScreen() {
         session: response.session
       }));
       router.push("/onboarding");
-    } catch (error) {
+    } catch (error: any) {
+      // With confirmations OFF, a duplicate email throws instead of obfuscating.
+      const alreadyRegistered =
+        error?.code === "user_already_exists" ||
+        /already registered|already been registered|user_already_exists/i.test(
+          error?.message ?? ""
+        );
+
+      if (alreadyRegistered) {
+        toast({
+          title: "Email already in use",
+          description:
+            "This email already has an account. Please log in instead.",
+          type: "error"
+        });
+        router.replace("/(auth)/login");
+        return;
+      }
+
       console.log("Error creating account:", error);
       toast({
         title: "Sign Up Failed",

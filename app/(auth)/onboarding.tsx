@@ -5,6 +5,7 @@ import { KeyboardAvoidingView } from "@/components/ui/keyboard-avoiding-view";
 import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import useAppToast from "@/hooks/use-app-toast";
 import OnboardAvatar from "@/features/user/components/OnboardAvatar";
 import OnboardName from "@/features/user/components/OnboardName";
 import OnboardPhone from "@/features/user/components/OnboardPhone";
@@ -37,6 +38,7 @@ export default function OnboardingScreen() {
   });
 
   const router = useRouter();
+  const toast = useAppToast();
 
   // The stashed OAuth name was consumed into the initial form state above;
   // clear it from the store so it can't leak into a later onboarding session.
@@ -94,8 +96,43 @@ export default function OnboardingScreen() {
       }
 
       router.replace("/(tabs)/(home)");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+
+      // Duplicate email: a password (or other) account already owns this email,
+      // but Supabase issued a SEPARATE auth user (identities weren't linked), so
+      // saveUser's INSERT hit the users_tbl email UNIQUE constraint (Postgres
+      // 23505). Don't strand the user in a half-created state — sign this orphan
+      // session out and send them back to log in with their existing account.
+      const isDuplicateEmail =
+        error?.code === "23505" ||
+        /duplicate key|users_tbl_email/i.test(error?.message ?? "");
+
+      if (isDuplicateEmail) {
+        toast({
+          title: "Email already in use",
+          description:
+            "An account with this email already exists. Please log in with your password instead.",
+          type: "error"
+        });
+        try {
+          await services.auth.logout();
+        } catch {
+          // best-effort — still reset local state and route to login below
+        }
+        states.user.getState().signOut();
+        router.replace("/(auth)/login");
+        return;
+      }
+
+      toast({
+        title: "Onboarding Failed",
+        description:
+          error?.message === "Please fill in all required fields"
+            ? "Please fill in all required fields."
+            : "We couldn't save your details. Please try again.",
+        type: "error"
+      });
     } finally {
       setSubmitting(false);
     }

@@ -80,11 +80,21 @@ export default function LoginScreen() {
       }));
 
       router.replace("/(tabs)/(home)");
-    } catch (error) {
+    } catch (error: any) {
       console.log("Error logging in:", error);
+
+      // Invalid credentials also covers a Google-first user who never set a
+      // password — point them at the Google button (or Forgot Password to add
+      // one) instead of a dead-end generic error.
+      const invalidCreds =
+        error?.code === "invalid_credentials" ||
+        /invalid login credentials/i.test(error?.message ?? "");
+
       toast({
         title: "Login Failed",
-        description: "An error occurred while logging in. Please try again.",
+        description: invalidCreds
+          ? "Incorrect email or password. If you signed up with Google, tap Continue with Google below."
+          : "An error occurred while logging in. Please try again.",
         type: "error"
       });
     } finally {

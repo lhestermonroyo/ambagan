@@ -1,19 +1,20 @@
-import FormButton from "@/components/FormButton";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
-import { Image } from "@/components/ui/image";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
+import { Ionicons } from "@expo/vector-icons";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { statusCodes } from "@react-native-google-signin/google-signin";
 import type { Session } from "@supabase/supabase-js";
-import * as AppleAuthentication from "expo-apple-authentication";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useState } from "react";
 import { Platform } from "react-native";
+import { Button, ButtonText } from "./ui/button";
+import { Image } from "./ui/image";
 
 type Provider = "google" | "apple";
 
@@ -112,7 +113,7 @@ export default function SocialAuthButtons() {
         <Box className="flex-1 h-px bg-secondary-200" />
       </HStack>
       <VStack className="gap-y-4">
-        <FormButton
+        {/* <FormButton
           variant="outline"
           action="secondary"
           text="Continue with Google"
@@ -121,13 +122,33 @@ export default function SocialAuthButtons() {
           icon={
             <Image
               source={require("@/assets/images/google-logo.png")}
-              className="w-5 h-5"
+              className="w-6 h-6 mb-1"
               alt="Google"
               resizeMode="contain"
             />
           }
           onPress={handleGoogle}
-        />
+        /> */}
+        <Button
+          size="lg"
+          variant="outline"
+          action="secondary"
+          className="rounded-full"
+          disabled={!!loadingProvider}
+          onPress={handleGoogle}
+        >
+          <Box className="ml-[-4px]">
+            <Image
+              source={require("@/assets/images/google-logo.png")}
+              className="w-6 h-6 mb-1"
+              alt="Google"
+              resizeMode="contain"
+            />
+          </Box>
+          <ButtonText className="text-background-950">
+            Continue with Google
+          </ButtonText>
+        </Button>
 
         {/* Native Sign in with Apple is iOS-only (Android sees Google only). Gate
           on Platform.OS — Apple auth is available on every iOS 13+ device, and
@@ -135,22 +156,27 @@ export default function SocialAuthButtons() {
           Compiler / dev remounts and hiding the button. alignSelf:"stretch"
           (not width:"100%") makes the native button fill the row reliably. */}
         {Platform.OS === "ios" && (
-          <AppleAuthentication.AppleAuthenticationButton
-            buttonType={
-              AppleAuthentication.AppleAuthenticationButtonType.CONTINUE
-            }
-            buttonStyle={
-              colorScheme === "dark"
-                ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-            }
-            cornerRadius={9999}
-            style={{
-              height: 42,
-              alignSelf: "stretch"
-            }}
+          <Button
+            size="lg"
+            variant="outline"
+            action="default"
+            className="bg-black data-[hover=true]:bg-black data-[active=true]:bg-black data-[active=true]:opacity-80 rounded-full"
+            disabled={!!loadingProvider}
             onPress={handleApple}
-          />
+          >
+            <Box className="ml-[-4px] mb-1">
+              <Ionicons name="logo-apple" size={20} color="#fff" />
+            </Box>
+            <ButtonText
+              className={cn(
+                colorScheme === "dark"
+                  ? "text-background-950"
+                  : "text-background-0"
+              )}
+            >
+              Continue with Apple
+            </ButtonText>
+          </Button>
         )}
       </VStack>
     </>
