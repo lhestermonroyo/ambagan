@@ -108,16 +108,16 @@ export default function SocialAuthButtons() {
   return (
     <>
       <HStack className="items-center gap-x-3">
-        <Box className="flex-1 h-px bg-secondary-200" />
-        <Text className="text-sm text-secondary-950">or continue with</Text>
-        <Box className="flex-1 h-px bg-secondary-200" />
+        <Box className="flex-1 h-px bg-background-200" />
+        <Text className="text-base text-secondary-950">or continue with</Text>
+        <Box className="flex-1 h-px bg-background-200" />
       </HStack>
       <VStack className="gap-y-4">
         <Button
           size="lg"
           variant="outline"
           action="secondary"
-          className="rounded-full"
+          className="rounded-full border-background-200"
           disabled={!!loadingProvider}
           onPress={handleGoogle}
         >
