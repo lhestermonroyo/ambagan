@@ -5,11 +5,11 @@ import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
-import { Ionicons } from "@expo/vector-icons";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { statusCodes } from "@react-native-google-signin/google-signin";
 import type { Session } from "@supabase/supabase-js";
 import { useRouter } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { useColorScheme } from "nativewind";
 import { useState } from "react";
 import { Platform } from "react-native";
@@ -113,22 +113,6 @@ export default function SocialAuthButtons() {
         <Box className="flex-1 h-px bg-secondary-200" />
       </HStack>
       <VStack className="gap-y-4">
-        {/* <FormButton
-          variant="outline"
-          action="secondary"
-          text="Continue with Google"
-          loading={loadingProvider === "google"}
-          disabled={!!loadingProvider}
-          icon={
-            <Image
-              source={require("@/assets/images/google-logo.png")}
-              className="w-6 h-6 mb-1"
-              alt="Google"
-              resizeMode="contain"
-            />
-          }
-          onPress={handleGoogle}
-        /> */}
         <Button
           size="lg"
           variant="outline"
@@ -137,7 +121,7 @@ export default function SocialAuthButtons() {
           disabled={!!loadingProvider}
           onPress={handleGoogle}
         >
-          <Box className="ml-[-4px]">
+          <Box className="ml-[-2px]">
             <Image
               source={require("@/assets/images/google-logo.png")}
               className="w-6 h-6 mb-1"
@@ -160,18 +144,29 @@ export default function SocialAuthButtons() {
             size="lg"
             variant="outline"
             action="default"
-            className="bg-black data-[hover=true]:bg-black data-[active=true]:bg-black data-[active=true]:opacity-80 rounded-full"
+            // Apple HIG: black button on light backgrounds, white button on
+            // dark. Content (official apple.logo SF Symbol + label) inverts to
+            // match. Press dims to 80% rather than flashing transparent.
+            className={cn(
+              "rounded-full",
+              colorScheme === "dark"
+                ? "bg-white data-[hover=true]:bg-white data-[active=true]:bg-white data-[active=true]:opacity-80"
+                : "bg-black data-[hover=true]:bg-black data-[active=true]:bg-black data-[active=true]:opacity-80"
+            )}
             disabled={!!loadingProvider}
             onPress={handleApple}
           >
-            <Box className="ml-[-4px] mb-1">
-              <Ionicons name="logo-apple" size={20} color="#fff" />
+            <Box className="ml-[-2px]">
+              <SymbolView
+                name="apple.logo"
+                size={18}
+                type="monochrome"
+                tintColor={colorScheme === "dark" ? "#000" : "#fff"}
+              />
             </Box>
             <ButtonText
               className={cn(
-                colorScheme === "dark"
-                  ? "text-background-950"
-                  : "text-background-0"
+                colorScheme === "dark" ? "text-black" : "text-white"
               )}
             >
               Continue with Apple
