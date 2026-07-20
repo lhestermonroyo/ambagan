@@ -1,6 +1,7 @@
 import EXPENSE_STATE from "@/features/expense/states/expense.state";
 import GROUP_STATE from "@/features/group/states/group.state";
 import NOTIFICATION_STATE from "@/features/notifications/states/notification.state";
+import { logout } from "@/features/user/services/auth.service";
 import {
   createPreferences,
   getPreferences,
@@ -13,7 +14,6 @@ import {
   UserState
 } from "@/types/user";
 import * as offlineQueue from "@/utils/offlineQueue";
-import { supabase } from "@/utils/supabase";
 import { clearCachedUserSession } from "@/utils/userCache";
 import { create } from "zustand";
 
@@ -59,7 +59,11 @@ const USER_STATE = create<UserState>((set, get) => ({
     EXPENSE_STATE.getState().reset();
     GROUP_STATE.getState().reset();
     NOTIFICATION_STATE.getState().reset();
-    // supabase.auth.signOut();
+    // Actually clear the persisted Supabase session (and cached Google
+    // account) — otherwise a cold launch's getSession() restores the account
+    // we just left. Local state is already cleared above for an instant UI
+    // update, so this runs fire-and-forget.
+    logout().catch((error) => console.error("Error during sign out:", error));
   },
 
   setAppearanceMode: async (mode: AppearanceMode) => {
