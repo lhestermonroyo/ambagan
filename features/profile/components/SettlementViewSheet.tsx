@@ -16,13 +16,13 @@ import {
 } from "@/components/ui/radio";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import useAppToast from "@/hooks/use-app-toast";
 import states from "@/states";
 import { SettlementView } from "@/types/user";
 import { getPrimaryHex } from "@/utils/getColorHex";
-import { CircleIcon, Rows2, Rows4 } from "lucide-react-native";
+import { CircleIcon, MoveRight, Rows2, Rows4 } from "lucide-react-native";
 import { useMemo } from "react";
 import { useColorScheme } from "react-native";
-import useAppToast from "@/hooks/use-app-toast";
 
 export default function SettlementViewSheet({
   isOpen,
@@ -58,6 +58,14 @@ export default function SettlementViewSheet({
         label: "Compact",
         value: "compact",
         description: "Dense two-line rows — fit more on screen at a glance"
+      },
+      {
+        icon: (
+          <MoveRight color={getPrimaryHex("text-primary-400", colorScheme)} />
+        ),
+        label: "Arrow",
+        value: "arrow",
+        description: "Payer → receiver on a single line with an arrow"
       }
     ],
     [colorScheme]
@@ -75,7 +83,7 @@ export default function SettlementViewSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[30]}>
+    <Actionsheet isOpen={isOpen} onClose={onClose}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
         <ActionsheetDragIndicatorWrapper>

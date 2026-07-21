@@ -88,7 +88,12 @@ export default function ProfileScreen() {
     }
   }, [appearanceMode]);
 
-  const settlementViewLabel = settlementView === "compact" ? "Compact" : "Full";
+  const settlementViewLabel =
+    settlementView === "compact"
+      ? "Compact"
+      : settlementView === "arrow"
+        ? "Arrow"
+        : "Full";
 
   const isPro = userDetails?.plan === "pro";
 

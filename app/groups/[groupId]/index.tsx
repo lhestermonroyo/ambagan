@@ -10,6 +10,7 @@ import PressableListItem from "@/components/PressableListItem";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
+import { Button } from "@/components/ui/button";
 import { Fab, FabLabel } from "@/components/ui/fab";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
@@ -461,6 +462,7 @@ export default function GroupDetailsScreen() {
       <InnerLayout
         title="Group Details"
         onBack={handleBack}
+        gestureEnabled={false}
         actions={
           loading ? undefined : isAdmin ? (
             [
@@ -782,31 +784,65 @@ export default function GroupDetailsScreen() {
                     onOpen={() => router.push(`/groups/${groupId}/${item.id}`)}
                   />
                 )}
-                renderHiddenItem={({ item }, rowMap) =>
-                  (item.is_draft
-                    ? item.creator?.id === userDetails?.id
-                    : item.payer_list.some(
-                        (payer) => payer.payer.id === userDetails?.id
-                      )) && (
+                renderHiddenItem={({ item }, rowMap) => {
+                  const isCreator = item.creator?.id === userDetails?.id;
+                  const isPayer = item.payer_list.some(
+                    (payer) => payer.payer.id === userDetails?.id
+                  );
+
+                  // Mirror the detail screen's guards: only the creator may
+                  // delete a draft; anyone who paid may delete a finalized
+                  // expense. Editing is the creator's alone and only while no
+                  // settlement has moved past "pending".
+                  const deletable = item.is_draft ? isCreator : isPayer;
+                  const editable =
+                    isCreator &&
+                    !item.is_draft &&
+                    !item.has_settlement_progress;
+
+                  if (!deletable && !editable) return null;
+
+                  return (
                     <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
-                      <ConfirmIconButton
-                        icon="delete"
-                        iconClassName="text-background-0"
-                        variant="solid"
-                        action="negative"
-                        className="rounded-full h-[40] w-[40] p-0"
-                        confirmTitle="Delete Expense"
-                        confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
-                        isDelete
-                        onConfirm={() => {
-                          rowMap[item.id]?.closeRow();
-                          handleDeleteExpense(item.id);
-                        }}
-                      />
+                      {editable && (
+                        <Button
+                          variant="solid"
+                          action="primary"
+                          className="rounded-full h-[40] w-[40] p-0"
+                          onPress={() => {
+                            rowMap[item.id]?.closeRow();
+                            router.push(
+                              `/groups/${groupId}/${item.id}/edit` as any
+                            );
+                          }}
+                        >
+                          <Icon
+                            as="edit"
+                            size={20}
+                            className="text-background-0"
+                          />
+                        </Button>
+                      )}
+                      {deletable && (
+                        <ConfirmIconButton
+                          icon="delete"
+                          iconClassName="text-background-0"
+                          variant="solid"
+                          action="negative"
+                          className="rounded-full h-[40] w-[40] p-0"
+                          confirmTitle="Delete Expense"
+                          confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
+                          isDelete
+                          onConfirm={() => {
+                            rowMap[item.id]?.closeRow();
+                            handleDeleteExpense(item.id);
+                          }}
+                        />
+                      )}
                     </HStack>
-                  )
-                }
-                rightOpenValue={-70}
+                  );
+                }}
+                rightOpenValue={-122}
                 renderSectionHeader={({ section: { title } }) => (
                   <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
                     <Text className="text-sm text-secondary-950">{title}</Text>

@@ -504,7 +504,14 @@ export default function RootLayout() {
                   animation: "simple_push",
                   contentStyle: { backgroundColor: appBackground }
                 }}
-              />
+              >
+                {/* Once inside the app (or auth), the back-swipe must not pop
+                    the whole group off the root stack — that's how an accidental
+                    swipe was landing the user back on the login screen. All
+                    other root screens keep the native swipe-back. */}
+                <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
+                <Stack.Screen name="(auth)" options={{ gestureEnabled: false }} />
+              </Stack>
               <StatusBar style="auto" />
               <OfflineSync />
               <NetworkBanner />

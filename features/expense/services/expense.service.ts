@@ -955,21 +955,44 @@ export const getExpensesByGroupId = async (groupId: string) => {
     throw error;
   }
 
+  // Batch-fetch payment split statuses for every expense in the group so the
+  // list can gate editing the same way the detail screen does (a split past
+  // "pending" makes the expense uneditable). One query instead of N.
+  const expenseIds = data.map((item) => item.id);
+  const progressByExpenseId = new Set<string>();
+
+  if (expenseIds.length) {
+    const { data: splitData } = await supabase
+      .from(tables.PAYMENT_SPLITS_TBL)
+      .select("expense_id, status")
+      .in("expense_id", expenseIds);
+
+    (splitData ?? []).forEach((split) => {
+      if (split.status !== "pending") {
+        progressByExpenseId.add(split.expense_id);
+      }
+    });
+  }
+
   const expenseList = await Promise.all(
     data.map(async (item) => {
+      const has_settlement_progress = progressByExpenseId.has(item.id);
+
       try {
         const payerData = await getPayersByExpenseId(item.id);
 
         return {
           ...item,
           creator: resolveUser(item.creator),
-          payer_list: payerData
+          payer_list: payerData,
+          has_settlement_progress
         };
       } catch (error) {
         return {
           ...item,
           creator: resolveUser(item.creator),
-          payer_list: []
+          payer_list: [],
+          has_settlement_progress
         };
       }
     })

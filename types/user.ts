@@ -2,7 +2,7 @@ import { Session } from "@supabase/supabase-js";
 
 export type AppearanceMode = "light" | "dark" | "system";
 
-export type SettlementView = "full" | "compact";
+export type SettlementView = "full" | "compact" | "arrow";
 
 export type UserPreferences = {
   id: string;

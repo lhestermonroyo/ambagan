@@ -75,6 +75,13 @@ export type ExpensePreview = Pick<
   | "is_draft"
 > & {
   payer_list: ExpensePayer[];
+  /**
+   * True once any of the expense's payment splits has moved past "pending"
+   * (requested/settled). Mirrors the detail screen's edit guard so the list can
+   * decide editability without a per-row hydration round-trip. Absent on
+   * offline-created previews (treated as no progress).
+   */
+  has_settlement_progress?: boolean;
   /** True for an expense created offline and not yet synced to the server. */
   pending?: boolean;
 };

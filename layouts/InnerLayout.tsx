@@ -23,12 +23,17 @@ export default function InnerLayout({
   children,
   title,
   onBack,
-  actions
+  actions,
+  gestureEnabled
 }: {
   children: React.ReactNode;
   title: string;
   onBack: () => void;
   actions?: React.ReactNode;
+  // Set false on screens with horizontal row-swipe gestures (e.g. swipe-to-
+  // delete lists) so the native back-swipe doesn't pop the screen mid-swipe.
+  // Defaults to the native behavior (edge swipe-back enabled) when omitted.
+  gestureEnabled?: boolean;
 }) {
   const { colorScheme } = useColorScheme();
   const scheme = colorScheme ?? "light";
@@ -41,6 +46,7 @@ export default function InnerLayout({
         options={{
           headerShown: true,
           headerLargeTitle: false,
+          ...(gestureEnabled === undefined ? {} : { gestureEnabled }),
           headerShadowVisible: false,
           headerBackVisible: false,
           headerTitleAlign: "left",
