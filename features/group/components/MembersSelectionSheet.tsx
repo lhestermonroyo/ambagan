@@ -12,7 +12,6 @@ import {
   ActionsheetContent
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
-import { CheckboxGroup } from "@/components/ui/checkbox";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
@@ -121,39 +120,24 @@ export default function MembersSelectionSheet({
   };
 
   const displayUsers = useMemo(() => {
-    const base = searching
+    return searching
       ? users
       : tab === "favorites"
         ? favoriteUsers
         : recentUsers;
-    // Hide anyone already in the selected list — they reappear here only after
-    // being removed from the selected chips above.
-    return base.filter((u) => !selected.some((m) => m.id === u.id));
-  }, [searching, tab, users, favoriteUsers, recentUsers, selected]);
+  }, [searching, tab, users, favoriteUsers, recentUsers]);
 
-  const handleChangeMembers = (newSelectedIds: (string | number)[]) => {
-    // Only additions can come from this list: already-selected members are
-    // filtered out of `displayUsers`, so a visible row can only be newly
-    // checked. Removals go through the selected chips (handleRemoveMember).
-    //
-    // We deliberately do NOT derive removals from `newSelectedIds`. On React
-    // Native, react-stately's controlled-value ref (inside CheckboxGroup) only
-    // syncs through the checkbox itself — its sync effect is a no-op without a
-    // `document`. So when `selected` changes from outside the group (e.g. adding
-    // phone contacts via the picker), the ref goes stale and the next toggle's
-    // onChange omits those entries. Trusting it for removals would wrongly clear
-    // contacts the moment a friend/favorite is added.
-    const newlyAdded = displayUsers.filter(
-      (u) =>
-        newSelectedIds.includes(u.id) && !selected.some((m) => m.id === u.id)
-    );
-    if (newlyAdded.length === 0) return;
-
-    newlyAdded.forEach((u) => addRecentUser(u, userDetails!.id));
-    setSelected((prev) => [
-      ...prev,
-      ...newlyAdded.filter((u) => !prev.some((m) => m.id === u.id))
-    ]);
+  const handleToggleMember = (member: UserPreview) => {
+    // Toggle against the current selection (our single source of truth). Selected
+    // users stay visible and checked in the list; tapping a checked row removes
+    // them. The selected chips above are just another entry point to `setSelected`.
+    setSelected((prev) => {
+      if (prev.some((m) => m.id === member.id)) {
+        return prev.filter((m) => m.id !== member.id);
+      }
+      addRecentUser(member, userDetails!.id);
+      return [...prev, member];
+    });
   };
 
   const handleRemoveMember = (id: string) => {
@@ -321,31 +305,27 @@ export default function MembersSelectionSheet({
                   {displayUsers.length === 0 && (
                     <EmptyList type={emptyType} content={emptyText} />
                   )}
-                  <CheckboxGroup
-                    className="w-full"
-                    value={selected.map((member) => member.id)}
-                    onChange={handleChangeMembers}
-                  >
-                    <FlatList
-                      scrollEnabled={false}
-                      className="flex-1"
-                      data={displayUsers}
-                      keyExtractor={(item) => item.id.toString()}
-                      renderItem={({ item }) => {
-                        const isCreator = item.id === userDetails?.id;
-                        return (
-                          <UserCheckboxItem
-                            key={item.id}
-                            item={item}
-                            disabled={isCreator}
-                            isFavorite={favoriteIds.has(item.id)}
-                            onToggleFavorite={handleToggleFavorite}
-                          />
-                        );
-                      }}
-                      ItemSeparatorComponent={ListDivider}
-                    />
-                  </CheckboxGroup>
+                  <FlatList
+                    scrollEnabled={false}
+                    className="flex-1"
+                    data={displayUsers}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => {
+                      const isCreator = item.id === userDetails?.id;
+                      return (
+                        <UserCheckboxItem
+                          key={item.id}
+                          item={item}
+                          disabled={isCreator}
+                          isChecked={selected.some((m) => m.id === item.id)}
+                          isFavorite={favoriteIds.has(item.id)}
+                          onToggleFavorite={handleToggleFavorite}
+                          onToggle={handleToggleMember}
+                        />
+                      );
+                    }}
+                    ItemSeparatorComponent={ListDivider}
+                  />
                 </LoadingWrapper>
               </ScrollView>
             </VStack>

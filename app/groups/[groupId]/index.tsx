@@ -736,7 +736,7 @@ export default function GroupDetailsScreen() {
             ) : (
               shouldSuggestArchive &&
               showArchiveBanner && (
-                <HStack className="mx-4 mb-4 p-4 rounded-xl bg-primary-50 dark:bg-primary-950 border border-primary-200 dark:border-primary-800 gap-x-2 items-start">
+                <HStack className="mx-4 mb-4 p-4 rounded-xl bg-primary-50 items-start gap-x-2">
                   <Archive
                     color={getPrimaryHex("text-primary-500", colorScheme)}
                   />

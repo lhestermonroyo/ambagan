@@ -12,7 +12,6 @@ import {
   ActionsheetContent
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
-import { CheckboxGroup } from "@/components/ui/checkbox";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
@@ -165,22 +164,11 @@ export default function EditMembersSheet({
       : tab === "favorites"
         ? favoriteUsers
         : recentUsers;
-    // Hide anyone already selected (locked or unlocked) — they reappear here
-    // only after being removed from the selected chips above.
-    return base.filter(
-      (u) =>
-        !lockedMembers.some((m) => m.id === u.id) &&
-        !members.some((m) => m.id === u.id)
-    );
-  }, [
-    searching,
-    tab,
-    users,
-    favoriteUsers,
-    recentUsers,
-    lockedMembers,
-    members
-  ]);
+    // Selected (unlocked) members stay visible and checked so they can be
+    // removed by unchecking. Locked members are still hidden here — they can't
+    // be toggled off (pending expenses) and only appear as locked chips above.
+    return base.filter((u) => !lockedMembers.some((m) => m.id === u.id));
+  }, [searching, tab, users, favoriteUsers, recentUsers, lockedMembers]);
 
   const emptyText = searching
     ? "No results found on your search."
@@ -194,31 +182,24 @@ export default function EditMembersSheet({
       ? EmptyType.FAVORITE
       : EmptyType.FRIEND;
 
-  const handleChangeMembers = (selectedIds: (string | number)[]) => {
-    // Additions only. displayUsers already excludes everyone selected (members +
-    // lockedMembers), so a visible-and-checked row can only be a new add;
-    // removals go through the selected chips (handleRemoveMember). We deliberately
-    // don't derive removals from selectedIds — react-stately's controlled ref goes
-    // stale on RN when `members` changes from outside the group (e.g. adding phone
-    // contacts), which would wrongly drop entries on the next toggle.
-    const newlyAdded = displayUsers
-      .filter((user) => selectedIds.includes(user.id))
-      .map(
-        (user) =>
-          ({
-            id: user.id,
-            email: user.email,
-            avatar: user.avatar,
-            first_name: user.first_name,
-            last_name: user.last_name
-          }) as Member
-      );
-    if (newlyAdded.length === 0) return;
-
-    setMembers((prev) => [
-      ...prev,
-      ...newlyAdded.filter((u) => !prev.some((m) => m.id === u.id))
-    ]);
+  const handleToggleMember = (user: UserPreview) => {
+    // Toggle against the current selection (our single source of truth), so a
+    // row's checked state stays in sync even when `members` changes elsewhere
+    // (removing a chip, adding phone contacts). Selected members stay visible
+    // and checked; tapping a checked row removes them.
+    setMembers((prev) => {
+      if (prev.some((m) => m.id === user.id)) {
+        return prev.filter((m) => m.id !== user.id);
+      }
+      const asMember = {
+        id: user.id,
+        email: user.email,
+        avatar: user.avatar,
+        first_name: user.first_name,
+        last_name: user.last_name
+      } as Member;
+      return [...prev, asMember];
+    });
   };
 
   const handleRemoveMember = (id: string) => {
@@ -496,35 +477,33 @@ export default function EditMembersSheet({
                   {displayUsers.length === 0 && (
                     <EmptyList type={emptyType} content={emptyText} />
                   )}
-                  <CheckboxGroup
-                    className="w-full"
-                    value={formattedMembers.map((member) => member.id)}
-                    onChange={handleChangeMembers}
-                  >
-                    <FlatList
-                      scrollEnabled={false}
-                      className="flex-1"
-                      data={displayUsers}
-                      keyExtractor={(item) => item.id.toString()}
-                      renderItem={({ item }) => {
-                        const isLocked = lockedMembers.some(
-                          (member) => member.id === item.id
-                        );
-                        const isCreator = item.id === userDetails?.id;
+                  <FlatList
+                    scrollEnabled={false}
+                    className="flex-1"
+                    data={displayUsers}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => {
+                      const isLocked = lockedMembers.some(
+                        (member) => member.id === item.id
+                      );
+                      const isCreator = item.id === userDetails?.id;
 
-                        return (
-                          <UserCheckboxItem
-                            key={item.id}
-                            item={item}
-                            disabled={isCreator || isLocked}
-                            isFavorite={favoriteIds.has(item.id)}
-                            onToggleFavorite={handleToggleFavorite}
-                          />
-                        );
-                      }}
-                      ItemSeparatorComponent={ListDivider}
-                    />
-                  </CheckboxGroup>
+                      return (
+                        <UserCheckboxItem
+                          key={item.id}
+                          item={item}
+                          disabled={isCreator || isLocked}
+                          isChecked={formattedMembers.some(
+                            (m) => m.id === item.id
+                          )}
+                          isFavorite={favoriteIds.has(item.id)}
+                          onToggleFavorite={handleToggleFavorite}
+                          onToggle={handleToggleMember}
+                        />
+                      );
+                    }}
+                    ItemSeparatorComponent={ListDivider}
+                  />
                 </ScrollView>
               </LoadingWrapper>
             </VStack>

@@ -25,7 +25,7 @@ export default function SelectedMemberItem({
   return (
     <Pressable
       key={member.id}
-      style={{ maxWidth: 120 }}
+      style={{ maxWidth: 95 }}
       className="p-2"
       disabled={disabled}
       onPress={onRemoveMember}
@@ -49,7 +49,7 @@ export default function SelectedMemberItem({
           />
         </Box>
         <VStack className="items-center gap-y-0">
-          <Text className="text-center break-words" numberOfLines={2}>
+          <Text className="text-center break-words" numberOfLines={1}>
             {member.first_name} {member.last_name}
             {isMe && " (You)"}
           </Text>
