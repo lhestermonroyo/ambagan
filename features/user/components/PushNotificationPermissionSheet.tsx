@@ -41,7 +41,7 @@ export default function PushNotificationPermissionSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[40]}>
+    <Actionsheet isOpen={isOpen} onClose={onClose}>
       <ActionsheetBackdrop />
       <ActionsheetContent>
         <ActionsheetDragIndicatorWrapper>

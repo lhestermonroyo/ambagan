@@ -85,7 +85,7 @@ export default function AppearanceSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[30]}>
+    <Actionsheet isOpen={isOpen} onClose={onClose}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
         <ActionsheetDragIndicatorWrapper>

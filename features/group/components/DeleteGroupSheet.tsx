@@ -81,7 +81,7 @@ export default function DeleteGroupSheet({
   };
 
   const hasUnsettled = unsettledPayments.length > 0;
-  const snapPoints = hasUnsettled ? [90] : [35];
+  const snapPoints = hasUnsettled ? [90] : [30];
 
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={snapPoints}>
