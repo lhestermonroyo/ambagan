@@ -33,8 +33,10 @@ import UpgradeSheet from "@/components/UpgradeSheet";
 import UploadImage from "@/components/UploadImage";
 import { GroupSelectionActionSheet } from "@/features/expense/components/GroupSelection";
 import PayerContributionSheet from "@/features/expense/components/PayerContributionSheet";
+import RecurrenceSheet from "@/features/expense/components/RecurrenceSheet";
 import SplitExpenseSheet from "@/features/expense/components/SplitExpenseSheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import { recurrenceSummary } from "@/features/expense/utils/recurrence.util";
 import {
   generatePaymentSplits,
   getAmountPerPerson,
@@ -46,6 +48,7 @@ import { useNetwork } from "@/hooks/useNetwork";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
+import { RecurrenceConfig } from "@/types/expenses";
 import { Group, Member } from "@/types/groups";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
@@ -172,6 +175,9 @@ export default function AddExpenseScreen() {
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   const [payerSheetOpen, setPayerSheetOpen] = useState(false);
   const [splitSheetOpen, setSplitSheetOpen] = useState(false);
+  const [recurrenceSheetOpen, setRecurrenceSheetOpen] = useState(false);
+  // null = one-off expense (the default); set = a recurring series.
+  const [recurrence, setRecurrence] = useState<RecurrenceConfig | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
   const [upgradeDescription, setUpgradeDescription] = useState<
@@ -194,7 +200,9 @@ export default function AddExpenseScreen() {
     if (!isPro && userId) {
       // Offline-aware: falls back to cached + queued-today so the badge still
       // reflects the real remaining count without a server connection.
-      resolveDailyCount(userId).then(setDailyCount).catch(() => {});
+      resolveDailyCount(userId)
+        .then(setDailyCount)
+        .catch(() => {});
     }
   }, [isPro, userId]);
 
@@ -482,6 +490,19 @@ export default function AddExpenseScreen() {
     setSplitSheetOpen(true);
   };
 
+  // Repeat row: Pro-only. Free users get the upgrade sheet instead of the
+  // recurrence picker (mirrors the currency-lock pattern above).
+  const handleOpenRecurrence = () => {
+    if (!isPro) {
+      setUpgradeDescription(
+        "Recurring expenses are a Pro feature. Upgrade to auto-post monthly rent, subscriptions, and other regular bills on a schedule."
+      );
+      setUpgradeSheetOpen(true);
+      return;
+    }
+    setRecurrenceSheetOpen(true);
+  };
+
   const canSubmit =
     parsedAmount > 0 &&
     description.trim().length > 0 &&
@@ -607,8 +628,71 @@ export default function AddExpenseScreen() {
     }
   };
 
+  // A recurring series is a server-side template (materialized by the cron
+  // Edge Function), so it can't be queued offline. Reuses the same resolved
+  // payers/splits/payments the one-off path builds.
+  const handleSubmitRecurring = async () => {
+    if (!currentUser || !selectedGroup || !canSubmit || !recurrence) return;
+
+    const online = await offlineQueue.isOnline();
+    if (!online) {
+      toast({
+        title: "You're offline",
+        description:
+          "Recurring expenses need a connection. Reconnect to set one up.",
+        type: "info"
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const memberSplits = buildMemberSplits();
+      const payersArr = buildPayers();
+      const paymentSplits = generatePaymentSplits(payersArr, memberSplits);
+
+      await services.expense.saveRecurringExpense(
+        {
+          group_id: selectedGroup.id,
+          amount: parsedAmount,
+          description: description.trim(),
+          currency,
+          split_type: splitType,
+          recurrence,
+          proof_of_payment: proofOfPayment
+        },
+        payersArr,
+        memberSplits,
+        paymentSplits
+      );
+
+      toast({
+        title: "Recurring Expense Set",
+        description:
+          recurrenceSummary(recurrence) + " — we'll post it for you.",
+        type: "success"
+      });
+      router.back();
+    } catch {
+      toast({
+        title: "Failed",
+        description:
+          "Could not set up the recurring expense. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!currentUser || !selectedGroup || !canSubmit) return;
+
+    // A recurrence turns this into a server-side series, not a one-off insert.
+    if (recurrence) {
+      await handleSubmitRecurring();
+      return;
+    }
 
     // Offline → queue the expense optimistically.
     const online = await offlineQueue.isOnline();
@@ -815,13 +899,15 @@ export default function AddExpenseScreen() {
             variant="outline"
             text={isPro ? "Save Draft" : "Save Draft - Pro"}
             loading={savingDraft}
-            disabled={!canSaveDraft}
+            // Drafts and recurrence don't combine — a series posts finalized
+            // occurrences, so there's nothing to "finalize later".
+            disabled={!canSaveDraft || !!recurrence}
             onPress={handleSaveDraft}
           />,
           <FormButton
             key="add-expense-submit"
             className="flex-1"
-            text="Add Expense"
+            text={recurrence ? "Save Recurring" : "Add Expense"}
             loading={submitting}
             disabled={!canSubmit}
             onPress={handleSubmit}
@@ -887,6 +973,41 @@ export default function AddExpenseScreen() {
                   />
                 </HStack>
               </PressableListItem>
+            </FormControl>
+
+            <FormControl size="md">
+              <FormControlLabel>
+                <FormControlLabelText>Repeat</FormControlLabelText>
+              </FormControlLabel>
+              <PressableListItem
+                onPress={handleOpenRecurrence}
+                className="p-4 border border-background-200 rounded-lg"
+              >
+                <HStack className="items-center gap-x-2">
+                  <Icon
+                    as="event-repeat"
+                    className="text-secondary-950"
+                    size={22}
+                  />
+                  <Text className="flex-1 text-lg">
+                    {recurrence
+                      ? recurrenceSummary(recurrence)
+                      : isPro
+                        ? "One-time"
+                        : "One-time - Pro"}
+                  </Text>
+                  <Icon
+                    as="unfold-more"
+                    className="text-sm text-secondary-950"
+                  />
+                </HStack>
+              </PressableListItem>
+              {recurrence && (
+                <Text className="text-sm text-secondary-950 mt-1">
+                  This creates a recurring series — the first expense posts now,
+                  the rest post automatically.
+                </Text>
+              )}
             </FormControl>
 
             {fieldsLoading ? (
@@ -1108,11 +1229,7 @@ export default function AddExpenseScreen() {
               // and keep a way to switch to a group we *can* load (the changer
               // normally lives inside the split card, which is hidden here).
               <VStack className="border border-background-200 rounded-lg p-4 gap-y-3 items-center">
-                <Icon
-                  as="cloud-off"
-                  size={40}
-                  className="text-secondary-400"
-                />
+                <Icon as="cloud-off" size={40} className="text-secondary-400" />
                 <VStack className="gap-y-1 items-center">
                   <Text bold className="text-center">
                     Members aren&apos;t available for this group
@@ -1191,17 +1308,23 @@ export default function AddExpenseScreen() {
         }}
       />
 
+      <RecurrenceSheet
+        isOpen={recurrenceSheetOpen}
+        value={recurrence}
+        onClose={() => setRecurrenceSheetOpen(false)}
+        onDone={(next) => {
+          setRecurrence(next);
+          setRecurrenceSheetOpen(false);
+        }}
+      />
+
       <UpgradeSheet
         isOpen={upgradeSheetOpen}
         onClose={() => setUpgradeSheetOpen(false)}
         description={upgradeDescription}
       />
 
-      <Actionsheet
-        isOpen={dateSheetOpen}
-        onClose={closeDateSheet}
-        snapPoints={[60]}
-      >
+      <Actionsheet isOpen={dateSheetOpen} onClose={closeDateSheet}>
         <ActionsheetBackdrop />
         <ActionsheetContent className="p-0">
           <ActionsheetDragIndicatorWrapper>

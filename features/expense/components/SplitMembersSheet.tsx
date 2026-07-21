@@ -92,8 +92,8 @@ export default function SplitMembersSheet({
             </HStack>
           </Pressable>
           <Text className="text-sm text-secondary-950 px-4 pb-4">
-            Pick who shares this expense. Unchecked members are excluded from the
-            split.
+            Pick who shares this expense. Unchecked members are excluded from
+            the split.
           </Text>
 
           <HStack className="items-center px-4 pb-4">
@@ -149,12 +149,6 @@ export default function SplitMembersSheet({
 
         <Box className="sticky bottom-0 w-full p-4">
           <HStack className="gap-x-2">
-            <FormButton
-              className="flex-1"
-              variant="outline"
-              text="Cancel"
-              onPress={onClose}
-            />
             <FormButton
               className="flex-1"
               text="Done"

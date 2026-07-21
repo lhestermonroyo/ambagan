@@ -51,6 +51,12 @@ export type Expense = {
   status: PaymentStatus;
   /** True while the expense is a draft (amount + description only, no splits yet). */
   is_draft: boolean;
+  /**
+   * Set when this expense was auto-generated from a recurring series (points at
+   * the `recurring_expenses_tbl` row). Null for one-off expenses. Drives the
+   * "Recurring" badge; the occurrence stays independently editable once posted.
+   */
+  recurring_id?: string | null;
 };
 
 export type ExpensePayer = {
@@ -73,6 +79,7 @@ export type ExpensePreview = Pick<
   | "currency"
   | "status"
   | "is_draft"
+  | "recurring_id"
 > & {
   payer_list: ExpensePayer[];
   /**
@@ -175,3 +182,76 @@ export enum PaymentStatus {
   ONGOING = "ongoing",
   COMPLETED = "completed"
 }
+
+export enum RecurrenceFrequency {
+  DAILY = "daily",
+  WEEKLY = "weekly",
+  MONTHLY = "monthly"
+}
+
+export enum RecurrenceEndType {
+  /** Runs forever until the user pauses or deletes it. */
+  NEVER = "never",
+  /** Stops after `end_date`. */
+  ON_DATE = "on_date",
+  /** Stops once `occurrences_count` reaches `occurrence_limit`. */
+  AFTER_COUNT = "after_count"
+}
+
+/** Who paid, as stored in a recurring template's `payers_snapshot`. */
+export type RecurringPayerSnapshot = {
+  userId: string;
+  amount: number;
+};
+
+/** Who owes what, as stored in a recurring template's `splits_snapshot`. */
+export type RecurringSplitSnapshot = {
+  userId: string;
+  amount: number;
+  percentage: number;
+};
+
+/**
+ * A recurring-expense *template* + schedule. The generator (run-recurring Edge
+ * Function, invoked by pg_cron) materializes a real {@link Expense} from this
+ * every time `next_run_at` passes. Free tier can't create these — it's Pro-only.
+ */
+export type RecurringExpense = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  group_id: string;
+  creator: UserPreview;
+  amount: number;
+  description: string;
+  currency: string;
+  split_type: SplitType;
+  payers_snapshot: RecurringPayerSnapshot[];
+  splits_snapshot: RecurringSplitSnapshot[];
+  frequency: RecurrenceFrequency;
+  /** Repeat every N frequency units (e.g. every 2 weeks). */
+  repeat_interval: number;
+  start_date: string;
+  end_type: RecurrenceEndType;
+  end_date: string | null;
+  occurrence_limit: number | null;
+  occurrences_count: number;
+  next_run_at: string;
+  last_run_at: string | null;
+  /** False while paused — the generator skips it until resumed. */
+  is_active: boolean;
+};
+
+/**
+ * The recurrence config captured by `RecurrenceSheet` and threaded into
+ * `saveRecurringExpense`. `null` on the Add Expense form means "one-off" (the
+ * normal, non-recurring path).
+ */
+export type RecurrenceConfig = {
+  frequency: RecurrenceFrequency;
+  repeat_interval: number;
+  start_date: Date;
+  end_type: RecurrenceEndType;
+  end_date: Date | null;
+  occurrence_limit: number | null;
+};

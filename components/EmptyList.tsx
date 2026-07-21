@@ -72,7 +72,7 @@ const EmptyList = ({
         style={{ width: 80, height: 80 }}
         resizeMode="contain"
       />
-      <Text className="text-center text-secondary-950">
+      <Text className="text-center text-secondary-950 px-4">
         {content ?? empty?.content}
       </Text>
     </VStack>

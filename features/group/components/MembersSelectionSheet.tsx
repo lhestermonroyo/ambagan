@@ -333,12 +333,6 @@ export default function MembersSelectionSheet({
               <HStack className="gap-x-2">
                 <FormButton
                   className="flex-1"
-                  variant="outline"
-                  text="Cancel"
-                  onPress={handleClose}
-                />
-                <FormButton
-                  className="flex-1"
                   text="Save Members"
                   disabled={selected.length === 0}
                   onPress={handleSaveMembers}

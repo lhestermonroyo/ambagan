@@ -19,7 +19,11 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DeleteGroupSheet from "@/features/group/components/DeleteGroupSheet";
+import ExpenseFilterSheet, {
+  ExpenseFilter
+} from "@/features/group/components/ExpenseFilterSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
+import GroupRecurring from "@/features/group/components/GroupRecurring";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
 import GroupStatsTab from "@/features/group/components/GroupStatsTab";
 import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
@@ -43,6 +47,7 @@ import {
 } from "expo-router";
 import {
   Archive,
+  ChevronDown,
   CirclePlus,
   ListPlus,
   ScanLine,
@@ -64,6 +69,9 @@ export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [settlementRefreshTrigger, setSettlementRefreshTrigger] = useState(0);
+  const [recurringRefreshTrigger, setRecurringRefreshTrigger] = useState(0);
+  const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>("One-time");
+  const [expenseFilterSheetOpen, setExpenseFilterSheetOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [showArchiveBanner, setShowArchiveBanner] = useState(true);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
@@ -258,6 +266,7 @@ export default function GroupDetailsScreen() {
     if (!groupId) return;
     setRefreshing(true);
     setSettlementRefreshTrigger((prev) => prev + 1);
+    setRecurringRefreshTrigger((prev) => prev + 1);
     await init(groupId, true);
     setRefreshing(false);
   };
@@ -520,12 +529,18 @@ export default function GroupDetailsScreen() {
               </Stack.Toolbar.Menu>
             ]
           ) : (
-            <Stack.Toolbar.Button
-              icon="rectangle.portrait.and.arrow.right"
+            <Stack.Toolbar.Menu
+              icon="ellipsis"
               tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
-              accessibilityLabel="Leave group"
-              onPress={() => setLeaveSheetOpen(true)}
-            />
+              accessibilityLabel="More group options"
+            >
+              <Stack.Toolbar.MenuAction
+                icon="rectangle.portrait.and.arrow.right"
+                onPress={() => setLeaveSheetOpen(true)}
+              >
+                Leave Group
+              </Stack.Toolbar.MenuAction>
+            </Stack.Toolbar.Menu>
           )
         }
       >
@@ -771,8 +786,29 @@ export default function GroupDetailsScreen() {
               <GroupSettlements refreshTrigger={settlementRefreshTrigger} />
             </Box>
             {tab === "Expenses" && (
-              <SwipeListView
-                className="flex-1"
+              <>
+                <HStack className="px-4 pb-2">
+                  <FormButton
+                    size="sm"
+                    variant="outline"
+                    text={expenseFilter}
+                    iconEnd={
+                      <ChevronDown
+                        size={16}
+                        color={getPrimaryHex("text-primary-500", colorScheme)}
+                      />
+                    }
+                    onPress={() => setExpenseFilterSheetOpen(true)}
+                  />
+                </HStack>
+                {expenseFilter === "Recurring" ? (
+                  <GroupRecurring
+                    groupId={groupId!}
+                    refreshTrigger={recurringRefreshTrigger}
+                  />
+                ) : (
+                  <SwipeListView
+                    className="flex-1"
                 scrollEnabled={false}
                 useSectionList
                 sections={formattedExpenseList}
@@ -861,8 +897,10 @@ export default function GroupDetailsScreen() {
                     />
                   )
                 }
-                ListFooterComponent={() => <Box className="h-16" />}
-              />
+                    ListFooterComponent={() => <Box className="h-16" />}
+                  />
+                )}
+              </>
             )}
             {tab === "Group Info" && <GroupDetailsTab />}
             {tab === "Stats" && groupId && userDetails && (
@@ -958,6 +996,12 @@ export default function GroupDetailsScreen() {
         isOpen={deleteSheetOpen}
         onClose={() => setDeleteSheetOpen(false)}
         onDelete={handleDeleteGroup}
+      />
+      <ExpenseFilterSheet
+        isOpen={expenseFilterSheetOpen}
+        onClose={() => setExpenseFilterSheetOpen(false)}
+        filter={expenseFilter}
+        onSelect={setExpenseFilter}
       />
     </Fragment>
   );

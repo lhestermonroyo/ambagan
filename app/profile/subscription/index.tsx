@@ -56,6 +56,11 @@ const FEATURES = [
     description: "Log an expense now and finalize who paid and the split later."
   },
   {
+    icon: "event-repeat",
+    title: "Recurring expenses",
+    description: "Auto-post rent, subscriptions, and regular bills on a schedule."
+  },
+  {
     icon: "star",
     title: "All future updates included",
     description: "New Pro features as they ship — yours forever."

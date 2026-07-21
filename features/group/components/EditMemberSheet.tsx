@@ -511,13 +511,6 @@ export default function EditMembersSheet({
               <HStack className="gap-x-2">
                 <FormButton
                   className="flex-1"
-                  variant="outline"
-                  text="Cancel"
-                  disabled={submitting}
-                  onPress={handleClose}
-                />
-                <FormButton
-                  className="flex-1"
                   text="Update Members"
                   disabled={formattedMembers.length === 0 || submitting}
                   loading={submitting}

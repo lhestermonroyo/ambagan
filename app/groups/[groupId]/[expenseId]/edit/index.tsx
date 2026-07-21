@@ -147,7 +147,7 @@ export default function EditExpenseScreen() {
         group =
           gState.details?.id === groupId
             ? gState.details
-            : gState.list.find((g) => g.id === groupId) ?? null;
+            : (gState.list.find((g) => g.id === groupId) ?? null);
 
         if (!cached || !group) {
           // Never viewed online → no snapshot to edit from.
@@ -759,11 +759,7 @@ export default function EditExpenseScreen() {
         description={upgradeDescription}
       />
 
-      <Actionsheet
-        isOpen={dateSheetOpen}
-        onClose={closeDateSheet}
-        snapPoints={[60]}
-      >
+      <Actionsheet isOpen={dateSheetOpen} onClose={closeDateSheet}>
         <ActionsheetBackdrop />
         <ActionsheetContent className="p-0">
           <ActionsheetDragIndicatorWrapper>

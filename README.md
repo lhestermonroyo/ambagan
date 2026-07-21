@@ -11,6 +11,7 @@
 - **Settlements** — Request, approve, or reject settlements with real-time push notifications. Track full payment history per group and per friend.
 - **Friends** — See everyone you share a group with, along with a net balance summary of what you owe or are owed.
 - **Multi-currency** _(Pro)_ — Each expense supports its own currency. Useful for travel groups across different countries.
+- **Recurring expenses** _(Pro)_ — Set rent, subscriptions, and other regular bills to post automatically on a daily, weekly, or monthly schedule.
 - **CSV Export** — Export settlement history per group to a CSV file for record-keeping.
 - **Offline Access** — Groups, expenses, and friends are cached automatically so you can browse them without an internet connection.
 - **Push Notifications** — Get notified for settlement requests, approvals, rejections, new expenses, and group activity.

@@ -7,11 +7,14 @@ import {
   MemberSplit,
   Payment,
   PaymentPreview,
+  RecurrenceConfig,
+  RecurringExpense,
   ScanResult
 } from "@/types/expenses";
 import { NotificationType } from "@/types/notifications";
 import { cacheService } from "@/utils/cacheService";
 import { splitTypes, tables } from "@/utils/constants";
+import { computeInitialNextRunAt } from "@/features/expense/utils/recurrence.util";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { sendPushNotification } from "@/utils/sendPushNotifications";
 import { supabase } from "@/utils/supabase";
@@ -126,6 +129,8 @@ export const saveExpense = async (
     expense_date?: Date;
     /** Optional pre-generated id — used so offline-queued expenses keep a stable id on sync. */
     id?: string;
+    /** Set when this expense is materialized from a recurring series. */
+    recurring_id?: string | null;
   },
   payers: { userId: string; amount: number }[],
   memberSplits: { userId: string; amount: number; percentage: number }[],
@@ -147,7 +152,8 @@ export const saveExpense = async (
     group_id,
     split_type,
     currency,
-    expense_date
+    expense_date,
+    recurring_id
   } = expensePayload;
 
   if (proof_of_payment) {
@@ -173,7 +179,8 @@ export const saveExpense = async (
       currency: currency || "PHP",
       expense_date: expense_date
         ? expense_date.toISOString()
-        : new Date().toISOString()
+        : new Date().toISOString(),
+      recurring_id: recurring_id ?? null
     }
   ]);
 
@@ -315,6 +322,191 @@ export const saveDraftExpense = async (expensePayload: {
   }
 
   return { success: true, id: expenseId };
+};
+
+// =====================================================================
+// Recurring expenses (Pro)
+//
+// A recurring expense is a template + schedule stored in recurring_expenses_tbl.
+// The run-recurring Edge Function (invoked by pg_cron) materializes occurrences
+// server-side. The client only creates/edits/pauses/deletes the template; the
+// one exception is the *first* occurrence, generated inline at creation time so
+// the user sees it immediately (below).
+// =====================================================================
+
+const RECURRING_SELECT = `id, created_at, updated_at, group_id, amount, description, currency, split_type, payers_snapshot, splits_snapshot, frequency, repeat_interval, start_date, end_type, end_date, occurrence_limit, occurrences_count, next_run_at, last_run_at, is_active, creator:creator_id(id, email, phone, first_name, last_name, avatar)`;
+
+/**
+ * Create a recurring-expense template. If the series starts today or earlier,
+ * the first occurrence is generated immediately (reusing `saveExpense`, so it
+ * posts payers/splits/payments + notifications exactly like a manual expense)
+ * and the schedule is advanced one step; a future start date just parks the
+ * template for the generator to pick up.
+ *
+ * `payers`/`memberSplits`/`paymentSplits` are the already-resolved arrays the
+ * Add Expense form builds — the same ones passed to `saveExpense`. They're
+ * stored as JSONB snapshots on the template and reused for the first occurrence.
+ */
+export const saveRecurringExpense = async (
+  templatePayload: {
+    group_id: string;
+    amount: number;
+    description: string;
+    currency: string;
+    split_type: (typeof splitTypes)[number]["value"];
+    recurrence: RecurrenceConfig;
+    proof_of_payment?: ImagePickerSuccessResult | null;
+  },
+  payers: { userId: string; amount: number }[],
+  memberSplits: { userId: string; amount: number; percentage: number }[],
+  paymentSplits: { memberSplitId: string; payerId: string; amount: number }[]
+) => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) {
+    throw new Error("User not authenticated");
+  }
+
+  const { group_id, amount, description, currency, split_type, recurrence } =
+    templatePayload;
+
+  const startsToday =
+    new Date(recurrence.start_date).setHours(0, 0, 0, 0) <=
+    new Date().setHours(0, 0, 0, 0);
+  const nextRunAt = computeInitialNextRunAt(recurrence);
+
+  const recurringId = uuid();
+  const { error } = await supabase.from(tables.RECURRING_EXPENSES_TBL).insert([
+    {
+      id: recurringId,
+      group_id,
+      creator_id: user.data.user.id,
+      amount,
+      description,
+      currency: currency || "PHP",
+      split_type,
+      payers_snapshot: payers,
+      splits_snapshot: memberSplits,
+      frequency: recurrence.frequency,
+      repeat_interval: recurrence.repeat_interval,
+      start_date: recurrence.start_date.toISOString().slice(0, 10),
+      end_type: recurrence.end_type,
+      end_date: recurrence.end_date
+        ? recurrence.end_date.toISOString().slice(0, 10)
+        : null,
+      occurrence_limit: recurrence.occurrence_limit,
+      // The inline first occurrence (if any) counts as the first run.
+      occurrences_count: startsToday ? 1 : 0,
+      next_run_at: nextRunAt.toISOString(),
+      last_run_at: startsToday ? new Date().toISOString() : null,
+      is_active: true
+    }
+  ]);
+
+  if (error) throw error;
+
+  // Materialize the first occurrence now so it lands in the group immediately
+  // and starts affecting balances. Future runs are the generator's job.
+  if (startsToday) {
+    await saveExpense(
+      {
+        amount,
+        description,
+        group_id,
+        proof_of_payment: templatePayload.proof_of_payment ?? null,
+        split_type,
+        currency,
+        expense_date: new Date(recurrence.start_date),
+        recurring_id: recurringId
+      },
+      payers,
+      memberSplits,
+      paymentSplits
+    );
+  }
+
+  return { success: true, id: recurringId };
+};
+
+/** All recurring templates for a group (active + paused), newest first. */
+export const getRecurringByGroupId = async (
+  groupId: string
+): Promise<RecurringExpense[]> => {
+  const { data, error } = await supabase
+    .from(tables.RECURRING_EXPENSES_TBL)
+    .select(RECURRING_SELECT)
+    .eq("group_id", groupId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data ?? []).map((item) => ({
+    ...item,
+    creator: resolveUser(item.creator)
+  })) as unknown as RecurringExpense[];
+};
+
+/**
+ * Edit a recurring template. Only future occurrences are affected — occurrences
+ * already generated are independent expenses and are left untouched. Editing the
+ * schedule fields is the caller's responsibility to recompute `next_run_at`.
+ */
+export const updateRecurringExpense = async (
+  recurringId: string,
+  patch: Partial<{
+    amount: number;
+    description: string;
+    currency: string;
+    split_type: (typeof splitTypes)[number]["value"];
+    payers_snapshot: { userId: string; amount: number }[];
+    splits_snapshot: {
+      userId: string;
+      amount: number;
+      percentage: number;
+    }[];
+    frequency: string;
+    repeat_interval: number;
+    start_date: string;
+    end_type: string;
+    end_date: string | null;
+    occurrence_limit: number | null;
+    next_run_at: string;
+  }>
+) => {
+  const { error } = await supabase
+    .from(tables.RECURRING_EXPENSES_TBL)
+    .update(patch)
+    .eq("id", recurringId);
+
+  if (error) throw error;
+  return { success: true };
+};
+
+/** Pause (is_active=false) or resume a recurring series. */
+export const setRecurringActive = async (
+  recurringId: string,
+  isActive: boolean
+) => {
+  const { error } = await supabase
+    .from(tables.RECURRING_EXPENSES_TBL)
+    .update({ is_active: isActive })
+    .eq("id", recurringId);
+
+  if (error) throw error;
+  return { success: true };
+};
+
+/**
+ * Delete a recurring series. Future generation stops; occurrences already
+ * posted survive (their `recurring_id` FK is ON DELETE SET NULL).
+ */
+export const deleteRecurringExpense = async (recurringId: string) => {
+  const { error } = await supabase
+    .from(tables.RECURRING_EXPENSES_TBL)
+    .delete()
+    .eq("id", recurringId);
+
+  if (error) throw error;
+  return { success: true };
 };
 
 /**

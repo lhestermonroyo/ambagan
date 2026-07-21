@@ -57,7 +57,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Is Ambagan free to use?",
         answer:
-          "Yes. The core features are free — add up to 5 expenses per day, track balances, split bills, and settle up with friends at no cost. A Pro subscription is available (starting at ₱99 for 2 weeks) for unlimited daily expenses, draft expenses, CSV export, spending analytics, multi-currency support, and more."
+          "Yes. The core features are free — add up to 5 expenses per day, track balances, split bills, and settle up with friends at no cost. A Pro subscription is available (starting at ₱99 for 2 weeks) for unlimited daily expenses, draft expenses, recurring expenses, CSV export, spending analytics, multi-currency support, and more."
       },
       {
         question: "What does the Net Balance on the home screen mean?",
@@ -194,6 +194,16 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "Can other group members see my draft expenses?",
         answer:
           "No. Draft expenses are private — only you (the creator) can see them until you finalize the split. Once finalized, the expense becomes visible to all group members and they receive an expense inclusion notification."
+      },
+      {
+        question: "What are recurring expenses?",
+        answer:
+          "Recurring expenses are a Pro feature for bills that repeat — monthly rent, subscriptions, weekly groceries. On the Add Expense screen, set the amount, payers, and split as usual, then tap Repeat and choose a frequency (daily, weekly, or monthly), a start date, and an optional end (never, on a date, or after a number of times). Ambagan then posts the expense automatically on schedule — even if you don't open the app — and notifies everyone involved, just like a normal expense. If the start date is today or earlier, the first one posts immediately."
+      },
+      {
+        question: "How do I pause, resume, or delete a recurring expense?",
+        answer:
+          "Open the group, tap the ⋯ menu in the top-right, and choose Recurring Expenses. There you'll see each series with its next run date. Toggle a series to pause or resume it, or delete it to stop future occurrences. Deleting a series never removes expenses it already created. If someone leaves the group and their share can no longer be split, that occurrence is posted as a draft for you to review instead."
       }
     ]
   },

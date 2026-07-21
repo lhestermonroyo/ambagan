@@ -177,12 +177,6 @@ export function GroupSelectionActionSheet({
         <Box className="sticky bottom-0 w-full p-4">
           <HStack className="gap-x-2">
             <FormButton
-              text="Cancel"
-              variant="outline"
-              className="flex-1"
-              onPress={onClose}
-            />
-            <FormButton
               text="Save Group"
               className="flex-1"
               disabled={!selectedGroup}

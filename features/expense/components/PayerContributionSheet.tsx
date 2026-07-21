@@ -126,12 +126,6 @@ export default function PayerContributionSheet({
           <Box className="items-center justify-center p-4">
             <HStack className="gap-x-2">
               <FormButton
-                text="Cancel"
-                variant="outline"
-                className="flex-1"
-                onPress={onClose}
-              />
-              <FormButton
                 className="flex-1"
                 text="Save Changes"
                 disabled={!valid}
