@@ -45,6 +45,12 @@ const SearchInput: React.FC<IFormInputProps> = ({
     }
   }, [value]);
 
+  const handleClear = () => {
+    setSearchValue("");
+    onSetSearching?.(false);
+    onChangeText("");
+  };
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       onSetSearching?.(searchValue.length > 0);
@@ -67,12 +73,18 @@ const SearchInput: React.FC<IFormInputProps> = ({
         onChangeText={setSearchValue}
         {...props}
       />
-      {rightIcon && (
-        <InputSlot>
-          <Button onPress={onPressRightIcon} variant="link" className="mr-4">
-            <InputIcon as={rightIcon} className="text-primary-400" />
-          </Button>
+      {searchValue.length > 0 ? (
+        <InputSlot onPress={handleClear} className="mr-3">
+          <Icon as="close" size={20} className="text-secondary-950" />
         </InputSlot>
+      ) : (
+        rightIcon && (
+          <InputSlot>
+            <Button onPress={onPressRightIcon} variant="link" className="mr-4">
+              <InputIcon as={rightIcon} className="text-primary-950" />
+            </Button>
+          </InputSlot>
+        )
       )}
     </Input>
   );
