@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import FormButton from "@/components/FormButton";
 import StepperProgress from "@/components/StepperProgress";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
@@ -23,6 +24,9 @@ type PayersContributionStepProps = {
   members: Member[];
   payers: Record<string, { amount: string }>;
   onPayerAmountChange: (userId: string, amount: string) => void;
+  /** Wipe every payer's entered contribution so the user can re-enter from
+   * scratch. Omitted when the host doesn't need a reset affordance. */
+  onClearAll?: () => void;
   isLockedGroup?: boolean;
   groupName?: string;
   /** Hidden when embedded outside the multi-step Edit Expense flow (e.g. Add
@@ -39,6 +43,7 @@ export default function PayersContributionStep({
   members,
   payers,
   onPayerAmountChange,
+  onClearAll,
   isLockedGroup = false,
   groupName,
   showStepper = true,
@@ -93,6 +98,16 @@ export default function PayersContributionStep({
                 </Text>
               </VStack>
             </VStack>
+          )}
+          {onClearAll && (
+            <HStack className="items-center justify-end">
+              <FormButton
+                variant="link"
+                size="sm"
+                text="Clear All"
+                onPress={onClearAll}
+              />
+            </HStack>
           )}
           <FlatList
             scrollEnabled={false}

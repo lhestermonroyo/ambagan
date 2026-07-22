@@ -70,6 +70,11 @@ export default function PayerContributionSheet({
     setDraft((prev) => ({ ...prev, [userId]: { amount: value } }));
   };
 
+  // Wipe every contribution so the user can re-enter payers from scratch.
+  const handleClearAll = () => {
+    setDraft({});
+  };
+
   const { valid } = useMemo(() => {
     const total = parseFloat(amount) || 0;
     const values = Object.values(draft);
@@ -119,6 +124,7 @@ export default function PayerContributionSheet({
         members={members}
         payers={draft}
         onPayerAmountChange={handleAmountChange}
+        onClearAll={handleClearAll}
         isLockedGroup={isLockedGroup}
         groupName={groupName}
       />

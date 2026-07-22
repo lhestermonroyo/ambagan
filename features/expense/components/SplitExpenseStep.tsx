@@ -139,6 +139,12 @@ export default function SplitSelection({
     return next;
   };
 
+  // Wipe every member's entered amount/percentage so the user can re-enter the
+  // split from scratch. Only exposed on the manual tabs (percentage / custom).
+  const handleClearAll = () => {
+    onSetSplits(clearAll(), tab);
+  };
+
   // Recompute splits from scratch on tab / amount / member changes: equal
   // redistributes across included members, other tabs clear for re-entry.
   useEffect(() => {
@@ -290,6 +296,17 @@ export default function SplitSelection({
                   </HStack>
                 </PressableListItem>
               </Box>
+
+              {tab !== "equal" && includedCount > 0 && (
+                <HStack className="px-4 items-center justify-end">
+                  <FormButton
+                    variant="link"
+                    size="sm"
+                    text="Clear All"
+                    onPress={handleClearAll}
+                  />
+                </HStack>
+              )}
             </VStack>
 
             <FlatList
