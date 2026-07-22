@@ -308,6 +308,9 @@ export default function GroupDetailsScreen() {
           description: "Expense deleted successfully",
           type: "success"
         });
+        // Refresh the expense list and force the Settlements tab to refetch so
+        // it drops the deleted expense's payments.
+        setSettlementRefreshTrigger((prev) => prev + 1);
         init(groupId!, true);
       }
     } catch (error) {

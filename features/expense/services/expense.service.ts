@@ -427,6 +427,25 @@ export const saveRecurringExpense = async (
   return { success: true, id: recurringId };
 };
 
+/** A single recurring template by id (for the details screen). */
+export const getRecurringById = async (
+  recurringId: string
+): Promise<RecurringExpense | null> => {
+  const { data, error } = await supabase
+    .from(tables.RECURRING_EXPENSES_TBL)
+    .select(RECURRING_SELECT)
+    .eq("id", recurringId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  return {
+    ...data,
+    creator: resolveUser((data as any).creator)
+  } as unknown as RecurringExpense;
+};
+
 /** All recurring templates for a group (active + paused), newest first. */
 export const getRecurringByGroupId = async (
   groupId: string

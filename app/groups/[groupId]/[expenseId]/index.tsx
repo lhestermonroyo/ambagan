@@ -276,6 +276,12 @@ export default function ExpenseDetailsScreen() {
           memberSplitList: [],
           paymentSplitList: []
         }));
+        // Removes this expense's payments — bump the refresh token so the
+        // mounted Settlements tab drops them instead of showing stale rows.
+        states.group.setState((prev) => ({
+          ...prev,
+          settlementRefreshToken: prev.settlementRefreshToken + 1
+        }));
         setDeleteModalOpen(false);
         router.back();
       }

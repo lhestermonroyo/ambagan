@@ -603,6 +603,14 @@ export default function EditExpenseScreen() {
         );
       }
 
+      // Editing rewrites the expense's payments (new ids/amounts). Bump the
+      // refresh token so the mounted Settlements tab refetches instead of
+      // showing the pre-edit split.
+      states.group.setState((prev) => ({
+        ...prev,
+        settlementRefreshToken: prev.settlementRefreshToken + 1
+      }));
+
       toast({
         title: isDraft ? "Draft Finalized" : "Expense Updated",
         description: isDraft
