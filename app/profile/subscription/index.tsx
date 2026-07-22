@@ -58,7 +58,8 @@ const FEATURES = [
   {
     icon: "event-repeat",
     title: "Recurring expenses",
-    description: "Auto-post rent, subscriptions, and regular bills on a schedule."
+    description:
+      "Auto-post rent, subscriptions, and regular bills on a schedule."
   },
   {
     icon: "star",
@@ -335,7 +336,7 @@ export default function SubscriptionScreen() {
               {FEATURES.map((feature, index) => (
                 <Box key={feature.title}>
                   <HStack className="gap-x-3 items-start p-4">
-                    <Box className="bg-primary-50 dark:bg-primary-900 p-2 rounded-full mt-0.5">
+                    <Box className="bg-primary-50 dark:bg-primary-0 p-2 rounded-full mt-0.5">
                       <Icon
                         as={feature.icon as any}
                         className="text-primary-400"
@@ -382,7 +383,7 @@ export default function SubscriptionScreen() {
                         <Box
                           className={`rounded-2xl p-4 ${
                             isSelected
-                              ? "bg-primary-50 border border-primary-400 dark:bg-primary-950"
+                              ? "bg-primary-0 border border-primary-400"
                               : "bg-background-50 border border-background-50"
                           }`}
                         >
