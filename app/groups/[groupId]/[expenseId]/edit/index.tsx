@@ -1093,7 +1093,7 @@ function ScrollableContent(props: {
 
         <VStack className="gap-y-1 pb-4">
           <UploadImage
-            title="Upload Proof of Payment"
+            title="Upload Proof of Payment (optional)"
             key={proofUri ?? "none"}
             defaultUri={proofUri}
             onSelect={setProofOfPayment}

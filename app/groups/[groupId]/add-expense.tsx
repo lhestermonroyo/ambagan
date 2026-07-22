@@ -1250,7 +1250,7 @@ export default function AddExpenseScreen() {
 
             <VStack className="gap-y-1 pb-4">
               <UploadImage
-                title="Upload Proof of Payment"
+                title="Upload Proof of Payment (optional)"
                 key={proofOfPayment?.assets?.[0]?.uri ?? "none"}
                 defaultUri={proofOfPayment?.assets?.[0]?.uri ?? null}
                 onSelect={setProofOfPayment}
