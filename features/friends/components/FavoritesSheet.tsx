@@ -2,14 +2,7 @@ import AppAvatar from "@/components/AppAvatar";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import SearchInput from "@/components/SearchInput";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
-import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
+import AppSheet from "@/components/AppSheet";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
@@ -31,7 +24,7 @@ import { ColorSchemeName, useColorScheme } from "react-native";
 
 export default function FavoritesSheet({
   isOpen,
-  onClose
+  onClose,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -107,69 +100,61 @@ export default function FavoritesSheet({
       : "No friends yet.";
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={handleClose} snapPoints={[90]}>
-      <ActionsheetBackdrop />
-      <ActionsheetContent className="p-0">
-        <KeyboardAvoidingSheet>
-        <ActionsheetDragIndicatorWrapper>
-          <ActionsheetDragIndicator />
-        </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full">
-          <Pressable onPress={handleClose}>
-            <HStack className="p-4 items-center">
-              <Icon as="arrow-back-ios" className="text-secondary-950" />
-              <Text bold className="text-xl">
-                Manage Favorites
-              </Text>
-            </HStack>
-          </Pressable>
-          <Box className="px-4 pb-2">
-            <Text className="text-sm text-secondary-950">
-              Search users or select from your friends to manage your favorite
-              list.
-            </Text>
-          </Box>
+    <AppSheet
+      isOpen={isOpen}
+      onClose={handleClose}
+      keyboardAvoiding
+      contentClassName="w-full"
+    >
+      <Pressable onPress={handleClose}>
+        <HStack className="p-4 items-center">
+          <Icon as="arrow-back-ios" className="text-secondary-950" />
+          <Text bold className="text-xl">
+            Manage Favorites
+          </Text>
+        </HStack>
+      </Pressable>
+      <Box className="px-4 pb-2">
+        <Text className="text-sm text-secondary-950">
+          Search users or select from your friends to manage your favorite list.
+        </Text>
+      </Box>
 
-          <VStack className="gap-y-4">
-            <Box className="px-4">
-              <SearchInput
-                placeholder="Search users"
-                value={searchInput}
-                onChangeText={setSearchInput}
-                onSetSearching={setSearching}
+      <VStack className="gap-y-4">
+        <Box className="px-4">
+          <SearchInput
+            placeholder="Search users"
+            value={searchInput}
+            onChangeText={setSearchInput}
+            onSetSearching={setSearching}
+          />
+        </Box>
+
+        {!searching && <RecentFavoritesTab tab={tab} onTabChange={setTab} />}
+
+        <ScrollView className="w-full">
+          {displayUsers.length === 0 && (
+            <VStack className="p-4 justify-center items-center">
+              <Text className="text-sm text-secondary-950">{emptyLabel}</Text>
+            </VStack>
+          )}
+          <FlatList
+            scrollEnabled={false}
+            data={displayUsers}
+            keyExtractor={(item) => item.id}
+            ItemSeparatorComponent={ListDivider}
+            renderItem={({ item }) => (
+              <UserFavoriteItem
+                item={item}
+                isFavorite={favoriteIds.has(item.id)}
+                colorScheme={colorScheme}
+                onToggle={handleToggle}
               />
-            </Box>
-
-            {!searching && (
-              <RecentFavoritesTab tab={tab} onTabChange={setTab} />
             )}
-
-            <ScrollView className="w-full">
-              {displayUsers.length === 0 && (
-                <VStack className="p-4 justify-center items-center">
-                  <Text className="text-sm text-secondary-950">{emptyLabel}</Text>
-                </VStack>
-              )}
-              <FlatList
-                scrollEnabled={false}
-                data={displayUsers}
-                keyExtractor={(item) => item.id}
-                ItemSeparatorComponent={ListDivider}
-                renderItem={({ item }) => (
-                  <UserFavoriteItem
-                    item={item}
-                    isFavorite={favoriteIds.has(item.id)}
-                    colorScheme={colorScheme}
-                    onToggle={handleToggle}
-                  />
-                )}
-              />
-            </ScrollView>
-          </VStack>
-        </VStack>
-        </KeyboardAvoidingSheet>
-      </ActionsheetContent>
-    </Actionsheet>
+          />
+        </ScrollView>
+      </VStack>
+    </AppSheet>
   );
 }
 
@@ -177,7 +162,7 @@ function UserFavoriteItem({
   item,
   isFavorite,
   colorScheme,
-  onToggle
+  onToggle,
 }: {
   item: UserPreview;
   isFavorite: boolean;

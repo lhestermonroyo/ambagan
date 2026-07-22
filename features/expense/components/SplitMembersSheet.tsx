@@ -2,13 +2,7 @@ import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
+import AppSheet from "@/components/AppSheet";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
@@ -34,7 +28,7 @@ export default function SplitMembersSheet({
   onClose,
   members,
   includedIds,
-  onSave
+  onSave,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -76,77 +70,10 @@ export default function SplitMembersSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
-      <ActionsheetBackdrop />
-      <ActionsheetContent className="p-0">
-        <ActionsheetDragIndicatorWrapper>
-          <ActionsheetDragIndicator />
-        </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full flex-1">
-          <Pressable onPress={onClose}>
-            <HStack className="p-4 items-center">
-              <Icon as="arrow-back-ios" className="text-secondary-950" />
-              <Text bold className="text-xl">
-                Split among
-              </Text>
-            </HStack>
-          </Pressable>
-          <Text className="text-sm text-secondary-950 px-4 pb-4">
-            Pick who shares this expense. Unchecked members are excluded from
-            the split.
-          </Text>
-
-          <HStack className="items-center px-4 pb-4">
-            <Text className="text-sm text-secondary-950 flex-1">
-              {selected.size} of {members.length} selected
-            </Text>
-            <Pressable onPress={toggleAll}>
-              <Text className="text-primary-400">
-                {allSelected ? "Unselect all" : "Select all"}
-              </Text>
-            </Pressable>
-          </HStack>
-
-          <ScrollView className="flex-1">
-            <VStack>
-              {members.map((item, index) => {
-                const isMe = item.id === userDetails?.id;
-                const checked = selected.has(item.id);
-
-                return (
-                  <Fragment key={item.id}>
-                    {index > 0 && <ListDivider />}
-                    <Pressable onPress={() => toggle(item.id)}>
-                      <HStack className="items-center gap-x-3 px-4 py-3">
-                        <AppAvatar
-                          name={item.first_name}
-                          uri={item.avatar || ""}
-                          isPlaceholder={item.is_placeholder}
-                        />
-                        <VStack className="flex-1">
-                          <Text className="text-lg">
-                            {item.first_name} {item.last_name}
-                            {isMe && " (You)"}
-                          </Text>
-                          <Text className="text-sm text-secondary-950">
-                            {getUserSubtitle(item)}
-                          </Text>
-                        </VStack>
-                        <Icon
-                          as={checked ? "check-box" : "check-box-outline-blank"}
-                          className={
-                            checked ? "text-primary-400" : "text-secondary-400"
-                          }
-                        />
-                      </HStack>
-                    </Pressable>
-                  </Fragment>
-                );
-              })}
-            </VStack>
-          </ScrollView>
-        </VStack>
-
+    <AppSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      footer={
         <Box className="sticky bottom-0 w-full p-4">
           <HStack className="gap-x-2">
             <FormButton
@@ -157,7 +84,70 @@ export default function SplitMembersSheet({
             />
           </HStack>
         </Box>
-      </ActionsheetContent>
-    </Actionsheet>
+      }
+    >
+      <Pressable onPress={onClose}>
+        <HStack className="p-4 items-center">
+          <Icon as="arrow-back-ios" className="text-secondary-950" />
+          <Text bold className="text-xl">
+            Split among
+          </Text>
+        </HStack>
+      </Pressable>
+      <Text className="text-sm text-secondary-950 px-4 pb-4">
+        Pick who shares this expense. Unchecked members are excluded from the
+        split.
+      </Text>
+
+      <HStack className="items-center px-4 pb-4">
+        <Text className="text-sm text-secondary-950 flex-1">
+          {selected.size} of {members.length} selected
+        </Text>
+        <Pressable onPress={toggleAll}>
+          <Text className="text-primary-400">
+            {allSelected ? "Unselect all" : "Select all"}
+          </Text>
+        </Pressable>
+      </HStack>
+
+      <ScrollView className="flex-1">
+        <VStack>
+          {members.map((item, index) => {
+            const isMe = item.id === userDetails?.id;
+            const checked = selected.has(item.id);
+
+            return (
+              <Fragment key={item.id}>
+                {index > 0 && <ListDivider />}
+                <Pressable onPress={() => toggle(item.id)}>
+                  <HStack className="items-center gap-x-3 px-4 py-3">
+                    <AppAvatar
+                      name={item.first_name}
+                      uri={item.avatar || ""}
+                      isPlaceholder={item.is_placeholder}
+                    />
+                    <VStack className="flex-1">
+                      <Text className="text-lg">
+                        {item.first_name} {item.last_name}
+                        {isMe && " (You)"}
+                      </Text>
+                      <Text className="text-sm text-secondary-950">
+                        {getUserSubtitle(item)}
+                      </Text>
+                    </VStack>
+                    <Icon
+                      as={checked ? "check-box" : "check-box-outline-blank"}
+                      className={
+                        checked ? "text-primary-400" : "text-secondary-400"
+                      }
+                    />
+                  </HStack>
+                </Pressable>
+              </Fragment>
+            );
+          })}
+        </VStack>
+      </ScrollView>
+    </AppSheet>
   );
 }

@@ -1,17 +1,10 @@
+import AppSheet from "@/components/AppSheet";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
-import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent
-} from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
-import { VStack } from "@/components/ui/vstack";
-import { useBanner } from "@/hooks/useBanner";
 import states from "@/states";
 import { Member } from "@/types/groups";
 import { useEffect, useMemo, useState } from "react";
@@ -50,10 +43,9 @@ export default function PayerContributionSheet({
   isLockedGroup = false,
   groupName,
   onClose,
-  onDone
+  onDone,
 }: PayerContributionSheetProps) {
   const { details: currentUser } = states.user();
-  const { sheetTopInset } = useBanner();
   const [draft, setDraft] = useState<Payers>(payers);
 
   // Seed the draft each time the sheet opens: adopt the committed payers if any
@@ -62,7 +54,7 @@ export default function PayerContributionSheet({
   useEffect(() => {
     if (!isOpen) return;
     const hasActive = Object.values(payers).some(
-      (p) => parseFloat(p.amount) > 0
+      (p) => parseFloat(p.amount) > 0,
     );
     const next: Payers = hasActive
       ? payers
@@ -84,57 +76,52 @@ export default function PayerContributionSheet({
     const sum = values.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
     const activeCount = values.filter((p) => parseFloat(p.amount) > 0).length;
     return {
-      valid: total > 0 && activeCount >= 1 && Math.abs(sum - total) < 0.01
+      valid: total > 0 && activeCount >= 1 && Math.abs(sum - total) < 0.01,
     };
   }, [draft, amount]);
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[100]}>
-      <ActionsheetBackdrop />
-      <ActionsheetContent className="p-0">
-        <KeyboardAvoidingSheet>
-          <VStack
-            className="w-full flex-1"
-            style={{ paddingTop: sheetTopInset }}
-          >
-            <Pressable onPress={onClose}>
-              <HStack className="items-center pt-4 px-4">
-                <Icon as="arrow-back-ios" className="text-secondary-950" />
-                <Text bold className="text-xl">
-                  Set Expense Payers
-                </Text>
-              </HStack>
-            </Pressable>
-            <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
-              Enter how much each person contributed to the expense.
-            </Text>
-
-            <PayersContributionStep
-              step={2}
-              showStepper={false}
-              showHeader={false}
-              amount={amount}
-              currency={currency}
-              members={members}
-              payers={draft}
-              onPayerAmountChange={handleAmountChange}
-              isLockedGroup={isLockedGroup}
-              groupName={groupName}
+    <AppSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      fullscreen
+      footer={
+        <Box className="items-center justify-center p-4">
+          <HStack className="gap-x-2">
+            <FormButton
+              className="flex-1"
+              text="Save Changes"
+              disabled={!valid}
+              onPress={() => onDone(draft)}
             />
-          </VStack>
+          </HStack>
+        </Box>
+      }
+    >
+      <Pressable onPress={onClose}>
+        <HStack className="items-center pt-4 px-4">
+          <Icon as="arrow-back-ios" className="text-secondary-950" />
+          <Text bold className="text-xl">
+            Set Expense Payers
+          </Text>
+        </HStack>
+      </Pressable>
+      <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
+        Enter how much each person contributed to the expense.
+      </Text>
 
-          <Box className="items-center justify-center p-4">
-            <HStack className="gap-x-2">
-              <FormButton
-                className="flex-1"
-                text="Save Changes"
-                disabled={!valid}
-                onPress={() => onDone(draft)}
-              />
-            </HStack>
-          </Box>
-        </KeyboardAvoidingSheet>
-      </ActionsheetContent>
-    </Actionsheet>
+      <PayersContributionStep
+        step={2}
+        showStepper={false}
+        showHeader={false}
+        amount={amount}
+        currency={currency}
+        members={members}
+        payers={draft}
+        onPayerAmountChange={handleAmountChange}
+        isLockedGroup={isLockedGroup}
+        groupName={groupName}
+      />
+    </AppSheet>
   );
 }

@@ -1,13 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
 import ConfirmButton from "@/components/ConfirmButton";
 import FormButton from "@/components/FormButton";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
+import AppSheet from "@/components/AppSheet";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
@@ -37,7 +31,7 @@ export default function ReviewRequestPaidSheet({
   payment,
   isPayer = false,
   readOnly = false,
-  showGroupLink = true
+  showGroupLink = true,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -73,7 +67,7 @@ export default function ReviewRequestPaidSheet({
         note: "",
         receipt: null,
         expenseSplitId: payment.id,
-        expenseId: payment.expense_id
+        expenseId: payment.expense_id,
       });
 
       if (!response) {
@@ -84,7 +78,7 @@ export default function ReviewRequestPaidSheet({
       onClose();
       toast({
         description: "The payment request has been settled.",
-        type: "success"
+        type: "success",
       });
     } catch (error) {
       console.error("Error marking as paid:", error);
@@ -92,7 +86,7 @@ export default function ReviewRequestPaidSheet({
         title: "Error",
         description:
           "There was an issue settling this request. Please try again.",
-        type: "error"
+        type: "error",
       });
     } finally {
       setApproving(false);
@@ -116,7 +110,7 @@ export default function ReviewRequestPaidSheet({
       onClose();
       toast({
         description: "The payment request has been rejected.",
-        type: "success"
+        type: "success",
       });
     } catch (error) {
       console.error("Error rejecting payment request:", error);
@@ -124,7 +118,7 @@ export default function ReviewRequestPaidSheet({
         title: "Error",
         description:
           "There was an issue rejecting this request. Please try again.",
-        type: "error"
+        type: "error",
       });
     } finally {
       setRejecting(false);
@@ -148,7 +142,7 @@ export default function ReviewRequestPaidSheet({
       onClose();
       toast({
         description: "Your payment request has been undone.",
-        type: "success"
+        type: "success",
       });
     } catch (error) {
       console.error("Error undoing paid request:", error);
@@ -156,7 +150,7 @@ export default function ReviewRequestPaidSheet({
         title: "Error",
         description:
           "There was an issue undoing your request. Please try again.",
-        type: "error"
+        type: "error",
       });
     } finally {
       setUndoing(false);
@@ -166,7 +160,7 @@ export default function ReviewRequestPaidSheet({
   const handleRevertSettledRequest = async () => {
     if (
       !(await ensureOnline(
-        "Reopening a settlement needs an internet connection."
+        "Reopening a settlement needs an internet connection.",
       ))
     )
       return;
@@ -182,7 +176,7 @@ export default function ReviewRequestPaidSheet({
       onClose();
       toast({
         description: "The settlement has been reopened for review.",
-        type: "success"
+        type: "success",
       });
     } catch (error) {
       console.error("Error reverting settled request:", error);
@@ -190,7 +184,7 @@ export default function ReviewRequestPaidSheet({
         title: "Error",
         description:
           "There was an issue reverting this settlement. Please try again.",
-        type: "error"
+        type: "error",
       });
     } finally {
       setReverting(false);
@@ -201,227 +195,219 @@ export default function ReviewRequestPaidSheet({
   const isPayerMe = payment.payer.id === userDetails?.id;
 
   return (
-    <Fragment>
-      <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full flex-1">
-            <SettlementSheetHeader
-              title="Review Settlement"
-              onClose={onClose}
-              groupId={payment.group_id}
-              showGroupLink={showGroupLink}
-            />
-
-            <ScrollView className="flex-1 px-4">
-              <VStack className="gap-y-6">
-                <VStack className="gap-y-1">
-                  {payment.expense_description && (
-                    <Text
-                      className="text-sm text-secondary-950 uppercase"
-                      bold
-                      numberOfLines={1}
-                    >
-                      {payment.expense_description}
-                    </Text>
-                  )}
-                  <VStack>
-                    <Text className="text-3xl" bold>
-                      {formatAmount(payment.amount || 0, payment.currency)}
-                    </Text>
-                    <Text className="text-secondary-950">
-                      {isPayerMe ? "Amount received" : "Amount paid"}
-                    </Text>
-                  </VStack>
-                </VStack>
-
-                <SettlementBreakdown payment={payment} />
-
-                <Box className="bg-secondary-100 rounded-xl">
-                  <DetailRow
-                    label="Request Date"
-                    value={
-                      <Text>{formatDate(payment.requested_at || "") || "N/A"}</Text>
-                    }
-                  />
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-200" />
-                  </Box>
-                  <DetailRow
-                    label="Mark Settled Date"
-                    value={
-                      <Text>{formatDate(payment.settled_at || "") || "N/A"}</Text>
-                    }
-                  />
-                  {payment.rejected_at && (
-                    <>
-                      <Box className="mx-4">
-                        <Divider className="border-secondary-200" />
-                      </Box>
-                      <DetailRow
-                        label="Rejection Date"
-                        value={<Text>{formatDate(payment.rejected_at)}</Text>}
-                      />
-                    </>
-                  )}
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-200" />
-                  </Box>
-                  <DetailRow
-                    label="Status"
-                    value={
-                      <Box className="self-end">
-                        <StatusBadge size="lg" status={payment.status} />
-                      </Box>
-                    }
-                  />
-                </Box>
-
-                <Box className="bg-secondary-100 rounded-xl">
-                  <DetailRow
-                    label="Paid By"
-                    value={
-                      <HStack className="gap-x-2 items-center">
-                        <AppAvatar
-                          name={payment.member.first_name}
-                          uri={payment.member.avatar!}
-                          size="sm"
-                        />
-                        <Text>
-                          {payment.member.first_name} {payment.member.last_name}
-                          {isMemberMe && " (You)"}
-                        </Text>
-                      </HStack>
-                    }
-                  />
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-200" />
-                  </Box>
-                  <DetailRow
-                    label="Note"
-                    value={<Text>{payment.member_note || "N/A"}</Text>}
-                  />
-                </Box>
-
-                <Box className="bg-secondary-100 rounded-xl">
-                  <DetailRow
-                    label="Paid To"
-                    value={
-                      <HStack className="gap-x-2 items-center">
-                        <AppAvatar
-                          name={payment.payer.first_name}
-                          uri={payment.payer.avatar!}
-                          size="sm"
-                        />
-                        <Text>
-                          {payment.payer.first_name} {payment.payer.last_name}
-                          {isPayerMe && " (You)"}
-                        </Text>
-                      </HStack>
-                    }
-                  />
-                  <Box className="mx-4">
-                    <Divider className="border-secondary-200" />
-                  </Box>
-                  <DetailRow
-                    label="Note"
-                    value={<Text>{payment.payer_note || "N/A"}</Text>}
-                  />
-                </Box>
-
-                {payment.proof_of_payment ? (
-                  <Box className="relative w-full bg-background-100 rounded-xl">
-                    <Image
-                      source={{ uri: payment.proof_of_payment }}
-                      contentFit="contain"
-                      cachePolicy="memory-disk"
-                      className="aspect-square h-auto w-full rounded-xl"
-                    />
-                  </Box>
-                ) : (
-                  <Box className="w-full aspect-square rounded-xl border border-secondary-300 items-center justify-center">
-                    <VStack className="gap-y-2 items-center">
-                      <ReceiptText
-                        size={36}
-                        color={getSecondaryHex(
-                          "text-secondary-950",
-                          colorScheme
-                        )}
-                      />
-                      <Text className="text-sm text-secondary-950">
-                        No proof of payment provided
-                      </Text>
-                    </VStack>
-                  </Box>
-                )}
-              </VStack>
-            </ScrollView>
-          </VStack>
-          <Box className="items-center justify-center p-4">
-            <HStack className="gap-x-2">
-              {!readOnly && (
-                <Fragment>
-                  {isPayer ? (
-                    <Fragment>
-                      {payment.status === "settled" ? (
-                        <FormButton
-                          className="flex-1"
-                          action="negative"
-                          text="Revert"
-                          loading={reverting}
-                          disabled={submitting}
-                          onPress={handleRevertSettledRequest}
-                        />
-                      ) : (
-                        <Fragment>
-                          <ConfirmButton
-                            className="flex-1"
-                            action="negative"
-                            text="Reject"
-                            isDelete
-                            confirmText="Reject"
-                            loading={rejecting}
-                            disabled={submitting}
-                            onConfirm={handleRejectRequest}
-                            confirmTitle="Reject Settlement Request"
-                            confirmDescription="Are you sure you want to reject this settlement request? This will send it back to pending and remove the submitted proof of payment."
-                          />
-                          <FormButton
-                            className="flex-1"
-                            text="Approve"
-                            loading={approving}
-                            disabled={submitting}
-                            onPress={handleMarkAsSettled}
-                          />
-                        </Fragment>
-                      )}
-                    </Fragment>
-                  ) : (
-                    payment.status !== "settled" && (
-                      <ConfirmButton
+    <AppSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      footer={
+        <Box className="items-center justify-center p-4">
+          <HStack className="gap-x-2">
+            {!readOnly && (
+              <Fragment>
+                {isPayer ? (
+                  <Fragment>
+                    {payment.status === "settled" ? (
+                      <FormButton
                         className="flex-1"
                         action="negative"
-                        text="Undo Request"
-                        isDelete
-                        confirmText="Undo Request"
-                        loading={undoing}
+                        text="Revert"
+                        loading={reverting}
                         disabled={submitting}
-                        onConfirm={handleUndoRequest}
-                        confirmTitle="Undo Settlement Request"
-                        confirmDescription="Are you sure you want to undo your settlement request? This will change the status back to pending and remove any notes or receipt you added."
+                        onPress={handleRevertSettledRequest}
                       />
-                    )
-                  )}
-                </Fragment>
-              )}
-            </HStack>
+                    ) : (
+                      <Fragment>
+                        <ConfirmButton
+                          className="flex-1"
+                          action="negative"
+                          text="Reject"
+                          isDelete
+                          confirmText="Reject"
+                          loading={rejecting}
+                          disabled={submitting}
+                          onConfirm={handleRejectRequest}
+                          confirmTitle="Reject Settlement Request"
+                          confirmDescription="Are you sure you want to reject this settlement request? This will send it back to pending and remove the submitted proof of payment."
+                        />
+                        <FormButton
+                          className="flex-1"
+                          text="Approve"
+                          loading={approving}
+                          disabled={submitting}
+                          onPress={handleMarkAsSettled}
+                        />
+                      </Fragment>
+                    )}
+                  </Fragment>
+                ) : (
+                  payment.status !== "settled" && (
+                    <ConfirmButton
+                      className="flex-1"
+                      action="negative"
+                      text="Undo Request"
+                      isDelete
+                      confirmText="Undo Request"
+                      loading={undoing}
+                      disabled={submitting}
+                      onConfirm={handleUndoRequest}
+                      confirmTitle="Undo Settlement Request"
+                      confirmDescription="Are you sure you want to undo your settlement request? This will change the status back to pending and remove any notes or receipt you added."
+                    />
+                  )
+                )}
+              </Fragment>
+            )}
+          </HStack>
+        </Box>
+      }
+    >
+      <SettlementSheetHeader
+        title="Review Settlement"
+        onClose={onClose}
+        groupId={payment.group_id}
+        showGroupLink={showGroupLink}
+      />
+
+      <ScrollView className="flex-1 px-4">
+        <VStack className="gap-y-6">
+          <VStack className="gap-y-1">
+            {payment.expense_description && (
+              <Text
+                className="text-sm text-secondary-950 uppercase"
+                bold
+                numberOfLines={1}
+              >
+                {payment.expense_description}
+              </Text>
+            )}
+            <VStack>
+              <Text className="text-3xl" bold>
+                {formatAmount(payment.amount || 0, payment.currency)}
+              </Text>
+              <Text className="text-secondary-950">
+                {isPayerMe ? "Amount received" : "Amount paid"}
+              </Text>
+            </VStack>
+          </VStack>
+
+          <SettlementBreakdown payment={payment} />
+
+          <Box className="bg-secondary-100 rounded-xl">
+            <DetailRow
+              label="Request Date"
+              value={
+                <Text>{formatDate(payment.requested_at || "") || "N/A"}</Text>
+              }
+            />
+            <Box className="mx-4">
+              <Divider className="border-secondary-200" />
+            </Box>
+            <DetailRow
+              label="Mark Settled Date"
+              value={
+                <Text>{formatDate(payment.settled_at || "") || "N/A"}</Text>
+              }
+            />
+            {payment.rejected_at && (
+              <>
+                <Box className="mx-4">
+                  <Divider className="border-secondary-200" />
+                </Box>
+                <DetailRow
+                  label="Rejection Date"
+                  value={<Text>{formatDate(payment.rejected_at)}</Text>}
+                />
+              </>
+            )}
+            <Box className="mx-4">
+              <Divider className="border-secondary-200" />
+            </Box>
+            <DetailRow
+              label="Status"
+              value={
+                <Box className="self-end">
+                  <StatusBadge size="lg" status={payment.status} />
+                </Box>
+              }
+            />
           </Box>
-        </ActionsheetContent>
-      </Actionsheet>
-    </Fragment>
+
+          <Box className="bg-secondary-100 rounded-xl">
+            <DetailRow
+              label="Paid By"
+              value={
+                <HStack className="gap-x-2 items-center">
+                  <AppAvatar
+                    name={payment.member.first_name}
+                    uri={payment.member.avatar!}
+                    size="sm"
+                  />
+                  <Text>
+                    {payment.member.first_name} {payment.member.last_name}
+                    {isMemberMe && " (You)"}
+                  </Text>
+                </HStack>
+              }
+            />
+            <Box className="mx-4">
+              <Divider className="border-secondary-200" />
+            </Box>
+            <DetailRow
+              label="Note"
+              value={<Text>{payment.member_note || "N/A"}</Text>}
+            />
+          </Box>
+
+          <Box className="bg-secondary-100 rounded-xl">
+            <DetailRow
+              label="Paid To"
+              value={
+                <HStack className="gap-x-2 items-center">
+                  <AppAvatar
+                    name={payment.payer.first_name}
+                    uri={payment.payer.avatar!}
+                    size="sm"
+                  />
+                  <Text>
+                    {payment.payer.first_name} {payment.payer.last_name}
+                    {isPayerMe && " (You)"}
+                  </Text>
+                </HStack>
+              }
+            />
+            <Box className="mx-4">
+              <Divider className="border-secondary-200" />
+            </Box>
+            <DetailRow
+              label="Note"
+              value={<Text>{payment.payer_note || "N/A"}</Text>}
+            />
+          </Box>
+
+          {payment.proof_of_payment ? (
+            <Box className="relative w-full bg-background-100 rounded-xl">
+              <Image
+                source={{ uri: payment.proof_of_payment }}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                className="aspect-square h-auto w-full rounded-xl"
+              />
+            </Box>
+          ) : (
+            <Box className="w-full aspect-square rounded-xl border border-secondary-300 items-center justify-center">
+              <VStack className="gap-y-2 items-center">
+                <ReceiptText
+                  size={36}
+                  color={getSecondaryHex("text-secondary-950", colorScheme)}
+                />
+                <Text className="text-sm text-secondary-950">
+                  No proof of payment provided
+                </Text>
+              </VStack>
+            </Box>
+          )}
+        </VStack>
+      </ScrollView>
+    </AppSheet>
   );
 }
 

@@ -3,18 +3,14 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import SearchInput from "@/components/SearchInput";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent
-} from "@/components/ui/actionsheet";
+import AppSheet from "@/components/AppSheet";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import {
   Checkbox,
   CheckboxGroup,
   CheckboxIcon,
-  CheckboxIndicator
+  CheckboxIndicator,
 } from "@/components/ui/checkbox";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
@@ -27,7 +23,7 @@ import { UserPreview } from "@/types/user";
 import { normalizePhone } from "@/utils/phone";
 import * as Contacts from "expo-contacts";
 import { CheckIcon } from "lucide-react-native";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Linking } from "react-native";
 
 type PickableContact = {
@@ -40,10 +36,7 @@ type PickableContact = {
 
 /** Normalized full name used to match a contact against a known account. */
 const normalizeName = (first?: string | null, last?: string | null) =>
-  `${first ?? ""} ${last ?? ""}`
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
+  `${first ?? ""} ${last ?? ""}`.trim().toLowerCase().replace(/\s+/g, " ");
 
 /** Build a member-shaped object for a picked contact. Its id is a temp marker
  *  (`contact:<phone>`) that resolveContactMembers swaps for a real id on save. */
@@ -56,7 +49,7 @@ export function toContactMember(c: PickableContact): UserPreview {
     phone: c.phone,
     avatar: c.avatar,
     plan: "free",
-    is_placeholder: true
+    is_placeholder: true,
   };
 }
 
@@ -65,7 +58,7 @@ export default function ContactPickerSheet({
   onClose,
   excludePhones = [],
   knownUsers = [],
-  onAdd
+  onAdd,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -108,8 +101,8 @@ export default function ContactPickerSheet({
           Contacts.Fields.LastName,
           Contacts.Fields.Name,
           Contacts.Fields.PhoneNumbers,
-          Contacts.Fields.Image
-        ]
+          Contacts.Fields.Image,
+        ],
       });
 
       // One row per contact, using their first usable phone number. De-dupe by
@@ -126,23 +119,23 @@ export default function ContactPickerSheet({
           first_name: first,
           last_name: c.lastName?.trim() || "",
           phone,
-          avatar: c.imageAvailable && c.image?.uri ? c.image.uri : null
+          avatar: c.imageAvailable && c.image?.uri ? c.image.uri : null,
         });
       }
 
       setContacts(
         Array.from(byPhone.values()).sort((a, b) =>
           `${a.first_name} ${a.last_name}`.localeCompare(
-            `${b.first_name} ${b.last_name}`
-          )
-        )
+            `${b.first_name} ${b.last_name}`,
+          ),
+        ),
       );
     } catch (error) {
       console.error("Failed to load contacts:", error);
       toast({
         title: "Couldn't load contacts",
         description: "Please try again.",
-        type: "error"
+        type: "error",
       });
     } finally {
       setLoading(false);
@@ -155,7 +148,7 @@ export default function ContactPickerSheet({
     return contacts.filter(
       (c) =>
         `${c.first_name} ${c.last_name}`.toLowerCase().includes(q) ||
-        c.phone.includes(q)
+        c.phone.includes(q),
     );
   }, [contacts, searchInput]);
 
@@ -218,7 +211,7 @@ export default function ContactPickerSheet({
           ? "1 contact added"
           : `${added.length} contacts added`,
       description: "Keep adding, or tap Done when you're finished.",
-      type: "success"
+      type: "success",
     });
   };
 
@@ -227,147 +220,144 @@ export default function ContactPickerSheet({
     permission === Contacts.PermissionStatus.UNDETERMINED;
 
   return (
-    <Fragment>
-      <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <VStack className="w-full flex-1">
-            <Pressable onPress={onClose}>
-              <HStack className="p-4 items-start">
-                <Icon as="arrow-back-ios" className="text-secondary-950" />
-                <VStack className="flex-1 gap-y-1">
-                  <Text bold className="text-xl">
-                    Add from Contacts
-                  </Text>
-                  <Text className="text-sm text-secondary-950 w-full">
-                    People you add from contacts can see and claim these shared
-                    expenses when they join Ambagan.
-                  </Text>
-                </VStack>
-              </HStack>
-            </Pressable>
+    <AppSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      footer={
+        permission === Contacts.PermissionStatus.GRANTED && (
+          <Box className="items-center justify-center p-4">
+            <HStack className="gap-x-2">
+              <FormButton
+                className="flex-1"
+                variant="outline"
+                text="Done"
+                onPress={onClose}
+              />
+              <FormButton
+                className="flex-1"
+                text={
+                  selectedCount > 0
+                    ? `Add Selected (${selectedCount})`
+                    : "Add Selected"
+                }
+                disabled={selectedCount === 0}
+                onPress={handleAdd}
+              />
+            </HStack>
+          </Box>
+        )
+      }
+    >
+      <Pressable onPress={onClose}>
+        <HStack className="p-4 items-start">
+          <Icon as="arrow-back-ios" className="text-secondary-950" />
+          <VStack className="flex-1 gap-y-1">
+            <Text bold className="text-xl">
+              Add from Contacts
+            </Text>
+            <Text className="text-sm text-secondary-950 w-full">
+              People you add from contacts can see and claim these shared
+              expenses when they join Ambagan.
+            </Text>
+          </VStack>
+        </HStack>
+      </Pressable>
 
-            {permission === Contacts.PermissionStatus.GRANTED ? (
-              <VStack className="flex-1 gap-y-2">
-                <Box className="px-4">
-                  <SearchInput
-                    placeholder="Search contacts"
-                    value={searchInput}
-                    onChangeText={setSearchInput}
-                  />
-                </Box>
-                <Box className="px-4">
-                  <Pressable onPress={() => Linking.openSettings()}>
-                    <Text className="text-sm text-primary-400">
-                      Missing someone? Manage contact access in Settings
-                    </Text>
-                  </Pressable>
-                </Box>
-                <CheckboxGroup
-                  className="flex-1"
-                  value={selectedKeys}
-                  onChange={handleChange}
-                >
-                  <FlatList
-                    className="flex-1"
-                    data={filtered}
-                    keyExtractor={(item) => item.key}
-                    renderItem={({ item }) => {
-                      const linked = linkedUserFor(item);
-                      return (
-                        <Checkbox
-                          size="lg"
-                          value={item.key}
-                          aria-label={`Select ${item.first_name}`}
-                          className="p-4"
-                        >
-                          <HStack className="gap-x-3 items-center flex-1">
-                            <CheckboxIndicator>
-                              <CheckboxIcon as={CheckIcon} />
-                            </CheckboxIndicator>
-                            <AppAvatar
-                              name={item.first_name}
-                              uri={item.avatar || undefined}
-                            />
-                            <VStack className="flex-1">
-                              <HStack className="items-center gap-x-2">
-                                <Text className="text-lg">
-                                  {item.first_name} {item.last_name}
-                                </Text>
-                                {linked && (
-                                  <Badge
-                                    size="sm"
-                                    action="success"
-                                    variant="outline"
-                                    className="rounded-full px-2"
-                                  >
-                                    <BadgeText className="text-xs normal-case">
-                                      On Ambagan
-                                    </BadgeText>
-                                  </Badge>
-                                )}
-                              </HStack>
-                              <Text className="text-sm text-secondary-950">
-                                {linked
-                                  ? `Links to ${linked.first_name} ${linked.last_name}'s account`
-                                  : item.phone}
-                              </Text>
-                            </VStack>
-                          </HStack>
-                        </Checkbox>
-                      );
-                    }}
-                    ItemSeparatorComponent={ListDivider}
-                    ListEmptyComponent={() => (
-                      <VStack className="p-4 items-center">
+      {permission === Contacts.PermissionStatus.GRANTED ? (
+        <VStack className="flex-1 gap-y-2">
+          <Box className="px-4">
+            <SearchInput
+              placeholder="Search contacts"
+              value={searchInput}
+              onChangeText={setSearchInput}
+            />
+          </Box>
+          <Box className="px-4">
+            <Pressable onPress={() => Linking.openSettings()}>
+              <Text className="text-sm text-primary-400">
+                Missing someone? Manage contact access in Settings
+              </Text>
+            </Pressable>
+          </Box>
+          <CheckboxGroup
+            className="flex-1"
+            value={selectedKeys}
+            onChange={handleChange}
+          >
+            <FlatList
+              className="flex-1"
+              data={filtered}
+              keyExtractor={(item) => item.key}
+              renderItem={({ item }) => {
+                const linked = linkedUserFor(item);
+                return (
+                  <Checkbox
+                    size="lg"
+                    value={item.key}
+                    aria-label={`Select ${item.first_name}`}
+                    className="p-4"
+                  >
+                    <HStack className="gap-x-3 items-center flex-1">
+                      <CheckboxIndicator>
+                        <CheckboxIcon as={CheckIcon} />
+                      </CheckboxIndicator>
+                      <AppAvatar
+                        name={item.first_name}
+                        uri={item.avatar || undefined}
+                      />
+                      <VStack className="flex-1">
+                        <HStack className="items-center gap-x-2">
+                          <Text className="text-lg">
+                            {item.first_name} {item.last_name}
+                          </Text>
+                          {linked && (
+                            <Badge
+                              size="sm"
+                              action="success"
+                              variant="outline"
+                              className="rounded-full px-2"
+                            >
+                              <BadgeText className="text-xs normal-case">
+                                On Ambagan
+                              </BadgeText>
+                            </Badge>
+                          )}
+                        </HStack>
                         <Text className="text-sm text-secondary-950">
-                          {loading ? "Loading contacts…" : "No contacts found."}
+                          {linked
+                            ? `Links to ${linked.first_name} ${linked.last_name}'s account`
+                            : item.phone}
                         </Text>
                       </VStack>
-                    )}
-                    ListFooterComponent={() => <Box className="h-4" />}
-                  />
-                </CheckboxGroup>
-              </VStack>
-            ) : (
-              <VStack className="flex-1 items-center justify-center gap-y-4 px-8">
-                <Icon as="contacts" size={48} className="text-secondary-950" />
-                <Text className="text-center text-secondary-950">
-                  Ambagan needs access to your contacts to add people to your
-                  groups. {denied ? "Enable it in Settings to continue." : ""}
-                </Text>
-                <FormButton
-                  text="Open Settings"
-                  onPress={() => Linking.openSettings()}
-                />
-              </VStack>
-            )}
-          </VStack>
-
-          {permission === Contacts.PermissionStatus.GRANTED && (
-            <Box className="items-center justify-center p-4">
-              <HStack className="gap-x-2">
-                <FormButton
-                  className="flex-1"
-                  variant="outline"
-                  text="Done"
-                  onPress={onClose}
-                />
-                <FormButton
-                  className="flex-1"
-                  text={
-                    selectedCount > 0
-                      ? `Add Selected (${selectedCount})`
-                      : "Add Selected"
-                  }
-                  disabled={selectedCount === 0}
-                  onPress={handleAdd}
-                />
-              </HStack>
-            </Box>
-          )}
-        </ActionsheetContent>
-      </Actionsheet>
-    </Fragment>
+                    </HStack>
+                  </Checkbox>
+                );
+              }}
+              ItemSeparatorComponent={ListDivider}
+              ListEmptyComponent={() => (
+                <VStack className="p-4 items-center">
+                  <Text className="text-sm text-secondary-950">
+                    {loading ? "Loading contacts…" : "No contacts found."}
+                  </Text>
+                </VStack>
+              )}
+              ListFooterComponent={() => <Box className="h-4" />}
+            />
+          </CheckboxGroup>
+        </VStack>
+      ) : (
+        <VStack className="flex-1 items-center justify-center gap-y-4 px-8">
+          <Icon as="contacts" size={48} className="text-secondary-950" />
+          <Text className="text-center text-secondary-950">
+            Ambagan needs access to your contacts to add people to your groups.{" "}
+            {denied ? "Enable it in Settings to continue." : ""}
+          </Text>
+          <FormButton
+            text="Open Settings"
+            onPress={() => Linking.openSettings()}
+          />
+        </VStack>
+      )}
+    </AppSheet>
   );
 }

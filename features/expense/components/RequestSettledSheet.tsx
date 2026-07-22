@@ -1,19 +1,12 @@
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
-import KeyboardAvoidingSheet from "@/components/KeyboardAvoidingSheet";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
+import AppSheet from "@/components/AppSheet";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
   FormControlLabel,
-  FormControlLabelText
+  FormControlLabelText,
 } from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -37,7 +30,7 @@ export default function RequestSettledSheet({
   onClose,
   payment,
   onRefetch,
-  showGroupLink = true
+  showGroupLink = true,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -48,7 +41,7 @@ export default function RequestSettledSheet({
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
     note: "Paid with thanks! 😊",
-    receipt: null as ImagePickerSuccessResult | null
+    receipt: null as ImagePickerSuccessResult | null,
   });
 
   const toast = useAppToast();
@@ -61,7 +54,7 @@ export default function RequestSettledSheet({
   const handleSubmit = async () => {
     if (
       !(await ensureOnline(
-        "Requesting a settlement needs an internet connection."
+        "Requesting a settlement needs an internet connection.",
       ))
     )
       return;
@@ -71,7 +64,7 @@ export default function RequestSettledSheet({
       const response = await services.expense.createSettledRequest({
         note: values.note,
         receipt: values.receipt,
-        expenseSplitId: payment.id
+        expenseSplitId: payment.id,
       });
 
       if (!response) {
@@ -82,7 +75,7 @@ export default function RequestSettledSheet({
       toast({
         title: "Request Sent",
         description: "Your request to mark this payment as paid has been sent.",
-        type: "success"
+        type: "success",
       });
     } catch (error) {
       console.error("Error creating paid request:", error);
@@ -90,7 +83,7 @@ export default function RequestSettledSheet({
         title: "Error",
         description:
           "There was an issue sending your request. Please try again.",
-        type: "error"
+        type: "error",
       });
     } finally {
       setSubmitting(false);
@@ -99,112 +92,106 @@ export default function RequestSettledSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
-      <ActionsheetBackdrop />
-      <ActionsheetContent className="p-0">
-        <KeyboardAvoidingSheet>
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full flex-1">
-            <SettlementSheetHeader
-              title="Request as Settled"
-              onClose={onClose}
-              groupId={payment.group_id}
-              showGroupLink={showGroupLink}
+    <AppSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      keyboardAvoiding
+      footer={
+        <Box className="items-center justify-center p-4">
+          <HStack className="gap-x-2">
+            <FormButton
+              className="flex-1"
+              text="Request Settled"
+              loading={submitting}
+              onPress={handleSubmit}
             />
-            <ScrollView className="flex-1 px-4">
-              <VStack className="gap-y-6">
-                <VStack className="gap-y-1">
-                  <Text
-                    className="text-sm text-secondary-950 uppercase"
-                    bold
-                    numberOfLines={1}
-                  >
-                    {payment.expense_description}
-                  </Text>
-                  <VStack>
-                    <Text className="text-3xl" bold>
-                      {formatAmount(payment.amount || 0, payment.currency)}
-                    </Text>
-                    <Text className="text-secondary-950">You pay</Text>
-                  </VStack>
-                </VStack>
-
-                <SettlementBreakdown payment={payment} />
-
-                {payment.rejected_at && (
-                  <VStack className="bg-secondary-100 rounded-xl p-4 gap-y-1">
-                    <Text bold className="text-error-500">
-                      Previously rejected
-                    </Text>
-                    <Text className="text-sm text-secondary-950">
-                      Your last request was rejected on{" "}
-                      {formatDate(payment.rejected_at)}.
-                    </Text>
-                  </VStack>
-                )}
-
-                <FormControl size="md">
-                  <VStack className="gap-y-1">
-                    <FormControlLabel>
-                      <FormControlLabelText>Paid to</FormControlLabelText>
-                    </FormControlLabel>
-                    <HStack className="gap-x-2 items-center">
-                      <AppAvatar
-                        name={payment.payer.first_name}
-                        uri={payment.payer.avatar!}
-                        size="md"
-                      />
-                      <VStack>
-                        <HStack className="gap-x-1 items-center">
-                          <Text className="text-lg">
-                            {payment.payer.first_name} {payment.payer.last_name}
-                          </Text>
-                        </HStack>
-                        <Text className="text-sm text-secondary-950">
-                          {getUserSubtitle(payment.payer)}
-                        </Text>
-                      </VStack>
-                    </HStack>
-                  </VStack>
-                </FormControl>
-
-                <FormTextarea
-                  label="Note (optional)"
-                  placeholder="Enter note (e.g., Paid with thanks! 😊)"
-                  value={values.note}
-                  onChangeText={(text) => setValues({ ...values, note: text })}
-                  autoCapitalize="none"
-                />
-
-                <VStack className="gap-y-1">
-                  <UploadImage
-                    title="Upload Proof of Payment (optional)"
-                    onSelect={(result) =>
-                      setValues({ ...values, receipt: result })
-                    }
-                  />
-                  <Text className="text-secondary-950 text-sm">
-                    Proof could be a photo of receipt, screenshot of online
-                    payment, or any document that shows the expense details.
-                  </Text>
-                </VStack>
-              </VStack>
-            </ScrollView>
+          </HStack>
+        </Box>
+      }
+    >
+      <SettlementSheetHeader
+        title="Request as Settled"
+        onClose={onClose}
+        groupId={payment.group_id}
+        showGroupLink={showGroupLink}
+      />
+      <ScrollView className="flex-1 px-4">
+        <VStack className="gap-y-6">
+          <VStack className="gap-y-1">
+            <Text
+              className="text-sm text-secondary-950 uppercase"
+              bold
+              numberOfLines={1}
+            >
+              {payment.expense_description}
+            </Text>
+            <VStack>
+              <Text className="text-3xl" bold>
+                {formatAmount(payment.amount || 0, payment.currency)}
+              </Text>
+              <Text className="text-secondary-950">You pay</Text>
+            </VStack>
           </VStack>
-          <Box className="items-center justify-center p-4">
-            <HStack className="gap-x-2">
-              <FormButton
-                className="flex-1"
-                text="Request Settled"
-                loading={submitting}
-                onPress={handleSubmit}
-              />
-            </HStack>
-          </Box>
-        </KeyboardAvoidingSheet>
-      </ActionsheetContent>
-    </Actionsheet>
+
+          <SettlementBreakdown payment={payment} />
+
+          {payment.rejected_at && (
+            <VStack className="bg-secondary-100 rounded-xl p-4 gap-y-1">
+              <Text bold className="text-error-500">
+                Previously rejected
+              </Text>
+              <Text className="text-sm text-secondary-950">
+                Your last request was rejected on{" "}
+                {formatDate(payment.rejected_at)}.
+              </Text>
+            </VStack>
+          )}
+
+          <FormControl size="md">
+            <VStack className="gap-y-1">
+              <FormControlLabel>
+                <FormControlLabelText>Paid to</FormControlLabelText>
+              </FormControlLabel>
+              <HStack className="gap-x-2 items-center">
+                <AppAvatar
+                  name={payment.payer.first_name}
+                  uri={payment.payer.avatar!}
+                  size="md"
+                />
+                <VStack>
+                  <HStack className="gap-x-1 items-center">
+                    <Text className="text-lg">
+                      {payment.payer.first_name} {payment.payer.last_name}
+                    </Text>
+                  </HStack>
+                  <Text className="text-sm text-secondary-950">
+                    {getUserSubtitle(payment.payer)}
+                  </Text>
+                </VStack>
+              </HStack>
+            </VStack>
+          </FormControl>
+
+          <FormTextarea
+            label="Note (optional)"
+            placeholder="Enter note (e.g., Paid with thanks! 😊)"
+            value={values.note}
+            onChangeText={(text) => setValues({ ...values, note: text })}
+            autoCapitalize="none"
+          />
+
+          <VStack className="gap-y-1">
+            <UploadImage
+              title="Upload Proof of Payment (optional)"
+              onSelect={(result) => setValues({ ...values, receipt: result })}
+            />
+            <Text className="text-secondary-950 text-sm">
+              Proof could be a photo of receipt, screenshot of online payment,
+              or any document that shows the expense details.
+            </Text>
+          </VStack>
+        </VStack>
+      </ScrollView>
+    </AppSheet>
   );
 }

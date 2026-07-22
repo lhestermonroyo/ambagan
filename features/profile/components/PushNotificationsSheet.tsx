@@ -2,13 +2,7 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import { useNetwork } from "@/hooks/useNetwork";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
+import AppSheet from "@/components/AppSheet";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
@@ -23,11 +17,11 @@ import { UserPreferences } from "@/types/user";
 import {
   getErrorHex,
   getPrimaryHex,
-  getSecondaryHex
+  getSecondaryHex,
 } from "@/utils/getColorHex";
 import {
   getReminderEnabled,
-  setReminderEnabled
+  setReminderEnabled,
 } from "@/utils/reminderPreference";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
@@ -55,24 +49,24 @@ const SECTIONS: { title: string; data: NotifItem[] }[] = [
       {
         key: "notif_settlement_request",
         label: "Settlement Request",
-        description: "When someone requests a settlement from you"
+        description: "When someone requests a settlement from you",
       },
       {
         key: "notif_settlement_approved",
         label: "Settlement Approved",
-        description: "When your settlement request is approved"
+        description: "When your settlement request is approved",
       },
       {
         key: "notif_settlement_rejected",
         label: "Settlement Rejected",
-        description: "When your settlement request is rejected"
+        description: "When your settlement request is rejected",
       },
       {
         key: "notif_settlement_completed",
         label: "Settlement Completed",
-        description: "When a settlement is marked as completed"
-      }
-    ]
+        description: "When a settlement is marked as completed",
+      },
+    ],
   },
   {
     title: "Expenses",
@@ -80,9 +74,9 @@ const SECTIONS: { title: string; data: NotifItem[] }[] = [
       {
         key: "notif_expense_inclusion",
         label: "Expense Inclusion",
-        description: "When you're added to a new expense"
-      }
-    ]
+        description: "When you're added to a new expense",
+      },
+    ],
   },
   {
     title: "Groups",
@@ -90,20 +84,20 @@ const SECTIONS: { title: string; data: NotifItem[] }[] = [
       {
         key: "notif_group_join",
         label: "Member Joined",
-        description: "When someone joins your group"
+        description: "When someone joins your group",
       },
       {
         key: "notif_group_leave",
         label: "Member Left",
-        description: "When someone leaves your group"
-      }
-    ]
-  }
+        description: "When someone leaves your group",
+      },
+    ],
+  },
 ];
 
 export default function PushNotificationsSheet({
   isOpen,
-  onClose
+  onClose,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -111,7 +105,7 @@ export default function PushNotificationsSheet({
   const {
     details: userDetails,
     preferences,
-    updatePreferences
+    updatePreferences,
   } = states.user();
 
   const colorScheme = useColorScheme() ?? "light";
@@ -129,7 +123,7 @@ export default function PushNotificationsSheet({
 
   const switchColors = {
     false: getSecondaryHex("text-secondary-300", colorScheme),
-    true: getPrimaryHex("text-primary-400", colorScheme)
+    true: getPrimaryHex("text-primary-400", colorScheme),
   };
 
   const handleToggle = async (key: NotifKey, value: boolean) => {
@@ -141,7 +135,7 @@ export default function PushNotificationsSheet({
     await setReminderEnabled(value);
     if (!value) {
       await Notifications.cancelScheduledNotificationAsync(
-        "daily-settlement-reminder"
+        "daily-settlement-reminder",
       );
     }
   };
@@ -152,7 +146,7 @@ export default function PushNotificationsSheet({
     if (status === "granted" && userDetails?.id) {
       try {
         const { data: token } = await Notifications.getExpoPushTokenAsync({
-          projectId: Constants.expoConfig?.extra?.eas?.projectId
+          projectId: Constants.expoConfig?.extra?.eas?.projectId,
         });
         await services.pushToken.registerPushToken(userDetails.id, token);
       } catch (error) {
@@ -162,139 +156,129 @@ export default function PushNotificationsSheet({
   };
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
-      <ActionsheetBackdrop />
-      <ActionsheetContent className="p-0">
-        <ActionsheetDragIndicatorWrapper>
-          <ActionsheetDragIndicator />
-        </ActionsheetDragIndicatorWrapper>
-        {userDetails && preferences ? (
-          <VStack className="w-full flex-1">
-            <Pressable onPress={onClose}>
-              <HStack className="p-4 items-center">
-                <Icon as="arrow-back-ios" className="text-secondary-950" />
-                <Text bold className="text-xl">
-                  Push Notifications
-                </Text>
-              </HStack>
-            </Pressable>
-            {!isOnline && (
-              <Box className="px-4 pb-2">
-                <Text className="text-sm text-secondary-950">
-                  You're offline — notification preferences can't be changed
-                  until you reconnect.
-                </Text>
-              </Box>
-            )}
+    <AppSheet isOpen={isOpen} onClose={onClose}>
+      {userDetails && preferences ? (
+        <>
+          <Pressable onPress={onClose}>
+            <HStack className="p-4 items-center">
+              <Icon as="arrow-back-ios" className="text-secondary-950" />
+              <Text bold className="text-xl">
+                Push Notifications
+              </Text>
+            </HStack>
+          </Pressable>
+          {!isOnline && (
+            <Box className="px-4 pb-2">
+              <Text className="text-sm text-secondary-950">
+                You're offline — notification preferences can't be changed until
+                you reconnect.
+              </Text>
+            </Box>
+          )}
 
-            <ScrollView className="flex-1 w-full">
-              {permissionStatus === "undetermined" && (
-                <VStack className="mx-4 p-4 bg-primary-50 rounded-xl gap-y-4">
-                  <HStack className="gap-x-2 items-start">
-                    <AlertCircle
-                      color={getPrimaryHex("text-primary-500", colorScheme)}
-                    />
-                    <VStack className="flex-1 gap-y-2">
-                      <Text bold className="text-lg text-primary-600">
-                        Notifications not enabled
-                      </Text>
-                      <Text className="text-primary-500">
-                        You haven't enabled push notifications yet. Enable them
-                        to get real-time updates on settlements, expenses, and
-                        group activity.
-                      </Text>
-                    </VStack>
-                  </HStack>
-                  <FormButton
-                    text="Enable Notifications"
-                    onPress={handleEnableNotifications}
+          <ScrollView className="flex-1 w-full">
+            {permissionStatus === "undetermined" && (
+              <VStack className="mx-4 p-4 bg-primary-50 rounded-xl gap-y-4">
+                <HStack className="gap-x-2 items-start">
+                  <AlertCircle
+                    color={getPrimaryHex("text-primary-500", colorScheme)}
                   />
-                </VStack>
-              )}
-
-              {permissionStatus === "denied" && (
-                <VStack className="mx-4 p-4 bg-error-50 rounded-xl gap-y-4">
-                  <HStack className="gap-x-2 items-start">
-                    <BellOff
-                      color={getErrorHex("text-error-500", colorScheme)}
-                    />
-                    <VStack className="flex-1 gap-y-2">
-                      <Text bold className="text-lg text-error-600">
-                        Notifications are disabled
-                      </Text>
-                      <Text className="text-error-500">
-                        Push notifications are turned off in your device
-                        settings. Go to Settings to allow us to send you
-                        notifications.
-                      </Text>
-                    </VStack>
-                  </HStack>
-                  <FormButton
-                    text="Open Settings"
-                    onPress={() => Linking.openSettings()}
-                  />
-                </VStack>
-              )}
-
-              {SECTIONS.map((section) => (
-                <VStack key={section.title}>
-                  <Box className="px-4 pt-5 pb-2">
-                    <Text bold className="text-secondary-950 uppercase text-sm">
-                      {section.title}
+                  <VStack className="flex-1 gap-y-2">
+                    <Text bold className="text-lg text-primary-600">
+                      Notifications not enabled
                     </Text>
-                  </Box>
-                  <FlatList
-                    data={section.data}
-                    keyExtractor={(item) => item.key}
-                    scrollEnabled={false}
-                    renderItem={({ item }) => (
-                      <HStack className="items-center justify-between px-4 py-3">
-                        <VStack className="flex-1 pr-4">
-                          <Text className="text-lg">{item.label}</Text>
-                          <Text className="text-sm text-secondary-950">
-                            {item.description}
-                          </Text>
-                        </VStack>
-                        <Switch
-                          size="sm"
-                          value={preferences[item.key]}
-                          isDisabled={!isOnline}
-                          onValueChange={(val) => handleToggle(item.key, val)}
-                          trackColor={switchColors}
-                        />
-                      </HStack>
-                    )}
-                    ItemSeparatorComponent={ListDivider}
-                  />
-                </VStack>
-              ))}
-
-              <VStack>
-                <Box className="px-4 pt-5 pb-2">
-                  <Text bold className="text-secondary-950 uppercase text-sm">
-                    Reminders
-                  </Text>
-                </Box>
-                <HStack className="items-center justify-between px-4 py-3">
-                  <VStack className="flex-1 pr-4">
-                    <Text className="text-lg">Daily Unpaid Reminder</Text>
-                    <Text className="text-sm text-secondary-950">
-                      Get a daily nudge at 9 AM when you have unpaid
-                      settlements
+                    <Text className="text-primary-500">
+                      You haven't enabled push notifications yet. Enable them to
+                      get real-time updates on settlements, expenses, and group
+                      activity.
                     </Text>
                   </VStack>
-                  <Switch
-                    size="sm"
-                    value={reminderEnabled}
-                    onValueChange={handleReminderToggle}
-                    trackColor={switchColors}
-                  />
                 </HStack>
+                <FormButton
+                  text="Enable Notifications"
+                  onPress={handleEnableNotifications}
+                />
               </VStack>
-            </ScrollView>
-          </VStack>
-        ) : null}
-      </ActionsheetContent>
-    </Actionsheet>
+            )}
+
+            {permissionStatus === "denied" && (
+              <VStack className="mx-4 p-4 bg-error-50 rounded-xl gap-y-4">
+                <HStack className="gap-x-2 items-start">
+                  <BellOff color={getErrorHex("text-error-500", colorScheme)} />
+                  <VStack className="flex-1 gap-y-2">
+                    <Text bold className="text-lg text-error-600">
+                      Notifications are disabled
+                    </Text>
+                    <Text className="text-error-500">
+                      Push notifications are turned off in your device settings.
+                      Go to Settings to allow us to send you notifications.
+                    </Text>
+                  </VStack>
+                </HStack>
+                <FormButton
+                  text="Open Settings"
+                  onPress={() => Linking.openSettings()}
+                />
+              </VStack>
+            )}
+
+            {SECTIONS.map((section) => (
+              <VStack key={section.title}>
+                <Box className="px-4 pt-5 pb-2">
+                  <Text bold className="text-secondary-950 uppercase text-sm">
+                    {section.title}
+                  </Text>
+                </Box>
+                <FlatList
+                  data={section.data}
+                  keyExtractor={(item) => item.key}
+                  scrollEnabled={false}
+                  renderItem={({ item }) => (
+                    <HStack className="items-center justify-between px-4 py-3">
+                      <VStack className="flex-1 pr-4">
+                        <Text className="text-lg">{item.label}</Text>
+                        <Text className="text-sm text-secondary-950">
+                          {item.description}
+                        </Text>
+                      </VStack>
+                      <Switch
+                        size="sm"
+                        value={preferences[item.key]}
+                        isDisabled={!isOnline}
+                        onValueChange={(val) => handleToggle(item.key, val)}
+                        trackColor={switchColors}
+                      />
+                    </HStack>
+                  )}
+                  ItemSeparatorComponent={ListDivider}
+                />
+              </VStack>
+            ))}
+
+            <VStack>
+              <Box className="px-4 pt-5 pb-2">
+                <Text bold className="text-secondary-950 uppercase text-sm">
+                  Reminders
+                </Text>
+              </Box>
+              <HStack className="items-center justify-between px-4 py-3">
+                <VStack className="flex-1 pr-4">
+                  <Text className="text-lg">Daily Unpaid Reminder</Text>
+                  <Text className="text-sm text-secondary-950">
+                    Get a daily nudge at 9 AM when you have unpaid settlements
+                  </Text>
+                </VStack>
+                <Switch
+                  size="sm"
+                  value={reminderEnabled}
+                  onValueChange={handleReminderToggle}
+                  trackColor={switchColors}
+                />
+              </HStack>
+            </VStack>
+          </ScrollView>
+        </>
+      ) : null}
+    </AppSheet>
   );
 }

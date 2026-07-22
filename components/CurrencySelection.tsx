@@ -6,14 +6,8 @@ import { ChevronDown, CircleIcon, Lock } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 import PressableListItem from "./PressableListItem";
+import AppSheet from "./AppSheet";
 import { Pressable } from "./ui/pressable";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "./ui/actionsheet";
 import { FlatList } from "./ui/flat-list";
 import { HStack } from "./ui/hstack";
 import { Radio, RadioGroup, RadioIcon, RadioIndicator } from "./ui/radio";
@@ -27,7 +21,7 @@ export const CurrencySelectionSheet = ({
   onCurrencyChange,
   title = "Select Currency",
   // Disables selection (e.g. offline, when the change can't be saved to the DB).
-  disabled = false
+  disabled = false,
 }: {
   isOpen: boolean;
   currency: string;
@@ -37,55 +31,50 @@ export const CurrencySelectionSheet = ({
   disabled?: boolean;
 }) => {
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
-      <ActionsheetBackdrop />
-      <ActionsheetContent className="p-0">
-        <ActionsheetDragIndicatorWrapper>
-          <ActionsheetDragIndicator />
-        </ActionsheetDragIndicatorWrapper>
-
-        <VStack className="w-full flex-1 gap-y-4">
-          <Pressable onPress={onClose}>
-            <HStack className="p-4 items-center">
-              <Icon as="arrow-back-ios" className="text-secondary-950" />
-              <Text bold className="text-xl">
-                {title}
-              </Text>
-            </HStack>
-          </Pressable>
-          {disabled && (
-            <VStack className="px-4">
-              <Text className="text-sm text-secondary-950">
-                You're offline — changing your default currency needs an
-                internet connection.
-              </Text>
-            </VStack>
-          )}
-          <RadioGroup
-            className="flex-1"
-            value={currency}
-            isDisabled={disabled}
-            onChange={(value) => {
-              onCurrencyChange(value);
-              onClose();
-            }}
-          >
-            <FlatList
-              data={currencies}
-              keyExtractor={(item) => item.value}
-              renderItem={({ item }) => (
-                <CurrencyItem
-                  title={item.label}
-                  subtitle={item.subtitle}
-                  value={item.value}
-                />
-              )}
-              ItemSeparatorComponent={ListDivider}
-            />
-          </RadioGroup>
+    <AppSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      contentClassName="w-full flex-1 gap-y-4"
+    >
+      <Pressable onPress={onClose}>
+        <HStack className="p-4 items-center">
+          <Icon as="arrow-back-ios" className="text-secondary-950" />
+          <Text bold className="text-xl">
+            {title}
+          </Text>
+        </HStack>
+      </Pressable>
+      {disabled && (
+        <VStack className="px-4">
+          <Text className="text-sm text-secondary-950">
+            You're offline — changing your default currency needs an internet
+            connection.
+          </Text>
         </VStack>
-      </ActionsheetContent>
-    </Actionsheet>
+      )}
+      <RadioGroup
+        className="flex-1"
+        value={currency}
+        isDisabled={disabled}
+        onChange={(value) => {
+          onCurrencyChange(value);
+          onClose();
+        }}
+      >
+        <FlatList
+          data={currencies}
+          keyExtractor={(item) => item.value}
+          renderItem={({ item }) => (
+            <CurrencyItem
+              title={item.label}
+              subtitle={item.subtitle}
+              value={item.value}
+            />
+          )}
+          ItemSeparatorComponent={ListDivider}
+        />
+      </RadioGroup>
+    </AppSheet>
   );
 };
 
@@ -93,7 +82,7 @@ const CurrencySelection = ({
   currency,
   onCurrencyChange,
   locked = false,
-  onLockedPress
+  onLockedPress,
 }: {
   currency: string;
   onCurrencyChange: (currency: string) => void;
@@ -143,7 +132,7 @@ const CurrencySelection = ({
 function CurrencyItem({
   title,
   subtitle,
-  value
+  value,
 }: {
   title: string;
   subtitle: string;

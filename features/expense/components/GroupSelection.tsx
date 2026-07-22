@@ -3,13 +3,7 @@ import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
+import AppSheet from "@/components/AppSheet";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
@@ -19,7 +13,7 @@ import {
   Radio,
   RadioGroup,
   RadioIcon,
-  RadioIndicator
+  RadioIndicator,
 } from "@/components/ui/radio";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -37,7 +31,7 @@ import { useColorScheme } from "react-native";
 export default function GroupSelection({
   group,
   onChangeGroup,
-  isLocked = false
+  isLocked = false,
 }: {
   group: Group | null;
   onChangeGroup: (group: Group) => void;
@@ -120,7 +114,7 @@ export function GroupSelectionActionSheet({
   isOpen,
   onClose,
   currentGroup,
-  onChangeGroup
+  onChangeGroup,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -135,48 +129,10 @@ export function GroupSelectionActionSheet({
   const selectableGroups = groupList.filter(hasEnoughMembersForExpense);
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
-      <ActionsheetBackdrop />
-      <ActionsheetContent className="p-0">
-        <ActionsheetDragIndicatorWrapper>
-          <ActionsheetDragIndicator />
-        </ActionsheetDragIndicatorWrapper>
-        <VStack className="w-full flex-1">
-          <Pressable onPress={onClose}>
-            <HStack className="items-center pt-4 px-4">
-              <Icon as="arrow-back-ios" className="text-secondary-950" />
-              <Text bold className="text-xl">
-                Select Group
-              </Text>
-            </HStack>
-          </Pressable>
-          <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
-            Select the group for this expense.
-          </Text>
-          <RadioGroup
-            className="flex-1 px-4"
-            value={selectedGroup.toString()}
-            onChange={(value) => {
-              setSelectedGroup(value);
-            }}
-          >
-            <FlatList
-              className="flex-1"
-              data={selectableGroups}
-              renderItem={({ item }) => (
-                <GroupItem
-                  group={item}
-                  onPress={() => setSelectedGroup(item.id.toString())}
-                />
-              )}
-              keyExtractor={(item) => item.id.toString()}
-              ItemSeparatorComponent={() => (
-                <Divider className="border-secondary-200" />
-              )}
-              ListEmptyComponent={() => <EmptyList type={EmptyType.GROUP} />}
-            />
-          </RadioGroup>
-        </VStack>
+    <AppSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      footer={
         <Box className="sticky bottom-0 w-full p-4">
           <HStack className="gap-x-2">
             <FormButton
@@ -185,7 +141,7 @@ export function GroupSelectionActionSheet({
               disabled={!selectedGroup}
               onPress={() => {
                 const newGroup = groupList.find(
-                  (g) => g.id.toString() === selectedGroup
+                  (g) => g.id.toString() === selectedGroup,
                 );
                 if (newGroup) onChangeGroup(newGroup);
                 onClose();
@@ -193,8 +149,43 @@ export function GroupSelectionActionSheet({
             />
           </HStack>
         </Box>
-      </ActionsheetContent>
-    </Actionsheet>
+      }
+    >
+      <Pressable onPress={onClose}>
+        <HStack className="items-center pt-4 px-4">
+          <Icon as="arrow-back-ios" className="text-secondary-950" />
+          <Text bold className="text-xl">
+            Select Group
+          </Text>
+        </HStack>
+      </Pressable>
+      <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
+        Select the group for this expense.
+      </Text>
+      <RadioGroup
+        className="flex-1 px-4"
+        value={selectedGroup.toString()}
+        onChange={(value) => {
+          setSelectedGroup(value);
+        }}
+      >
+        <FlatList
+          className="flex-1"
+          data={selectableGroups}
+          renderItem={({ item }) => (
+            <GroupItem
+              group={item}
+              onPress={() => setSelectedGroup(item.id.toString())}
+            />
+          )}
+          keyExtractor={(item) => item.id.toString()}
+          ItemSeparatorComponent={() => (
+            <Divider className="border-secondary-200" />
+          )}
+          ListEmptyComponent={() => <EmptyList type={EmptyType.GROUP} />}
+        />
+      </RadioGroup>
+    </AppSheet>
   );
 }
 
