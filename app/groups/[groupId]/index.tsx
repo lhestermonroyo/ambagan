@@ -786,8 +786,8 @@ export default function GroupDetailsScreen() {
               <GroupSettlements refreshTrigger={settlementRefreshTrigger} />
             </Box>
             {tab === "Expenses" && (
-              <>
-                <HStack className="px-4 pb-2">
+              <VStack className="pb-2 gap-y-4">
+                <HStack className="px-4">
                   <FormButton
                     size="sm"
                     variant="outline"
@@ -809,98 +809,102 @@ export default function GroupDetailsScreen() {
                 ) : (
                   <SwipeListView
                     className="flex-1"
-                scrollEnabled={false}
-                useSectionList
-                sections={formattedExpenseList}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }: { item: ExpensePreview }) => (
-                  <ExpenseItem
-                    key={item.id}
-                    expense={item}
-                    onOpen={() => router.push(`/groups/${groupId}/${item.id}`)}
-                  />
-                )}
-                renderHiddenItem={({ item }, rowMap) => {
-                  const isCreator = item.creator?.id === userDetails?.id;
-                  const isPayer = item.payer_list.some(
-                    (payer) => payer.payer.id === userDetails?.id
-                  );
+                    scrollEnabled={false}
+                    useSectionList
+                    sections={formattedExpenseList}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }: { item: ExpensePreview }) => (
+                      <ExpenseItem
+                        key={item.id}
+                        expense={item}
+                        onOpen={() =>
+                          router.push(`/groups/${groupId}/${item.id}`)
+                        }
+                      />
+                    )}
+                    renderHiddenItem={({ item }, rowMap) => {
+                      const isCreator = item.creator?.id === userDetails?.id;
+                      const isPayer = item.payer_list.some(
+                        (payer) => payer.payer.id === userDetails?.id
+                      );
 
-                  // Mirror the detail screen's guards: only the creator may
-                  // delete a draft; anyone who paid may delete a finalized
-                  // expense. Editing is the creator's alone and only while no
-                  // settlement has moved past "pending".
-                  const deletable = item.is_draft ? isCreator : isPayer;
-                  const editable =
-                    isCreator &&
-                    !item.is_draft &&
-                    !item.has_settlement_progress;
+                      // Mirror the detail screen's guards: only the creator may
+                      // delete a draft; anyone who paid may delete a finalized
+                      // expense. Editing is the creator's alone and only while no
+                      // settlement has moved past "pending".
+                      const deletable = item.is_draft ? isCreator : isPayer;
+                      const editable =
+                        isCreator &&
+                        !item.is_draft &&
+                        !item.has_settlement_progress;
 
-                  if (!deletable && !editable) return null;
+                      if (!deletable && !editable) return null;
 
-                  return (
-                    <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
-                      {editable && (
-                        <Button
-                          variant="solid"
-                          action="primary"
-                          className="rounded-full h-[40] w-[40] p-0"
-                          onPress={() => {
-                            rowMap[item.id]?.closeRow();
-                            router.push(
-                              `/groups/${groupId}/${item.id}/edit` as any
-                            );
-                          }}
-                        >
-                          <Icon
-                            as="edit"
-                            size={20}
-                            className="text-background-0"
-                          />
-                        </Button>
-                      )}
-                      {deletable && (
-                        <ConfirmIconButton
-                          icon="delete"
-                          iconClassName="text-background-0"
-                          variant="solid"
-                          action="negative"
-                          className="rounded-full h-[40] w-[40] p-0"
-                          confirmTitle="Delete Expense"
-                          confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
-                          isDelete
-                          onConfirm={() => {
-                            rowMap[item.id]?.closeRow();
-                            handleDeleteExpense(item.id);
-                          }}
-                        />
-                      )}
-                    </HStack>
-                  );
-                }}
-                rightOpenValue={-122}
-                renderSectionHeader={({ section: { title } }) => (
-                  <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
-                    <Text className="text-sm text-secondary-950">{title}</Text>
-                  </Box>
-                )}
-                ItemSeparatorComponent={ListDivider}
-                stickySectionHeadersEnabled={true}
-                ListEmptyComponent={() =>
-                  canAddExpense ? (
-                    <EmptyList type={EmptyType.EXPENSE} />
-                  ) : (
-                    <EmptyList
-                      type={EmptyType.EXPENSE}
-                      content=" This group has no other members yet. Add members from
+                      return (
+                        <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
+                          {editable && (
+                            <Button
+                              variant="solid"
+                              action="primary"
+                              className="rounded-full h-[40] w-[40] p-0"
+                              onPress={() => {
+                                rowMap[item.id]?.closeRow();
+                                router.push(
+                                  `/groups/${groupId}/${item.id}/edit` as any
+                                );
+                              }}
+                            >
+                              <Icon
+                                as="edit"
+                                size={20}
+                                className="text-background-0"
+                              />
+                            </Button>
+                          )}
+                          {deletable && (
+                            <ConfirmIconButton
+                              icon="delete"
+                              iconClassName="text-background-0"
+                              variant="solid"
+                              action="negative"
+                              className="rounded-full h-[40] w-[40] p-0"
+                              confirmTitle="Delete Expense"
+                              confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
+                              isDelete
+                              onConfirm={() => {
+                                rowMap[item.id]?.closeRow();
+                                handleDeleteExpense(item.id);
+                              }}
+                            />
+                          )}
+                        </HStack>
+                      );
+                    }}
+                    rightOpenValue={-122}
+                    renderSectionHeader={({ section: { title } }) => (
+                      <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
+                        <Text className="text-sm text-secondary-950">
+                          {title}
+                        </Text>
+                      </Box>
+                    )}
+                    ItemSeparatorComponent={ListDivider}
+                    stickySectionHeadersEnabled={true}
+                    ListEmptyComponent={() =>
+                      canAddExpense ? (
+                        <EmptyList type={EmptyType.EXPENSE} />
+                      ) : (
+                        <EmptyList
+                          type={EmptyType.EXPENSE}
+                          content=" This group has no other members yet. Add members from
                         Group Info → Edit Members to start splitting expenses."
-                    />
-                  )
-                }
+                        />
+                      )
+                    }
                     ListFooterComponent={() => <Box className="h-16" />}
                   />
                 )}
-              </>
+              </VStack>
             )}
             {tab === "Group Info" && <GroupDetailsTab />}
             {tab === "Stats" && groupId && userDetails && (
@@ -1016,27 +1020,38 @@ function ExpenseItem({
 }) {
   const { details: userDetails } = states.user();
 
-  const formattedPayers = useMemo(() => {
-    const userPayer = expense.payer_list.find(
-      (payer) => payer.payer.id === userDetails?.id
-    );
+  const sortedPayers = useMemo(() => {
+    const list = expense.payer_list;
+    const userPayer = list.find((p) => p.payer.id === userDetails?.id);
+    return userPayer
+      ? [userPayer, ...list.filter((p) => p !== userPayer)]
+      : list;
+  }, [expense.payer_list, userDetails?.id]);
 
-    if (userPayer) {
-      return [
-        userPayer,
-        ...expense.payer_list.filter((p) => p !== userPayer)
-      ].map((item) => ({
+  const formattedPayers = useMemo(
+    () =>
+      sortedPayers.map((item) => ({
         id: item.payer.id,
         name: item.payer.first_name,
         uri: item.payer.avatar || undefined
-      }));
-    }
-    return expense.payer_list.map((item) => ({
-      id: item.payer.id,
-      name: `${item.payer.first_name} ${item.payer.last_name?.[0] || ""}`,
-      uri: item.payer.avatar || undefined
-    }));
-  }, [expense.payer_list, userDetails?.id]);
+      })),
+    [sortedPayers]
+  );
+
+  const payerLabel = useMemo(() => {
+    if (!sortedPayers.length) return "";
+
+    const lead = sortedPayers[0].payer;
+    const leadName =
+      lead.id === userDetails?.id
+        ? `${lead.first_name} (You)`
+        : lead.first_name;
+
+    const othersCount = sortedPayers.length - 1;
+    return othersCount > 0
+      ? `${leadName} and ${othersCount} other${othersCount > 1 ? "s" : ""}`
+      : leadName;
+  }, [sortedPayers, userDetails?.id]);
 
   return (
     <PressableListItem onPress={onOpen} className="p-4">
@@ -1063,6 +1078,13 @@ function ExpenseItem({
               <>
                 <Text className="text-sm text-secondary-950">Paid by</Text>
                 <AppAvatarGroup items={formattedPayers} size="xs" />
+                <Text
+                  className="flex-1 text-sm text-secondary-950"
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {payerLabel}
+                </Text>
               </>
             )}
           </HStack>

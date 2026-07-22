@@ -133,7 +133,7 @@ export default function SplitExpenseSheet({
               <HStack className="items-center pt-4 px-4">
                 <Icon as="arrow-back-ios" className="text-secondary-950" />
                 <Text bold className="text-xl">
-                  Edit Split
+                  Edit Expense Split
                 </Text>
               </HStack>
             </Pressable>

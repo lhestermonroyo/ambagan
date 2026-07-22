@@ -143,13 +143,16 @@ export function GroupSelectionActionSheet({
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full flex-1">
           <Pressable onPress={onClose}>
-            <HStack className="p-4 items-center">
+            <HStack className="items-center pt-4 px-4">
               <Icon as="arrow-back-ios" className="text-secondary-950" />
               <Text bold className="text-xl">
                 Select Group
               </Text>
             </HStack>
           </Pressable>
+          <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
+            Select the group for this expense.
+          </Text>
           <RadioGroup
             className="flex-1 px-4"
             value={selectedGroup.toString()}

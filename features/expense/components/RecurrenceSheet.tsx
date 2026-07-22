@@ -6,7 +6,9 @@ import PressableListItem from "@/components/PressableListItem";
 import {
   Actionsheet,
   ActionsheetBackdrop,
-  ActionsheetContent
+  ActionsheetContent,
+  ActionsheetDragIndicator,
+  ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import {
@@ -19,11 +21,6 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import {
-  endSummary,
-  recurrenceSummary
-} from "@/features/expense/utils/recurrence.util";
-import { useBanner } from "@/hooks/useBanner";
 import {
   RecurrenceConfig,
   RecurrenceEndType,
@@ -79,7 +76,6 @@ export default function RecurrenceSheet({
   onClose,
   onDone
 }: RecurrenceSheetProps) {
-  const { sheetTopInset } = useBanner();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   const [draft, setDraft] = useState<RecurrenceConfig>(
@@ -128,24 +124,24 @@ export default function RecurrenceSheet({
   const primary = getPrimaryHex("text-primary-400", colorScheme);
 
   return (
-    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[100]}>
+    <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={[90]}>
       <ActionsheetBackdrop />
       <ActionsheetContent className="p-0">
+        <ActionsheetDragIndicatorWrapper>
+          <ActionsheetDragIndicator />
+        </ActionsheetDragIndicatorWrapper>
         <KeyboardAvoidingSheet>
-          <VStack
-            className="w-full flex-1"
-            style={{ paddingTop: sheetTopInset }}
-          >
+          <VStack className="w-full flex-1">
             <Pressable onPress={onClose}>
               <HStack className="items-center pt-4 px-4">
                 <Icon as="arrow-back-ios" className="text-secondary-950" />
                 <Text bold className="text-xl">
-                  Repeat
+                  Repeat Expense
                 </Text>
               </HStack>
             </Pressable>
             <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
-              {recurrenceSummary(draft)} · {endSummary({ ...draft })}
+              Set up a recurring expense that automatically posts on a schedule.
             </Text>
 
             <ScrollView className="flex-1 px-4">
@@ -164,7 +160,7 @@ export default function RecurrenceSheet({
                           className={cn(
                             "flex-1 py-3 rounded-lg border items-center",
                             selected
-                              ? "border-primary-400 bg-primary-50"
+                              ? "border-primary-400 bg-primary-0"
                               : "border-background-200"
                           )}
                           onPress={() =>
@@ -249,7 +245,7 @@ export default function RecurrenceSheet({
                           className={cn(
                             "flex-1 py-3 rounded-lg border items-center",
                             selected
-                              ? "border-primary-400 bg-primary-50"
+                              ? "border-primary-400 bg-primary-0"
                               : "border-background-200"
                           )}
                           onPress={() =>

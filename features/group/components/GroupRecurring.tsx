@@ -137,16 +137,13 @@ export default function GroupRecurring({
     })}`;
 
     return (
-      <VStack
-        key={item.id}
-        className="border border-background-200 rounded-lg p-4 gap-y-3"
-      >
+      <VStack key={item.id} className="bg-background-50 rounded-lg p-4 gap-y-4">
         <HStack className="items-start justify-between gap-x-2">
           <VStack className="flex-1 gap-y-0.5">
-            <Text bold className="text-lg" numberOfLines={1}>
+            <Text className="text-lg" numberOfLines={1}>
               {item.description}
             </Text>
-            <Text className="text-primary-500 text-xl" bold>
+            <Text className="text-primary-500 text-2xl" bold>
               {formatAmount(item.amount, item.currency)}
             </Text>
           </VStack>
@@ -167,21 +164,23 @@ export default function GroupRecurring({
           </Badge>
         </HStack>
 
-        <HStack className="items-center gap-x-2">
-          <Icon as="repeat" size={16} className="text-secondary-950" />
-          <Text className="text-sm text-secondary-950 flex-1">
-            {scheduleText}
-          </Text>
-        </HStack>
-
-        {item.is_active && (
+        <VStack className="gap-y-1">
           <HStack className="items-center gap-x-2">
-            <Icon as="schedule" size={16} className="text-secondary-950" />
+            <Icon as="repeat" size={16} className="text-secondary-950" />
             <Text className="text-sm text-secondary-950 flex-1">
-              Next: {format(new Date(item.next_run_at), "MMM d, yyyy")}
+              {scheduleText}
             </Text>
           </HStack>
-        )}
+
+          {item.is_active && (
+            <HStack className="items-center gap-x-2">
+              <Icon as="schedule" size={16} className="text-secondary-950" />
+              <Text className="text-sm text-secondary-950 flex-1">
+                Next: {format(new Date(item.next_run_at), "MMM d, yyyy")}
+              </Text>
+            </HStack>
+          )}
+        </VStack>
 
         {isOwner && (
           <HStack className="items-center justify-between pt-1 border-t border-background-100">
@@ -228,7 +227,7 @@ export default function GroupRecurring({
   }
 
   return (
-    <VStack className="gap-y-3 px-4 py-4">
+    <VStack className="gap-y-2 px-4">
       {list.map(renderItem)}
       <Box className="h-16" />
     </VStack>

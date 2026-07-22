@@ -298,9 +298,13 @@ export default function EditExpenseScreen() {
     const full = `${m.first_name} ${m.last_name ?? ""}`.trim();
     return m.id === userId ? `${full} (You)` : full;
   };
+  const leadPayerFirstName = (m?: Member | null) => {
+    if (!m) return `${currentUser?.first_name ?? "You"} (You)`;
+    return m.id === userId ? `${m.first_name} (You)` : m.first_name;
+  };
   const othersCount = payerMembers.length - 1;
   const payerLabel = isMultiPayer
-    ? `${leadPayerName(payerMembers[0])} and ${othersCount} other${
+    ? `${leadPayerFirstName(payerMembers[0])} and ${othersCount} other${
         othersCount > 1 ? "s" : ""
       }`
     : leadPayerName(payerMembers[0]);
@@ -931,7 +935,7 @@ function ScrollableContent(props: {
 
         <FormControl size="md">
           <FormControlLabel>
-            <FormControlLabelText>Paid by</FormControlLabelText>
+            <FormControlLabelText>Payers</FormControlLabelText>
           </FormControlLabel>
           <PressableListItem
             className="p-4 border border-background-200 rounded-lg"
@@ -956,6 +960,7 @@ function ScrollableContent(props: {
                       currentUser?.first_name ??
                       "You"
                     }
+                    size="sm"
                     uri={payerMembers[0]?.avatar ?? currentUser?.avatar ?? ""}
                   />
                 )}
@@ -1001,9 +1006,11 @@ function ScrollableContent(props: {
                     size="sm"
                     maxDisplay={4}
                   />
-                  <Text className="text-secondary-950 text-sm">
-                    {splitAmongText}
-                  </Text>
+                  <HStack className="items-center gap-x-1">
+                    <Text className="text-secondary-950 text-sm">
+                      {splitAmongText} · {splitTypeLabel}
+                    </Text>
+                  </HStack>
                 </VStack>
                 <VStack className="items-end justify-center gap-y-1">
                   {splitType === "equal" && (
@@ -1015,21 +1022,11 @@ function ScrollableContent(props: {
                       >
                         {formatAmount(perIncluded, currency)}
                       </Text>
-                      <Text className="text-secondary-950 text-sm self-end mb-1">
+                      <Text className="text-secondary-950 text-sm self-end mb-[2px]">
                         each
                       </Text>
                     </HStack>
                   )}
-                  <HStack className="items-center gap-x-1">
-                    <Icon
-                      as="call-split"
-                      size={18}
-                      className="text-sm text-secondary-950"
-                    />
-                    <Text className="text-secondary-950 text-sm">
-                      {splitTypeLabel}
-                    </Text>
-                  </HStack>
                 </VStack>
               </HStack>
 
