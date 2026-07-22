@@ -98,7 +98,7 @@ export default function UpgradeSheet({
             </HStack>
             <Text className="text-sm text-secondary-950">
               {description ??
-                "One-time purchase · No subscription · No renewal"}
+                "One-time purchase • No subscription • No renewal"}
             </Text>
           </VStack>
 

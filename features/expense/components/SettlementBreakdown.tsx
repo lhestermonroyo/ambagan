@@ -102,7 +102,7 @@ export default function SettlementBreakdown({
     if (!data) return "";
     switch (data.expense.split_type) {
       case SplitType.EQUAL:
-        return `Equal · ${peopleCount} people`;
+        return `Equal • ${peopleCount} people`;
       case SplitType.PERCENTAGE:
         return "Percentage";
       case SplitType.CUSTOM:

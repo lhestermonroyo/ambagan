@@ -67,7 +67,7 @@ export default function GroupItem({
               <Icon as="sync" size={14} className="text-primary-400" />
             )}
             <Text className="text-sm text-secondary-950">
-              {formatDate(details.created_at)} &bull;{" "}
+              {formatDate(details.created_at)} •{" "}
               {details.expense_count ?? 0} expense
               {(details.expense_count ?? 0) !== 1 ? "s" : ""}
             </Text>

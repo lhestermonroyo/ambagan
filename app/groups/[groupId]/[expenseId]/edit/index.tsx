@@ -1008,7 +1008,7 @@ function ScrollableContent(props: {
                   />
                   <HStack className="items-center gap-x-1">
                     <Text className="text-secondary-950 text-sm">
-                      {splitAmongText} · {splitTypeLabel}
+                      {splitAmongText} • {splitTypeLabel}
                     </Text>
                   </HStack>
                 </VStack>

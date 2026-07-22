@@ -345,7 +345,7 @@ export default function ProfileScreen() {
                       color={getSecondaryHex("text-secondary-950", colorScheme)}
                     />
                     <Text className="text-center text-sm text-secondary-950">
-                      {new Date().getFullYear()} Ambagan &bull; v
+                      {new Date().getFullYear()} Ambagan • v
                       {Constants.expoConfig?.version ?? "1.0.0"}
                     </Text>
                   </HStack>

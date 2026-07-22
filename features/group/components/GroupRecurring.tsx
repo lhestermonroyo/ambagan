@@ -130,7 +130,7 @@ export default function GroupRecurring({
     const scheduleText = `${recurrenceSummary({
       frequency: item.frequency as RecurrenceFrequency,
       repeat_interval: item.repeat_interval
-    })} · ${endSummary({
+    })} • ${endSummary({
       end_type: item.end_type as RecurrenceEndType,
       end_date: item.end_date,
       occurrence_limit: item.occurrence_limit

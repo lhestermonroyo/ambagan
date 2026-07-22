@@ -702,7 +702,7 @@ export default function GroupDetailsScreen() {
                     {groupDetails?.name}
                   </Text>
                   <Text className="text-secondary-950">
-                    {formatDate(groupDetails?.created_at || "")} &bull;{" "}
+                    {formatDate(groupDetails?.created_at || "")} •{" "}
                     {expenseList.length} expense
                     {expenseList.length !== 1 ? "s" : ""}
                   </Text>

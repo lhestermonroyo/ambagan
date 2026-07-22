@@ -92,7 +92,7 @@ const PLANS: {
   {
     key: "yearly",
     label: "Yearly",
-    sublabel: `₱${Math.round(YEARLY_PRICE / 12)}/mo · best value`,
+    sublabel: `₱${Math.round(YEARLY_PRICE / 12)}/mo • best value`,
     badge: `Save ${YEARLY_SAVINGS_PCT}%`,
     fallbackPrice: YEARLY_PRICE,
     fallbackSuffix: "/ yr"
