@@ -116,7 +116,7 @@ export default function GroupRecurring({
                 {item.is_active ? "Active" : "Paused"}
               </BadgeText>
             </Badge>
-            <Icon as="chevron-right" size={18} className="text-secondary-500" />
+            <Icon as="chevron-right" className="text-secondary-950" />
           </HStack>
         </HStack>
 
