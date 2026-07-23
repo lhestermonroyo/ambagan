@@ -19,11 +19,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DeleteGroupSheet from "@/features/group/components/DeleteGroupSheet";
-import ExpenseFilterSheet, {
-  ExpenseFilter
-} from "@/features/group/components/ExpenseFilterSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
-import GroupRecurring from "@/features/group/components/GroupRecurring";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
 import GroupStatsTab from "@/features/group/components/GroupStatsTab";
 import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
@@ -47,7 +43,6 @@ import {
 } from "expo-router";
 import {
   Archive,
-  ChevronDown,
   CirclePlus,
   ListPlus,
   ScanLine,
@@ -70,8 +65,7 @@ export default function GroupDetailsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [settlementRefreshTrigger, setSettlementRefreshTrigger] = useState(0);
   const [recurringRefreshTrigger, setRecurringRefreshTrigger] = useState(0);
-  const [expenseFilter, setExpenseFilter] = useState<ExpenseFilter>("One-time");
-  const [expenseFilterSheetOpen, setExpenseFilterSheetOpen] = useState(false);
+  const [activeRecurringCount, setActiveRecurringCount] = useState(0);
   const [archiving, setArchiving] = useState(false);
   const [showArchiveBanner, setShowArchiveBanner] = useState(true);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
@@ -205,6 +199,24 @@ export default function GroupDetailsScreen() {
         init(groupId, initialized);
       },
       [groupId]
+    )
+  );
+
+  // Keep the Expenses tab's recurring entry-row count fresh. The list itself
+  // lives on the standalone /recurring route; here we only need the active
+  // series count, refetched on focus and on pull-to-refresh.
+  useFocusEffect(
+    useMemo(
+      () => () => {
+        if (!groupId) return;
+        services.expense
+          .getRecurringByGroupId(groupId)
+          .then((list) =>
+            setActiveRecurringCount(list.filter((r) => r.is_active).length)
+          )
+          .catch(() => setActiveRecurringCount(0));
+      },
+      [groupId, recurringRefreshTrigger]
     )
   );
 
@@ -790,123 +802,123 @@ export default function GroupDetailsScreen() {
             </Box>
             {tab === "Expenses" && (
               <VStack className="pb-2 gap-y-4">
-                <HStack className="px-4">
-                  <FormButton
-                    size="sm"
-                    variant="outline"
-                    text={expenseFilter}
-                    iconEnd={
-                      <ChevronDown
-                        size={16}
-                        color={getPrimaryHex("text-primary-500", colorScheme)}
-                      />
-                    }
-                    onPress={() => setExpenseFilterSheetOpen(true)}
-                  />
-                </HStack>
-                {expenseFilter === "Recurring" ? (
-                  <GroupRecurring
-                    groupId={groupId!}
-                    refreshTrigger={recurringRefreshTrigger}
-                  />
-                ) : (
-                  <SwipeListView
-                    className="flex-1"
-                    scrollEnabled={false}
-                    useSectionList
-                    sections={formattedExpenseList}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }: { item: ExpensePreview }) => (
-                      <ExpenseItem
-                        key={item.id}
-                        expense={item}
-                        onOpen={() =>
-                          router.push(`/groups/${groupId}/${item.id}`)
-                        }
-                      />
-                    )}
-                    renderHiddenItem={({ item }, rowMap) => {
-                      const isCreator = item.creator?.id === userDetails?.id;
-                      const isPayer = item.payer_list.some(
-                        (payer) => payer.payer.id === userDetails?.id
-                      );
-
-                      // Mirror the detail screen's guards: only the creator may
-                      // delete a draft; anyone who paid may delete a finalized
-                      // expense. Editing is the creator's alone and only while no
-                      // settlement has moved past "pending".
-                      const deletable = item.is_draft ? isCreator : isPayer;
-                      const editable =
-                        isCreator &&
-                        !item.is_draft &&
-                        !item.has_settlement_progress;
-
-                      if (!deletable && !editable) return null;
-
-                      return (
-                        <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
-                          {editable && (
-                            <Button
-                              variant="solid"
-                              action="primary"
-                              className="rounded-full h-[40] w-[40] p-0"
-                              onPress={() => {
-                                rowMap[item.id]?.closeRow();
-                                router.push(
-                                  `/groups/${groupId}/${item.id}/edit` as any
-                                );
-                              }}
-                            >
-                              <Icon
-                                as="edit"
-                                size={20}
-                                className="text-background-0"
-                              />
-                            </Button>
-                          )}
-                          {deletable && (
-                            <ConfirmIconButton
-                              icon="delete"
-                              iconClassName="text-background-0"
-                              variant="solid"
-                              action="negative"
-                              className="rounded-full h-[40] w-[40] p-0"
-                              confirmTitle="Delete Expense"
-                              confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
-                              isDelete
-                              onConfirm={() => {
-                                rowMap[item.id]?.closeRow();
-                                handleDeleteExpense(item.id);
-                              }}
-                            />
-                          )}
-                        </HStack>
-                      );
-                    }}
-                    rightOpenValue={-122}
-                    renderSectionHeader={({ section: { title } }) => (
-                      <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
-                        <Text className="text-sm text-secondary-950">
-                          {title}
+                <Pressable
+                  className="mx-4 bg-background-50 rounded-lg p-4 data-[hover=true]:bg-background-100 data-[active=true]:bg-background-100"
+                  onPress={() => router.push(`/groups/${groupId}/recurring`)}
+                >
+                  <HStack className="items-start gap-x-2">
+                    <Icon as="repeat" className="text-primary-500" />
+                    <HStack className="flex-1 items-center">
+                      <VStack className="flex-1">
+                        <Text className="text-lg" bold>
+                          Recurring expenses
                         </Text>
-                      </Box>
-                    )}
-                    ItemSeparatorComponent={ListDivider}
-                    stickySectionHeadersEnabled={true}
-                    ListEmptyComponent={() =>
-                      canAddExpense ? (
-                        <EmptyList type={EmptyType.EXPENSE} />
-                      ) : (
-                        <EmptyList
-                          type={EmptyType.EXPENSE}
-                          content=" This group has no other members yet. Add members from
+                        <Text className="text-sm text-secondary-950">
+                          {activeRecurringCount > 0
+                            ? `${activeRecurringCount} active series`
+                            : "Auto-post expenses on a schedule"}
+                        </Text>
+                      </VStack>
+                      <Icon as="chevron-right" className="text-secondary-950" />
+                    </HStack>
+                  </HStack>
+                </Pressable>
+                <SwipeListView
+                  className="flex-1"
+                  scrollEnabled={false}
+                  useSectionList
+                  sections={formattedExpenseList}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }: { item: ExpensePreview }) => (
+                    <ExpenseItem
+                      key={item.id}
+                      expense={item}
+                      onOpen={() =>
+                        router.push(`/groups/${groupId}/${item.id}`)
+                      }
+                    />
+                  )}
+                  renderHiddenItem={({ item }, rowMap) => {
+                    const isCreator = item.creator?.id === userDetails?.id;
+                    const isPayer = item.payer_list.some(
+                      (payer) => payer.payer.id === userDetails?.id
+                    );
+
+                    // Mirror the detail screen's guards: only the creator may
+                    // delete a draft; anyone who paid may delete a finalized
+                    // expense. Editing is the creator's alone and only while no
+                    // settlement has moved past "pending".
+                    const deletable = item.is_draft ? isCreator : isPayer;
+                    const editable =
+                      isCreator &&
+                      !item.is_draft &&
+                      !item.has_settlement_progress;
+
+                    if (!deletable && !editable) return null;
+
+                    return (
+                      <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
+                        {editable && (
+                          <Button
+                            variant="solid"
+                            action="primary"
+                            className="rounded-full h-[40] w-[40] p-0"
+                            onPress={() => {
+                              rowMap[item.id]?.closeRow();
+                              router.push(
+                                `/groups/${groupId}/${item.id}/edit` as any
+                              );
+                            }}
+                          >
+                            <Icon
+                              as="edit"
+                              size={20}
+                              className="text-background-0"
+                            />
+                          </Button>
+                        )}
+                        {deletable && (
+                          <ConfirmIconButton
+                            icon="delete"
+                            iconClassName="text-background-0"
+                            variant="solid"
+                            action="negative"
+                            className="rounded-full h-[40] w-[40] p-0"
+                            confirmTitle="Delete Expense"
+                            confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
+                            isDelete
+                            onConfirm={() => {
+                              rowMap[item.id]?.closeRow();
+                              handleDeleteExpense(item.id);
+                            }}
+                          />
+                        )}
+                      </HStack>
+                    );
+                  }}
+                  rightOpenValue={-122}
+                  renderSectionHeader={({ section: { title } }) => (
+                    <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
+                      <Text className="text-sm text-secondary-950">
+                        {title}
+                      </Text>
+                    </Box>
+                  )}
+                  ItemSeparatorComponent={ListDivider}
+                  stickySectionHeadersEnabled={true}
+                  ListEmptyComponent={() =>
+                    canAddExpense ? (
+                      <EmptyList type={EmptyType.EXPENSE} />
+                    ) : (
+                      <EmptyList
+                        type={EmptyType.EXPENSE}
+                        content=" This group has no other members yet. Add members from
                         Group Info → Edit Members to start splitting expenses."
-                        />
-                      )
-                    }
-                    ListFooterComponent={() => <Box className="h-16" />}
-                  />
-                )}
+                      />
+                    )
+                  }
+                  ListFooterComponent={() => <Box className="h-16" />}
+                />
               </VStack>
             )}
             {tab === "Group Info" && <GroupDetailsTab />}
@@ -1003,12 +1015,6 @@ export default function GroupDetailsScreen() {
         isOpen={deleteSheetOpen}
         onClose={() => setDeleteSheetOpen(false)}
         onDelete={handleDeleteGroup}
-      />
-      <ExpenseFilterSheet
-        isOpen={expenseFilterSheetOpen}
-        onClose={() => setExpenseFilterSheetOpen(false)}
-        filter={expenseFilter}
-        onSelect={setExpenseFilter}
       />
     </Fragment>
   );
