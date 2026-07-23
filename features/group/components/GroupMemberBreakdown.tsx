@@ -159,7 +159,7 @@ export default function GroupMemberBreakdown({
                       <Text className="text-xs text-secondary-950 uppercase">
                         Net
                       </Text>
-                      <Text className={cn("text-lg", netColor)}>
+                      <Text className={cn("text-lg font-medium", netColor)}>
                         {formatAmount(row.net, primaryCurrency)}
                       </Text>
                     </VStack>

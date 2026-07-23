@@ -211,7 +211,7 @@ export default function SettlementItem({
               <VStack className="items-end">
                 <Text
                   className={cn(
-                    "text-lg",
+                    "text-lg font-medium",
                     isUserMember ? "text-error-400" : undefined
                   )}
                 >

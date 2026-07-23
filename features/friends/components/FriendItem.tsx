@@ -52,7 +52,9 @@ const FriendItem = React.memo(function FriendItem({
         </VStack>
         <HStack className="gap-x-3 items-center">
           <HStack className="gap-x-1 items-center">
-            <Text className={cn("text-lg", isNegative && "text-error-400")}>
+            <Text
+              className={cn("text-lg font-medium", isNegative && "text-error-400")}
+            >
               {primary
                 ? `${isNegative ? "-" : ""}${formatAmount(Math.abs(primary.amount), primary.currency)}`
                 : "-"}

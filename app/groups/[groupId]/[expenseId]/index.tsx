@@ -724,7 +724,7 @@ function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
           </Text>
         </VStack>
         <VStack className="items-end gap-y-1">
-          <Text className="text-lg">
+          <Text className="text-lg font-medium">
             {formatAmount(memberSplit.amount, memberSplit.currency)}
           </Text>
         </VStack>
@@ -757,7 +757,7 @@ function PayerItem({ payer }: { payer: ExpensePayer }) {
             </Text>
           </VStack>
         </HStack>
-        <Text className="text-lg">
+        <Text className="text-lg font-medium">
           {formatAmount(payer.amount, payer.currency)}
         </Text>
       </HStack>

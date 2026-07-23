@@ -1,9 +1,10 @@
 import ImagePickerSheet from "@/components/ImagePickerSheet";
+import ImageViewerSheet from "@/features/expense/components/ImageViewerSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import * as ImagePicker from "expo-image-picker";
-import { Edit, Upload } from "lucide-react-native";
+import { Edit, Expand, Upload } from "lucide-react-native";
 import { useState } from "react";
 import { useColorScheme } from "react-native";
 import { Box } from "./ui/box";
@@ -27,6 +28,7 @@ const UploadImage = ({
 }) => {
   const [image, setImage] = useState<string | null>(defaultUri);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const colorScheme = useColorScheme() ?? "light";
   const { isOnline } = useNetwork();
   const toast = useAppToast();
@@ -90,7 +92,16 @@ const UploadImage = ({
           className="aspect-square h-auto w-full rounded-3xl"
         />
         <Button
-          className="rounded-full p-0 h-[40] w-[40] absolute bottom-4 right-4"
+          className="rounded-full p-0 h-[40] w-[40] absolute bottom-16 right-2"
+          onPress={() => setViewerOpen(true)}
+        >
+          <Expand
+            size={18}
+            color={getSecondaryHex("text-secondary-0", colorScheme)}
+          />
+        </Button>
+        <Button
+          className="rounded-full p-0 h-[40] w-[40] absolute bottom-4 right-2"
           onPress={openPicker}
         >
           <Edit
@@ -105,6 +116,13 @@ const UploadImage = ({
         onClose={() => setSheetOpen(false)}
         onSelect={handleSelect}
         options={{ mediaTypes: ["images"] }}
+      />
+
+      <ImageViewerSheet
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        uri={image}
+        title={title}
       />
     </>
   );

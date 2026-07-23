@@ -838,7 +838,7 @@ const FriendCard = React.memo(function FriendCard({
               {primary && (
                 <Text
                   className={cn(
-                    "text-lg",
+                    "text-lg font-medium",
                     isNegative ? "text-error-400" : undefined
                   )}
                   numberOfLines={1}

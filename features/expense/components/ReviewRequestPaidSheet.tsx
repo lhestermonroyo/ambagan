@@ -3,6 +3,7 @@ import ConfirmButton from "@/components/ConfirmButton";
 import FormButton from "@/components/FormButton";
 import AppSheet from "@/components/AppSheet";
 import { Box } from "@/components/ui/box";
+import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -16,10 +17,11 @@ import { Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { Image } from "expo-image";
-import { ReceiptText } from "lucide-react-native";
+import { Expand, ReceiptText } from "lucide-react-native";
 import { Fragment, ReactNode, useState } from "react";
 import { useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
+import ImageViewerSheet from "./ImageViewerSheet";
 import SettlementBreakdown from "./SettlementBreakdown";
 import SettlementSheetHeader from "./SettlementSheetHeader";
 import StatusBadge from "./StatusBadge";
@@ -45,6 +47,7 @@ export default function ReviewRequestPaidSheet({
   const [rejecting, setRejecting] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [reverting, setReverting] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const submitting = approving || rejecting || undoing || reverting;
 
   const { details: userDetails } = states.user();
@@ -195,6 +198,7 @@ export default function ReviewRequestPaidSheet({
   const isPayerMe = payment.payer.id === userDetails?.id;
 
   return (
+    <Fragment>
     <AppSheet
       isOpen={isOpen}
       onClose={onClose}
@@ -391,6 +395,15 @@ export default function ReviewRequestPaidSheet({
                 cachePolicy="memory-disk"
                 className="aspect-square h-auto w-full rounded-xl"
               />
+              <Button
+                className="rounded-full p-0 h-[40] w-[40] absolute bottom-4 right-4"
+                onPress={() => setViewerOpen(true)}
+              >
+                <Expand
+                  size={18}
+                  color={getSecondaryHex("text-secondary-0", colorScheme)}
+                />
+              </Button>
             </Box>
           ) : (
             <Box className="w-full aspect-square rounded-xl border border-secondary-300 items-center justify-center">
@@ -408,6 +421,14 @@ export default function ReviewRequestPaidSheet({
         </VStack>
       </ScrollView>
     </AppSheet>
+
+      <ImageViewerSheet
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        uri={payment.proof_of_payment ?? null}
+        title="Proof of Payment"
+      />
+    </Fragment>
   );
 }
 

@@ -283,7 +283,7 @@ export default function GroupStatsTab({
                             </Text>
                           ) : null}
                         </VStack>
-                        <Text className="text-lg">
+                        <Text className="text-lg font-medium">
                           {formatAmount(expense.amount, expense.currency)}
                         </Text>
                       </HStack>
@@ -319,7 +319,7 @@ export default function GroupStatsTab({
                         <Text className="text-sm text-secondary-950">
                           {row.pct.toFixed(0)}%
                         </Text>
-                        <Text className="text-lg">
+                        <Text className="text-lg font-medium">
                           {formatAmount(row.amount, defaultCurrency)}
                         </Text>
                       </HStack>

@@ -1103,7 +1103,7 @@ function ExpenseItem({
             </HStack>
           </VStack>
           <VStack className="items-end gap-y-1">
-            <Text className="text-lg text-right">
+            <Text className="text-lg font-medium text-right">
               {formatAmount(expense.amount, expense.currency)}
             </Text>
           </VStack>
