@@ -247,7 +247,7 @@ export default function GroupStatsTab({
           {topExpenses.length > 0 && (
             <Card className="rounded-xl bg-secondary-100">
               <VStack className="gap-y-4">
-                <VStack className="gap-y-1">
+                <VStack>
                   <Text bold className="text-secondary-950 uppercase text-sm">
                     Top Expenses
                   </Text>
@@ -269,13 +269,11 @@ export default function GroupStatsTab({
 
                     return (
                       <HStack key={expense.id} className="items-center gap-x-3">
-                        <Text className="w-5 text-sm text-secondary-950">
+                        <Text className="w-4 text-sm text-secondary-950">
                           {index + 1}
                         </Text>
                         <VStack className="flex-1">
-                          <Text className="text-base" numberOfLines={1}>
-                            {expense.description}
-                          </Text>
+                          <Text numberOfLines={1}>{expense.description}</Text>
                           {payerLabel ? (
                             <Text
                               className="text-sm text-secondary-950"
@@ -285,7 +283,7 @@ export default function GroupStatsTab({
                             </Text>
                           ) : null}
                         </VStack>
-                        <Text bold className="text-base">
+                        <Text className="text-lg">
                           {formatAmount(expense.amount, expense.currency)}
                         </Text>
                       </HStack>
@@ -300,7 +298,7 @@ export default function GroupStatsTab({
           {categoryBreakdown.length > 0 && (
             <Card className="rounded-xl bg-secondary-100">
               <VStack className="gap-y-4">
-                <VStack className="gap-y-1">
+                <VStack>
                   <Text bold className="text-secondary-950 uppercase text-sm">
                     Spending by Category
                   </Text>
@@ -311,7 +309,7 @@ export default function GroupStatsTab({
                 <VStack className="gap-y-4">
                   {categoryBreakdown.map((row) => (
                     <VStack key={row.category} className="gap-y-2">
-                      <HStack className="items-center gap-x-3">
+                      <HStack className="items-center gap-x-2">
                         <CategoryIcon
                           icon={expenseCategoryMeta(row.category).icon}
                         />
@@ -321,7 +319,7 @@ export default function GroupStatsTab({
                         <Text className="text-sm text-secondary-950">
                           {row.pct.toFixed(0)}%
                         </Text>
-                        <Text bold className="text-base">
+                        <Text className="text-lg">
                           {formatAmount(row.amount, defaultCurrency)}
                         </Text>
                       </HStack>

@@ -111,7 +111,7 @@ export default function ExportCsvSheet({
               renderItem={({ item: option }) => (
                 <Radio
                   value={option}
-                  size="lg"
+                  size="md"
                   className="justify-between py-4"
                 >
                   <Text className="text-lg">{dateRangeLabels[option]}</Text>

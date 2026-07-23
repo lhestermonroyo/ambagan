@@ -222,7 +222,7 @@ export default function LeaveGroupSheet({
                           renderItem={({ item: member }) => (
                             <Radio
                               value={member.id}
-                              size="lg"
+                              size="md"
                               className="justify-between p-4"
                             >
                               <HStack className="items-center gap-x-3 flex-1">

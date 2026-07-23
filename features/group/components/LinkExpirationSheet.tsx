@@ -137,7 +137,7 @@ export default function LinkExpirationSheet({
               renderItem={({ item: option }) => (
                 <Radio
                   value={ttlKey(option.ttl)}
-                  size="lg"
+                  size="md"
                   className="justify-between py-4"
                 >
                   <Text className="text-lg">{option.label}</Text>

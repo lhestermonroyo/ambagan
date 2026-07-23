@@ -67,7 +67,7 @@ export default function CategorySheet({
               renderItem={({ item: option }) => (
                 <Radio
                   value={option.value}
-                  size="lg"
+                  size="md"
                   className="justify-between py-4"
                 >
                   <HStack className="items-center gap-x-3">

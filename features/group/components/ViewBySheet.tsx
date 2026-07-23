@@ -57,7 +57,7 @@ export default function ViewBySheet({
               renderItem={({ item: option }) => (
                 <Radio
                   value={option}
-                  size="lg"
+                  size="md"
                   className="justify-between py-4"
                 >
                   <Text className="text-lg">{option}</Text>

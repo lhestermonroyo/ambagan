@@ -191,7 +191,7 @@ function GroupItem({ group, onPress }: { group: Group; onPress: () => void }) {
     <Radio
       key={group.id}
       value={group.id.toString()}
-      size="lg"
+      size="md"
       className="justify-between"
       onPress={onPress}
     >

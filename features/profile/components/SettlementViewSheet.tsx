@@ -106,7 +106,7 @@ export default function SettlementViewSheet({
               renderItem={({ item }) => (
                 <Radio
                   value={item.value}
-                  size="lg"
+                  size="md"
                   className="justify-between px-4 py-3"
                 >
                   <HStack className="flex-1 items-start gap-x-3">

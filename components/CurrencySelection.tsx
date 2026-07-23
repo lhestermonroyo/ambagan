@@ -139,7 +139,7 @@ function CurrencyItem({
   value: string;
 }) {
   return (
-    <Radio key={value} value={value} size="lg" className="justify-between px-4">
+    <Radio key={value} value={value} size="md" className="justify-between px-4">
       <HStack className="flex-1 items-center gap-x-2">
         <VStack className="gap-y-4 py-4">
           <VStack>

@@ -2,6 +2,7 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import RadioButton from "@/components/RadioButton";
 import { SubscriptionPlanSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
@@ -429,17 +430,7 @@ export default function SubscriptionScreen() {
                               </Text>
 
                               {/* Radio button */}
-                              <Box
-                                className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
-                                  isSelected
-                                    ? "border-primary-400 bg-primary-400"
-                                    : "border-secondary-400 bg-transparent"
-                                }`}
-                              >
-                                {isSelected && (
-                                  <Box className="w-2 h-2 rounded-full bg-background-0" />
-                                )}
-                              </Box>
+                              <RadioButton selected={isSelected} />
                             </HStack>
                           </HStack>
                         </Box>

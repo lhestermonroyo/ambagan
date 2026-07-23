@@ -4,7 +4,7 @@ import {
   ActionsheetBackdrop,
   ActionsheetContent,
   ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper,
+  ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
 import { VStack } from "@/components/ui/vstack";
 import { useBanner } from "@/hooks/useBanner";
@@ -54,7 +54,7 @@ export default function AppSheet({
   showDragIndicator = !fullscreen,
   contentClassName,
   footer,
-  children,
+  children
 }: AppSheetProps) {
   const { sheetTopInset } = useBanner();
   const points = snapPoints ?? (fullscreen ? [100] : [90]);
@@ -63,7 +63,7 @@ export default function AppSheet({
     <>
       <VStack
         className={contentClassName ?? "w-full flex-1"}
-        style={fullscreen ? { paddingTop: sheetTopInset } : undefined}
+        style={fullscreen ? { paddingTop: sheetTopInset - 8 } : undefined}
       >
         {children}
       </VStack>

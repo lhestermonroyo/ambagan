@@ -117,7 +117,7 @@ export default function GroupMemberBreakdown({
   return (
     <Card className="rounded-xl bg-secondary-100">
       <VStack className="gap-y-4">
-        <VStack className="gap-y-1">
+        <VStack>
           <Text bold className="text-secondary-950 uppercase text-sm">
             Member Breakdown
           </Text>
@@ -132,23 +132,16 @@ export default function GroupMemberBreakdown({
           <VStack className="gap-y-4">
             {rows.map((row) => {
               const isYou = row.member.id === userId;
-              const name = `${row.member.first_name}${
-                isYou ? " (You)" : ""
-              }`;
+              const name = `${row.member.first_name} ${row.member.last_name}${isYou ? " (You)" : ""}`;
               const pct =
                 totalPaid > 0
                   ? Math.max(2, Math.round((row.paid / totalPaid) * 100))
                   : 0;
-              const netColor =
-                row.net > 0
-                  ? "text-success-600"
-                  : row.net < 0
-                    ? "text-error-400"
-                    : "text-secondary-950";
+              const netColor = row.net < 0 && "text-error-400";
 
               return (
                 <VStack key={row.member.id} className="gap-y-2">
-                  <HStack className="items-center gap-x-3">
+                  <HStack className="items-center gap-x-2">
                     <AppAvatar
                       size="sm"
                       name={name}
@@ -156,9 +149,7 @@ export default function GroupMemberBreakdown({
                       isPlaceholder={row.member.is_placeholder}
                     />
                     <VStack className="flex-1">
-                      <Text className="text-base" numberOfLines={1}>
-                        {name}
-                      </Text>
+                      <Text numberOfLines={1}>{name}</Text>
                       <Text className="text-sm text-secondary-950">
                         Paid {formatAmount(row.paid, primaryCurrency)} · Share{" "}
                         {formatAmount(row.share, primaryCurrency)}
@@ -168,8 +159,7 @@ export default function GroupMemberBreakdown({
                       <Text className="text-xs text-secondary-950 uppercase">
                         Net
                       </Text>
-                      <Text bold className={cn("text-base", netColor)}>
-                        {row.net > 0 ? "+" : ""}
+                      <Text className={cn("text-lg", netColor)}>
                         {formatAmount(row.net, primaryCurrency)}
                       </Text>
                     </VStack>
