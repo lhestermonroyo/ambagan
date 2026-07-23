@@ -271,7 +271,7 @@ export default function RecurringDetailsScreen() {
                     <DetailRow
                       label="Category"
                       value={
-                        <HStack className="gap-x-2 items-center">
+                        <HStack className="gap-x-3 items-center">
                           <CategoryIcon
                             icon={expenseCategoryMeta(item.category).icon}
                           />
@@ -344,7 +344,7 @@ export default function RecurringDetailsScreen() {
                     <DetailRow
                       label="Created By"
                       value={
-                        <HStack className="gap-x-2 items-center">
+                        <HStack className="gap-x-3 items-center">
                           <AppAvatar
                             name={`${item.creator.first_name} ${item.creator.last_name}`}
                             uri={item.creator.avatar!}
@@ -497,7 +497,7 @@ function SnapshotList({
               </Box>
             )}
             <Box className="p-4">
-              <HStack className="items-center gap-x-2">
+              <HStack className="items-center gap-x-3">
                 <AppAvatar
                   name={member?.first_name ?? "?"}
                   uri={member?.avatar ?? undefined}

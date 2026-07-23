@@ -155,7 +155,7 @@ export default function SettlementItem({
   } else {
     // "full" (default)
     content = (
-      <HStack className="gap-x-2 items-start">
+      <HStack className="gap-x-3 items-start">
         <SettlementAvatar isPayer={isUserPayer} />
         <VStack className="gap-y-2 flex-1">
           {item.expense_description && (

@@ -477,7 +477,7 @@ export default function ExpenseDetailsScreen() {
                     <DetailRow
                       label="Category"
                       value={
-                        <HStack className="gap-x-2 items-center">
+                        <HStack className="gap-x-3 items-center">
                           <CategoryIcon
                             icon={
                               expenseCategoryMeta(expenseDetails.category).icon
@@ -504,7 +504,7 @@ export default function ExpenseDetailsScreen() {
                     <DetailRow
                       label="Created By"
                       value={
-                        <HStack className="gap-x-2 items-center">
+                        <HStack className="gap-x-3 items-center">
                           <AppAvatar
                             name={`${expenseDetails.creator.first_name} ${expenseDetails.creator.last_name}`}
                             uri={expenseDetails.creator.avatar!}
@@ -707,7 +707,7 @@ function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
   };
   return (
     <Box className="p-4">
-      <HStack className="gap-x-2 items-center">
+      <HStack className="gap-x-3 items-center">
         <AppAvatar
           name={memberSplit.member.first_name}
           uri={memberSplit.member.avatar!}
@@ -740,7 +740,7 @@ function PayerItem({ payer }: { payer: ExpensePayer }) {
   return (
     <Box className="p-4">
       <HStack className="items-center gap-x-2">
-        <HStack className="gap-x-2 items-center flex-1">
+        <HStack className="gap-x-3 items-center flex-1">
           <AppAvatar
             name={payer.payer.first_name}
             uri={payer.payer.avatar!}

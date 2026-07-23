@@ -36,7 +36,7 @@ export default function SelectField({
         className
       )}
     >
-      <HStack className="items-center gap-x-2">
+      <HStack className="items-center gap-x-3">
         {leading}
         <Box className="flex-1">{children}</Box>
         <Icon as={trailingIcon} className="text-sm text-secondary-950" />

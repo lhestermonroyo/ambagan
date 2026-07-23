@@ -28,7 +28,7 @@ export default function MemberItem({
 
   return (
     <HStack key={item.id} className="py-4 items-center justify-between">
-      <HStack className="gap-x-2 items-center flex-1">
+      <HStack className="gap-x-3 items-center flex-1">
         <AppAvatar
           name={item.first_name}
           uri={item.avatar!}

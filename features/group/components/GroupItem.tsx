@@ -42,7 +42,7 @@ export default function GroupItem({
 
   return (
     <PressableListItem className="p-4" onPress={onOpen}>
-      <HStack className="items-center gap-x-2">
+      <HStack className="items-center gap-x-3">
         <Box className="relative">
           {isCreator && (
             <Box className="absolute right-0 bottom-0 z-10 bg-primary-600 rounded-full p-1">

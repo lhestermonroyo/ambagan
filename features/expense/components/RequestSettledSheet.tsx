@@ -152,7 +152,7 @@ export default function RequestSettledSheet({
               <FormControlLabel>
                 <FormControlLabelText>Paid to</FormControlLabelText>
               </FormControlLabel>
-              <HStack className="gap-x-2 items-center">
+              <HStack className="gap-x-3 items-center">
                 <AppAvatar
                   name={payment.payer.first_name}
                   uri={payment.payer.avatar!}

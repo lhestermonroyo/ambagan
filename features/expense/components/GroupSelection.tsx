@@ -69,7 +69,7 @@ export default function GroupSelection({
         <Box className="p-4 border border-background-200 rounded-lg">
           <HStack className="gap-x-4 justify-center items-center">
             <VStack className="flex-1 gap-y-4">
-              <HStack className="gap-x-2 items-center">
+              <HStack className="gap-x-3 items-center">
                 <AppAvatar
                   size="xs"
                   name={group.name}
@@ -195,7 +195,7 @@ function GroupItem({ group, onPress }: { group: Group; onPress: () => void }) {
       className="justify-between"
       onPress={onPress}
     >
-      <HStack className="flex-1 items-center gap-x-2">
+      <HStack className="flex-1 items-center gap-x-3">
         <Box className="relative">
           {isCreator && (
             <Box className="absolute right-0 bottom-0 z-10 bg-primary-600 rounded-full p-1">

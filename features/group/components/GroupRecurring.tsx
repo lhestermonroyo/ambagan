@@ -95,7 +95,7 @@ export default function GroupRecurring({
       >
         <VStack className="gap-y-2">
           <HStack className="items-start justify-between gap-x-2">
-            <HStack className="flex-1 items-center gap-x-2">
+            <HStack className="flex-1 items-center gap-x-3">
               <CategoryIcon icon={expenseCategoryMeta(item.category).icon} />
               <VStack className="flex-1 gap-y-0.5">
                 <Text className="text-lg" numberOfLines={1}>

@@ -422,7 +422,7 @@ function MenuItem({
 
   return (
     <PressableListItem onPress={onPress}>
-      <HStack className="p-4 gap-x-2 items-start justify-start">
+      <HStack className="p-4 gap-x-3 items-start justify-start">
         {icon}
         <VStack className="flex-1">
           <Text className="text-lg flex-1">{label}</Text>

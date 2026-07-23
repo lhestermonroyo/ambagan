@@ -53,7 +53,7 @@ export default function GroupDetailsTab() {
           <DetailRow
             label="Admin"
             value={
-              <HStack className="gap-x-1 items-center">
+              <HStack className="gap-x-3 items-center">
                 <AppAvatar
                   name={details?.admin.first_name}
                   uri={details?.admin.avatar!}
@@ -92,7 +92,7 @@ export default function GroupDetailsTab() {
             label="Category"
             value={
               category ? (
-                <HStack className="items-center gap-x-2">
+                <HStack className="items-center gap-x-3">
                   <CategoryIcon icon={category.icon} size={16} />
                   <Text className="text-sm">{category.label}</Text>
                 </HStack>
@@ -177,7 +177,7 @@ function MemberItem({ item }: { item: Member }) {
   const isYou = item.id === userDetails?.id;
   return (
     <HStack className="items-center py-4 gap-y-4">
-      <HStack className="gap-x-2 items-center flex-1">
+      <HStack className="gap-x-3 items-center flex-1">
         <AppAvatar name={item?.first_name} uri={item?.avatar!} size="md" />
         <VStack>
           <HStack className="gap-x-1 items-center">

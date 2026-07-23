@@ -160,7 +160,7 @@ export default function MarkAsSettledSheet({
               <FormControlLabel className="flex-1">
                 <FormControlLabelText>Paid by</FormControlLabelText>
               </FormControlLabel>
-              <HStack className="gap-x-2 items-center flex-1">
+              <HStack className="gap-x-3 items-center flex-1">
                 <AppAvatar
                   name={payment.member.first_name}
                   uri={payment.member.avatar!}

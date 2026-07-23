@@ -160,7 +160,7 @@ function PayerItem({
   return (
     <Box className="py-4">
       <HStack className="gap-x-4 items-center">
-        <HStack className="flex-1 items-center gap-x-2">
+        <HStack className="flex-1 items-center gap-x-3">
           <AppAvatar name={payer.first_name} uri={payer.avatar || ""} />
           <VStack>
             <HStack className="gap-x-1 items-center">

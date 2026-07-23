@@ -309,7 +309,7 @@ export default function GroupStatsTab({
                 <VStack className="gap-y-4">
                   {categoryBreakdown.map((row) => (
                     <VStack key={row.category} className="gap-y-2">
-                      <HStack className="items-center gap-x-2">
+                      <HStack className="items-center gap-x-3">
                         <CategoryIcon
                           icon={expenseCategoryMeta(row.category).icon}
                         />

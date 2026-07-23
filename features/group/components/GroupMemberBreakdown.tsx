@@ -141,7 +141,7 @@ export default function GroupMemberBreakdown({
 
               return (
                 <VStack key={row.member.id} className="gap-y-2">
-                  <HStack className="items-center gap-x-2">
+                  <HStack className="items-center gap-x-3">
                     <AppAvatar
                       size="sm"
                       name={name}

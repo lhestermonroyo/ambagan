@@ -433,7 +433,7 @@ function MemberSplitItem({
   return (
     <Box className="p-4">
       <HStack className="gap-x-4 items-center">
-        <HStack className="flex-1 items-center gap-x-2">
+        <HStack className="flex-1 items-center gap-x-3">
           <AppAvatar
             name={member.first_name}
             uri={member.avatar || ""}

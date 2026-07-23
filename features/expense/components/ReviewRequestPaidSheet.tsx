@@ -335,7 +335,7 @@ export default function ReviewRequestPaidSheet({
             <DetailRow
               label="Paid By"
               value={
-                <HStack className="gap-x-2 items-center">
+                <HStack className="gap-x-3 items-center">
                   <AppAvatar
                     name={payment.member.first_name}
                     uri={payment.member.avatar!}
@@ -361,7 +361,7 @@ export default function ReviewRequestPaidSheet({
             <DetailRow
               label="Paid To"
               value={
-                <HStack className="gap-x-2 items-center">
+                <HStack className="gap-x-3 items-center">
                   <AppAvatar
                     name={payment.payer.first_name}
                     uri={payment.payer.avatar!}

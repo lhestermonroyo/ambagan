@@ -55,7 +55,7 @@ export function UserCheckboxItem({
               <Icon as="check" size={16} className="text-background-0" />
             )}
           </Box>
-          <HStack className="gap-x-2 items-center flex-1">
+          <HStack className="gap-x-3 items-center flex-1">
             <AppAvatar
               name={item.first_name}
               uri={item.avatar!}

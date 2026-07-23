@@ -1066,7 +1066,7 @@ function ExpenseItem({
 
   return (
     <PressableListItem onPress={onOpen} className="p-4">
-      <HStack className="items-start gap-x-2 rounded-lg">
+      <HStack className="items-start gap-x-3 rounded-lg">
         <CategoryIcon icon={expenseCategoryMeta(expense.category).icon} />
         <HStack className="flex-1 gap-x-2 items-center">
           <VStack className="flex-1">
