@@ -8,8 +8,6 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { expenseCategoryMeta } from "@/features/expense/components/CategorySheet";
-import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
-import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
   DateRangeOption,
@@ -218,7 +216,7 @@ export default function GroupStatsTab({
               <Divider />
               <HStack className="items-stretch">
                 <VStack className="flex-1 gap-y-1">
-                  <Text className="text-xs text-secondary-950 uppercase">
+                  <Text className="text-sm text-secondary-950 uppercase">
                     Expenses
                   </Text>
                   <Text bold className="text-lg">
@@ -227,7 +225,7 @@ export default function GroupStatsTab({
                 </VStack>
                 <Divider orientation="vertical" className="mx-4" />
                 <VStack className="flex-1 gap-y-1">
-                  <Text className="text-xs text-secondary-950 uppercase">
+                  <Text className="text-sm text-secondary-950 uppercase">
                     Avg / Expense
                   </Text>
                   <Text bold className="text-lg">
@@ -270,10 +268,7 @@ export default function GroupStatsTab({
                       others > 0 ? `${leadName} +${others}` : leadName;
 
                     return (
-                      <HStack
-                        key={expense.id}
-                        className="items-center gap-x-3"
-                      >
+                      <HStack key={expense.id} className="items-center gap-x-3">
                         <Text className="w-5 text-sm text-secondary-950">
                           {index + 1}
                         </Text>
@@ -342,46 +337,6 @@ export default function GroupStatsTab({
               </VStack>
             </Card>
           )}
-
-          {/* Net Balance */}
-          <Card className="rounded-xl bg-secondary-100">
-            <VStack className="gap-y-4">
-              <NetBalanceHero
-                items={netBalance}
-                primaryCurrency={defaultCurrency}
-              />
-              <Divider />
-              <HStack className="items-stretch">
-                <VStack className="flex-1 gap-y-2">
-                  <HStack className="items-center gap-x-2">
-                    <SettlementAvatar isPayer={true} />
-                    <Text className="text-secondary-950">To Collect</Text>
-                  </HStack>
-                  <CurrencyAmountDisplay
-                    isLoading={false}
-                    items={toCollect}
-                    label="To Collect"
-                    type="receive"
-                    primaryCurrency={defaultCurrency}
-                  />
-                </VStack>
-                <Divider orientation="vertical" className="mx-4" />
-                <VStack className="flex-1 gap-y-2">
-                  <HStack className="items-center gap-x-2">
-                    <SettlementAvatar isPayer={false} />
-                    <Text className="text-secondary-950">To Pay</Text>
-                  </HStack>
-                  <CurrencyAmountDisplay
-                    isLoading={false}
-                    items={toPay}
-                    label="To Pay"
-                    type="pay"
-                    primaryCurrency={defaultCurrency}
-                  />
-                </VStack>
-              </HStack>
-            </VStack>
-          </Card>
 
           {/* Export */}
           <VStack className="gap-y-4">

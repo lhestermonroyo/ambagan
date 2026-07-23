@@ -887,7 +887,7 @@ function StatItem({
     <VStack className="flex-1 gap-y-2">
       <HStack className="items-center gap-x-2">
         <SettlementAvatar isPayer={isReceive} light />
-        <Text className="text-white">{label}</Text>
+        <Text className="text-white text-sm uppercase">{label}</Text>
       </HStack>
       {isLoading ? (
         <Text bold className="text-2xl text-white">

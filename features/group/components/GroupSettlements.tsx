@@ -80,8 +80,11 @@ export default function GroupSettlements({
   refreshTrigger?: number;
 }) {
   const { details, settlementRefreshToken } = states.group();
-  const { details: userDetails, defaultCurrency, settlementView } =
-    states.user();
+  const {
+    details: userDetails,
+    defaultCurrency,
+    settlementView
+  } = states.user();
   const colorScheme = useColorScheme() ?? "light";
   const { isOnline } = useNetwork();
 
@@ -432,7 +435,9 @@ export default function GroupSettlements({
                 <VStack className="flex-1 gap-y-2">
                   <HStack className="items-center gap-x-2">
                     <SettlementAvatar isPayer={true} />
-                    <Text className="text-secondary-950">To Collect</Text>
+                    <Text className="text-secondary-950 text-sm uppercase">
+                      To Collect
+                    </Text>
                   </HStack>
                   <CurrencyAmountDisplay
                     isLoading={loading}
@@ -446,7 +451,9 @@ export default function GroupSettlements({
                 <VStack className="flex-1 gap-y-2">
                   <HStack className="items-center gap-x-2">
                     <SettlementAvatar isPayer={false} />
-                    <Text className="text-secondary-950">To Pay</Text>
+                    <Text className="text-secondary-950 text-sm uppercase">
+                      To Pay
+                    </Text>
                   </HStack>
                   <CurrencyAmountDisplay
                     isLoading={loading}
@@ -612,8 +619,7 @@ export default function GroupSettlements({
                 ListEmptyComponent={() => <EmptyList type={emptyType} />}
                 ListFooterComponent={() => (
                   <>
-                    {(settlementTab === "Settled" ||
-                      settlementTab === "All") &&
+                    {(settlementTab === "Settled" || settlementTab === "All") &&
                       hasMoreSettled && (
                         <ListFooter
                           hasNextPage={hasMoreSettled}

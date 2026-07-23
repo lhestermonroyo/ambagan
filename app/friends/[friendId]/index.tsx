@@ -146,8 +146,11 @@ export default function FriendDetailScreen() {
   const autoOpenHandledRef = useRef(false);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { details: userDetails, defaultCurrency, settlementView } =
-    states.user();
+  const {
+    details: userDetails,
+    defaultCurrency,
+    settlementView
+  } = states.user();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
@@ -233,7 +236,13 @@ export default function FriendDetailScreen() {
           console.error("Failed to open settlement from notification:", error);
         });
     }
-  }, [settlementId, initialized, activeSettlements, settledSettlements, isOnline]);
+  }, [
+    settlementId,
+    initialized,
+    activeSettlements,
+    settledSettlements,
+    isOnline
+  ]);
 
   // Clear any pending highlight-fade timer on unmount.
   useEffect(
@@ -652,7 +661,9 @@ export default function FriendDetailScreen() {
                       <VStack className="flex-1 gap-y-2">
                         <HStack className="items-center gap-x-2">
                           <SettlementAvatar isPayer={true} />
-                          <Text className="text-secondary-950">To Collect</Text>
+                          <Text className="text-secondary-950 text-sm uppercase">
+                            To Collect
+                          </Text>
                         </HStack>
                         <CurrencyAmountDisplay
                           isLoading={loading}
@@ -889,8 +900,7 @@ export default function FriendDetailScreen() {
                         }
                       />
                     ))}
-                    {(settlementTab === "Settled" ||
-                      settlementTab === "All") &&
+                    {(settlementTab === "Settled" || settlementTab === "All") &&
                       hasMoreSettled && (
                         <ListFooter
                           hasNextPage={hasMoreSettled}
