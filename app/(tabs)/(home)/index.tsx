@@ -826,13 +826,13 @@ const FriendCard = React.memo(function FriendCard({
         <Box
           className={cn(
             pressed ? "bg-secondary-100" : "bg-secondary-50",
-            "min-w-40 border border-secondary-500 rounded-lg p-4"
+            "w-48 border border-secondary-500 rounded-lg p-4"
           )}
         >
           <VStack className="gap-y-2">
             <AppAvatar name={name} uri={friend.avatar || undefined} size="sm" />
             <VStack>
-              <Text className="text-lg" numberOfLines={2}>
+              <Text className="text-lg" numberOfLines={1}>
                 {name}
               </Text>
               {primary && (
