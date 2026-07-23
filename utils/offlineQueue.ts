@@ -25,6 +25,7 @@ export type AddExpenseArgs = {
     group_id: string;
     split_type: string;
     currency: string;
+    category?: string;
     expense_date?: string;
     id?: string;
   };
@@ -44,6 +45,7 @@ export type CreateDraftArgs = {
     proof_of_payment: null;
     group_id: string;
     currency: string;
+    category?: string;
     expense_date?: string;
     id?: string;
   };
@@ -62,6 +64,7 @@ export type UpdateExpenseArgs = {
     group_id: string;
     split_type: string;
     currency: string;
+    category?: string;
     expense_date?: string;
   };
   payers: { userId: string; amount: number }[];
@@ -1119,6 +1122,7 @@ export async function queueUpdateExpense(
           proof_of_payment: null,
           split_type: args.expensePayload.split_type,
           currency: args.expensePayload.currency,
+          category: args.expensePayload.category,
           expense_date: args.expensePayload.expense_date
         },
         payers: args.payers,
@@ -1444,6 +1448,7 @@ export function buildOptimisticExpense(params: {
   amount: number;
   description: string;
   currency: string;
+  category?: string;
   creator: UserPreview;
   payers: { userId: string; amount: number }[];
   members: UserPreview[];
@@ -1467,6 +1472,7 @@ export function buildOptimisticExpense(params: {
     description: params.description,
     creator: params.creator,
     currency: params.currency,
+    category: params.category || "other",
     status: PaymentStatus.PENDING,
     is_draft: false,
     payer_list,
@@ -1484,6 +1490,7 @@ export function buildOptimisticDraft(params: {
   amount: number;
   description: string;
   currency: string;
+  category?: string;
   creator: UserPreview;
 }): ExpensePreview {
   return {
@@ -1494,6 +1501,7 @@ export function buildOptimisticDraft(params: {
     description: params.description,
     creator: params.creator,
     currency: params.currency,
+    category: params.category || "other",
     status: PaymentStatus.ONGOING,
     is_draft: true,
     payer_list: [],

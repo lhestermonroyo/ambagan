@@ -3,7 +3,7 @@ import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
-import PressableListItem from "@/components/PressableListItem";
+import SelectField from "@/components/SelectField";
 import StepperProgress from "@/components/StepperProgress";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
@@ -284,17 +284,15 @@ export default function SplitSelection({
               </ScrollView>
 
               <Box className="px-4">
-                <PressableListItem onPress={() => setMembersSheetOpen(true)}>
-                  <HStack className="items-center justify-between border border-background-200 rounded-lg p-3">
-                    <HStack className="items-center gap-x-2">
-                      <Icon as="group" className="text-secondary-950" />
-                      <Text className="text-base">
-                        Split among {includedCount} of {members.length}
-                      </Text>
-                    </HStack>
-                    <Icon as="expand-more" className="text-secondary-950" />
-                  </HStack>
-                </PressableListItem>
+                <SelectField
+                  onPress={() => setMembersSheetOpen(true)}
+                  leading={<Icon as="group" className="text-secondary-950" />}
+                  trailingIcon="expand-more"
+                >
+                  <Text className="text-base" numberOfLines={1}>
+                    Split among {includedCount} of {members.length}
+                  </Text>
+                </SelectField>
               </Box>
 
               {tab !== "equal" && includedCount > 0 && (

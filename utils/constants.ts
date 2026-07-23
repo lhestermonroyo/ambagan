@@ -1,5 +1,24 @@
+import { ExpenseCategory } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { GroupCategory } from "@/types/groups";
+import {
+  BedDouble,
+  Briefcase,
+  Car,
+  Clapperboard,
+  Folder,
+  Heart,
+  House,
+  LucideIcon,
+  PartyPopper,
+  Pill,
+  Plane,
+  ReceiptText,
+  ShoppingBag,
+  ShoppingCart,
+  Users,
+  UtensilsCrossed
+} from "lucide-react-native";
 
 export const DAILY_EXPENSE_LIMIT = 5;
 
@@ -107,35 +126,64 @@ export const currencies = [
   }
 ];
 
-export const categories = [
+export type CategoryOption = {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+};
+
+export const categories: CategoryOption[] = [
   {
-    label: "✈️ Trip",
-    value: GroupCategory.TRIP
+    label: "Trip",
+    value: GroupCategory.TRIP,
+    icon: Plane
   },
   {
-    label: "🎉 Event",
-    value: GroupCategory.EVENT
+    label: "Event",
+    value: GroupCategory.EVENT,
+    icon: PartyPopper
   },
   {
-    label: "🏠 Household",
-    value: GroupCategory.HOUSEHOLD
+    label: "Household",
+    value: GroupCategory.HOUSEHOLD,
+    icon: House
   },
   {
-    label: "💼 Work",
-    value: GroupCategory.WORK
+    label: "Work",
+    value: GroupCategory.WORK,
+    icon: Briefcase
   },
   {
-    label: "💑 Couple",
-    value: GroupCategory.COUPLE
+    label: "Couple",
+    value: GroupCategory.COUPLE,
+    icon: Heart
   },
   {
-    label: "👪 Family",
-    value: GroupCategory.FAMILY
+    label: "Family",
+    value: GroupCategory.FAMILY,
+    icon: Users
   },
   {
-    label: "📁 Other",
-    value: GroupCategory.OTHER
+    label: "Other",
+    value: GroupCategory.OTHER,
+    icon: Folder
   }
+];
+
+// Per-expense spending categories (distinct from the group-level `categories`
+// above). Lucide icons match the group-category picker style; `value` is stored
+// on expenses_tbl.category and drives the Stats breakdown. "Other" is the
+// server default, so it's the implicit fallback for anything left unset.
+export const expenseCategories: CategoryOption[] = [
+  { label: "Food & Drinks", value: ExpenseCategory.FOOD, icon: UtensilsCrossed },
+  { label: "Groceries", value: ExpenseCategory.GROCERIES, icon: ShoppingCart },
+  { label: "Transport", value: ExpenseCategory.TRANSPORT, icon: Car },
+  { label: "Accommodation", value: ExpenseCategory.ACCOMMODATION, icon: BedDouble },
+  { label: "Entertainment", value: ExpenseCategory.ENTERTAINMENT, icon: Clapperboard },
+  { label: "Shopping", value: ExpenseCategory.SHOPPING, icon: ShoppingBag },
+  { label: "Bills & Utilities", value: ExpenseCategory.BILLS, icon: ReceiptText },
+  { label: "Health", value: ExpenseCategory.HEALTH, icon: Pill },
+  { label: "Other", value: ExpenseCategory.OTHER, icon: Folder }
 ];
 
 export const splitTypes = [

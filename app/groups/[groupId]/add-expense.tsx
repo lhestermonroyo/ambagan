@@ -1,11 +1,12 @@
 import AmountInput from "@/components/AmountInput";
 import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
+import CategoryIcon from "@/components/CategoryIcon";
 import CurrencySelection from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
-import PressableListItem from "@/components/PressableListItem";
+import SelectField from "@/components/SelectField";
 import {
   GroupCardSkeleton,
   PayerFieldSkeleton
@@ -31,6 +32,9 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import UploadImage from "@/components/UploadImage";
+import CategorySheet, {
+  expenseCategoryMeta
+} from "@/features/expense/components/CategorySheet";
 import { GroupSelectionActionSheet } from "@/features/expense/components/GroupSelection";
 import PayerContributionSheet from "@/features/expense/components/PayerContributionSheet";
 import RecurrenceSheet from "@/features/expense/components/RecurrenceSheet";
@@ -48,7 +52,7 @@ import { useNetwork } from "@/hooks/useNetwork";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
-import { RecurrenceConfig } from "@/types/expenses";
+import { ExpenseCategory, RecurrenceConfig } from "@/types/expenses";
 import { Group, Member } from "@/types/groups";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
@@ -153,6 +157,8 @@ export default function AddExpenseScreen() {
   const [amount, setAmount] = useState(seed.amount);
   const [description, setDescription] = useState(seed.description);
   const [currency, setCurrency] = useState(seed.currency);
+  const [category, setCategory] = useState<string>(ExpenseCategory.OTHER);
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [expenseDate, setExpenseDate] = useState(seed.expenseDate);
   const [proofOfPayment, setProofOfPayment] =
     useState<ImagePickerSuccessResult | null>(seed.proofOfPayment);
@@ -566,6 +572,7 @@ export default function AddExpenseScreen() {
         amount: parsedAmount,
         description: description.trim(),
         currency,
+        category,
         creator
       });
 
@@ -583,6 +590,7 @@ export default function AddExpenseScreen() {
             proof_of_payment: null,
             group_id: selectedGroup.id,
             currency,
+            category,
             expense_date: expenseDate.toISOString()
           }
         },
@@ -609,6 +617,7 @@ export default function AddExpenseScreen() {
         proof_of_payment: proofOfPayment,
         group_id: selectedGroup.id,
         currency,
+        category,
         expense_date: expenseDate
       });
 
@@ -735,6 +744,7 @@ export default function AddExpenseScreen() {
         amount: parsedAmount,
         description: description.trim(),
         currency,
+        category,
         creator: {
           id: currentUser.id,
           email: currentUser.email,
@@ -768,6 +778,7 @@ export default function AddExpenseScreen() {
             group_id: selectedGroup.id,
             split_type: splitType,
             currency,
+            category,
             expense_date: expenseDate.toISOString()
           },
           payers: payersArr,
@@ -819,6 +830,7 @@ export default function AddExpenseScreen() {
           proof_of_payment: proofOfPayment,
           split_type: splitType,
           currency,
+          category,
           expense_date: expenseDate
         },
         payersArr,
@@ -956,56 +968,64 @@ export default function AddExpenseScreen() {
               size="sm"
             />
 
-            <FormControl size="md">
-              <FormControlLabel>
-                <FormControlLabelText>Expense Date</FormControlLabelText>
-              </FormControlLabel>
-              <PressableListItem
-                onPress={openDateSheet}
-                className="p-4 border border-background-200 rounded-lg"
-              >
-                <HStack className="items-center gap-x-2">
-                  <CalendarDays
-                    color={getSecondaryHex("text-secondary-950", colorScheme)}
-                  />
-                  <Text className="flex-1 text-lg">
-                    {format(expenseDate, "MMMM dd, yyyy")}
+            <HStack className="gap-x-2">
+              <FormControl size="md" className="flex-1">
+                <FormControlLabel>
+                  <FormControlLabelText>Category</FormControlLabelText>
+                </FormControlLabel>
+                <SelectField
+                  onPress={() => setCategorySheetOpen(true)}
+                  leading={
+                    <CategoryIcon icon={expenseCategoryMeta(category).icon} />
+                  }
+                >
+                  <Text className="text-lg" numberOfLines={1}>
+                    {expenseCategoryMeta(category).label}
                   </Text>
-                  <Icon
-                    as="unfold-more"
-                    className="text-sm text-secondary-950"
-                  />
-                </HStack>
-              </PressableListItem>
-            </FormControl>
+                </SelectField>
+              </FormControl>
+
+              <FormControl size="md" className="flex-1">
+                <FormControlLabel>
+                  <FormControlLabelText>Expense Date</FormControlLabelText>
+                </FormControlLabel>
+                <SelectField
+                  onPress={openDateSheet}
+                  leading={
+                    <CalendarDays
+                      color={getSecondaryHex("text-secondary-950", colorScheme)}
+                    />
+                  }
+                >
+                  <Text className="text-lg" numberOfLines={1}>
+                    {format(expenseDate, "MMM dd, yyyy")}
+                  </Text>
+                </SelectField>
+              </FormControl>
+            </HStack>
 
             <FormControl size="md">
               <FormControlLabel>
                 <FormControlLabelText>Repeat</FormControlLabelText>
               </FormControlLabel>
-              <PressableListItem
+              <SelectField
                 onPress={handleOpenRecurrence}
-                className="p-4 border border-background-200 rounded-lg"
-              >
-                <HStack className="items-center gap-x-2">
+                leading={
                   <Icon
                     as="event-repeat"
                     className="text-secondary-950"
                     size={22}
                   />
-                  <Text className="flex-1 text-lg">
-                    {recurrence
-                      ? recurrenceSummary(recurrence)
-                      : isPro
-                        ? "One-time"
-                        : "One-time - Pro"}
-                  </Text>
-                  <Icon
-                    as="unfold-more"
-                    className="text-sm text-secondary-950"
-                  />
-                </HStack>
-              </PressableListItem>
+                }
+              >
+                <Text className="text-lg">
+                  {recurrence
+                    ? recurrenceSummary(recurrence)
+                    : isPro
+                      ? "One-time"
+                      : "One-time - Pro"}
+                </Text>
+              </SelectField>
               {recurrence && (
                 <Text className="text-sm text-secondary-950 mt-1">
                   This creates a recurring series — the first expense posts now,
@@ -1026,45 +1046,38 @@ export default function AddExpenseScreen() {
                 <FormControlLabel>
                   <FormControlLabelText>Payers</FormControlLabelText>
                 </FormControlLabel>
-                <PressableListItem
-                  className="p-4 border border-background-200 rounded-lg"
+                <SelectField
                   onPress={handleOpenPayerSheet}
+                  leading={
+                    isMultiPayer ? (
+                      <AppAvatarGroup
+                        items={payerMembers.map((m) => ({
+                          id: m.id,
+                          name: m.first_name,
+                          uri: m.avatar || undefined
+                        }))}
+                        size="sm"
+                        maxDisplay={3}
+                      />
+                    ) : (
+                      <AppAvatar
+                        name={
+                          payerMembers[0]?.first_name ??
+                          currentUser?.first_name ??
+                          "You"
+                        }
+                        size="sm"
+                        uri={
+                          payerMembers[0]?.avatar ?? currentUser?.avatar ?? ""
+                        }
+                      />
+                    )
+                  }
                 >
-                  <HStack className="justify-between items-center gap-x-2">
-                    <HStack className="gap-x-3 items-center flex-1">
-                      {isMultiPayer ? (
-                        <AppAvatarGroup
-                          items={payerMembers.map((m) => ({
-                            id: m.id,
-                            name: m.first_name,
-                            uri: m.avatar || undefined
-                          }))}
-                          size="sm"
-                          maxDisplay={3}
-                        />
-                      ) : (
-                        <AppAvatar
-                          name={
-                            payerMembers[0]?.first_name ??
-                            currentUser?.first_name ??
-                            "You"
-                          }
-                          size="sm"
-                          uri={
-                            payerMembers[0]?.avatar ?? currentUser?.avatar ?? ""
-                          }
-                        />
-                      )}
-                      <Text className="text-lg flex-1" numberOfLines={1}>
-                        {payerLabel}
-                      </Text>
-                    </HStack>
-                    <Icon
-                      as="unfold-more"
-                      className="text-sm text-secondary-950"
-                    />
-                  </HStack>
-                </PressableListItem>
+                  <Text className="text-lg" numberOfLines={1}>
+                    {payerLabel}
+                  </Text>
+                </SelectField>
                 {!payersValid && (
                   <Text className="text-sm text-error-500 mt-1">
                     Contributions must add up to{" "}
@@ -1303,6 +1316,13 @@ export default function AddExpenseScreen() {
           setSplitType(nextType);
           setSplitSheetOpen(false);
         }}
+      />
+
+      <CategorySheet
+        isOpen={categorySheetOpen}
+        category={category}
+        onClose={() => setCategorySheetOpen(false)}
+        onSelect={setCategory}
       />
 
       <RecurrenceSheet

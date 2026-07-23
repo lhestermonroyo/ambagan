@@ -336,10 +336,10 @@ export default function SubscriptionScreen() {
               {FEATURES.map((feature, index) => (
                 <Box key={feature.title}>
                   <HStack className="gap-x-3 items-start p-4">
-                    <Box className="bg-primary-50 dark:bg-primary-0 p-2 rounded-full mt-0.5">
+                    <Box className="bg-primary-50 p-2 rounded-full mt-0.5">
                       <Icon
                         as={feature.icon as any}
-                        className="text-primary-400"
+                        className="text-primary-600"
                       />
                     </Box>
                     <VStack className="flex-1">

@@ -2,7 +2,7 @@ import AppSheet from "@/components/AppSheet";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
 import Icon from "@/components/Icon";
-import PressableListItem from "@/components/PressableListItem";
+import SelectField from "@/components/SelectField";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -216,20 +216,18 @@ export default function RecurrenceSheet({
             <FormControlLabel>
               <FormControlLabelText>Starts on</FormControlLabelText>
             </FormControlLabel>
-            <PressableListItem
+            <SelectField
               onPress={() => setStartPickerOpen(true)}
-              className="p-4 border border-background-200 rounded-lg"
-            >
-              <HStack className="items-center gap-x-2">
+              leading={
                 <CalendarDays
                   color={getSecondaryHex("text-secondary-950", colorScheme)}
                 />
-                <Text className="flex-1 text-lg">
-                  {format(draft.start_date, "MMMM dd, yyyy")}
-                </Text>
-                <Icon as="unfold-more" className="text-sm text-secondary-950" />
-              </HStack>
-            </PressableListItem>
+              }
+            >
+              <Text className="text-lg" numberOfLines={1}>
+                {format(draft.start_date, "MMMM dd, yyyy")}
+              </Text>
+            </SelectField>
             <Text className="text-sm text-secondary-950 mt-1">
               If today or earlier, the first expense posts immediately.
             </Text>
@@ -270,22 +268,20 @@ export default function RecurrenceSheet({
           </FormControl>
 
           {draft.end_type === RecurrenceEndType.ON_DATE && (
-            <PressableListItem
+            <SelectField
               onPress={() => setEndPickerOpen(true)}
-              className="p-4 border border-background-200 rounded-lg"
-            >
-              <HStack className="items-center gap-x-2">
+              leading={
                 <CalendarDays
                   color={getSecondaryHex("text-secondary-950", colorScheme)}
                 />
-                <Text className="flex-1 text-lg">
-                  {draft.end_date
-                    ? format(draft.end_date, "MMMM dd, yyyy")
-                    : "Select end date"}
-                </Text>
-                <Icon as="unfold-more" className="text-sm text-secondary-950" />
-              </HStack>
-            </PressableListItem>
+              }
+            >
+              <Text className="text-lg" numberOfLines={1}>
+                {draft.end_date
+                  ? format(draft.end_date, "MMMM dd, yyyy")
+                  : "Select end date"}
+              </Text>
+            </SelectField>
           )}
 
           {draft.end_type === RecurrenceEndType.AFTER_COUNT && (

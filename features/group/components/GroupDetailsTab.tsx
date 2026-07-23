@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import CategoryIcon from "@/components/CategoryIcon";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import { Box } from "@/components/ui/box";
@@ -30,10 +31,9 @@ export default function GroupDetailsTab() {
   // Only the group admin may edit the member roster (enforced by RLS too).
   const isAdmin = details.admin.id === userDetails?.id;
 
-  const categoryLabel = useMemo(() => {
+  const category = useMemo(() => {
     if (!details) return null;
-    const category = categories.find((c) => c.value === details.category);
-    return category ? category.label : null;
+    return categories.find((c) => c.value === details.category) ?? null;
   }, [details?.category]);
 
   const filteredMemberList = useMemo(() => {
@@ -91,9 +91,14 @@ export default function GroupDetailsTab() {
           <DetailRow
             label="Category"
             value={
-              <Box className="bg-secondary-500 rounded-lg px-3 py-2">
-                <Text className="text-sm">{categoryLabel || "-"}</Text>
-              </Box>
+              category ? (
+                <HStack className="items-center gap-x-2">
+                  <CategoryIcon icon={category.icon} size={16} />
+                  <Text className="text-sm">{category.label}</Text>
+                </HStack>
+              ) : (
+                <Text className="text-sm">-</Text>
+              )
             }
           />
         </Box>

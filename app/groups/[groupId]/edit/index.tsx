@@ -1,3 +1,4 @@
+import CategoryIcon from "@/components/CategoryIcon";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
 import LoadingWrapper from "@/components/LoadingWrapper";
@@ -195,7 +196,7 @@ export default function EditGroupScreen() {
 
               <FormControl size="md">
                 <FormControlLabel>
-                  <FormControlLabelText>Pick Category</FormControlLabelText>
+                  <FormControlLabelText>Category</FormControlLabelText>
                 </FormControlLabel>
                 <HStack className="gap-2 flex-wrap">
                   {categories.map((category) => (
@@ -208,12 +209,21 @@ export default function EditGroupScreen() {
                       onPress={() =>
                         setValues({ ...values, category: category.value })
                       }
-                      className={`items-center px-4 rounded-full ${
+                      className={`items-center gap-x-2 pl-1.5 pr-4 rounded-full ${
                         values.category === category.value
                           ? "border-primary-400"
                           : "border-background-200 bg-background-50 dark:bg-background-100"
                       }`}
                     >
+                      <CategoryIcon
+                        icon={category.icon}
+                        size={16}
+                        variant={
+                          values.category === category.value
+                            ? "onSolid"
+                            : "default"
+                        }
+                      />
                       <ButtonText
                         className={
                           values.category === category.value

@@ -3,6 +3,7 @@ import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
+import SelectField from "@/components/SelectField";
 import AppSheet from "@/components/AppSheet";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
@@ -80,24 +81,16 @@ export default function GroupSelection({
           </HStack>
         </Box>
       ) : (
-        <PressableListItem
-          className="p-4 border border-background-200 rounded-lg"
+        <SelectField
           onPress={() => setOpenActionsheet(true)}
+          leading={
+            <AppAvatar size="xs" name={group.name} uri={group.avatar || ""} />
+          }
         >
-          <HStack className="gap-x-4 justify-center items-center">
-            <VStack className="flex-1 gap-y-4">
-              <HStack className="gap-x-2 items-center">
-                <AppAvatar
-                  size="xs"
-                  name={group.name}
-                  uri={group.avatar || ""}
-                />
-                <Text className="text-lg">{group.name}</Text>
-              </HStack>
-            </VStack>
-            <Icon as="unfold-more" className="text-secondary-950" />
-          </HStack>
-        </PressableListItem>
+          <Text className="text-lg" numberOfLines={1}>
+            {group.name}
+          </Text>
+        </SelectField>
       )}
 
       <GroupSelectionActionSheet

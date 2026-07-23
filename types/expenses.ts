@@ -48,6 +48,9 @@ export type Expense = {
   proof_of_payment: string | null;
   split_type: SplitType;
   currency: string;
+  /** Spending category (see ExpenseCategory). Defaults to "other" server-side,
+   *  so legacy/omitted rows are always a valid value. */
+  category: string;
   status: PaymentStatus;
   /** True while the expense is a draft (amount + description only, no splits yet). */
   is_draft: boolean;
@@ -77,6 +80,7 @@ export type ExpensePreview = Pick<
   | "description"
   | "creator"
   | "currency"
+  | "category"
   | "status"
   | "is_draft"
   | "recurring_id"
@@ -173,6 +177,18 @@ export enum SplitType {
   EQUAL = "equal",
   PERCENTAGE = "percentage",
   CUSTOM = "custom"
+}
+
+export enum ExpenseCategory {
+  FOOD = "food",
+  GROCERIES = "groceries",
+  TRANSPORT = "transport",
+  ACCOMMODATION = "accommodation",
+  ENTERTAINMENT = "entertainment",
+  SHOPPING = "shopping",
+  BILLS = "bills",
+  HEALTH = "health",
+  OTHER = "other"
 }
 
 export enum PaymentStatus {

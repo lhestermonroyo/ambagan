@@ -45,7 +45,8 @@ const PRO_FEATURES = [
   {
     icon: "event-repeat",
     title: "Recurring expenses",
-    description: "Auto-post rent, subscriptions, and regular bills on a schedule."
+    description:
+      "Auto-post rent, subscriptions, and regular bills on a schedule."
   },
   {
     icon: "star",
@@ -106,10 +107,10 @@ export default function UpgradeSheet({
             <VStack className="gap-y-4">
               {PRO_FEATURES.map((feature) => (
                 <HStack key={feature.title} className="gap-x-2 items-start">
-                  <Box className="bg-primary-50 dark:bg-primary-900 p-2 rounded-full mt-0.5">
+                  <Box className="bg-primary-50 p-2 rounded-full mt-0.5">
                     <Icon
                       as={feature.icon as any}
-                      className="text-primary-400"
+                      className="text-primary-600"
                     />
                   </Box>
                   <VStack className="flex-1">

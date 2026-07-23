@@ -126,6 +126,8 @@ export const saveExpense = async (
     group_id: string;
     split_type: (typeof splitTypes)[number]["value"];
     currency: string;
+    /** Spending category; defaults to "other" when omitted. */
+    category?: string;
     expense_date?: Date;
     /** Optional pre-generated id — used so offline-queued expenses keep a stable id on sync. */
     id?: string;
@@ -152,6 +154,7 @@ export const saveExpense = async (
     group_id,
     split_type,
     currency,
+    category,
     expense_date,
     recurring_id
   } = expensePayload;
@@ -177,6 +180,7 @@ export const saveExpense = async (
       proof_of_payment: proofUrl,
       split_type,
       currency: currency || "PHP",
+      category: category || "other",
       expense_date: expense_date
         ? expense_date.toISOString()
         : new Date().toISOString(),
@@ -267,6 +271,8 @@ export const saveDraftExpense = async (expensePayload: {
   proof_of_payment: ImagePickerSuccessResult | null;
   group_id: string;
   currency: string;
+  /** Spending category; defaults to "other" when omitted. */
+  category?: string;
   expense_date?: Date;
   /** Optional pre-generated id — keeps an offline-queued draft's id stable on sync. */
   id?: string;
@@ -284,6 +290,7 @@ export const saveDraftExpense = async (expensePayload: {
     proof_of_payment,
     group_id,
     currency,
+    category,
     expense_date
   } = expensePayload;
 
@@ -310,6 +317,7 @@ export const saveDraftExpense = async (expensePayload: {
       // Placeholder until finalize sets the real split type (column is NOT NULL).
       split_type: "equal",
       currency: currency || "PHP",
+      category: category || "other",
       expense_date: expense_date
         ? expense_date.toISOString()
         : new Date().toISOString(),
@@ -545,6 +553,8 @@ export const updateExpense = async (
     group_id: string;
     split_type: (typeof splitTypes)[number]["value"];
     currency: string;
+    /** Spending category; left unchanged when omitted. */
+    category?: string;
     expense_date?: Date;
   },
   payers: { userId: string; amount: number }[],
@@ -597,6 +607,7 @@ export const updateExpense = async (
     group_id,
     split_type,
     currency,
+    category,
     expense_date
   } = expensePayload;
 
@@ -622,6 +633,9 @@ export const updateExpense = async (
     split_type,
     currency: currency || "PHP"
   };
+  if (category) {
+    updatePayload.category = category;
+  }
   if (expense_date) {
     updatePayload.expense_date = expense_date.toISOString();
   }
@@ -717,6 +731,8 @@ export const finalizeDraft = async (
     group_id: string;
     split_type: (typeof splitTypes)[number]["value"];
     currency: string;
+    /** Spending category; left unchanged when omitted. */
+    category?: string;
     expense_date?: Date;
   },
   payers: { userId: string; amount: number }[],
@@ -751,6 +767,7 @@ export const finalizeDraft = async (
     group_id,
     split_type,
     currency,
+    category,
     expense_date
   } = expensePayload;
 
@@ -777,6 +794,9 @@ export const finalizeDraft = async (
     currency: currency || "PHP",
     is_draft: false
   };
+  if (category) {
+    updatePayload.category = category;
+  }
   if (expense_date) {
     updatePayload.expense_date = expense_date.toISOString();
   }
@@ -1157,7 +1177,7 @@ export const getExpensesByGroupId = async (groupId: string) => {
   const { data, error } = await supabase
     .from(tables.EXPENSES_TBL)
     .select(
-      `id, created_at, group_id, amount, description, status, is_draft, currency, expense_date, split_type, proof_of_payment, creator:creator_id(id, email, phone, first_name, last_name, avatar)`
+      `id, created_at, group_id, amount, description, status, is_draft, currency, category, expense_date, split_type, proof_of_payment, creator:creator_id(id, email, phone, first_name, last_name, avatar)`
     )
     .eq("group_id", groupId)
     .order("created_at", { ascending: false });
