@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import CategoryIcon from "@/components/CategoryIcon";
 import EmptyList from "@/components/EmptyList";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { ExpenseDetailsSkeleton } from "@/components/SkeletonLoader";
@@ -19,6 +20,7 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import FormButton from "@/components/FormButton";
+import { expenseCategoryMeta } from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import {
   endSummary,
@@ -266,6 +268,18 @@ export default function RecurringDetailsScreen() {
 
                 <VStack className="gap-y-2">
                   <Box className="bg-secondary-100 mx-4 rounded-xl overflow-hidden">
+                    <DetailRow
+                      label="Category"
+                      value={
+                        <HStack className="gap-x-2 items-center">
+                          <CategoryIcon
+                            icon={expenseCategoryMeta(item.category).icon}
+                          />
+                          <Text>{expenseCategoryMeta(item.category).label}</Text>
+                        </HStack>
+                      }
+                    />
+                    <RowDivider />
                     <DetailRow label="Schedule" value={<Text>{scheduleText}</Text>} />
                     <RowDivider />
                     <DetailRow

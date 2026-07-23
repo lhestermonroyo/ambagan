@@ -1,3 +1,4 @@
+import CategoryIcon from "@/components/CategoryIcon";
 import EmptyList from "@/components/EmptyList";
 import Icon from "@/components/Icon";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
@@ -7,6 +8,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { expenseCategoryMeta } from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import {
   endSummary,
@@ -91,35 +93,42 @@ export default function GroupRecurring({
         className="bg-background-50 rounded-lg p-4 gap-y-4 data-[hover=true]:bg-background-100 data-[active=true]:bg-background-100"
         onPress={() => router.push(`/groups/${groupId}/recurring/${item.id}`)}
       >
-        <HStack className="items-start justify-between gap-x-2">
-          <VStack className="flex-1 gap-y-0.5">
-            <Text className="text-lg" numberOfLines={1}>
-              {item.description}
-            </Text>
-            <Text className="text-primary-500 text-2xl" bold>
-              {formatAmount(item.amount, item.currency)}
-            </Text>
-          </VStack>
-          <HStack className="items-center gap-x-1">
-            <Badge
-              size="sm"
-              variant="solid"
-              className={`rounded-full px-3 py-1 ${
-                item.is_active ? "bg-success-50" : "bg-background-200"
-              }`}
-            >
-              <BadgeText
-                className={`font-bold text-xs uppercase ${
-                  item.is_active ? "text-success-600" : "text-typography-700"
-                }`}
-              >
-                {item.is_active ? "Active" : "Paused"}
-              </BadgeText>
-            </Badge>
-            <Icon as="chevron-right" className="text-secondary-950" />
+        <VStack className="gap-y-2">
+          <HStack className="items-start justify-between gap-x-2">
+            <HStack className="flex-1 items-center gap-x-2">
+              <CategoryIcon icon={expenseCategoryMeta(item.category).icon} />
+              <VStack className="flex-1 gap-y-0.5">
+                <Text className="text-lg" numberOfLines={1}>
+                  {item.description}
+                </Text>
+              </VStack>
+              <HStack className="items-center">
+                <Badge
+                  size="sm"
+                  variant="solid"
+                  className={`rounded-full px-3 py-1 ${
+                    item.is_active ? "bg-success-50" : "bg-background-200"
+                  }`}
+                >
+                  <BadgeText
+                    className={`font-bold text-xs uppercase ${
+                      item.is_active
+                        ? "text-success-600"
+                        : "text-typography-700"
+                    }`}
+                  >
+                    {item.is_active ? "Active" : "Paused"}
+                  </BadgeText>
+                </Badge>
+                <Icon as="chevron-right" className="text-secondary-950" />
+              </HStack>
+            </HStack>
           </HStack>
-        </HStack>
 
+          <Text className="text-primary-500 text-2xl" bold>
+            {formatAmount(item.amount, item.currency)}
+          </Text>
+        </VStack>
         <VStack className="gap-y-1">
           <HStack className="items-center gap-x-2">
             <Icon as="repeat" size={16} className="text-secondary-950" />

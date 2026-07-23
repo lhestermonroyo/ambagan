@@ -1,6 +1,7 @@
 import AmountInput from "@/components/AmountInput";
 import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
+import CategoryIcon from "@/components/CategoryIcon";
 import CurrencySelection from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
@@ -26,7 +27,6 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import UploadImage from "@/components/UploadImage";
-import CategoryIcon from "@/components/CategoryIcon";
 import CategorySheet, {
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
@@ -947,37 +947,41 @@ function ScrollableContent(props: {
           size="sm"
         />
 
-        <FormControl size="md">
-          <FormControlLabel>
-            <FormControlLabelText>Category</FormControlLabelText>
-          </FormControlLabel>
-          <SelectField
-            onPress={openCategorySheet}
-            leading={<CategoryIcon icon={expenseCategoryMeta(category).icon} />}
-          >
-            <Text className="text-lg" numberOfLines={1}>
-              {expenseCategoryMeta(category).label}
-            </Text>
-          </SelectField>
-        </FormControl>
+        <HStack className="gap-x-2">
+          <FormControl size="md" className="flex-1">
+            <FormControlLabel>
+              <FormControlLabelText>Category</FormControlLabelText>
+            </FormControlLabel>
+            <SelectField
+              onPress={openCategorySheet}
+              leading={
+                <CategoryIcon icon={expenseCategoryMeta(category).icon} />
+              }
+            >
+              <Text className="text-lg" numberOfLines={1}>
+                {expenseCategoryMeta(category).label}
+              </Text>
+            </SelectField>
+          </FormControl>
 
-        <FormControl size="md">
-          <FormControlLabel>
-            <FormControlLabelText>Expense Date</FormControlLabelText>
-          </FormControlLabel>
-          <SelectField
-            onPress={openDateSheet}
-            leading={
-              <CalendarDays
-                color={getSecondaryHex("text-secondary-950", colorScheme)}
-              />
-            }
-          >
-            <Text className="text-lg" numberOfLines={1}>
-              {format(expenseDate, "MMMM dd, yyyy")}
-            </Text>
-          </SelectField>
-        </FormControl>
+          <FormControl size="md" className="flex-1">
+            <FormControlLabel>
+              <FormControlLabelText>Expense Date</FormControlLabelText>
+            </FormControlLabel>
+            <SelectField
+              onPress={openDateSheet}
+              leading={
+                <CalendarDays
+                  color={getSecondaryHex("text-secondary-950", colorScheme)}
+                />
+              }
+            >
+              <Text className="text-lg" numberOfLines={1}>
+                {format(expenseDate, "MMM dd, yyyy")}
+              </Text>
+            </SelectField>
+          </FormControl>
+        </HStack>
 
         <FormControl size="md">
           <FormControlLabel>

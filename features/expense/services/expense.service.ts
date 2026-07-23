@@ -342,7 +342,7 @@ export const saveDraftExpense = async (expensePayload: {
 // the user sees it immediately (below).
 // =====================================================================
 
-const RECURRING_SELECT = `id, created_at, updated_at, group_id, amount, description, currency, split_type, payers_snapshot, splits_snapshot, frequency, repeat_interval, start_date, end_type, end_date, occurrence_limit, occurrences_count, next_run_at, last_run_at, is_active, creator:creator_id(id, email, phone, first_name, last_name, avatar)`;
+const RECURRING_SELECT = `id, created_at, updated_at, group_id, amount, description, currency, category, split_type, payers_snapshot, splits_snapshot, frequency, repeat_interval, start_date, end_type, end_date, occurrence_limit, occurrences_count, next_run_at, last_run_at, is_active, creator:creator_id(id, email, phone, first_name, last_name, avatar)`;
 
 /**
  * Create a recurring-expense template. If the series starts today or earlier,
@@ -361,6 +361,8 @@ export const saveRecurringExpense = async (
     amount: number;
     description: string;
     currency: string;
+    /** Spending category; defaults to "other" when omitted. */
+    category?: string;
     split_type: (typeof splitTypes)[number]["value"];
     recurrence: RecurrenceConfig;
     proof_of_payment?: ImagePickerSuccessResult | null;
@@ -374,8 +376,15 @@ export const saveRecurringExpense = async (
     throw new Error("User not authenticated");
   }
 
-  const { group_id, amount, description, currency, split_type, recurrence } =
-    templatePayload;
+  const {
+    group_id,
+    amount,
+    description,
+    currency,
+    category,
+    split_type,
+    recurrence
+  } = templatePayload;
 
   const startsToday =
     new Date(recurrence.start_date).setHours(0, 0, 0, 0) <=
@@ -391,6 +400,7 @@ export const saveRecurringExpense = async (
       amount,
       description,
       currency: currency || "PHP",
+      category: category || "other",
       split_type,
       payers_snapshot: payers,
       splits_snapshot: memberSplits,
@@ -423,6 +433,7 @@ export const saveRecurringExpense = async (
         proof_of_payment: templatePayload.proof_of_payment ?? null,
         split_type,
         currency,
+        category: category || "other",
         expense_date: new Date(recurrence.start_date),
         recurring_id: recurringId
       },

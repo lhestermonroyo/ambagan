@@ -241,6 +241,10 @@ export type RecurringExpense = {
   amount: number;
   description: string;
   currency: string;
+  /** Spending category (see ExpenseCategory). Defaults to "other" server-side,
+   *  so legacy/omitted templates are always a valid value. Copied onto every
+   *  materialized occurrence by the run-recurring generator. */
+  category: string;
   split_type: SplitType;
   payers_snapshot: RecurringPayerSnapshot[];
   splits_snapshot: RecurringSplitSnapshot[];

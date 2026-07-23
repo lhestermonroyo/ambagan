@@ -1,4 +1,5 @@
 import { getPrimaryHex } from "@/utils/getColorHex";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { LucideIcon } from "lucide-react-native";
 import { useColorScheme } from "react-native";
 import { Box } from "./ui/box";
@@ -23,11 +24,10 @@ export default function CategoryIcon({
 
   return (
     <Box
-      className={
-        isOnSolid
-          ? "bg-background-0 p-1.5 rounded-full"
-          : "bg-primary-50 p-1.5 rounded-full"
-      }
+      className={cn(
+        "p-1.5 rounded-full",
+        isOnSolid ? "bg-background-0" : "bg-primary-50"
+      )}
     >
       <IconCmp
         size={size}

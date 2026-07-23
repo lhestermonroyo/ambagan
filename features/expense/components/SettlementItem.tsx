@@ -130,20 +130,14 @@ export default function SettlementItem({
           <HStack className="gap-x-2 items-center">
             <HStack className="flex-1 items-center gap-x-2">
               <Text
-                className={cn(
-                  "text-lg shrink",
-                  isUserMember && "font-medium"
-                )}
+                className={cn("text-lg shrink", isUserMember && "font-medium")}
                 numberOfLines={1}
               >
                 {memberName}
               </Text>
               <Icon as="arrow-right-alt" className="text-secondary-950" />
               <Text
-                className={cn(
-                  "text-lg shrink",
-                  isUserPayer && "font-medium"
-                )}
+                className={cn("text-lg shrink", isUserPayer && "font-medium")}
                 numberOfLines={1}
               >
                 {payerName}

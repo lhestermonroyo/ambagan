@@ -273,6 +273,7 @@ async function generateOccurrence(
       description: t.description,
       split_type: t.split_type || "equal",
       currency: t.currency,
+      category: t.category || "other",
       expense_date: runAt.toISOString(),
       is_draft: true,
       recurring_id: t.id
@@ -299,6 +300,7 @@ async function generateOccurrence(
     description: t.description,
     split_type: t.split_type,
     currency: t.currency,
+    category: t.category || "other",
     expense_date: runAt.toISOString(),
     is_draft: false,
     recurring_id: t.id

@@ -670,6 +670,7 @@ export default function AddExpenseScreen() {
           amount: parsedAmount,
           description: description.trim(),
           currency,
+          category,
           split_type: splitType,
           recurrence,
           proof_of_payment: proofOfPayment

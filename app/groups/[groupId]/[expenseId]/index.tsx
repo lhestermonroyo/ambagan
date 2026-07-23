@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import CategoryIcon from "@/components/CategoryIcon";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -21,6 +22,7 @@ import {
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { expenseCategoryMeta } from "@/features/expense/components/CategorySheet";
 import ImageViewerSheet from "@/features/expense/components/ImageViewerSheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import useAppToast from "@/hooks/use-app-toast";
@@ -472,6 +474,24 @@ export default function ExpenseDetailsScreen() {
 
                 <VStack className="gap-y-2">
                   <Box className="bg-secondary-100 mx-4 rounded-xl overflow-hidden">
+                    <DetailRow
+                      label="Category"
+                      value={
+                        <HStack className="gap-x-2 items-center">
+                          <CategoryIcon
+                            icon={
+                              expenseCategoryMeta(expenseDetails.category).icon
+                            }
+                          />
+                          <Text>
+                            {expenseCategoryMeta(expenseDetails.category).label}
+                          </Text>
+                        </HStack>
+                      }
+                    />
+                    <Box className="mx-4">
+                      <Divider className="border-secondary-200" />
+                    </Box>
                     <DetailRow
                       label="Expense Date"
                       value={

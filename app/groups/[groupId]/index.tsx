@@ -1,5 +1,6 @@
 import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
+import CategoryIcon from "@/components/CategoryIcon";
 import ConfirmIconButton from "@/components/ConfirmIconButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -17,6 +18,7 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { expenseCategoryMeta } from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DeleteGroupSheet from "@/features/group/components/DeleteGroupSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
@@ -1064,46 +1066,49 @@ function ExpenseItem({
 
   return (
     <PressableListItem onPress={onOpen} className="p-4">
-      <HStack className="justify-between items-center rounded-lg">
-        <VStack className="flex-1">
-          <Text className="text-lg" numberOfLines={2} ellipsizeMode="tail">
-            {expense.description}
-          </Text>
-          <HStack className="gap-x-1 items-center">
-            {expense.pending && (
-              <Icon as="sync" size={14} className="text-primary-400" />
-            )}
-            {expense.is_draft ? (
-              <Badge
-                size="sm"
-                variant="solid"
-                className="rounded-full bg-warning-50 px-3"
-              >
-                <BadgeText className="font-bold text-xs uppercase text-warning-600">
-                  Draft
-                </BadgeText>
-              </Badge>
-            ) : (
-              <>
-                <Text className="text-sm text-secondary-950">Paid by</Text>
-                <AppAvatarGroup items={formattedPayers} size="xs" />
-                <Text
-                  className="flex-1 text-sm text-secondary-950"
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
+      <HStack className="items-start gap-x-2 rounded-lg">
+        <CategoryIcon icon={expenseCategoryMeta(expense.category).icon} />
+        <HStack className="flex-1 gap-x-2 items-center">
+          <VStack className="flex-1">
+            <Text className="text-lg" numberOfLines={2} ellipsizeMode="tail">
+              {expense.description}
+            </Text>
+            <HStack className="gap-x-1 items-center">
+              {expense.pending && (
+                <Icon as="sync" size={14} className="text-primary-400" />
+              )}
+              {expense.is_draft ? (
+                <Badge
+                  size="sm"
+                  variant="solid"
+                  className="rounded-full bg-warning-50 px-3"
                 >
-                  {payerLabel}
-                </Text>
-              </>
-            )}
-          </HStack>
-        </VStack>
-        <VStack className="items-end gap-y-1">
-          <Text className="text-lg text-right">
-            {formatAmount(expense.amount, expense.currency)}
-          </Text>
-        </VStack>
-        <Icon as="chevron-right" className="text-secondary-950" />
+                  <BadgeText className="font-bold text-xs uppercase text-warning-600">
+                    Draft
+                  </BadgeText>
+                </Badge>
+              ) : (
+                <>
+                  <Text className="text-sm text-secondary-950">Paid by</Text>
+                  <AppAvatarGroup items={formattedPayers} size="xs" />
+                  <Text
+                    className="flex-1 text-sm text-secondary-950"
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {payerLabel}
+                  </Text>
+                </>
+              )}
+            </HStack>
+          </VStack>
+          <VStack className="items-end gap-y-1">
+            <Text className="text-lg text-right">
+              {formatAmount(expense.amount, expense.currency)}
+            </Text>
+          </VStack>
+          <Icon as="chevron-right" className="text-secondary-950" />
+        </HStack>
       </HStack>
     </PressableListItem>
   );
