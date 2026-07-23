@@ -294,7 +294,9 @@ export default function SplitSelection({
                   </Text>
                 </SelectField>
               </Box>
+            </VStack>
 
+            <VStack>
               {tab !== "equal" && includedCount > 0 && (
                 <HStack className="px-4 items-center justify-end">
                   <FormButton
@@ -305,35 +307,34 @@ export default function SplitSelection({
                   />
                 </HStack>
               )}
-            </VStack>
-
-            <FlatList
-              scrollEnabled={false}
-              data={includedMembers}
-              keyExtractor={(item) => item.id}
-              ItemSeparatorComponent={ListDivider}
-              ListEmptyComponent={() => <EmptyList type={EmptyType.MEMBER} />}
-              ListFooterComponent={() => <Box className="h-8" />}
-              renderItem={({ item: member }) => (
-                <MemberSplitItem
-                  currency={currency}
-                  member={member}
-                  split={
-                    splits[member.id] || {
-                      amount: "",
-                      percentage: ""
+              <FlatList
+                scrollEnabled={false}
+                data={includedMembers}
+                keyExtractor={(item) => item.id}
+                ItemSeparatorComponent={ListDivider}
+                ListEmptyComponent={() => <EmptyList type={EmptyType.MEMBER} />}
+                ListFooterComponent={() => <Box className="h-8" />}
+                renderItem={({ item: member }) => (
+                  <MemberSplitItem
+                    currency={currency}
+                    member={member}
+                    split={
+                      splits[member.id] || {
+                        amount: "",
+                        percentage: ""
+                      }
                     }
-                  }
-                  splitType={tab}
-                  onAmountChange={(amount) =>
-                    updateSplitAmount(member.id, amount)
-                  }
-                  onPercentageChange={(percentage) =>
-                    updateSplitPercentage(member.id, percentage)
-                  }
-                />
-              )}
-            />
+                    splitType={tab}
+                    onAmountChange={(amount) =>
+                      updateSplitAmount(member.id, amount)
+                    }
+                    onPercentageChange={(percentage) =>
+                      updateSplitPercentage(member.id, percentage)
+                    }
+                  />
+                )}
+              />
+            </VStack>
           </VStack>
         </VStack>
       </ScrollView>

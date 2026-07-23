@@ -51,15 +51,17 @@ export default function PayersContributionStep({
 }: PayersContributionStepProps) {
   const { details: userDetails } = states.user();
   const formattedPayers = useMemo(() => {
-    return members
-      .map((member) => ({
-        ...member,
-        amount: payers[member.id]?.amount || ""
-      }))
-      // Always surface "you" at the top of the list.
-      .sort((a, b) =>
-        a.id === userDetails?.id ? -1 : b.id === userDetails?.id ? 1 : 0
-      );
+    return (
+      members
+        .map((member) => ({
+          ...member,
+          amount: payers[member.id]?.amount || ""
+        }))
+        // Always surface "you" at the top of the list.
+        .sort((a, b) =>
+          a.id === userDetails?.id ? -1 : b.id === userDetails?.id ? 1 : 0
+        )
+    );
   }, [members, payers, userDetails?.id]);
 
   const remainingAmount = useMemo(() => {
@@ -99,32 +101,34 @@ export default function PayersContributionStep({
               </VStack>
             </VStack>
           )}
-          {onClearAll && (
-            <HStack className="items-center justify-end">
-              <FormButton
-                variant="link"
-                size="sm"
-                text="Clear All"
-                onPress={onClearAll}
-              />
-            </HStack>
-          )}
-          <FlatList
-            scrollEnabled={false}
-            data={formattedPayers}
-            keyExtractor={(item) => item.id.toString()}
-            ItemSeparatorComponent={() => (
-              <Divider className="border-secondary-100" />
+          <VStack>
+            {onClearAll && (
+              <HStack className="items-center justify-end">
+                <FormButton
+                  variant="link"
+                  size="sm"
+                  text="Clear All"
+                  onPress={onClearAll}
+                />
+              </HStack>
             )}
-            renderItem={({ item: payer }) => (
-              <PayerItem
-                payer={payer}
-                currencySign={currencySign}
-                onAmountChange={onPayerAmountChange}
-              />
-            )}
-            ListFooterComponent={() => <Box className="h-8" />}
-          />
+            <FlatList
+              scrollEnabled={false}
+              data={formattedPayers}
+              keyExtractor={(item) => item.id.toString()}
+              ItemSeparatorComponent={() => (
+                <Divider className="border-secondary-100" />
+              )}
+              renderItem={({ item: payer }) => (
+                <PayerItem
+                  payer={payer}
+                  currencySign={currencySign}
+                  onAmountChange={onPayerAmountChange}
+                />
+              )}
+              ListFooterComponent={() => <Box className="h-8" />}
+            />
+          </VStack>
         </VStack>
       </ScrollView>
       <Box className="p-4 bg-background-50">
