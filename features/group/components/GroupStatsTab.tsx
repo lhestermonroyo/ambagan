@@ -344,8 +344,9 @@ export default function GroupStatsTab({
               </Text>
               <Text className="text-sm text-secondary-950">
                 The CSV includes all settlements you're involved in for this
-                group within the selected date range — settlement ID, date,
-                payer, member, amount, currency, and status.
+                group within the selected date range — settlement ID, recorded
+                and expense dates, description, category, payer, member, amount,
+                currency, status, request/settle timestamps, and notes.
               </Text>
             </VStack>
             <FormButton

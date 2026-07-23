@@ -6,6 +6,7 @@ import {
   ExpensePreview,
   MemberSplit,
   Payment,
+  PaymentExportRow,
   PaymentPreview,
   RecurrenceConfig,
   RecurringExpense,
@@ -1669,6 +1670,10 @@ export const markAsSettled = async (expensePayload: {
 
 const PAYMENT_FIELDS = `*, member:member_id(id, email, phone, first_name, last_name, avatar, is_placeholder), payer:payer_id(id, email, phone, first_name, last_name, avatar, is_placeholder), expense:expense_id(description, currency)`;
 
+// Export needs the parent expense's category + own date on top of the standard
+// payment fields so each CSV row is self-describing (see getPaymentsForExport).
+const PAYMENT_EXPORT_FIELDS = `*, member:member_id(id, email, phone, first_name, last_name, avatar, is_placeholder), payer:payer_id(id, email, phone, first_name, last_name, avatar, is_placeholder), expense:expense_id(description, currency, category, expense_date)`;
+
 const mapPaymentRows = (data: any[]): Payment[] =>
   data.map((item) => {
     const expense = Array.isArray(item.expense)
@@ -1683,6 +1688,23 @@ const mapPaymentRows = (data: any[]): Payment[] =>
       expense: undefined
     };
   }) as Payment[];
+
+const mapPaymentExportRows = (data: any[]): PaymentExportRow[] =>
+  data.map((item) => {
+    const expense = Array.isArray(item.expense)
+      ? item.expense[0]
+      : item.expense;
+    return {
+      ...item,
+      expense_description: expense?.description ?? null,
+      currency: expense?.currency ?? "PHP",
+      expense_category: expense?.category ?? "other",
+      expense_date: expense?.expense_date ?? null,
+      member: resolveUser(item.member),
+      payer: resolveUser(item.payer),
+      expense: undefined
+    };
+  }) as PaymentExportRow[];
 
 export const getPaymentsByGroupAndUserId = async (
   groupId: string,
@@ -1817,13 +1839,13 @@ export const getPaymentsForExport = async (
   groupId: string,
   userId: string,
   cutoff: Date | null
-): Promise<Payment[]> => {
+): Promise<PaymentExportRow[]> => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 
   let query = supabase
     .from(tables.PAYMENT_SPLITS_TBL)
-    .select(PAYMENT_FIELDS)
+    .select(PAYMENT_EXPORT_FIELDS)
     .eq("group_id", groupId)
     .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
     .order("created_at", { ascending: false });
@@ -1834,7 +1856,7 @@ export const getPaymentsForExport = async (
 
   const { data, error } = await query;
   if (error) throw error;
-  return mapPaymentRows(data);
+  return mapPaymentExportRows(data);
 };
 
 export const getUnpaidPayments = async (groupId: string, userId: string) => {

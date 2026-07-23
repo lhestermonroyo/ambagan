@@ -1,33 +1,64 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
-import { Payment } from "@/types/expenses";
+import { PaymentExportRow } from "@/types/expenses";
+import { expenseCategories } from "@/utils/constants";
 import { format } from "date-fns";
 
 const escapeCell = (value: string) =>
   `"${value.replace(/"/g, '""')}"`;
 
+/** Human-readable label for a stored category value ("food" → "Food & Drinks"),
+ *  falling back to the last option ("Other") for anything unrecognized. */
+const categoryLabel = (value: string) =>
+  (
+    expenseCategories.find((c) => c.value === value) ??
+    expenseCategories[expenseCategories.length - 1]
+  ).label;
+
+/** Date only (yyyy-MM-dd) for a nullable ISO string; "" when absent. */
+const formatDate = (value: string | null) =>
+  value ? format(new Date(value), "yyyy-MM-dd") : "";
+
+/** Date + time for lifecycle timestamps; "" when the step hasn't happened yet. */
+const formatDateTime = (value: string | null) =>
+  value ? format(new Date(value), "yyyy-MM-dd HH:mm") : "";
+
 export const exportGroupSettlementsAsCsv = async (
-  payments: Payment[],
+  payments: PaymentExportRow[],
   groupName: string
 ) => {
   const headers = [
-    "Date",
+    "Settlement ID",
+    "Recorded Date",
+    "Expense Date",
     "Expense",
+    "Category",
     "Member (Owes)",
     "Payer (Paid by)",
     "Amount",
     "Currency",
-    "Status"
+    "Status",
+    "Requested At",
+    "Settled At",
+    "Member Note",
+    "Payer Note"
   ];
 
   const rows = payments.map((p) => [
-    format(new Date(p.created_at), "yyyy-MM-dd"),
+    p.id,
+    formatDate(p.created_at),
+    formatDate(p.expense_date),
     p.expense_description ?? "",
+    categoryLabel(p.expense_category),
     `${p.member.first_name} ${p.member.last_name}`.trim(),
     `${p.payer.first_name} ${p.payer.last_name}`.trim(),
     p.amount.toFixed(2),
     p.currency,
-    p.status
+    p.status,
+    formatDateTime(p.requested_at),
+    formatDateTime(p.settled_at),
+    p.member_note ?? "",
+    p.payer_note ?? ""
   ]);
 
   const csv = [headers, ...rows]

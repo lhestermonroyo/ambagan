@@ -133,6 +133,18 @@ export type Payment = {
   pending?: boolean;
 };
 
+/**
+ * A settlement enriched with a few of its parent expense's fields, used only by
+ * the CSV export so a row is self-describing (category + the expense's own date,
+ * distinct from the settlement's recorded date). See getPaymentsForExport.
+ */
+export type PaymentExportRow = Payment & {
+  /** Stored category value of the parent expense (e.g. "food"); "other" fallback. */
+  expense_category: string;
+  /** The expense's own date, distinct from the settlement's created_at. */
+  expense_date: string | null;
+};
+
 export type PaymentPreview = Pick<
   Payment,
   | "id"
