@@ -63,7 +63,10 @@ export default function SettlementItem({
 
   const amount = (
     <Text
-      className={cn("text-lg", isUserMember ? "text-error-400" : undefined)}
+      className={cn(
+        "text-lg font-medium",
+        isUserMember ? "text-error-400" : undefined
+      )}
     >
       {isUserMember && "-"}
       {formatAmount(item.amount, item.currency)}
@@ -106,7 +109,7 @@ export default function SettlementItem({
             </Text>
             <Text
               className={cn(
-                "text-lg",
+                "text-lg font-medium",
                 isUserMember ? "text-error-400" : undefined
               )}
             >
