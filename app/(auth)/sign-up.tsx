@@ -51,6 +51,7 @@ export default function SignUpScreen() {
     }
 
     setSubmitting(true);
+    setFormErrors({ email: "", password: "", confirmPassword: "" });
 
     try {
       const response = await services.auth.signUp({

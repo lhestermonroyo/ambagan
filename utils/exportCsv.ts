@@ -83,3 +83,11 @@ export const exportGroupSettlementsAsCsv = async (
     UTI: "public.comma-separated-values-text"
   });
 };
+
+/** Friend pair export. The CSV shape is identical to the group export (each row
+ *  is self-describing), so this delegates — the passed name just scopes the
+ *  file name and share dialog to the friend instead of a group. */
+export const exportFriendSettlementsAsCsv = async (
+  payments: PaymentExportRow[],
+  friendName: string
+) => exportGroupSettlementsAsCsv(payments, friendName);

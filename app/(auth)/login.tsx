@@ -45,6 +45,7 @@ export default function LoginScreen() {
     }
 
     setSubmitting(true);
+    setFormErrors({ emailOrPhone: "", password: "" });
 
     try {
       let email = values.emailOrPhone.trim();

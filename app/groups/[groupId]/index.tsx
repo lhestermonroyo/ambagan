@@ -8,6 +8,7 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
+import SearchInput from "@/components/SearchInput";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
@@ -20,11 +21,19 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { expenseCategoryMeta } from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import DateRangeSheet, {
+  DateRangeOption,
+  dateRangeLabels,
+  getDateRangeCutoff
+} from "@/features/group/components/DateRangeSheet";
 import DeleteGroupSheet from "@/features/group/components/DeleteGroupSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
 import GroupStatsTab from "@/features/group/components/GroupStatsTab";
 import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
+import PayerSheet, {
+  PayerOption
+} from "@/features/group/components/PayerSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
@@ -45,20 +54,34 @@ import {
 } from "expo-router";
 import {
   Archive,
+  CalendarRange,
+  ChevronDown,
   CirclePlus,
   ListPlus,
   ScanLine,
+  Search,
   X
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  LayoutAnimation,
   Modal,
   Platform,
   RefreshControl,
+  UIManager,
   useColorScheme
 } from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
+
+// LayoutAnimation needs to be opted into on old-architecture Android; it's a
+// no-op elsewhere. Guards the row swap when opening/closing expense search.
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const tabs = ["Settlements", "Expenses", "Stats", "Group Info"] as const;
 
@@ -75,6 +98,19 @@ export default function GroupDetailsScreen() {
   const [fabOpen, setFabOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
+  // Expenses tab filters, mirroring the Settlements tab: a payer pill that opens
+  // a bottom sheet, plus search + date-range icon buttons. Search matches the
+  // description; the payer filter narrows to expenses the user paid; the date
+  // range clamps on created_at (the field the list groups its date headers by).
+  const [expenseSearch, setExpenseSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [payerFilter, setPayerFilter] = useState<PayerOption>("All");
+  const [payerSheetOpen, setPayerSheetOpen] = useState(false);
+  const [expenseDateRange, setExpenseDateRange] = useState<DateRangeOption>(
+    "All"
+  );
+  const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
+
   const {
     details: groupDetails,
     expenseList,
@@ -88,7 +124,7 @@ export default function GroupDetailsScreen() {
   const canAddExpense = memberList.length >= 2;
 
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? "light";
+  const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -348,11 +384,45 @@ export default function GroupDetailsScreen() {
     router.back();
   };
 
+  const hasActiveFilters =
+    expenseSearch.trim().length > 0 ||
+    payerFilter !== "All" ||
+    expenseDateRange !== "All";
+
+  const filteredExpenseList = useMemo(() => {
+    const query = expenseSearch.trim().toLowerCase();
+    const cutoff = getDateRangeCutoff(expenseDateRange);
+
+    return expenseList.filter((item) => {
+      if (query && !item.description?.toLowerCase().includes(query)) {
+        return false;
+      }
+      if (
+        payerFilter === "Me" &&
+        !item.payer_list.some((p) => p.payer.id === userDetails?.id)
+      ) {
+        return false;
+      }
+      if (cutoff && new Date(item.created_at || 0) < cutoff) {
+        return false;
+      }
+      return true;
+    });
+  }, [expenseList, expenseSearch, payerFilter, expenseDateRange, userDetails?.id]);
+
+  // Swap the payer/filter row for the full-width search field (and back). The
+  // query is kept when collapsing so it persists as a chip, mirroring how the
+  // Settlements tab's search behaves.
+  const toggleExpenseSearch = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSearchOpen((prev) => !prev);
+  };
+
   const formattedExpenseList = useMemo(() => {
     // Drafts are pinned to the top in their own section; the rest are grouped
     // by date as usual.
-    const drafts = expenseList.filter((item) => item.is_draft);
-    const finalized = expenseList.filter((item) => !item.is_draft);
+    const drafts = filteredExpenseList.filter((item) => item.is_draft);
+    const finalized = filteredExpenseList.filter((item) => !item.is_draft);
 
     const groupedByDate: { [key: string]: typeof expenseList } = {};
 
@@ -389,7 +459,7 @@ export default function GroupDetailsScreen() {
     };
 
     return [draftSection, ...dateSections];
-  }, [expenseList]);
+  }, [filteredExpenseList]);
 
   const isAdmin = groupDetails?.admin.id === userDetails?.id;
 
@@ -825,6 +895,121 @@ export default function GroupDetailsScreen() {
                     </HStack>
                   </HStack>
                 </Pressable>
+                <VStack className="gap-y-4">
+                  {searchOpen ? (
+                    <HStack className="px-4 items-center gap-x-2">
+                      <Box className="flex-1">
+                        <SearchInput
+                          autoFocus
+                          value={expenseSearch}
+                          onChangeText={setExpenseSearch}
+                          placeholder="Search expenses"
+                        />
+                      </Box>
+                      <FormButton
+                        size="md"
+                        variant="link"
+                        text="Cancel"
+                        onPress={toggleExpenseSearch}
+                      />
+                    </HStack>
+                  ) : (
+                    <HStack className="px-4 items-center justify-between">
+                      <FormButton
+                        size="sm"
+                        variant="outline"
+                        text={payerFilter === "All" ? "Everyone" : "Paid by me"}
+                        iconEnd={
+                          <ChevronDown
+                            size={16}
+                            color={getPrimaryHex(
+                              "text-primary-500",
+                              colorScheme
+                            )}
+                          />
+                        }
+                        onPress={() => setPayerSheetOpen(true)}
+                      />
+                      <HStack className="gap-x-6 items-center">
+                        <Button
+                          variant="link"
+                          className="rounded-full"
+                          onPress={toggleExpenseSearch}
+                        >
+                          <Search
+                            color={
+                              expenseSearch
+                                ? getPrimaryHex("text-primary-400", colorScheme)
+                                : getSecondaryHex(
+                                    "text-secondary-950",
+                                    colorScheme
+                                  )
+                            }
+                          />
+                        </Button>
+                        <Button
+                          variant="link"
+                          className="rounded-full"
+                          onPress={() => setDateRangeSheetOpen(true)}
+                        >
+                          <CalendarRange
+                            color={
+                              expenseDateRange !== "All"
+                                ? getPrimaryHex("text-primary-400", colorScheme)
+                                : getSecondaryHex(
+                                    "text-secondary-950",
+                                    colorScheme
+                                  )
+                            }
+                          />
+                        </Button>
+                      </HStack>
+                    </HStack>
+                  )}
+
+                  {(expenseDateRange !== "All" ||
+                    (!!expenseSearch && !searchOpen)) && (
+                    <HStack className="gap-x-2 px-4 flex-wrap">
+                      {!!expenseSearch && !searchOpen && (
+                        <Pressable
+                          onPress={() => setExpenseSearch("")}
+                          className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                        >
+                          <Text
+                            className="text-sm text-primary-600 max-w-[160px]"
+                            numberOfLines={1}
+                          >
+                            &ldquo;{expenseSearch}&rdquo;
+                          </Text>
+                          <X
+                            size={12}
+                            color={getPrimaryHex(
+                              "text-primary-600",
+                              colorScheme
+                            )}
+                          />
+                        </Pressable>
+                      )}
+                      {expenseDateRange !== "All" && (
+                        <Pressable
+                          onPress={() => setExpenseDateRange("All")}
+                          className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                        >
+                          <Text className="text-sm text-primary-600">
+                            {dateRangeLabels[expenseDateRange]}
+                          </Text>
+                          <X
+                            size={12}
+                            color={getPrimaryHex(
+                              "text-primary-600",
+                              colorScheme
+                            )}
+                          />
+                        </Pressable>
+                      )}
+                    </HStack>
+                  )}
+                </VStack>
                 <SwipeListView
                   className="flex-1"
                   scrollEnabled={false}
@@ -909,7 +1094,12 @@ export default function GroupDetailsScreen() {
                   ItemSeparatorComponent={ListDivider}
                   stickySectionHeadersEnabled={true}
                   ListEmptyComponent={() =>
-                    canAddExpense ? (
+                    hasActiveFilters ? (
+                      <EmptyList
+                        type={EmptyType.EXPENSE}
+                        content="No expenses match your filters. Try adjusting your search, payer, or date range."
+                      />
+                    ) : canAddExpense ? (
                       <EmptyList type={EmptyType.EXPENSE} />
                     ) : (
                       <EmptyList
@@ -1017,6 +1207,18 @@ export default function GroupDetailsScreen() {
         isOpen={deleteSheetOpen}
         onClose={() => setDeleteSheetOpen(false)}
         onDelete={handleDeleteGroup}
+      />
+      <PayerSheet
+        isOpen={payerSheetOpen}
+        onClose={() => setPayerSheetOpen(false)}
+        payer={payerFilter}
+        onSelect={setPayerFilter}
+      />
+      <DateRangeSheet
+        isOpen={dateRangeSheetOpen}
+        onClose={() => setDateRangeSheetOpen(false)}
+        dateRange={expenseDateRange}
+        onSelect={setExpenseDateRange}
       />
     </Fragment>
   );

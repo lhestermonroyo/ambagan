@@ -1,5 +1,5 @@
 import { createNotification } from "@/features/notifications/services/notification.service";
-import { FriendSummary, PaymentPreview } from "@/types/expenses";
+import { FriendSummary, PaymentExportRow, PaymentPreview } from "@/types/expenses";
 import { NotificationType } from "@/types/notifications";
 import { UserPreview } from "@/types/user";
 import { cacheService } from "@/utils/cacheService";
@@ -234,6 +234,46 @@ export const getSettledFriendSettlements = async (
 
   const totalPages = Math.ceil((count || 0) / FRIEND_SETTLED_PAGE_SIZE);
   return { data: mapFriendPaymentRows(data), hasNext: page < totalPages - 1 };
+};
+
+// Export needs the parent expense's category + own date on top of the standard
+// payment fields so each CSV row is self-describing (mirrors the group export).
+const FRIEND_EXPORT_FIELDS = `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), amount, status, proof_of_payment, member_note, payer_note, status_updated_at, requested_at, settled_at, rejected_at, expense:expense_id(description, currency, category, expense_date)`;
+
+const mapFriendExportRows = (data: any[]): PaymentExportRow[] =>
+  data.map((item) => {
+    const expense = Array.isArray(item.expense) ? item.expense[0] : item.expense;
+    return {
+      ...item,
+      member: Array.isArray(item.member) ? item.member[0] : item.member,
+      payer: Array.isArray(item.payer) ? item.payer[0] : item.payer,
+      expense_description: expense?.description ?? null,
+      currency: expense?.currency ?? "PHP",
+      expense_category: expense?.category ?? "other",
+      expense_date: expense?.expense_date ?? null,
+      expense: undefined
+    };
+  }) as PaymentExportRow[];
+
+export const getFriendPaymentsForExport = async (
+  userId: string,
+  friendId: string,
+  cutoff: Date | null
+): Promise<PaymentExportRow[]> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  let query = supabase
+    .from(tables.PAYMENT_SPLITS_TBL)
+    .select(FRIEND_EXPORT_FIELDS)
+    .or(FRIEND_PAIR_FILTER(userId, friendId))
+    .order("created_at", { ascending: false });
+
+  if (cutoff) query = query.gte("created_at", cutoff.toISOString());
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return mapFriendExportRows(data);
 };
 
 export const bulkSettleWithFriend = async (

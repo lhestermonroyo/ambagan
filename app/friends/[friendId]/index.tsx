@@ -26,6 +26,8 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import FriendInfoTab from "@/features/friends/components/FriendInfoTab";
+import FriendStatsTab from "@/features/friends/components/FriendStatsTab";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
@@ -108,6 +110,9 @@ export default function FriendDetailScreen() {
       settlementId?: string;
     }>();
 
+  const [activeTab, setActiveTab] = useState<"Settlements" | "Stats" | "Info">(
+    "Settlements"
+  );
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -644,6 +649,20 @@ export default function FriendDetailScreen() {
                 </VStack>
               </HStack>
 
+              {/* Tabs: Settlements (landing), Stats and Info */}
+              <HStack className="gap-x-2">
+                {(["Settlements", "Stats", "Info"] as const).map((t) => (
+                  <FormButton
+                    size="sm"
+                    key={t}
+                    variant={t === activeTab ? "solid" : "outline"}
+                    text={t}
+                    onPress={() => setActiveTab(t)}
+                  />
+                ))}
+              </HStack>
+
+              {activeTab === "Settlements" && (
               <VStack className="gap-y-4">
                 <Card className="rounded-xl bg-secondary-100">
                   <VStack className="gap-y-4">
@@ -677,7 +696,9 @@ export default function FriendDetailScreen() {
                       <VStack className="flex-1 gap-y-2">
                         <HStack className="items-center gap-x-2">
                           <SettlementAvatar isPayer={false} />
-                          <Text className="text-secondary-950">To Pay</Text>
+                          <Text className="text-secondary-950 text-sm uppercase">
+                            To Pay
+                          </Text>
                         </HStack>
                         <CurrencyAmountDisplay
                           isLoading={loading}
@@ -724,8 +745,28 @@ export default function FriendDetailScreen() {
                   )}
                 </VStack>
               </VStack>
+              )}
             </VStack>
 
+            {activeTab === "Stats" && userDetails && friendId && (
+              <FriendStatsTab
+                userId={userDetails.id}
+                friendId={friendId}
+                friendName={decodedName}
+                defaultCurrency={defaultCurrency}
+              />
+            )}
+
+            {activeTab === "Info" && friendId && (
+              <FriendInfoTab
+                friendId={friendId}
+                name={decodedName}
+                email={decodedEmail}
+                avatar={decodedAvatar}
+              />
+            )}
+
+            {activeTab === "Settlements" && (
             <VStack className="gap-y-4">
               {searchOpen ? (
                 <Box className="px-4">
@@ -912,14 +953,16 @@ export default function FriendDetailScreen() {
                 )}
               </LoadingWrapper>
             </VStack>
+            )}
           </VStack>
         </ScrollView>
 
-        {/* Compact sticky stats. Pinned just under the native header as an
-            absolute overlay that fades in once the friend header scrolls away.
-            Like the group Settlements tab, it animates only opacity + translateY
-            (never height) and stays non-interactive, so it never reflows the
-            list and scroll/touches pass through. */}
+        {/* Compact sticky stats — Settlements tab only. Pinned just under the
+            native header as an absolute overlay that fades in once the friend
+            header scrolls away. Like the group Settlements tab, it animates only
+            opacity + translateY (never height) and stays non-interactive, so it
+            never reflows the list and scroll/touches pass through. */}
+        {activeTab === "Settlements" && (
         <Animated.View
           pointerEvents="none"
           className="absolute top-0 left-0 right-0 bg-background-0"
@@ -964,6 +1007,7 @@ export default function FriendDetailScreen() {
             </VStack>
           </HStack>
         </Animated.View>
+        )}
       </InnerLayout>
 
       <SettlementActionSheet
