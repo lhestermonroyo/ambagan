@@ -258,27 +258,23 @@ export default function RootLayout() {
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Keep this callback synchronous and fast. supabase-js awaits every auth
+      // subscriber under its internal auth lock, so any slow await here stalls
+      // signOut/signIn and serializes the next login behind it — do slow work in
+      // detached tasks (see removeDevicePushToken) instead.
       if (_event === "PASSWORD_RECOVERY") {
         router.replace("/(auth)/reset-password");
         return;
       }
 
       if (!session) {
+        // A real login swaps A's session for B's, firing a transient SIGNED_OUT;
+        // if the store already holds a session, ignore it so we don't clobber.
         if (states.user.getState().session) return;
 
         unsubscribeNotifications();
-        try {
-          const { status } = await Notifications.getPermissionsAsync();
-          if (status === "granted") {
-            const { data: token } = await Notifications.getExpoPushTokenAsync({
-              projectId: Constants.expoConfig?.extra?.eas?.projectId
-            });
-            await services.pushToken.removePushToken(token);
-          }
-        } catch {
-          // silently ignore — don't block session cleanup if token removal fails
-        }
+        void removeDevicePushToken();
         return;
       }
 
@@ -479,6 +475,24 @@ export default function RootLayout() {
       await services.pushToken.registerPushToken(userId, token);
     } catch (error) {
       console.error("Failed to register push token:", error);
+    }
+  };
+
+  // Detached push-token cleanup for sign-out. MUST run outside the
+  // onAuthStateChange callback: supabase-js awaits every auth subscriber under
+  // its auth lock, so awaiting this slow network work (getExpoPushTokenAsync /
+  // removePushToken) inside the callback would stall signOut, hang the next
+  // login, and let the sign-out's tail tear that fresh session down.
+  const removeDevicePushToken = async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== "granted") return;
+      const { data: token } = await Notifications.getExpoPushTokenAsync({
+        projectId: Constants.expoConfig?.extra?.eas?.projectId
+      });
+      await services.pushToken.removePushToken(token);
+    } catch {
+      // best-effort — never block sign-out on push-token cleanup
     }
   };
 

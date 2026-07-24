@@ -1,7 +1,10 @@
 import EXPENSE_STATE from "@/features/expense/states/expense.state";
 import GROUP_STATE from "@/features/group/states/group.state";
 import NOTIFICATION_STATE from "@/features/notifications/states/notification.state";
-import { logout } from "@/features/user/services/auth.service";
+import {
+  clearGoogleSession,
+  clearLocalSession
+} from "@/features/user/services/auth.service";
 import {
   createPreferences,
   getPreferences,
@@ -52,18 +55,32 @@ const USER_STATE = create<UserState>((set, get) => ({
       details: null,
       preferences: null,
       settlementView: "full",
-      defaultCurrency: "PHP"
+      defaultCurrency: "PHP",
+      // Reset the routing intent so a stale "tabs"/"splash" from the previous
+      // account can't survive into the next login and mis-route index.tsx.
+      routeIntent: "login"
     });
     // Drop the offline profile cache so the next account never hydrates ours.
     clearCachedUserSession();
     EXPENSE_STATE.getState().reset();
     GROUP_STATE.getState().reset();
     NOTIFICATION_STATE.getState().reset();
-    // Actually clear the persisted Supabase session (and cached Google
-    // account) — otherwise a cold launch's getSession() restores the account
-    // we just left. Local state is already cleared above for an instant UI
-    // update, so this runs fire-and-forget.
-    logout().catch((error) => console.error("Error during sign out:", error));
+    // Clear the persisted Supabase session so a cold launch's getSession() can't
+    // restore the account we just left (and a stale token refresh can't silently
+    // sign it back in). LOCAL scope → no network round-trip. This is only safe
+    // because the onAuthStateChange handler in app/_layout.tsx is non-blocking:
+    // supabase-js awaits auth subscribers under its auth lock, so if that handler
+    // awaited slow work, this sign-out would stall and race the next login. With
+    // it detached, sign-out resolves fast and can't tear down the next session.
+    // Fire-and-forget keeps navigation to login instant. The Google cache clear
+    // is fired separately — its native call can be slow and must not share a task
+    // with (and thus delay) the Supabase sign-out.
+    clearLocalSession().catch((error) =>
+      console.error("Error clearing session:", error)
+    );
+    clearGoogleSession().catch((error) =>
+      console.error("Error clearing Google session:", error)
+    );
   },
 
   setAppearanceMode: async (mode: AppearanceMode) => {

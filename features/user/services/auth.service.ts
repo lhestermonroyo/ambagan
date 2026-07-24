@@ -122,18 +122,38 @@ export const signInWithApple = async () => {
   return { data, fullName: credential.fullName };
 };
 
-export const logout = async () => {
-  // Clear the cached Google account too, so the next Google sign-in shows the
-  // account picker instead of silently reusing the last one. Best-effort — an
-  // email/password or Apple user has no Google session, so ignore any error.
+// Clears the cached Google account so the next Google sign-in shows the account
+// picker instead of silently reusing the last one. Best-effort — an email or
+// Apple user has no Google session, so ignore any error. Note this does NOT
+// touch the Supabase session, and it's kept SEPARATE from clearLocalSession
+// because this native call can be slow/hang — it must never delay (or land in
+// the same task as) the Supabase sign-out and re-open the login race.
+export const clearGoogleSession = async () => {
   try {
     await GoogleSignin.signOut();
   } catch {
     // no active Google session — nothing to clear
   }
+};
 
-  const { error } = await supabase.auth.signOut();
+// Clears ONLY this device's Supabase session (scope: "local" → no server-side
+// token-revoke round-trip). Because it makes no network call and writes to the
+// synchronous SQLite-backed localStorage, it resolves near-instantly — so it
+// can't hang, and it finishes long before any user-driven re-login, so it won't
+// tear down the next session. Fired on logout so getSession() on the next cold
+// launch doesn't restore the account we just left.
+export const clearLocalSession = async () => {
+  const { error } = await supabase.auth.signOut({ scope: "local" });
   if (error) throw error;
+};
+
+// Full sign-out (Google + Supabase). Used for the orphaned-account recovery
+// paths (e.g. onboarding's duplicate-email branch), NOT the normal logout
+// button — that clears local state and fires clearLocalSession/clearGoogleSession
+// independently (see the store's signOut).
+export const logout = async () => {
+  await clearGoogleSession();
+  await clearLocalSession();
 };
 
 export const resetPassword = async (email: string) => {
