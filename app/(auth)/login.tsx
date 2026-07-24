@@ -31,8 +31,15 @@ export default function LoginScreen() {
   const handleSubmit = async () => {
     let errors: any = {};
 
-    if (!values.emailOrPhone) {
+    const emailOrPhone = values.emailOrPhone.trim();
+
+    if (!emailOrPhone) {
       errors.emailOrPhone = "Email or phone number is required";
+    } else if (
+      !services.auth.isValidEmail(emailOrPhone) &&
+      !services.auth.isPhoneNumber(emailOrPhone)
+    ) {
+      errors.emailOrPhone = "Enter a valid email or phone number";
     }
 
     if (!values.password) {

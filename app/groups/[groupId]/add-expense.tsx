@@ -22,6 +22,8 @@ import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
+  FormControlError,
+  FormControlErrorText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -164,6 +166,11 @@ export default function AddExpenseScreen() {
     useState<ImagePickerSuccessResult | null>(seed.proofOfPayment);
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+  // Flipped true the first time the user taps a submit action. Until then the
+  // form stays quiet; after, the required-field errors (amount, description)
+  // render inline so the user can see exactly what's missing. Individual errors
+  // clear on their own as each field becomes valid.
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   // Who paid, as userId → contributed amount. Empty means the default "you paid
@@ -525,6 +532,15 @@ export default function AddExpenseScreen() {
     splitValid &&
     distinctInvolved >= 2;
 
+  // Required-field errors, only surfaced once a submit has been attempted so
+  // the form doesn't nag before the user has tried anything.
+  const amountError =
+    attemptedSubmit && parsedAmount <= 0 ? "Enter an amount." : undefined;
+  const descriptionError =
+    attemptedSubmit && description.trim().length === 0
+      ? "Enter a description."
+      : undefined;
+
   // A draft only needs an amount, a description, and a group — no payers or
   // split yet ("log now, split later"). Deliberately looser than canSubmit,
   // which also requires a valid payer/split and 2+ people involved.
@@ -548,6 +564,7 @@ export default function AddExpenseScreen() {
       return;
     }
 
+    setAttemptedSubmit(true);
     if (!canSaveDraft) return;
 
     const creator = {
@@ -700,6 +717,7 @@ export default function AddExpenseScreen() {
   };
 
   const handleSubmit = async () => {
+    setAttemptedSubmit(true);
     if (!currentUser || !selectedGroup || !canSubmit) return;
 
     // A recurrence turns this into a server-side series, not a one-off insert.
@@ -916,9 +934,12 @@ export default function AddExpenseScreen() {
             variant="outline"
             text={isPro ? "Save Draft" : "Save Draft - Pro"}
             loading={savingDraft}
-            // Drafts and recurrence don't combine — a series posts finalized
-            // occurrences, so there's nothing to "finalize later".
-            disabled={!canSaveDraft || !!recurrence}
+            // Stays enabled even with fields missing — tapping surfaces the
+            // required-field errors instead. Only genuinely blocking states
+            // disable it: another action in flight, or a recurrence set (drafts
+            // and recurrence don't combine — a series posts finalized
+            // occurrences, so there's nothing to "finalize later").
+            disabled={submitting || !!recurrence}
             onPress={handleSaveDraft}
           />,
           <FormButton
@@ -926,14 +947,16 @@ export default function AddExpenseScreen() {
             className="flex-1"
             text={recurrence ? "Save Recurring" : "Add Expense"}
             loading={submitting}
-            disabled={!canSubmit}
+            // Stays enabled even with fields missing — tapping runs validation
+            // and surfaces the errors rather than silently doing nothing.
+            disabled={savingDraft}
             onPress={handleSubmit}
           />
         ]}
       >
         <ScrollView className="flex-1 px-4">
           <VStack className="gap-y-6 pt-2">
-            <FormControl size="md">
+            <FormControl size="md" isInvalid={!!amountError}>
               <FormControlLabel>
                 <FormControlLabelText>Amount</FormControlLabelText>
               </FormControlLabel>
@@ -958,6 +981,11 @@ export default function AddExpenseScreen() {
                   />
                 </VStack>
               </HStack>
+              {amountError && (
+                <FormControlError>
+                  <FormControlErrorText>{amountError}</FormControlErrorText>
+                </FormControlError>
+              )}
             </FormControl>
 
             <FormTextarea
@@ -967,6 +995,7 @@ export default function AddExpenseScreen() {
               onChangeText={setDescription}
               autoCapitalize="none"
               size="sm"
+              errorMessage={descriptionError}
             />
 
             <HStack className="gap-x-2">

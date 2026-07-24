@@ -33,15 +33,23 @@ export default function SignUpScreen() {
   const handleSubmit = async () => {
     let errors: any = {};
 
-    if (!values.email) {
+    const email = values.email.trim();
+
+    if (!email) {
       errors.email = "Email is required";
+    } else if (!services.auth.isValidEmail(email)) {
+      errors.email = "Enter a valid email address";
     }
 
     if (!values.password) {
       errors.password = "Password is required";
+    } else if (values.password.length < services.auth.MIN_PASSWORD_LENGTH) {
+      errors.password = `Password must be at least ${services.auth.MIN_PASSWORD_LENGTH} characters`;
     }
 
-    if (values.password && values.confirmPassword !== values.password) {
+    if (!values.confirmPassword) {
+      errors.confirmPassword = "Please confirm your password";
+    } else if (values.confirmPassword !== values.password) {
       errors.confirmPassword = "Passwords do not match";
     }
 

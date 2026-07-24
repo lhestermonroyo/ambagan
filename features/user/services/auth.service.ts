@@ -6,6 +6,12 @@ import * as AppleAuthentication from "expo-apple-authentication";
 export const isPhoneNumber = (input: string): boolean =>
   /^\+?[\d\s\-()]{7,15}$/.test(input.trim());
 
+export const isValidEmail = (input: string): boolean =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.trim());
+
+// Supabase's default minimum password length.
+export const MIN_PASSWORD_LENGTH = 6;
+
 // Normalizes any PH phone input to the 10-digit local format stored in the DB (e.g. "9171234567")
 export const normalizePhoneNumber = (input: string): string => {
   const digits = input.replace(/[\s\-()]/g, "").replace(/^\+/, "");

@@ -6,6 +6,8 @@ import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import {
   FormControl,
+  FormControlError,
+  FormControlErrorText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -76,17 +78,15 @@ export default function CreateGroupScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!values.name) {
-      setFormErrors((prev: any) => ({ ...prev, name: "Name is required" }));
-      return;
-    }
-    if (!values.category) {
-      setFormErrors((prev: any) => ({
-        ...prev,
-        category: "Category is required"
-      }));
-      return;
-    }
+    // Validate every required field at once so each missing one lights up
+    // together (name outline + message, category label + message) instead of
+    // surfacing one at a time.
+    const nextErrors = {
+      name: values.name.trim() ? "" : "Name is required",
+      category: values.category ? "" : "Category is required"
+    };
+    setFormErrors(nextErrors);
+    if (nextErrors.name || nextErrors.category) return;
 
     if (admin.length === 0) {
       toast({
@@ -200,7 +200,8 @@ export default function CreateGroupScreen() {
             className="flex-1"
             text="Create"
             loading={submitting}
-            disabled={!values.name || !values.category}
+            // Stays enabled even with fields missing — tapping runs validation
+            // and surfaces the errors rather than silently doing nothing.
             onPress={handleSubmit}
           />
         ]}
@@ -216,12 +217,16 @@ export default function CreateGroupScreen() {
               label="Group Name"
               placeholder="Enter group name (e.g. Japan 2026)"
               value={values.name}
-              onChangeText={(text) => setValues({ ...values, name: text })}
+              onChangeText={(text) => {
+                setValues({ ...values, name: text });
+                if (formErrors.name)
+                  setFormErrors((prev: any) => ({ ...prev, name: "" }));
+              }}
               autoCapitalize="none"
               errorMessage={formErrors.name}
             />
 
-            <FormControl size="md">
+            <FormControl size="md" isInvalid={!!formErrors.category}>
               <FormControlLabel>
                 <FormControlLabelText>Category</FormControlLabelText>
               </FormControlLabel>
@@ -233,9 +238,14 @@ export default function CreateGroupScreen() {
                     variant={
                       values.category === category.value ? "solid" : "outline"
                     }
-                    onPress={() =>
-                      setValues({ ...values, category: category.value })
-                    }
+                    onPress={() => {
+                      setValues({ ...values, category: category.value });
+                      if (formErrors.category)
+                        setFormErrors((prev: any) => ({
+                          ...prev,
+                          category: ""
+                        }));
+                    }}
                     className={`items-center gap-x-2 pl-1.5 pr-4 rounded-full ${
                       values.category === category.value
                         ? "border-primary-400"
@@ -263,6 +273,13 @@ export default function CreateGroupScreen() {
                   </Button>
                 ))}
               </HStack>
+              {formErrors.category && (
+                <FormControlError>
+                  <FormControlErrorText>
+                    {formErrors.category}
+                  </FormControlErrorText>
+                </FormControlError>
+              )}
             </FormControl>
             <FormControl size="md">
               <VStack className="gap-y-2">

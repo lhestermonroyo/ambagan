@@ -303,14 +303,14 @@ export const avatarColors = {
   p: "bg-rose-500",
   q: "bg-stone-500",
   r: "bg-amber-500",
-  s: "bg-lavender-500",
+  s: "bg-emerald-500",
   t: "bg-red-900",
   u: "bg-slate-500",
   v: "bg-zinc-500",
-  w: "bg-crimson-500",
-  x: "bg-sienna-500",
-  y: "bg-turquoise-500",
-  z: "bg-chartreuse-500"
+  w: "bg-red-700",
+  x: "bg-orange-800",
+  y: "bg-teal-400",
+  z: "bg-lime-600"
 };
 
 export const introSlideContent = [

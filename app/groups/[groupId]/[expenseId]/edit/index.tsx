@@ -18,6 +18,8 @@ import {
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
+  FormControlError,
+  FormControlErrorText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -82,6 +84,10 @@ export default function EditExpenseScreen() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  // Flipped true the first time the user taps the submit action. Until then the
+  // form stays quiet; after, the required-field errors (amount, description)
+  // render inline. Individual errors clear on their own as each field is filled.
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [blockReason, setBlockReason] = useState<
     "offline" | "settled" | "notfound" | null
   >(null);
@@ -476,7 +482,16 @@ export default function EditExpenseScreen() {
     splitValid &&
     distinctInvolved >= 2;
 
+  // Required-field errors, only surfaced once a submit has been attempted.
+  const amountError =
+    attemptedSubmit && parsedAmount <= 0 ? "Enter an amount." : undefined;
+  const descriptionError =
+    attemptedSubmit && description.trim().length === 0
+      ? "Enter a description."
+      : undefined;
+
   const handleSubmit = async () => {
+    setAttemptedSubmit(true);
     if (!currentUser || !selectedGroup || !canSubmit) return;
 
     const memberSplits = buildMemberSplits();
@@ -693,7 +708,8 @@ export default function EditExpenseScreen() {
                   className="flex-1"
                   text={isDraft ? "Finalize" : "Save Changes"}
                   loading={submitting}
-                  disabled={!canSubmit}
+                  // Stays enabled even with fields missing — tapping runs
+                  // validation and surfaces the errors rather than doing nothing.
                   onPress={handleSubmit}
                 />
               ]
@@ -704,8 +720,10 @@ export default function EditExpenseScreen() {
             <ScrollableContent
               amount={amount}
               setAmount={setAmount}
+              amountError={amountError}
               description={description}
               setDescription={setDescription}
+              descriptionError={descriptionError}
               currency={currency}
               setCurrency={setCurrency}
               category={category}
@@ -836,8 +854,10 @@ export default function EditExpenseScreen() {
 function ScrollableContent(props: {
   amount: string;
   setAmount: (v: string) => void;
+  amountError?: string;
   description: string;
   setDescription: (v: string) => void;
+  descriptionError?: string;
   currency: string;
   setCurrency: (v: string) => void;
   category: string;
@@ -878,8 +898,10 @@ function ScrollableContent(props: {
   const {
     amount,
     setAmount,
+    amountError,
     description,
     setDescription,
+    descriptionError,
     currency,
     setCurrency,
     category,
@@ -916,7 +938,7 @@ function ScrollableContent(props: {
   return (
     <ScrollView className="flex-1 px-4">
       <VStack className="gap-y-6 pt-2">
-        <FormControl size="md">
+        <FormControl size="md" isInvalid={!!amountError}>
           <FormControlLabel>
             <FormControlLabelText>Amount</FormControlLabelText>
           </FormControlLabel>
@@ -936,6 +958,11 @@ function ScrollableContent(props: {
               />
             </VStack>
           </HStack>
+          {amountError && (
+            <FormControlError>
+              <FormControlErrorText>{amountError}</FormControlErrorText>
+            </FormControlError>
+          )}
         </FormControl>
 
         <FormTextarea
@@ -945,6 +972,7 @@ function ScrollableContent(props: {
           onChangeText={setDescription}
           autoCapitalize="none"
           size="sm"
+          errorMessage={descriptionError}
         />
 
         <HStack className="gap-x-2">
