@@ -17,7 +17,6 @@ import { CONTACTS_IMPORT_ENABLED } from "@/constants/features";
 import ContactPickerSheet from "@/features/group/components/ContactPickerSheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import { useNetwork } from "@/hooks/useNetwork";
-import { useNetworkHealth } from "@/hooks/useNetworkHealth";
 import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
@@ -60,8 +59,7 @@ export default function MembersSelectionSheet({
   const user = states.user();
   const { details: userDetails } = user;
   const { isOnline } = useNetwork();
-  const { isDegraded } = useNetworkHealth();
-  const showNetworkBanner = !isOnline || isDegraded;
+  const showNetworkBanner = !isOnline;
   const colorScheme = useColorScheme() ?? "light";
 
   const { favoriteIds, favoriteUsers, loadFavorites, handleToggleFavorite } =

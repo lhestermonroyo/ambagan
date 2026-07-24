@@ -1,11 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import 'expo-sqlite/localStorage/install';
 import { Platform } from 'react-native';
-import {
-  markConnectionHealthy,
-  markConnectionSlow,
-  READ_TIMEOUT_MS
-} from './networkHealth';
+
+// How long a READ may hang before we abort it and fall back to cached data.
+const READ_TIMEOUT_MS = 10000;
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SB_URL as string;
 const supabasePublishableKey = process.env.EXPO_PUBLIC_SB_API_KEY as string;
@@ -48,15 +46,7 @@ const timeoutFetch: typeof fetch = async (input, init) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), READ_TIMEOUT_MS);
   try {
-    const res = await fetch(input, { ...init, signal: controller.signal });
-    markConnectionHealthy();
-    return res;
-  } catch (error) {
-    // Aborted = our timeout fired (online but hung) → flag degraded so the UI
-    // can show "showing saved data". A true-offline error (fails fast, not
-    // aborted) is handled by NetInfo instead, so we don't flag it here.
-    if (controller.signal.aborted) markConnectionSlow();
-    throw error;
+    return await fetch(input, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timer);
   }

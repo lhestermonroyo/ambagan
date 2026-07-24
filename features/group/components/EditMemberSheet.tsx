@@ -18,7 +18,6 @@ import ContactPickerSheet from "@/features/group/components/ContactPickerSheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import useAppToast from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
-import { useNetworkHealth } from "@/hooks/useNetworkHealth";
 import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
@@ -58,8 +57,7 @@ export default function EditMembersSheet({
   const { details: userDetails } = states.user();
   const colorScheme = useColorScheme() ?? "light";
   const { isOnline } = useNetwork();
-  const { isDegraded } = useNetworkHealth();
-  const showNetworkBanner = !isOnline || isDegraded;
+  const showNetworkBanner = !isOnline;
 
   const {
     favoriteIds,

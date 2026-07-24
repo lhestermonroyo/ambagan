@@ -384,11 +384,6 @@ const FAQ_SECTIONS: FAQSection[] = [
           "A blue 'Offline Mode — Showing cached data' banner appears at the top, and you can keep using the app with your last synced data. Most actions work offline and sync automatically when you reconnect. A few things need a live connection — see the list of which features work offline above. You'll see a short message if you try one of those while offline."
       },
       {
-        question: "Why does it say 'Slow connection — showing saved data'?",
-        answer:
-          "If your device is connected but the network is too slow or unresponsive to load fresh data, Ambagan shows your last saved data with an amber 'Slow connection' banner instead of leaving you stuck waiting. It refreshes automatically once the connection recovers."
-      },
-      {
         question: "Do my offline changes really get saved?",
         answer:
           "Yes. Expenses, group edits, member changes, and favorites you make offline are queued on your device and marked with a 'Syncing…' badge. As soon as you reconnect — or reopen the app while online — Ambagan sends them to the server in order and clears the badge. The queue survives closing and reopening the app, so nothing is lost if you stay offline for a while."
