@@ -184,77 +184,88 @@ export type QueuedOp =
       id: string;
       type: "ADD_EXPENSE";
       payload: AddExpensePayload;
-      status: "pending" | "failed";
+      status: "pending" | "failed" | "dead";
+      attempts: number;
       created_at: number;
     }
   | {
       id: string;
       type: "CREATE_DRAFT";
       payload: CreateDraftPayload;
-      status: "pending" | "failed";
+      status: "pending" | "failed" | "dead";
+      attempts: number;
       created_at: number;
     }
   | {
       id: string;
       type: "UPDATE_EXPENSE";
       payload: UpdateExpensePayload;
-      status: "pending" | "failed";
+      status: "pending" | "failed" | "dead";
+      attempts: number;
       created_at: number;
     }
   | {
       id: string;
       type: "DELETE_EXPENSE";
       payload: DeleteExpensePayload;
-      status: "pending" | "failed";
+      status: "pending" | "failed" | "dead";
+      attempts: number;
       created_at: number;
     }
   | {
       id: string;
       type: "CREATE_GROUP";
       payload: CreateGroupPayload;
-      status: "pending" | "failed";
+      status: "pending" | "failed" | "dead";
+      attempts: number;
       created_at: number;
     }
   | {
       id: string;
       type: "UPDATE_GROUP";
       payload: UpdateGroupPayload;
-      status: "pending" | "failed";
+      status: "pending" | "failed" | "dead";
+      attempts: number;
       created_at: number;
     }
   | {
       id: string;
       type: "SET_GROUP_ARCHIVED";
       payload: SetGroupArchivedPayload;
-      status: "pending" | "failed";
+      status: "pending" | "failed" | "dead";
+      attempts: number;
       created_at: number;
     }
   | {
       id: string;
       type: "ADD_FAVORITE";
       payload: FavoritePayload;
-      status: "pending" | "failed";
+      status: "pending" | "failed" | "dead";
+      attempts: number;
       created_at: number;
     }
   | {
       id: string;
       type: "REMOVE_FAVORITE";
       payload: FavoritePayload;
-      status: "pending" | "failed";
+      status: "pending" | "failed" | "dead";
+      attempts: number;
       created_at: number;
     }
   | {
       id: string;
       type: "UPDATE_PREFERENCES";
       payload: UpdatePreferencesPayload;
-      status: "pending" | "failed";
+      status: "pending" | "failed" | "dead";
+      attempts: number;
       created_at: number;
     }
   | {
       id: string;
       type: "UPDATE_MEMBERS";
       payload: UpdateMembersPayload;
-      status: "pending" | "failed";
+      status: "pending" | "failed" | "dead";
+      attempts: number;
       created_at: number;
     };
 
@@ -290,6 +301,7 @@ export async function getQueue(): Promise<QueuedOp[]> {
     type: string;
     payload: string;
     status: string;
+    attempts: number | null;
     created_at: number;
   }>("SELECT * FROM pending_queue ORDER BY created_at ASC");
 
@@ -299,7 +311,8 @@ export async function getQueue(): Promise<QueuedOp[]> {
         id: r.id,
         type: r.type as QueueOpType,
         payload: JSON.parse(r.payload),
-        status: r.status as "pending" | "failed",
+        status: r.status as "pending" | "failed" | "dead",
+        attempts: r.attempts ?? 0,
         created_at: r.created_at
       }) as QueuedOp
   );
@@ -348,11 +361,37 @@ async function findPendingFavorite(
   });
 }
 
-export async function markFailed(id: string): Promise<void> {
+/**
+ * After this many failed sync attempts (across reconnects/foregrounds) an op is
+ * dead-lettered: left in the queue but no longer retried, so a permanently
+ * rejected write (e.g. an RLS conflict) stops re-firing the "didn't sync" toast
+ * on every reconnect forever. Genuinely transient failures almost never reach
+ * this many distinct attempts.
+ */
+export const MAX_SYNC_ATTEMPTS = 5;
+
+/**
+ * Record a failed sync attempt: bump the attempt counter and set the op's status
+ * to `dead` once it exceeds MAX_SYNC_ATTEMPTS, otherwise `failed` (still
+ * retried). Returns the resulting status so the caller can distinguish a
+ * transient failure (will retry) from a dead-lettered one (won't).
+ */
+export async function markFailed(id: string): Promise<"failed" | "dead"> {
   const db = await getDb();
-  await db.runAsync("UPDATE pending_queue SET status = 'failed' WHERE id = ?", [
+  await db.runAsync(
+    "UPDATE pending_queue SET attempts = attempts + 1 WHERE id = ?",
+    [id]
+  );
+  const row = await db.getFirstAsync<{ attempts: number }>(
+    "SELECT attempts FROM pending_queue WHERE id = ?",
+    [id]
+  );
+  const status = (row?.attempts ?? 0) >= MAX_SYNC_ATTEMPTS ? "dead" : "failed";
+  await db.runAsync("UPDATE pending_queue SET status = ? WHERE id = ?", [
+    status,
     id
   ]);
+  return status;
 }
 
 export async function getPendingCount(): Promise<number> {

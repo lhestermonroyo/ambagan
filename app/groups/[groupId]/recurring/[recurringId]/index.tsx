@@ -27,6 +27,7 @@ import {
   recurrenceSummary
 } from "@/features/expense/utils/recurrence.util";
 import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
@@ -34,6 +35,7 @@ import { RecurringExpense, SplitType } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
 import { getSecondaryHex } from "@/utils/getColorHex";
+import * as offlineQueue from "@/utils/offlineQueue";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import { format } from "date-fns";
 import {
@@ -65,6 +67,7 @@ export default function RecurringDetailsScreen() {
 
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
+  const { isOnline } = useNetwork();
 
   const { details: currentUser } = states.user();
   const { memberList } = states.group();
@@ -91,14 +94,19 @@ export default function RecurringDetailsScreen() {
       setItem(recurring);
       if (groupMembers.length) setMembers(groupMembers);
     } catch {
-      toast({
-        title: "Couldn't load",
-        description: "Failed to load this recurring expense. Please try again.",
-        type: "error"
-      });
+      // Recurring reads aren't cached, so offline they simply fail — that's the
+      // offline empty state below, not an error worth a toast.
+      if (isOnline) {
+        toast({
+          title: "Couldn't load",
+          description:
+            "Failed to load this recurring expense. Please try again.",
+          type: "error"
+        });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recurringId, groupId]);
+  }, [recurringId, groupId, isOnline]);
 
   useFocusEffect(
     useCallback(() => {
@@ -121,8 +129,23 @@ export default function RecurringDetailsScreen() {
 
   const isOwner = item?.creator?.id === userId;
 
+  // Recurring series are server-authoritative (the cron mutates their schedule),
+  // so management stays online-only rather than queuing writes that could race a
+  // server run. Mirrors the create guard on the Add Expense screen.
+  const requireConnection = async () => {
+    if (await offlineQueue.isOnline()) return true;
+    toast({
+      title: "You're offline",
+      description:
+        "Recurring expenses need a connection. Reconnect to manage this series.",
+      type: "info"
+    });
+    return false;
+  };
+
   const handleToggleActive = async () => {
     if (!item) return;
+    if (!(await requireConnection())) return;
     const next = !item.is_active;
     setBusy(true);
     setItem((prev) => (prev ? { ...prev, is_active: next } : prev));
@@ -149,6 +172,7 @@ export default function RecurringDetailsScreen() {
 
   const handleDelete = async () => {
     if (!item) return;
+    if (!(await requireConnection())) return;
     setBusy(true);
     try {
       await services.expense.deleteRecurringExpense(item.id);
@@ -220,7 +244,11 @@ export default function RecurringDetailsScreen() {
             <VStack className="flex-1 py-16">
               <EmptyList
                 type={EmptyType.EXPENSE}
-                content="This recurring expense couldn't be loaded. Pull back and try again."
+                content={
+                  isOnline
+                    ? "This recurring expense couldn't be loaded. Pull back and try again."
+                    : "You're offline. Reconnect to view this recurring expense."
+                }
               />
             </VStack>
           ) : (

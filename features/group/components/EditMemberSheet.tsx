@@ -292,19 +292,42 @@ export default function EditMembersSheet({
       // editor and no cross-user conflict.
       if (!online) {
         const now = new Date().toISOString();
-        const roster = allMembers.map(
-          (m) =>
-            ({
-              id: m.id,
-              email: (m as any).email ?? "",
-              phone: (m as any).phone ?? "",
-              first_name: m.first_name,
-              last_name: m.last_name,
-              avatar: m.avatar ?? null,
-              joined_at: (m as any).joined_at ?? now,
-              group_id: groupDetails.id,
-            }) as Member,
-        );
+
+        // The admin is always a member but is filtered out of the editable list
+        // (init excludes them), so re-include them in the optimistic roster. The
+        // online path stores getMembersByGroupId, which returns the admin too,
+        // and the group's "needs 2+ members" gate counts them — dropping the
+        // admin would make a group with one added member look like it has a
+        // single member and wrongly block adding expenses.
+        const adminMember =
+          memberList.find((m) => m.id === groupDetails.admin.id) ??
+          ({
+            id: groupDetails.admin.id,
+            email: groupDetails.admin.email ?? "",
+            phone: groupDetails.admin.phone ?? "",
+            first_name: groupDetails.admin.first_name,
+            last_name: groupDetails.admin.last_name,
+            avatar: groupDetails.admin.avatar ?? null,
+            joined_at: now,
+            group_id: groupDetails.id,
+          } as Member);
+
+        const roster: Member[] = [
+          adminMember,
+          ...allMembers.map(
+            (m) =>
+              ({
+                id: m.id,
+                email: (m as any).email ?? "",
+                phone: (m as any).phone ?? "",
+                first_name: m.first_name,
+                last_name: m.last_name,
+                avatar: m.avatar ?? null,
+                joined_at: (m as any).joined_at ?? now,
+                group_id: groupDetails.id,
+              }) as Member,
+          ),
+        ];
 
         await offlineQueue.queueUpdateMembers(
           groupDetails.id,

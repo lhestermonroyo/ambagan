@@ -15,6 +15,7 @@ import {
   recurrenceSummary
 } from "@/features/expense/utils/recurrence.util";
 import useAppToast from "@/hooks/use-app-toast";
+import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import {
   RecurrenceEndType,
@@ -44,6 +45,7 @@ export default function GroupRecurring({
 }) {
   const toast = useAppToast();
   const router = useRouter();
+  const { isOnline } = useNetwork();
 
   const [list, setList] = useState<RecurringExpense[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,14 +56,18 @@ export default function GroupRecurring({
       const result = await services.expense.getRecurringByGroupId(groupId);
       setList(result);
     } catch {
-      toast({
-        title: "Couldn't load",
-        description: "Failed to load recurring expenses. Please try again.",
-        type: "error"
-      });
+      // Recurring reads aren't cached, so offline they simply fail — that's the
+      // offline empty state below, not an error worth a toast.
+      if (isOnline) {
+        toast({
+          title: "Couldn't load",
+          description: "Failed to load recurring expenses. Please try again.",
+          type: "error"
+        });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId]);
+  }, [groupId, isOnline]);
 
   useFocusEffect(
     useCallback(() => {
@@ -162,7 +168,11 @@ export default function GroupRecurring({
     return (
       <EmptyList
         type={EmptyType.EXPENSE}
-        content="No recurring expenses yet. Set one up from the Add Expense screen by choosing a Repeat option."
+        content={
+          isOnline
+            ? "No recurring expenses yet. Set one up from the Add Expense screen by choosing a Repeat option."
+            : "You're offline. Reconnect to view recurring expenses."
+        }
       />
     );
   }

@@ -79,6 +79,7 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       type TEXT NOT NULL,
       payload TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending',
+      attempts INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     );
 
@@ -89,5 +90,23 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       cached_at INTEGER NOT NULL
     );
   `);
+
+  await migratePendingQueue(_db);
   return _db;
+}
+
+/**
+ * Additive migrations for pending_queue on existing installs (the CREATE TABLE
+ * above only runs for fresh DBs). Adds the `attempts` column that dead-letters
+ * an op after too many failed sync retries.
+ */
+async function migratePendingQueue(db: SQLite.SQLiteDatabase): Promise<void> {
+  const cols = await db.getAllAsync<{ name: string }>(
+    "PRAGMA table_info(pending_queue)"
+  );
+  if (!cols.some((c) => c.name === "attempts")) {
+    await db.execAsync(
+      "ALTER TABLE pending_queue ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0"
+    );
+  }
 }

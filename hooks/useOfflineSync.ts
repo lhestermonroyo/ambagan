@@ -39,29 +39,28 @@ export function useOfflineSync() {
 
         let success = 0;
         let failed = 0;
+        let dead = 0;
 
         for (const op of retryable) {
           try {
             if (op.type === "ADD_EXPENSE") {
               const { args } = op.payload;
-              // Idempotency guard for retries: if a prior attempt already
-              // committed this pinned-id expense, don't re-insert it (that would
-              // PK-conflict, and re-inserting children would double-count).
-              // `expenseExists` throws on a real error → op retries safely.
-              if (!(await services.expense.expenseExists(op.payload.clientId))) {
-                await services.expense.saveExpense(
-                  {
-                    ...args.expensePayload,
-                    // Stored as an ISO string in the queue — rehydrate to a Date.
-                    expense_date: args.expensePayload.expense_date
-                      ? new Date(args.expensePayload.expense_date)
-                      : undefined
-                  } as any,
-                  args.payers,
-                  args.memberSplits,
-                  args.paymentSplits
-                );
-              }
+              // saveExpense is idempotent on the pinned id: a retry where the row
+              // already committed detects the unique violation and repairs the
+              // children instead of duplicating or stranding a half-written
+              // expense (see saveExpense).
+              await services.expense.saveExpense(
+                {
+                  ...args.expensePayload,
+                  // Stored as an ISO string in the queue — rehydrate to a Date.
+                  expense_date: args.expensePayload.expense_date
+                    ? new Date(args.expensePayload.expense_date)
+                    : undefined
+                } as any,
+                args.payers,
+                args.memberSplits,
+                args.paymentSplits
+              );
               await offlineQueue._internal.clearPendingExpense(
                 op.payload.groupId,
                 op.payload.clientId
@@ -86,18 +85,16 @@ export function useOfflineSync() {
               }
             } else if (op.type === "CREATE_DRAFT") {
               const { args } = op.payload;
-              // Idempotency guard for retries (see ADD_EXPENSE).
-              if (!(await services.expense.expenseExists(op.payload.clientId))) {
-                await services.expense.saveDraftExpense({
-                  ...args.expensePayload,
-                  proof_of_payment: null,
-                  // Pinned to the optimistic id; rehydrate the ISO date to a Date.
-                  id: op.payload.clientId,
-                  expense_date: args.expensePayload.expense_date
-                    ? new Date(args.expensePayload.expense_date)
-                    : undefined
-                });
-              }
+              // saveDraftExpense is idempotent on the pinned id (see ADD_EXPENSE).
+              await services.expense.saveDraftExpense({
+                ...args.expensePayload,
+                proof_of_payment: null,
+                // Pinned to the optimistic id; rehydrate the ISO date to a Date.
+                id: op.payload.clientId,
+                expense_date: args.expensePayload.expense_date
+                  ? new Date(args.expensePayload.expense_date)
+                  : undefined
+              });
               await offlineQueue._internal.clearPendingExpense(
                 op.payload.groupId,
                 op.payload.clientId
@@ -134,10 +131,10 @@ export function useOfflineSync() {
             } else if (op.type === "DELETE_EXPENSE") {
               await services.expense.deleteExpense(op.payload.expenseId);
             } else if (op.type === "CREATE_GROUP") {
-              // Idempotency guard for retries (see ADD_EXPENSE).
-              if (!(await services.group.groupExists(op.payload.clientId))) {
-                await services.group.saveGroup(op.payload.args);
-              }
+              // saveGroup is idempotent on the pinned id: a retry where the group
+              // row already committed repairs the member rows instead of leaving
+              // a memberless group (see saveGroup).
+              await services.group.saveGroup(op.payload.args);
               await offlineQueue._internal.clearPendingGroup(
                 op.payload.userId,
                 op.payload.clientId
@@ -186,8 +183,11 @@ export function useOfflineSync() {
             success++;
           } catch (error) {
             console.error("Failed to sync queued operation:", error);
-            await offlineQueue.markFailed(op.id);
-            failed++;
+            // Dead-lettered ops stop retrying (and stop re-toasting) after too
+            // many attempts; still-failed ops are retried on the next flush.
+            const status = await offlineQueue.markFailed(op.id);
+            if (status === "dead") dead++;
+            else failed++;
           }
         }
 
@@ -217,6 +217,17 @@ export function useOfflineSync() {
             description: `${failed} ${
               failed === 1 ? "change" : "changes"
             } couldn't be synced and will be retried later.`,
+            type: "error"
+          });
+        }
+        // Dead-lettered this pass: retried enough times to stop. Toast once (they
+        // won't be retried again, so this won't re-fire on future reconnects).
+        if (dead > 0) {
+          toast({
+            title: "Some changes couldn't be synced",
+            description: `${dead} ${
+              dead === 1 ? "change" : "changes"
+            } couldn't be synced after several attempts and have stopped retrying.`,
             type: "error"
           });
         }

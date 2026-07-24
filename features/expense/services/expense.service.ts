@@ -18,7 +18,7 @@ import { splitTypes, tables } from "@/utils/constants";
 import { computeInitialNextRunAt } from "@/features/expense/utils/recurrence.util";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { sendPushNotification } from "@/utils/sendPushNotifications";
-import { supabase } from "@/utils/supabase";
+import { isUniqueViolation, supabase } from "@/utils/supabase";
 import { getCompressedReceiptBase64, uploadFile } from "@/utils/upload";
 import { ImagePickerAsset, ImagePickerSuccessResult } from "expo-image-picker";
 import { v4 as uuid } from "uuid";
@@ -70,23 +70,6 @@ export const getDailyExpenseCount = async (userId: string): Promise<number> => {
 
   if (error) throw error;
   return count ?? 0;
-};
-
-/**
- * Whether an expense row exists, without throwing on not-found (unlike
- * `getExpenseById`, which uses `.single()`). Used as an idempotency guard when
- * retrying a queued offline create: a pinned-id row that already committed must
- * not be re-inserted. Throws only on a real error (e.g. offline) so the caller
- * can retry safely.
- */
-export const expenseExists = async (id: string): Promise<boolean> => {
-  const { count, error } = await supabase
-    .from(tables.EXPENSES_TBL)
-    .select("id", { count: "exact", head: true })
-    .eq("id", id);
-
-  if (error) throw error;
-  return (count ?? 0) > 0;
 };
 
 /**
@@ -189,8 +172,35 @@ export const saveExpense = async (
     }
   ]);
 
-  if (expenseResponse.error) {
+  // Idempotent sync retries: an offline create isn't atomic (the expense row and
+  // its children are separate calls), so a mid-write failure can leave the row
+  // committed but childless. On the retry the insert hits a unique violation —
+  // treat that as a repair pass rather than a failure: delete any partial
+  // children below, re-insert the full set, and skip notifications (the row that
+  // first committed already owns them). Any other error is real → rethrow.
+  const isRepair = !!expenseResponse.error;
+  if (expenseResponse.error && !isUniqueViolation(expenseResponse.error)) {
     throw expenseResponse.error;
+  }
+
+  if (isRepair) {
+    const cleanup = await Promise.all([
+      supabase
+        .from(tables.EXPENSE_PAYERS_TBL)
+        .delete()
+        .eq("expense_id", expenseId),
+      supabase
+        .from(tables.MEMBER_SPLITS_TBL)
+        .delete()
+        .eq("expense_id", expenseId),
+      supabase
+        .from(tables.PAYMENT_SPLITS_TBL)
+        .delete()
+        .eq("expense_id", expenseId)
+    ]);
+    for (const r of cleanup) {
+      if (r.error) throw r.error;
+    }
   }
 
   const [payersResponse, splitsResponse, paymentsResponse] = await Promise.all([
@@ -233,29 +243,33 @@ export const saveExpense = async (
     throw paymentsResponse.error;
   }
 
-  const membersToNotify = paymentSplits
-    .map((s) => s.memberSplitId)
-    .filter(
-      (id, idx, arr) => id !== user.data.user!.id && arr.indexOf(id) === idx
-    );
+  // Only on a genuine first creation — a repair pass is re-running a create
+  // whose row already exists, so its members were already notified.
+  if (!isRepair) {
+    const membersToNotify = paymentSplits
+      .map((s) => s.memberSplitId)
+      .filter(
+        (id, idx, arr) => id !== user.data.user!.id && arr.indexOf(id) === idx
+      );
 
-  await Promise.allSettled(
-    membersToNotify.map((memberId) =>
-      Promise.all([
-        createNotification({
-          fromUserId: user.data.user!.id,
-          toUserId: memberId,
-          type: NotificationType.EXPENSE_INCLUSION,
-          referenceId: expenseId
-        }),
-        sendPushNotification(memberId, NotificationType.EXPENSE_INCLUSION, {
-          title: "New Expense",
-          body: `You've been added to "${description}"`,
-          referenceId: expenseId
-        })
-      ])
-    )
-  );
+    await Promise.allSettled(
+      membersToNotify.map((memberId) =>
+        Promise.all([
+          createNotification({
+            fromUserId: user.data.user!.id,
+            toUserId: memberId,
+            type: NotificationType.EXPENSE_INCLUSION,
+            referenceId: expenseId
+          }),
+          sendPushNotification(memberId, NotificationType.EXPENSE_INCLUSION, {
+            title: "New Expense",
+            body: `You've been added to "${description}"`,
+            referenceId: expenseId
+          })
+        ])
+      )
+    );
+  }
 
   return { success: true, message: "Expense created successfully" };
 };
@@ -326,7 +340,9 @@ export const saveDraftExpense = async (expensePayload: {
     }
   ]);
 
-  if (expenseResponse.error) {
+  // A draft is a single row (no children), so an offline-sync retry that finds
+  // it already committed is a no-op success, not a failure.
+  if (expenseResponse.error && !isUniqueViolation(expenseResponse.error)) {
     throw expenseResponse.error;
   }
 

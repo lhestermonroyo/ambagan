@@ -375,7 +375,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Which features work offline and which need a connection?",
         answer:
-          "You can keep using most of Ambagan without a connection, and actions you take offline sync automatically when you're back online. Works offline: viewing your groups, expenses, settlements, friends, and notifications from your last synced data; adding, editing, and deleting expenses (attached receipts sync on reconnect); saving an expense as a draft; creating a group and editing its name or category; archiving or restoring a group; adding or removing members if you're the admin; adding or removing favorites; changing the app appearance and settlement view; toggling the daily reminder; and sharing an invite link or downloading a group QR code. Needs a connection: settling up (request, approve, reject, or mark as settled); finalizing a draft; joining a group or scanning a QR to join; scanning a receipt; resetting a group's invite link; leaving or permanently deleting a group; uploading a profile or group photo; editing your profile or account and changing your password; changing your default currency or notification preferences; and signing out. If you try something that needs a connection while offline, Ambagan shows a short message instead of leaving you stuck.",
+          "You can keep using most of Ambagan without a connection, and actions you take offline sync automatically when you're back online. Works offline: viewing your groups, expenses, settlements, friends, and notifications from your last synced data; adding, editing, and deleting expenses (attached receipts sync on reconnect); saving an expense as a draft; creating a group and editing its name or category; archiving or restoring a group; adding or removing members if you're the admin; adding or removing favorites; changing the app appearance and settlement view; toggling the daily reminder; and sharing an invite link or downloading a group QR code. Needs a connection: settling up (request, approve, reject, or mark as settled); finalizing a draft; setting up or managing a recurring expense (pause, resume, or delete a series); joining a group or scanning a QR to join; scanning a receipt; resetting a group's invite link; leaving or permanently deleting a group; uploading a profile or group photo; editing your profile or account and changing your password; changing your default currency or notification preferences; and signing out. If you try something that needs a connection while offline, Ambagan shows a short message instead of leaving you stuck.",
         content: <OfflineFeatureList />
       },
       {
@@ -460,6 +460,7 @@ const OFFLINE_CAPABLE: string[] = [
 const OFFLINE_BLOCKED: string[] = [
   "Settle up — request, approve, reject, or mark as settled",
   "Finalize a draft expense",
+  "Set up or manage a recurring expense (pause, resume, or delete a series)",
   "Join a group or scan a QR code to join",
   "Scan a receipt (the receipt reader needs a connection)",
   "Reset a group's invite link or change its expiration",

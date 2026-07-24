@@ -5,7 +5,7 @@ import { Group, Member } from "@/types/groups";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
-import { supabase } from "@/utils/supabase";
+import { isUniqueViolation, supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
 import { sendPushNotification } from "@/utils/sendPushNotifications";
 import { ImagePickerSuccessResult } from "expo-image-picker";
@@ -60,18 +60,28 @@ export const saveGroup = async ({
     }
   ]);
 
-  if (groupResponse.error) {
+  // Idempotent sync retries: an offline create isn't atomic (the group row and
+  // its member rows are separate calls), so a mid-write failure can leave the
+  // group committed but memberless. On the retry the insert hits a unique
+  // violation — treat that as a repair pass rather than a failure: re-upsert the
+  // member rows below and skip notifications (already sent on first commit). Any
+  // other error is real → rethrow.
+  const isRepair = !!groupResponse.error;
+  if (groupResponse.error && !isUniqueViolation(groupResponse.error)) {
     throw groupResponse.error;
   }
 
+  // Upsert (ignore duplicates) so a repair pass only fills in the member rows a
+  // partial prior write missed, and a re-synced add never duplicates a row.
   const responses = await Promise.all([
     ...member_ids.map((id) => {
-      return supabase.from(tables.GROUP_MEMBERS_TBL).insert([
+      return supabase.from(tables.GROUP_MEMBERS_TBL).upsert(
         {
           group_id: groupId,
           member_id: id
-        }
-      ]);
+        },
+        { onConflict: "group_id,member_id", ignoreDuplicates: true }
+      );
     })
   ]);
 
@@ -81,25 +91,27 @@ export const saveGroup = async ({
     }
   }
 
-  const membersToNotify = member_ids.filter((id) => id !== admin_id);
+  if (!isRepair) {
+    const membersToNotify = member_ids.filter((id) => id !== admin_id);
 
-  await Promise.allSettled(
-    membersToNotify.map((memberId) =>
-      Promise.all([
-        createNotification({
-          fromUserId: admin_id,
-          toUserId: memberId,
-          type: NotificationType.GROUP_JOIN,
-          referenceId: groupId
-        }),
-        sendPushNotification(memberId, NotificationType.GROUP_JOIN, {
-          title: "Added to a Group",
-          body: `You've been added to "${name}"`,
-          referenceId: groupId
-        })
-      ])
-    )
-  );
+    await Promise.allSettled(
+      membersToNotify.map((memberId) =>
+        Promise.all([
+          createNotification({
+            fromUserId: admin_id,
+            toUserId: memberId,
+            type: NotificationType.GROUP_JOIN,
+            referenceId: groupId
+          }),
+          sendPushNotification(memberId, NotificationType.GROUP_JOIN, {
+            title: "Added to a Group",
+            body: `You've been added to "${name}"`,
+            referenceId: groupId
+          })
+        ])
+      )
+    );
+  }
 
   return {
     message: "Group created successfully",
@@ -461,22 +473,6 @@ export const getGroupById = async (groupId: string) => {
   }
 
   return data as Group;
-};
-
-/**
- * Whether a group row exists, without throwing on not-found (unlike
- * `getGroupById`). Idempotency guard for retrying a queued offline group create
- * so a pinned-id row that already committed isn't re-inserted. Throws only on a
- * real error so the caller can retry safely.
- */
-export const groupExists = async (groupId: string): Promise<boolean> => {
-  const { count, error } = await supabase
-    .from(tables.GROUPS_TBL)
-    .select("id", { count: "exact", head: true })
-    .eq("id", groupId);
-
-  if (error) throw error;
-  return (count ?? 0) > 0;
 };
 
 /**

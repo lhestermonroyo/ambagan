@@ -248,15 +248,25 @@ export default function AddExpenseScreen() {
       const result = await services.member.getMembersByGroupId(groupId);
       if (result) applyMembers(result);
     } catch {
-      // Offline (or fetch failed) — fall back to the cached member list so the
-      // payer and split cards still render and the expense can be queued.
-      try {
-        const cached = await cacheService.getGroupDetail(groupId);
-        if (cached?.memberList?.length) {
-          applyMembers(cached.memberList as Member[]);
+      // Offline (or fetch failed) — fall back to the last known roster so the
+      // payer and split cards still render and the expense can be queued. Prefer
+      // the in-memory group store: it reflects optimistic offline member edits
+      // even for a group whose detail was never written to the SQLite cache
+      // (e.g. one created offline). Fall back to the cache otherwise.
+      const store = states.group.getState();
+      const storeMembers =
+        store.details?.id === groupId ? store.memberList : [];
+      if (storeMembers.length) {
+        applyMembers(storeMembers as Member[]);
+      } else {
+        try {
+          const cached = await cacheService.getGroupDetail(groupId);
+          if (cached?.memberList?.length) {
+            applyMembers(cached.memberList as Member[]);
+          }
+        } catch {
+          // submit stays disabled if there's no cached member list either
         }
-      } catch {
-        // submit stays disabled if there's no cached member list either
       }
     } finally {
       setMembersLoading(false);

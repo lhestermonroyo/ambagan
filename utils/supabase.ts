@@ -5,6 +5,15 @@ import { Platform } from 'react-native';
 // How long a READ may hang before we abort it and fall back to cached data.
 const READ_TIMEOUT_MS = 10000;
 
+/**
+ * True when a Postgres error is a unique/PK violation (SQLSTATE 23505). Used by
+ * the write services to treat "row already exists" on an offline-sync retry as a
+ * repair-in-progress (re-derive children) rather than a hard failure — see
+ * saveExpense / saveGroup.
+ */
+export const isUniqueViolation = (error: unknown): boolean =>
+  !!error && typeof error === 'object' && (error as { code?: string }).code === '23505';
+
 const supabaseUrl = process.env.EXPO_PUBLIC_SB_URL as string;
 const supabasePublishableKey = process.env.EXPO_PUBLIC_SB_API_KEY as string;
 
