@@ -1354,6 +1354,9 @@ export default function AddExpenseScreen() {
         onDone={(nextSplits, nextType) => {
           setSplits(nextSplits);
           setSplitType(nextType);
+          // Percentage / custom splits are hard to read at a glance, so reveal
+          // the per-person breakdown by default when either is chosen.
+          if (nextType !== "equal") setShowBreakdown(true);
           setSplitSheetOpen(false);
         }}
       />

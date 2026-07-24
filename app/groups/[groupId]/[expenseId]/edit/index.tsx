@@ -246,9 +246,12 @@ export default function EditExpenseScreen() {
       setMembers(sortedMembers);
       setPayers(seededPayers);
       setSplits(seededSplits);
-      setSplitType(
-        (expense.split_type as SplitTypeValue) ?? splitTypes[0].value
-      );
+      const seededSplitType =
+        (expense.split_type as SplitTypeValue) ?? splitTypes[0].value;
+      setSplitType(seededSplitType);
+      // Open the per-person breakdown by default for percentage / custom splits,
+      // which are hard to read at a glance.
+      if (seededSplitType !== "equal") setShowBreakdown(true);
       setExistingProofUrl(expense.proof_of_payment ?? null);
       setProofOfPayment(null);
       setCurrency(expense.currency || "PHP");
@@ -794,6 +797,9 @@ export default function EditExpenseScreen() {
         onDone={(nextSplits, nextType) => {
           setSplits(nextSplits);
           setSplitType(nextType);
+          // Percentage / custom splits are hard to read at a glance, so reveal
+          // the per-person breakdown by default when either is chosen.
+          if (nextType !== "equal") setShowBreakdown(true);
           setSplitSheetOpen(false);
         }}
       />

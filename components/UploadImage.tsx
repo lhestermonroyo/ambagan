@@ -4,7 +4,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import * as ImagePicker from "expo-image-picker";
-import { Edit, Expand, Upload } from "lucide-react-native";
+import { Edit3, Expand, Upload } from "lucide-react-native";
 import { useState } from "react";
 import { useColorScheme } from "react-native";
 import { Box } from "./ui/box";
@@ -104,7 +104,7 @@ const UploadImage = ({
           className="rounded-full p-0 h-[40] w-[40] absolute bottom-4 right-2"
           onPress={openPicker}
         >
-          <Edit
+          <Edit3
             size={18}
             color={getSecondaryHex("text-secondary-0", colorScheme)}
           />
