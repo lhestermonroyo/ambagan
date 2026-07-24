@@ -19,7 +19,7 @@ import { HStack } from "@/components/ui/hstack";
 import InnerLayout from "@/layouts/InnerLayout";
 import { EmptyType } from "@/types/general";
 import { getPrimaryHex } from "@/utils/getColorHex";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   Check,
   ChevronDownIcon,
@@ -27,7 +27,13 @@ import {
   X
 } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { LayoutChangeEvent, ScrollView as RNScrollView } from "react-native";
+
+// Section that the offline-message toasts deep-link into (?section=offline);
+// its first FAQ opens and the screen scrolls to it. Keep in sync with the route
+// used in useEnsureOnline.
+const OFFLINE_SECTION_TITLE = "Offline Mode";
 
 type FAQItem = {
   question: string;
@@ -551,14 +557,30 @@ function OfflineFeatureList() {
 
 // A single titled FAQ section rendered as a bordered accordion card. Shared by
 // the main list and the search results so the two never drift apart.
-function FaqSectionBlock({ section }: { section: FAQSection }) {
+// `defaultOpen` pre-expands items by question (used for the deep-linked offline
+// FAQ); `onLayout` lets the parent capture the section's Y to scroll to it.
+function FaqSectionBlock({
+  section,
+  defaultOpen,
+  onLayout
+}: {
+  section: FAQSection;
+  defaultOpen?: string[];
+  onLayout?: (e: LayoutChangeEvent) => void;
+}) {
   return (
-    <VStack className="gap-y-2">
+    <VStack className="gap-y-2" onLayout={onLayout}>
       <Text bold className="text-secondary-950 uppercase text-sm">
         {section.title}
       </Text>
       <Box className="rounded-xl overflow-hidden border border-secondary-500">
-        <Accordion size="lg" variant="unfilled" type="multiple" isCollapsible>
+        <Accordion
+          size="lg"
+          variant="unfilled"
+          type="multiple"
+          isCollapsible
+          defaultValue={defaultOpen}
+        >
           {section.items.map((item, index) => (
             <AccordionItem key={item.question} value={item.question}>
               <AccordionHeader>
@@ -598,6 +620,30 @@ export default function HelpCenterScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const tintColor = getPrimaryHex("text-primary-600", colorScheme ?? "light");
+
+  // Deep link from the offline-message toasts: open + scroll to the Offline Mode
+  // section's first FAQ.
+  const { section } = useLocalSearchParams<{ section?: string }>();
+  const deepLinkOffline = section === "offline";
+
+  const scrollRef = useRef<RNScrollView>(null);
+  const [offlineSectionY, setOfflineSectionY] = useState<number | null>(null);
+  const didScrollRef = useRef(false);
+
+  useEffect(() => {
+    if (!deepLinkOffline || offlineSectionY == null || didScrollRef.current) {
+      return;
+    }
+    didScrollRef.current = true;
+    // Let the pre-expanded accordion content lay out before scrolling to it.
+    const t = setTimeout(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(offlineSectionY - 12, 0),
+        animated: true
+      });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [deepLinkOffline, offlineSectionY]);
 
   const [searchInput, setSearchInput] = useState("");
   const [searchVisible, setSearchVisible] = useState(false);
@@ -642,7 +688,7 @@ export default function HelpCenterScreen() {
         />
       }
     >
-      <ScrollView className="flex-1">
+      <ScrollView ref={scrollRef} className="flex-1">
         <VStack className="p-4 gap-y-6 pb-10">
           <Text className="text-sm text-secondary-950">
             Find answers to common questions below. If you need further help,
@@ -653,9 +699,26 @@ export default function HelpCenterScreen() {
             .
           </Text>
 
-          {FAQ_SECTIONS.map((section) => (
-            <FaqSectionBlock key={section.title} section={section} />
-          ))}
+          {FAQ_SECTIONS.map((faqSection) => {
+            const isOfflineTarget =
+              deepLinkOffline && faqSection.title === OFFLINE_SECTION_TITLE;
+            return (
+              <FaqSectionBlock
+                key={faqSection.title}
+                section={faqSection}
+                defaultOpen={
+                  isOfflineTarget
+                    ? [faqSection.items[0].question]
+                    : undefined
+                }
+                onLayout={
+                  isOfflineTarget
+                    ? (e) => setOfflineSectionY(e.nativeEvent.layout.y)
+                    : undefined
+                }
+              />
+            );
+          })}
         </VStack>
       </ScrollView>
 

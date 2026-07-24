@@ -6,6 +6,7 @@ import { VStack } from "@/components/ui/vstack";
 import { BANNER_CONTENT_HEIGHT } from "@/hooks/useBanner";
 import { useNetwork } from "@/hooks/useNetwork";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,10 +19,19 @@ type ToastActionType =
   | "muted"
   | undefined;
 
+// An optional tappable link rendered under the toast body — e.g. an offline
+// message linking to the relevant Help Center FAQ. Tapping navigates to `route`
+// and dismisses the toast.
+type ToastLink = {
+  label: string;
+  route: string;
+};
+
 type ToastParams = {
   title?: string;
   description: string;
   type?: ToastActionType;
+  link?: ToastLink;
 };
 
 interface ToastData extends ToastParams {
@@ -80,6 +90,7 @@ interface ToastItemProps {
 }
 
 const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
+  const router = useRouter();
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.9)).current;
@@ -146,6 +157,19 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
               </Text>
             )}
             <Text className="text-white">{toast.description}</Text>
+            {toast.link && (
+              <Pressable
+                onPress={() => {
+                  onDismiss(toast.id);
+                  router.push(toast.link!.route as never);
+                }}
+                className="self-start mt-1"
+              >
+                <Text className="text-white font-semibold underline">
+                  {toast.link.label}
+                </Text>
+              </Pressable>
+            )}
           </VStack>
 
           <Pressable

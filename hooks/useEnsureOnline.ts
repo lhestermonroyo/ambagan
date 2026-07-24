@@ -21,7 +21,12 @@ export function useEnsureOnline() {
       description:
         message ??
         "This action needs an internet connection. Please try again when you're back online.",
-      type: "error"
+      type: "error",
+      // Deep-links to the Offline Mode FAQ (opens + scrolls to its first item).
+      link: {
+        label: "See what works offline",
+        route: "/profile/help-center?section=offline"
+      }
     });
     return false;
   };
