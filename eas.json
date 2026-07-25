@@ -14,10 +14,16 @@
     "production": {
       "autoIncrement": true
     },
-    "ios-simulator": {  
+    "ios-simulator": {
       "extends": "development",
       "ios": {
         "simulator": true
+      }
+    },
+    "android-emulator": {
+      "extends": "development",
+      "android": {
+        "buildType": "apk"
       }
     }
   },
