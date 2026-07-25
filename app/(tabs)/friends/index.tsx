@@ -20,6 +20,7 @@ import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
+import { Search } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import { RefreshControl } from "react-native";
 
@@ -200,6 +201,7 @@ export default function FriendsScreen() {
         {
           key: "search",
           sf: "magnifyingglass",
+          lucide: Search,
           label: "Search friends",
           onPress: () => setSearchVisible(true)
         }

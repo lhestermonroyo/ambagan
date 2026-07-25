@@ -14,14 +14,16 @@ import { Platform } from "react-native";
 
 // iOS-26 native header variant with a bottom footer bar (form actions). Mirrors
 // InnerLayout: bold text title via `headerTitle`, a native `Stack.Toolbar` back
-// button, and optional right-side toolbar `actions` (iOS only).
+// button, and optional right-side toolbar `actions` (iOS only). `androidActions`
+// is the Android counterpart, rendered in the native `headerRight`.
 export default function FormLayout({
   children,
   title,
   subtitle,
   onBack,
   footer,
-  actions
+  actions,
+  androidActions
 }: {
   children: React.ReactNode;
   title: string;
@@ -29,6 +31,7 @@ export default function FormLayout({
   onBack: () => void;
   footer: React.ReactNode[];
   actions?: React.ReactNode;
+  androidActions?: React.ReactNode;
 }) {
   const { colorScheme } = useColorScheme();
   const scheme = colorScheme ?? "light";
@@ -47,7 +50,7 @@ export default function FormLayout({
           headerStyle: { backgroundColor: isDark ? "#121212" : "#FFFFFF" },
           headerTintColor: tintColor,
           headerTitle: () => (
-            <VStack className="flex-1 items-start">
+            <VStack className="flex-1 items-start justify-center">
               <Text bold className="text-xl">
                 {title}
               </Text>
@@ -62,7 +65,12 @@ export default function FormLayout({
                   <Pressable className="pr-4" onPress={onBack}>
                     <ChevronLeft size={24} color={tintColor} />
                   </Pressable>
-                )
+                ),
+                // Always set the key (explicit undefined clears it) so a screen
+                // whose actions disappear doesn't keep a stale header button.
+                headerRight: androidActions
+                  ? () => <>{androidActions}</>
+                  : undefined
               }
             : {})
         }}

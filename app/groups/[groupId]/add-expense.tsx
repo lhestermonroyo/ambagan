@@ -936,6 +936,13 @@ export default function AddExpenseScreen() {
             </Stack.Toolbar.View>
           ) : undefined
         }
+        androidActions={
+          !isPro ? (
+            <Box className="pr-1">
+              <DailyLimitBadge count={dailyCount} limit={DAILY_EXPENSE_LIMIT} />
+            </Box>
+          ) : undefined
+        }
         onBack={() => router.back()}
         footer={[
           <FormButton

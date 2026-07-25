@@ -19,17 +19,23 @@ import { Platform } from "react-native";
 // For multiple items pass an ARRAY (with keys), never a `<>…</>` fragment: the
 // native toolbar extracts items via `React.Children.toArray`, which does not
 // descend into a Fragment, so fragment-wrapped items are silently dropped.
+//
+// `androidActions` is the Android counterpart: SF Symbols and `Stack.Toolbar`
+// don't exist there, so screens pass plain header-right chrome (lucide-icon
+// Pressables, a gluestack `Menu`, etc.) that renders in the native `headerRight`.
 export default function InnerLayout({
   children,
   title,
   onBack,
   actions,
+  androidActions,
   gestureEnabled
 }: {
   children: React.ReactNode;
   title: string;
   onBack: () => void;
   actions?: React.ReactNode;
+  androidActions?: React.ReactNode;
   // Set false on screens with horizontal row-swipe gestures (e.g. swipe-to-
   // delete lists) so the native back-swipe doesn't pop the screen mid-swipe.
   // Defaults to the native behavior (edge swipe-back enabled) when omitted.
@@ -53,18 +59,24 @@ export default function InnerLayout({
           headerStyle: { backgroundColor: isDark ? "#121212" : "#FFFFFF" },
           headerTintColor: tintColor,
           headerTitle: () => (
-            <Text bold className="flex-1 text-xl self-start">
+            <Text bold className="flex-1 text-xl">
               {title}
             </Text>
           ),
-          // Android has no Stack.Toolbar back button; render a plain header left.
+          // Android has no Stack.Toolbar, so render the back button as a plain
+          // headerLeft and the actions as a plain headerRight.
           ...(Platform.OS === "android"
             ? {
                 headerLeft: () => (
                   <Pressable className="pr-4" onPress={onBack}>
                     <ChevronLeft size={24} color={tintColor} />
                   </Pressable>
-                )
+                ),
+                // Always set the key (explicit undefined clears it) so a screen
+                // whose actions disappear doesn't keep a stale header button.
+                headerRight: androidActions
+                  ? () => <>{androidActions}</>
+                  : undefined
               }
             : {})
         }}

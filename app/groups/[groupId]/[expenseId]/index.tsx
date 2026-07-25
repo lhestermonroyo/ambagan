@@ -1,3 +1,4 @@
+import AndroidHeaderMenu from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
 import EmptyList from "@/components/EmptyList";
@@ -11,7 +12,6 @@ import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import { Menu, MenuItem, MenuItemLabel } from "@/components/ui/menu";
 import {
   Modal,
   ModalBody,
@@ -19,6 +19,7 @@ import {
   ModalFooter,
   ModalHeader
 } from "@/components/ui/modal";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -48,7 +49,7 @@ import {
   useLocalSearchParams,
   useRouter
 } from "expo-router";
-import { FileImage } from "lucide-react-native";
+import { FileImage, Pencil, Trash2 } from "lucide-react-native";
 import { Fragment, ReactNode, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -397,6 +398,52 @@ export default function ExpenseDetailsScreen() {
     ];
   };
 
+  // Android counterpart to renderActions: an overflow menu when both actions
+  // are available, otherwise the single action as a header-right icon button.
+  const renderAndroidActions = (): ReactNode => {
+    const showEdit = canEdit;
+    const showDelete = isDraft ? isCreator : isPayer;
+
+    if (!showEdit && !showDelete) return undefined;
+
+    if (showEdit && showDelete) {
+      return (
+        <AndroidHeaderMenu
+          accessibilityLabel="Expense options"
+          items={[
+            { key: "edit", label: "Edit", icon: Pencil, onPress: handleEdit },
+            {
+              key: "delete",
+              label: "Delete",
+              icon: Trash2,
+              destructive: true,
+              onPress: () => setDeleteModalOpen(true)
+            }
+          ]}
+        />
+      );
+    }
+
+    const iconColor = getSecondaryHex("text-secondary-950", colorScheme);
+    return (
+      <HStack className="items-center gap-x-8 pr-1">
+        {showEdit && (
+          <Pressable aria-label="Edit expense" onPress={handleEdit}>
+            <Pencil size={22} color={iconColor} />
+          </Pressable>
+        )}
+        {showDelete && (
+          <Pressable
+            aria-label="Delete expense"
+            onPress={() => setDeleteModalOpen(true)}
+          >
+            <Trash2 size={22} color={iconColor} />
+          </Pressable>
+        )}
+      </HStack>
+    );
+  };
+
   const sortedMemberSplits = useMemo(
     () =>
       [...memberSplitList].sort((a, b) => {
@@ -423,6 +470,7 @@ export default function ExpenseDetailsScreen() {
         title="Expense Details"
         onBack={handleBack}
         actions={renderActions()}
+        androidActions={renderAndroidActions()}
       >
         <LoadingWrapper
           isLoading={loading}

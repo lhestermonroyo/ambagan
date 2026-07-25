@@ -1,6 +1,9 @@
+import { Button } from "@/components/ui/button";
+import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { Stack } from "expo-router";
+import type { LucideIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { Fragment, ReactNode } from "react";
 import { Platform } from "react-native";
@@ -11,6 +14,8 @@ export type TabHeaderAction = {
   key: string;
   // SF Symbol name — rendered as a native, iOS 26 liquid-glass toolbar button.
   sf: SFSymbol;
+  // Android has no SF Symbols, so it renders this lucide icon in `headerRight`.
+  lucide: LucideIcon;
   // Spoken by VoiceOver; also the button's fallback title.
   label: string;
   onPress: () => void;
@@ -45,11 +50,32 @@ export default function TabLayout({
             <Text bold className="flex-1 text-3xl">
               {title}
             </Text>
-          )
+          ),
+          // iOS renders its actions via the `Stack.Toolbar` below (liquid glass);
+          // Android has no toolbar, so the actions go in the native `headerRight`
+          // as tinted lucide-icon buttons instead.
+          headerRight:
+            Platform.OS === "android" && actions && actions.length > 0
+              ? () => (
+                  <HStack className="items-center gap-x-8 pr-1">
+                    {actions.map((action) => (
+                      <Button
+                        key={action.key}
+                        variant="link"
+                        className="rounded-full"
+                        onPress={action.onPress}
+                        aria-label={action.label}
+                      >
+                        <action.lucide color={tintColor} />
+                      </Button>
+                    ))}
+                  </HStack>
+                )
+              : undefined
         }}
       />
 
-      {/* SF Symbols are iOS-only; on Android the header shows just the title. */}
+      {/* SF Symbols are iOS-only; on Android the actions live in `headerRight`. */}
       {Platform.OS === "ios" && actions && actions.length > 0 && (
         <Stack.Toolbar placement="right" tintColor="red">
           {actions.map((action) => (

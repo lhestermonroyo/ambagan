@@ -1,3 +1,4 @@
+import AndroidHeaderMenu from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
 import EmptyList from "@/components/EmptyList";
@@ -44,6 +45,7 @@ import {
   useLocalSearchParams,
   useRouter
 } from "expo-router";
+import { Pause, Play, Trash2 } from "lucide-react-native";
 import { Fragment, ReactNode, useCallback, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -219,6 +221,30 @@ export default function RecurringDetailsScreen() {
     );
   };
 
+  const renderAndroidActions = (): ReactNode => {
+    if (!isOwner || !item) return undefined;
+    return (
+      <AndroidHeaderMenu
+        accessibilityLabel="Recurring options"
+        items={[
+          {
+            key: "toggle",
+            label: item.is_active ? "Pause series" : "Resume series",
+            icon: item.is_active ? Pause : Play,
+            onPress: handleToggleActive
+          },
+          {
+            key: "delete",
+            label: "Delete",
+            icon: Trash2,
+            destructive: true,
+            onPress: () => setDeleteModalOpen(true)
+          }
+        ]}
+      />
+    );
+  };
+
   const scheduleText = item
     ? recurrenceSummary({
         frequency: item.frequency,
@@ -238,6 +264,7 @@ export default function RecurringDetailsScreen() {
         title="Recurring Details"
         onBack={() => router.back()}
         actions={renderActions()}
+        androidActions={renderAndroidActions()}
       >
         <LoadingWrapper isLoading={loading} skeleton={<ExpenseDetailsSkeleton />}>
           {!item ? (

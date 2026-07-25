@@ -4,6 +4,7 @@ import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { NotificationListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
+import { Pressable } from "@/components/ui/pressable";
 import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -184,6 +185,24 @@ export default function NotificationsScreen() {
         >
           {markingAll ? "Marking..." : "Mark all read"}
         </Stack.Toolbar.Button>
+      }
+      androidActions={
+        <Pressable
+          className="pr-1"
+          disabled={markingAll || unreadCount === 0}
+          aria-label="Mark all notifications as read"
+          onPress={handleMarkAllRead}
+        >
+          <Text
+            className="font-medium"
+            style={{
+              color: tintColor,
+              opacity: markingAll || unreadCount === 0 ? 0.4 : 1
+            }}
+          >
+            {markingAll ? "Marking..." : "Mark all read"}
+          </Text>
+        </Pressable>
       }
     >
       <LoadingWrapper

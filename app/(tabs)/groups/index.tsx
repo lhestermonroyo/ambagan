@@ -25,7 +25,7 @@ import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
-import { HousePlus, QrCode } from "lucide-react-native";
+import { HousePlus, Plus, QrCode, Search, X } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
 import { Modal, RefreshControl, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -248,6 +248,7 @@ export default function GroupsScreen() {
         {
           key: "search",
           sf: "magnifyingglass",
+          lucide: Search,
           label: "Search groups",
           // The dim backdrop can't cover the native header, so guard here:
           // while the add menu is open, a search tap just dismisses it.
@@ -262,6 +263,7 @@ export default function GroupsScreen() {
         {
           key: "add",
           sf: fabOpen ? "xmark" : "plus",
+          lucide: fabOpen ? X : Plus,
           label: fabOpen ? "Close add menu" : "Add group",
           onPress: () => setFabOpen((prev) => !prev)
         }

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/accordion";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -24,6 +25,7 @@ import {
   Check,
   ChevronDownIcon,
   ChevronUpIcon,
+  Search,
   X
 } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
@@ -686,6 +688,15 @@ export default function HelpCenterScreen() {
           accessibilityLabel="Search FAQs"
           onPress={() => setSearchVisible(true)}
         />
+      }
+      androidActions={
+        <Pressable
+          className="pr-1"
+          aria-label="Search FAQs"
+          onPress={() => setSearchVisible(true)}
+        >
+          <Search size={24} color={tintColor} />
+        </Pressable>
       }
     >
       <ScrollView ref={scrollRef} className="flex-1">

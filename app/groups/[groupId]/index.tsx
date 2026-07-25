@@ -1,3 +1,6 @@
+import AndroidHeaderMenu, {
+  type AndroidHeaderMenuItem
+} from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
@@ -13,7 +16,7 @@ import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
-import { Fab, FabLabel } from "@/components/ui/fab";
+import { Fab } from "@/components/ui/fab";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
@@ -54,12 +57,17 @@ import {
 } from "expo-router";
 import {
   Archive,
+  ArchiveRestore,
   CalendarRange,
   ChevronDown,
-  CirclePlus,
   ListPlus,
+  LogOut,
+  Pencil,
+  Plus,
   ScanLine,
   Search,
+  Share2,
+  Trash2,
   X
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -106,9 +114,8 @@ export default function GroupDetailsScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [payerFilter, setPayerFilter] = useState<PayerOption>("All");
   const [payerSheetOpen, setPayerSheetOpen] = useState(false);
-  const [expenseDateRange, setExpenseDateRange] = useState<DateRangeOption>(
-    "All"
-  );
+  const [expenseDateRange, setExpenseDateRange] =
+    useState<DateRangeOption>("All");
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
 
   const {
@@ -408,7 +415,13 @@ export default function GroupDetailsScreen() {
       }
       return true;
     });
-  }, [expenseList, expenseSearch, payerFilter, expenseDateRange, userDetails?.id]);
+  }, [
+    expenseList,
+    expenseSearch,
+    payerFilter,
+    expenseDateRange,
+    userDetails?.id
+  ]);
 
   // Swap the payer/filter row for the full-width search field (and back). The
   // query is kept when collapsing so it persists as a chip, mirroring how the
@@ -553,6 +566,82 @@ export default function GroupDetailsScreen() {
     setFabOpen((prev) => !prev);
   };
 
+  // Android counterpart to the iOS `actions` toolbar: an optional share icon
+  // button plus the overflow menu, mirroring the same admin / archived rules.
+  const renderGroupAndroidActions = () => {
+    if (loading) return undefined;
+
+    const iconColor = getSecondaryHex("text-secondary-950", colorScheme);
+
+    const menuItems: AndroidHeaderMenuItem[] = isAdmin
+      ? [
+          ...(!groupDetails?.archived
+            ? [
+                {
+                  key: "edit",
+                  label: "Edit",
+                  icon: Pencil,
+                  onPress: () => router.push(`/groups/${groupId}/edit`)
+                }
+              ]
+            : []),
+          {
+            key: "leave",
+            label: "Leave Group",
+            icon: LogOut,
+            onPress: () => setLeaveSheetOpen(true)
+          },
+          groupDetails?.archived
+            ? {
+                key: "unarchive",
+                label: "Unarchive",
+                icon: ArchiveRestore,
+                onPress: handleUnarchiveGroup
+              }
+            : {
+                key: "archive",
+                label: "Archive",
+                icon: Archive,
+                onPress: handleArchiveGroup
+              },
+          {
+            key: "delete",
+            label: "Delete Group",
+            icon: Trash2,
+            destructive: true,
+            onPress: () => setDeleteSheetOpen(true)
+          }
+        ]
+      : [
+          {
+            key: "leave",
+            label: "Leave Group",
+            icon: LogOut,
+            onPress: () => setLeaveSheetOpen(true)
+          }
+        ];
+
+    const showShare =
+      isAdmin && !groupDetails?.archived && !!groupDetails?.invite_token;
+
+    return (
+      <HStack className="items-center gap-x-8 pr-1">
+        {showShare && (
+          <Pressable
+            aria-label="Share group invite"
+            onPress={() => router.push(`/groups/${groupId}/share`)}
+          >
+            <Share2 size={22} color={iconColor} />
+          </Pressable>
+        )}
+        <AndroidHeaderMenu
+          accessibilityLabel="More group options"
+          items={menuItems}
+        />
+      </HStack>
+    );
+  };
+
   return (
     <Fragment>
       <InnerLayout
@@ -630,6 +719,7 @@ export default function GroupDetailsScreen() {
             </Stack.Toolbar.Menu>
           )
         }
+        androidActions={renderGroupAndroidActions()}
       >
         {(tab === "Expenses" || tab === "Settlements") &&
           !groupDetails?.archived && (
@@ -657,7 +747,7 @@ export default function GroupDetailsScreen() {
                   }}
                 />
                 <Box
-                  className="absolute bottom-28 right-4"
+                  className="absolute bottom-24 right-4"
                   style={{
                     width: 240,
                     borderRadius: 14,
@@ -733,28 +823,28 @@ export default function GroupDetailsScreen() {
                   />
                 </Stack.Toolbar>
               ) : (
+                // Icon-only round FAB, mirroring the iOS prominent "+" — no
+                // label, toggling to an "X" while the speed-dial is open.
                 <Fab
                   placement="bottom right"
-                  className="px-6"
+                  className="bottom-10"
                   isHovered={false}
                   isDisabled={false}
                   isPressed={false}
+                  aria-label={fabOpen ? "Close add menu" : "Add expense"}
                   onPress={handleFabPress}
                 >
                   {fabOpen ? (
                     <X
-                      size={18}
+                      size={24}
                       color={getSecondaryHex("text-secondary-0", colorScheme)}
                     />
                   ) : (
-                    <CirclePlus
-                      size={18}
+                    <Plus
+                      size={24}
                       color={getSecondaryHex("text-secondary-0", colorScheme)}
                     />
                   )}
-                  <FabLabel className="text-lg font-medium">
-                    {fabOpen ? "Close" : "New Expense"}
-                  </FabLabel>
                 </Fab>
               )}
             </>
@@ -1142,7 +1232,10 @@ export default function GroupDetailsScreen() {
           >
             <HStack className="px-6 py-3 gap-x-4 items-center justify-center">
               <VStack className="items-center flex-1">
-                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                <Text
+                  className="text-secondary-950 text-sm uppercase tracking-widest"
+                  numberOfLines={1}
+                >
                   Net
                 </Text>
                 <Text
@@ -1159,7 +1252,10 @@ export default function GroupDetailsScreen() {
               </VStack>
               <Text className="text-secondary-200">|</Text>
               <VStack className="items-center flex-1">
-                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                <Text
+                  className="text-secondary-950 text-sm uppercase tracking-widest"
+                  numberOfLines={1}
+                >
                   Collect
                 </Text>
                 <Text bold className="text-lg">
@@ -1171,7 +1267,10 @@ export default function GroupDetailsScreen() {
               </VStack>
               <Text className="text-secondary-200">|</Text>
               <VStack className="items-center flex-1">
-                <Text className="text-secondary-950 text-sm uppercase tracking-widest">
+                <Text
+                  className="text-secondary-950 text-sm uppercase tracking-widest"
+                  numberOfLines={1}
+                >
                   Pay
                 </Text>
                 <Text bold className="text-lg text-error-400">

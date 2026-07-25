@@ -67,6 +67,10 @@ export default function TabLayout() {
         tintColor={tintColor}
         minimizeBehavior="onScrollDown"
         backBehavior="history"
+        // Android's Material bottom-nav defaults to `auto`, which shows the
+        // label only on the selected tab and hides it elsewhere. Force every
+        // tab to always render both its icon and label.
+        labelVisibilityMode="labeled"
       >
         <NativeTabs.Trigger name="(home)">
           <NativeTabs.Trigger.Icon

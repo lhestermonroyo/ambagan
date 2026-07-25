@@ -39,6 +39,7 @@ import * as Notifications from "expo-notifications";
 import { Stack, useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import {
   Bell,
+  BellDot,
   CircleQuestionMark,
   HousePlus,
   ListPlus,
@@ -464,7 +465,7 @@ export default function HomeScreen() {
           headerRight:
             Platform.OS === "android"
               ? () => (
-                  <HStack className="items-center gap-x-4 pr-1">
+                  <HStack className="items-center gap-x-8 pr-1">
                     <Button
                       variant="link"
                       className="rounded-full"
@@ -478,13 +479,10 @@ export default function HomeScreen() {
                       onPress={handleOpenNotifications}
                     >
                       <Box className="relative">
-                        <Bell color={tintColor} />
-                        {unreadCount > 0 && (
-                          <Box className="absolute -top-1 -right-1 bg-error-400 rounded-full flex px-1 min-w-4 h-4 items-center justify-center">
-                            <Text className="text-white text-2xs font-semibold">
-                              {unreadCount > 9 ? "9+" : unreadCount}
-                            </Text>
-                          </Box>
+                        {unreadCount > 0 ? (
+                          <BellDot color={tintColor} />
+                        ) : (
+                          <Bell color={tintColor} />
                         )}
                       </Box>
                     </Button>
@@ -686,7 +684,10 @@ export default function HomeScreen() {
         >
           <HStack className="px-6 py-3 gap-x-4 items-center justify-center">
             <VStack className="items-center flex-1">
-              <Text className="text-white/70 text-sm uppercase tracking-widest">
+              <Text
+                className="text-white/70 text-sm uppercase tracking-widest"
+                numberOfLines={1}
+              >
                 Net
               </Text>
               <Text bold className="text-white text-lg">
@@ -695,7 +696,10 @@ export default function HomeScreen() {
             </VStack>
             <Text className="text-white/20">|</Text>
             <VStack className="items-center flex-1">
-              <Text className="text-white/70 text-sm uppercase tracking-widest">
+              <Text
+                className="text-white/70 text-sm uppercase tracking-widest"
+                numberOfLines={1}
+              >
                 Collect
               </Text>
               <Text bold className="text-white text-lg">
@@ -704,7 +708,10 @@ export default function HomeScreen() {
             </VStack>
             <Text className="text-white/20">|</Text>
             <VStack className="items-center flex-1">
-              <Text className="text-white/70 text-sm uppercase tracking-widest">
+              <Text
+                className="text-white/70 text-sm uppercase tracking-widest"
+                numberOfLines={1}
+              >
                 Pay
               </Text>
               <Text bold className="text-white text-lg">
