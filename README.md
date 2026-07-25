@@ -15,7 +15,7 @@
 - **CSV Export** — Export settlement history per group to a CSV file for record-keeping.
 - **Offline Access** — Groups, expenses, and friends are cached automatically so you can browse them without an internet connection.
 - **Push Notifications** — Get notified for settlement requests, approvals, rejections, new expenses, and group activity.
-- **Free & Pro Plans** — Free plan supports up to 3 active groups. Pro is a one-time purchase (₱499) that unlocks unlimited groups — no subscription, no renewal.
+- **Free & Pro Plans** — Free covers the essentials with up to 5 expenses per day. Pro is a subscription (₱99 / 2 weeks, ₱149 / month, or ₱799 / year) that removes the daily limit and unlocks draft expenses, recurring expenses, CSV export, spending analytics, and multi-currency.
 
 ---
 

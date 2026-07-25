@@ -87,6 +87,20 @@
 - [ ] Resume + finalize draft
 - [ ] Draft does not affect balances until finalized
 
+### Recurring expenses (Pro — `recurring_expenses_tbl` + `run-recurring` Edge Function)
+- [ ] Free user: **Repeat** row opens the Upgrade sheet; no series created
+- [ ] Pro user: set a monthly series with a custom split → first occurrence posts immediately + affects balances
+- [ ] "Save Recurring" disabled until amount/payers/split are valid (same as a one-off)
+- [ ] Recurrence summary + next-run date shown on the group ⋯ → Recurring Expenses screen
+- [ ] Pause skips generation on the next cron run; resume generates again
+- [ ] End condition (on date / after N times) auto-pauses the series
+- [ ] Delete series stops future occurrences; already-posted ones remain
+- [ ] Member leaves group → equal split recomputes; invalid custom/percentage split posts as a draft + notifies creator only
+- [ ] Overlapping/duplicate cron runs don't double-post (unique `(recurring_id, expense_date)`)
+- [ ] Creator downgraded from Pro → series is skipped (not deleted) and resumes on re-subscribe
+- [ ] Involved members receive the `EXPENSE_INCLUSION` push when an occurrence posts
+- [ ] Recurring can't be created offline (toast prompts to reconnect)
+
 ### Scan receipt (Beta — OCR)
 - [ ] Scan receipt autofills title/amount (`scan-receipt` Edge Function)
 - [ ] Manual correction of scanned fields works
