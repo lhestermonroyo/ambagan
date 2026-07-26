@@ -16,7 +16,10 @@
     "build:ios-prod": "eas build --platform ios --profile production",
     "build:android-prod": "eas build --platform android --profile production",
     "submit:ios-prod": "eas submit --platform ios --profile production --latest",
-    "submit:android-prod": "eas submit --platform android --profile production --latest"
+    "submit:android-prod": "eas submit --platform android --profile production --latest",
+    "deploy:dev": "./scripts/deploy-functions.sh dev",
+    "deploy:prod": "./scripts/deploy-functions.sh prod",
+    "deploy:all": "./scripts/deploy-functions.sh all"
   },
   "dependencies": {
     "@expo/html-elements": "^0.12.5",
