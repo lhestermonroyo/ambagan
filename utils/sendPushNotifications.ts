@@ -1,5 +1,5 @@
 import { NotificationType } from "@/types/notifications";
-import { supabase } from "@/utils/supabase";
+import { edgeFn, supabase } from "@/utils/supabase";
 
 // Push delivery is handled server-side by the `send-push` Edge Function,
 // which reads the recipient's tokens + notification preferences using the
@@ -18,7 +18,7 @@ export async function sendPushNotification(
   console.log(JSON.stringify({ toUserId, type, payload }, null, 2));
 
   try {
-    await supabase.functions.invoke("send-push", {
+    await supabase.functions.invoke(edgeFn("send-push"), {
       body: { toUserId, type, payload }
     });
   } catch {

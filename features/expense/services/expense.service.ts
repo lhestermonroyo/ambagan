@@ -18,7 +18,7 @@ import { splitTypes, tables } from "@/utils/constants";
 import { computeInitialNextRunAt } from "@/features/expense/utils/recurrence.util";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { sendPushNotification } from "@/utils/sendPushNotifications";
-import { isUniqueViolation, supabase } from "@/utils/supabase";
+import { edgeFn, isUniqueViolation, supabase } from "@/utils/supabase";
 import { getCompressedReceiptBase64, uploadFile } from "@/utils/upload";
 import { ImagePickerAsset, ImagePickerSuccessResult } from "expo-image-picker";
 import { v4 as uuid } from "uuid";
@@ -32,7 +32,7 @@ import { v4 as uuid } from "uuid";
 export const scanReceipt = async (uri: string): Promise<ScanResult> => {
   const imageBase64 = await getCompressedReceiptBase64(uri);
 
-  const { data, error } = await supabase.functions.invoke("scan-receipt", {
+  const { data, error } = await supabase.functions.invoke(edgeFn("scan-receipt"), {
     body: { imageBase64, mimeType: "image/jpeg" }
   });
 

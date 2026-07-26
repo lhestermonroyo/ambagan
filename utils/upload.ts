@@ -12,6 +12,15 @@ const COMPRESS_OPTIONS: Record<Bucket, { maxWidth: number; quality: number }> = 
   receipts: { maxWidth: 1024, quality: 0.8 }
 };
 
+// Storage is project-level and ignores the Postgres `db.schema` switch, so a dev
+// build would otherwise upload into (and hand out prod URLs for) the live
+// buckets. Route dev uploads to dedicated `<bucket>-dev` buckets to keep prod
+// storage clean — mirrors the db.schema / edgeFn `-dev` split (see
+// utils/supabase.ts). The `-dev` buckets must exist in the dashboard with the
+// same public/RLS settings as prod.
+const resolveBucket = (bucket: Bucket): string =>
+  __DEV__ ? `${bucket}-dev` : bucket;
+
 const compressImage = async (uri: string, bucket: Bucket): Promise<string> => {
   const { maxWidth, quality } = COMPRESS_OPTIONS[bucket];
   const result = await ImageManipulator.manipulateAsync(
@@ -45,17 +54,22 @@ export const uploadFile = async (asset: ImagePickerAsset, bucket: Bucket) => {
   const compressedUri = await compressImage(asset.uri, bucket);
   const blob = await uriToBlob(compressedUri);
 
+  // Compression profile keys off the logical bucket; the actual storage bucket
+  // is `<bucket>-dev` in dev builds so prod storage stays untouched.
+  const storageBucket = resolveBucket(bucket);
   const filePath = `${Date.now()}_${asset.fileName?.replace(/\.[^.]+$/, "")}.jpg`;
-  const { error } = await supabase.storage.from(bucket).upload(filePath, blob, {
-    cacheControl: "31536000",
-    upsert: true,
-    contentType: "image/jpeg"
-  });
+  const { error } = await supabase.storage
+    .from(storageBucket)
+    .upload(filePath, blob, {
+      cacheControl: "31536000",
+      upsert: true,
+      contentType: "image/jpeg"
+    });
 
   if (error) {
     return { error: true, message: error.message };
   }
 
-  const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+  const { data } = supabase.storage.from(storageBucket).getPublicUrl(filePath);
   return { error: false, message: "File uploaded successfully", data };
 };

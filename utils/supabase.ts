@@ -17,6 +17,17 @@ export const isUniqueViolation = (error: unknown): boolean =>
 const supabaseUrl = process.env.EXPO_PUBLIC_SB_URL as string;
 const supabasePublishableKey = process.env.EXPO_PUBLIC_SB_API_KEY as string;
 
+// Dev builds talk to the isolated `dev` schema + `-dev` Edge Functions so local
+// development can never touch prod data. Both live in the same Supabase project;
+// only the schema/function name differs. Keyed off __DEV__ to stay consistent
+// with the RevenueCat sandbox split (see purchase.service.ts) — release builds
+// are always prod (public schema, un-suffixed functions).
+const DB_SCHEMA = __DEV__ ? 'dev' : 'public';
+const FN_SUFFIX = __DEV__ ? '-dev' : '';
+
+/** Resolves an Edge Function name to its per-environment deployment (`…-dev` in dev). */
+export const edgeFn = (name: string): string => `${name}${FN_SUFFIX}`;
+
 const getMethod = (input: RequestInfo | URL, init?: RequestInit): string => {
   if (init?.method) return init.method.toUpperCase();
   if (typeof input !== 'string' && !(input instanceof URL) && 'method' in input) {
@@ -62,6 +73,9 @@ const timeoutFetch: typeof fetch = async (input, init) => {
 };
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+  db: {
+    schema: DB_SCHEMA
+  },
   auth: {
     storage: Platform.OS !== 'web' ? localStorage : undefined,
     autoRefreshToken: true,
