@@ -102,11 +102,11 @@ const CurrencySelection = ({
         onPress={() => (locked ? onLockedPress?.() : setIsOpen(true))}
         className="h-14 border border-background-200 items-center justify-center px-2 py-2 rounded-lg"
       >
-        <HStack className="items-center justify-center gap-x-1">
+        <HStack className="items-center justify-center gap-x-2">
           <Text className="font-semibold">{currencyLabel}</Text>
           {locked ? (
             <Lock
-              size={16}
+              size={18}
               color={getSecondaryHex("text-secondary-950", colorScheme)}
             />
           ) : (
