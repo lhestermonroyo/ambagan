@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/radio";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { CategoryOption, expenseCategories } from "@/utils/constants";
+import { categories, CategoryOption, expenseCategories } from "@/utils/constants";
 import { CircleIcon } from "lucide-react-native";
 
 /** Full option (label + icon) for a stored category value, falling back to
@@ -31,16 +31,28 @@ export const expenseCategoryMeta = (value: string): CategoryOption =>
 export const expenseCategoryLabel = (value: string): string =>
   expenseCategoryMeta(value).label;
 
+/** Full option (label + icon) for a stored group category value, falling back to
+ *  "Other" for anything unrecognized (e.g. a value from a newer client). */
+export const groupCategoryMeta = (value: string): CategoryOption =>
+  categories.find((c) => c.value === value) ??
+  categories[categories.length - 1];
+
 export default function CategorySheet({
   isOpen,
   onClose,
   category,
-  onSelect
+  onSelect,
+  // Defaults to the expense categories so existing callers stay unchanged;
+  // group/book forms pass their own `categories` set.
+  options = expenseCategories,
+  title = "Category"
 }: {
   isOpen: boolean;
   onClose: () => void;
   category: string;
   onSelect: (v: string) => void;
+  options?: CategoryOption[];
+  title?: string;
 }) {
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose}>
@@ -51,7 +63,7 @@ export default function CategorySheet({
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full gap-y-4">
           <Text bold className="text-xl">
-            Category
+            {title}
           </Text>
           <RadioGroup
             value={category}
@@ -61,7 +73,7 @@ export default function CategorySheet({
             }}
           >
             <FlatList
-              data={expenseCategories}
+              data={options}
               keyExtractor={(item) => item.value}
               scrollEnabled={false}
               renderItem={({ item: option }) => (

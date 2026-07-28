@@ -16,6 +16,7 @@ import {
   ReceiptText,
   ShoppingBag,
   ShoppingCart,
+  Star,
   Users,
   UtensilsCrossed
 } from "lucide-react-native";
@@ -134,6 +135,11 @@ export type CategoryOption = {
 
 export const categories: CategoryOption[] = [
   {
+    label: "General",
+    value: GroupCategory.GENERAL,
+    icon: Star
+  },
+  {
     label: "Trip",
     value: GroupCategory.TRIP,
     icon: Plane
@@ -175,6 +181,7 @@ export const categories: CategoryOption[] = [
 // on expenses_tbl.category and drives the Stats breakdown. "Other" is the
 // server default, so it's the implicit fallback for anything left unset.
 export const expenseCategories: CategoryOption[] = [
+  { label: "General", value: ExpenseCategory.GENERAL, icon: Star },
   { label: "Food & Drinks", value: ExpenseCategory.FOOD, icon: UtensilsCrossed },
   { label: "Groceries", value: ExpenseCategory.GROCERIES, icon: ShoppingCart },
   { label: "Transport", value: ExpenseCategory.TRANSPORT, icon: Car },

@@ -1,13 +1,12 @@
 import CategoryIcon from "@/components/CategoryIcon";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
-import { Button, ButtonText } from "@/components/ui/button";
+import SelectField from "@/components/SelectField";
+import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import {
   FormControl,
-  FormControlError,
-  FormControlErrorText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -16,12 +15,16 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadAvatar from "@/components/UploadAvatar";
+import CategorySheet, {
+  groupCategoryMeta
+} from "@/features/expense/components/CategorySheet";
 import MemberItem from "@/features/group/components/MemberItem";
 import MembersSelectionSheet from "@/features/group/components/MembersSelectionSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
+import { GroupCategory } from "@/types/groups";
 import { UserPreview } from "@/types/user";
 import { categories } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
@@ -37,12 +40,12 @@ export default function CreateGroupScreen() {
   const [values, setValues] = useState({
     name: "",
     avatar: null as ImagePickerSuccessResult | null,
-    category: ""
+    category: GroupCategory.GENERAL as string
   });
   const [formErrors, setFormErrors] = useState({
-    name: "",
-    category: ""
+    name: ""
   }) as any;
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [openSelectMembers, setOpenSelectMembers] = useState(false);
   const [tab, setTab] = useState<"members" | "admin">("members");
   const [members, setMembers] = useState<UserPreview[]>([]);
@@ -78,15 +81,13 @@ export default function CreateGroupScreen() {
   };
 
   const handleSubmit = async () => {
-    // Validate every required field at once so each missing one lights up
-    // together (name outline + message, category label + message) instead of
-    // surfacing one at a time.
+    // Category always has a value (defaults to General), so only name needs a
+    // required check here.
     const nextErrors = {
-      name: values.name.trim() ? "" : "Name is required",
-      category: values.category ? "" : "Category is required"
+      name: values.name.trim() ? "" : "Name is required"
     };
     setFormErrors(nextErrors);
-    if (nextErrors.name || nextErrors.category) return;
+    if (nextErrors.name) return;
 
     if (admin.length === 0) {
       toast({
@@ -226,60 +227,20 @@ export default function CreateGroupScreen() {
               errorMessage={formErrors.name}
             />
 
-            <FormControl size="md" isInvalid={!!formErrors.category}>
+            <FormControl size="md">
               <FormControlLabel>
                 <FormControlLabelText>Category</FormControlLabelText>
               </FormControlLabel>
-              <HStack className="gap-2 flex-wrap">
-                {categories.map((category) => (
-                  <Button
-                    key={category.value}
-                    size="md"
-                    variant={
-                      values.category === category.value ? "solid" : "outline"
-                    }
-                    onPress={() => {
-                      setValues({ ...values, category: category.value });
-                      if (formErrors.category)
-                        setFormErrors((prev: any) => ({
-                          ...prev,
-                          category: ""
-                        }));
-                    }}
-                    className={`items-center gap-x-2 pl-1.5 pr-4 rounded-full ${
-                      values.category === category.value
-                        ? "border-primary-400"
-                        : "border-background-200 bg-background-50 dark:bg-background-50"
-                    }`}
-                  >
-                    <CategoryIcon
-                      icon={category.icon}
-                      size={16}
-                      variant={
-                        values.category === category.value
-                          ? "onSolid"
-                          : "default"
-                      }
-                    />
-                    <ButtonText
-                      className={
-                        values.category === category.value
-                          ? "text-secondary-0"
-                          : "text-inherit dark:text-secondary-950"
-                      }
-                    >
-                      {category.label}
-                    </ButtonText>
-                  </Button>
-                ))}
-              </HStack>
-              {formErrors.category && (
-                <FormControlError>
-                  <FormControlErrorText>
-                    {formErrors.category}
-                  </FormControlErrorText>
-                </FormControlError>
-              )}
+              <SelectField
+                onPress={() => setCategorySheetOpen(true)}
+                leading={
+                  <CategoryIcon icon={groupCategoryMeta(values.category).icon} />
+                }
+              >
+                <Text className="text-lg" numberOfLines={1}>
+                  {groupCategoryMeta(values.category).label}
+                </Text>
+              </SelectField>
             </FormControl>
             <FormControl size="md">
               <VStack className="gap-y-2">
@@ -356,6 +317,14 @@ export default function CreateGroupScreen() {
           </VStack>
         </ScrollView>
       </FormLayout>
+
+      <CategorySheet
+        isOpen={categorySheetOpen}
+        category={values.category}
+        onClose={() => setCategorySheetOpen(false)}
+        onSelect={(value) => setValues({ ...values, category: value })}
+        options={categories}
+      />
     </Fragment>
   );
 }

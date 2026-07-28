@@ -39,6 +39,7 @@ export type Member = UserPreview & {
 };
 
 export enum GroupCategory {
+  GENERAL = "general",
   TRIP = "trip",
   EVENT = "event",
   HOUSEHOLD = "household",

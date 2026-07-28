@@ -98,7 +98,7 @@ export default function EditExpenseScreen() {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [currency, setCurrency] = useState("PHP");
-  const [category, setCategory] = useState<string>(ExpenseCategory.OTHER);
+  const [category, setCategory] = useState<string>(ExpenseCategory.GENERAL);
   const [expenseDate, setExpenseDate] = useState(new Date());
   const [proofOfPayment, setProofOfPayment] =
     useState<ImagePickerSuccessResult | null>(null);
@@ -255,7 +255,7 @@ export default function EditExpenseScreen() {
       setExistingProofUrl(expense.proof_of_payment ?? null);
       setProofOfPayment(null);
       setCurrency(expense.currency || "PHP");
-      setCategory(expense.category || ExpenseCategory.OTHER);
+      setCategory(expense.category || ExpenseCategory.GENERAL);
       setAmount(String(expense.amount));
       setDescription(expense.description ?? "");
       setExpenseDate(new Date(expense.expense_date ?? expense.created_at));

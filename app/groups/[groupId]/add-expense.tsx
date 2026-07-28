@@ -159,7 +159,7 @@ export default function AddExpenseScreen() {
   const [amount, setAmount] = useState(seed.amount);
   const [description, setDescription] = useState(seed.description);
   const [currency, setCurrency] = useState(seed.currency);
-  const [category, setCategory] = useState<string>(ExpenseCategory.OTHER);
+  const [category, setCategory] = useState<string>(ExpenseCategory.GENERAL);
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [expenseDate, setExpenseDate] = useState(seed.expenseDate);
   const [proofOfPayment, setProofOfPayment] =

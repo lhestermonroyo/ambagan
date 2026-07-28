@@ -1,5 +1,5 @@
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { MaterialIcons } from "@expo/vector-icons";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import Icon from "./Icon";
 import PressableListItem from "./PressableListItem";
 import { Box } from "./ui/box";
@@ -32,7 +32,7 @@ export default function SelectField({
       onPress={onPress}
       disabled={disabled}
       className={cn(
-        "h-16 items-center justify-center px-4 border border-background-200 rounded-lg",
+        "h-14 items-center justify-center px-4 border border-background-200 rounded-lg",
         className
       )}
     >

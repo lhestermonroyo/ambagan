@@ -192,6 +192,7 @@ export enum SplitType {
 }
 
 export enum ExpenseCategory {
+  GENERAL = "general",
   FOOD = "food",
   GROCERIES = "groceries",
   TRANSPORT = "transport",
