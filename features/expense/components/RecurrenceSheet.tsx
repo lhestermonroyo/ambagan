@@ -7,7 +7,7 @@ import { Box } from "@/components/ui/box";
 import {
   FormControl,
   FormControlLabel,
-  FormControlLabelText,
+  FormControlLabelText
 } from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
@@ -17,7 +17,7 @@ import { VStack } from "@/components/ui/vstack";
 import {
   RecurrenceConfig,
   RecurrenceEndType,
-  RecurrenceFrequency,
+  RecurrenceFrequency
 } from "@/types/expenses";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
@@ -39,13 +39,13 @@ type RecurrenceSheetProps = {
 const FREQUENCIES: { label: string; value: RecurrenceFrequency }[] = [
   { label: "Daily", value: RecurrenceFrequency.DAILY },
   { label: "Weekly", value: RecurrenceFrequency.WEEKLY },
-  { label: "Monthly", value: RecurrenceFrequency.MONTHLY },
+  { label: "Monthly", value: RecurrenceFrequency.MONTHLY }
 ];
 
 const END_TYPES: { label: string; value: RecurrenceEndType }[] = [
   { label: "Never", value: RecurrenceEndType.NEVER },
   { label: "On date", value: RecurrenceEndType.ON_DATE },
-  { label: "After…", value: RecurrenceEndType.AFTER_COUNT },
+  { label: "After…", value: RecurrenceEndType.AFTER_COUNT }
 ];
 
 const defaultConfig = (): RecurrenceConfig => ({
@@ -54,7 +54,7 @@ const defaultConfig = (): RecurrenceConfig => ({
   start_date: new Date(),
   end_type: RecurrenceEndType.NEVER,
   end_date: null,
-  occurrence_limit: null,
+  occurrence_limit: null
 });
 
 /**
@@ -67,15 +67,15 @@ export default function RecurrenceSheet({
   isOpen,
   value,
   onClose,
-  onDone,
+  onDone
 }: RecurrenceSheetProps) {
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   const [draft, setDraft] = useState<RecurrenceConfig>(
-    value ?? defaultConfig(),
+    value ?? defaultConfig()
   );
   const [countText, setCountText] = useState(
-    value?.occurrence_limit ? String(value.occurrence_limit) : "12",
+    value?.occurrence_limit ? String(value.occurrence_limit) : "12"
   );
   const [startPickerOpen, setStartPickerOpen] = useState(false);
   const [endPickerOpen, setEndPickerOpen] = useState(false);
@@ -89,7 +89,7 @@ export default function RecurrenceSheet({
     /* eslint-disable react-hooks/set-state-in-effect */
     setDraft(value ?? defaultConfig());
     setCountText(
-      value?.occurrence_limit ? String(value.occurrence_limit) : "12",
+      value?.occurrence_limit ? String(value.occurrence_limit) : "12"
     );
     /* eslint-enable react-hooks/set-state-in-effect */
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,7 +110,7 @@ export default function RecurrenceSheet({
       end_date:
         draft.end_type === RecurrenceEndType.ON_DATE ? draft.end_date : null,
       occurrence_limit:
-        draft.end_type === RecurrenceEndType.AFTER_COUNT ? parsedCount : null,
+        draft.end_type === RecurrenceEndType.AFTER_COUNT ? parsedCount : null
     });
   };
 
@@ -171,7 +171,7 @@ export default function RecurrenceSheet({
                       "flex-1 py-3 rounded-lg border items-center",
                       selected
                         ? "border-primary-400 bg-primary-0"
-                        : "border-background-200",
+                        : "border-background-200"
                     )}
                     onPress={() =>
                       setDraft((d) => ({ ...d, frequency: f.value }))
@@ -179,7 +179,7 @@ export default function RecurrenceSheet({
                   >
                     <Text
                       className={cn(
-                        selected ? "text-primary-400 font-bold" : "",
+                        selected ? "text-primary-400 font-bold" : ""
                       )}
                     >
                       {f.label}
@@ -199,7 +199,7 @@ export default function RecurrenceSheet({
             onChangeText={(t) =>
               setDraft((d) => ({
                 ...d,
-                repeat_interval: parseInt(t, 10) || 0,
+                repeat_interval: parseInt(t, 10) || 0
               }))
             }
             helperText={`Every ${Math.max(1, interval)} ${
@@ -248,7 +248,7 @@ export default function RecurrenceSheet({
                       "flex-1 py-3 rounded-lg border items-center",
                       selected
                         ? "border-primary-400 bg-primary-0"
-                        : "border-background-200",
+                        : "border-background-200"
                     )}
                     onPress={() =>
                       setDraft((d) => ({ ...d, end_type: e.value }))
@@ -256,7 +256,7 @@ export default function RecurrenceSheet({
                   >
                     <Text
                       className={cn(
-                        selected ? "text-primary-400 font-bold" : "",
+                        selected ? "text-primary-400 font-bold" : ""
                       )}
                     >
                       {e.label}
@@ -314,7 +314,7 @@ export default function RecurrenceSheet({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: "rgba(0,0,0,0.5)"
           }}
         />
         <Box className="absolute bottom-0 left-0 right-0 bg-background-0 rounded-t-3xl">
@@ -341,7 +341,7 @@ export default function RecurrenceSheet({
                   setDraft((d) =>
                     wasEnd
                       ? { ...d, end_date: date }
-                      : { ...d, start_date: date },
+                      : { ...d, start_date: date }
                   );
               }}
             />

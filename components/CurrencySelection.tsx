@@ -100,7 +100,7 @@ const CurrencySelection = ({
     <Fragment>
       <PressableListItem
         onPress={() => (locked ? onLockedPress?.() : setIsOpen(true))}
-        className="h-full border border-background-200 items-center justify-center px-2 py-2 rounded-lg"
+        className="h-14 border border-background-200 items-center justify-center px-2 py-2 rounded-lg"
       >
         <HStack className="items-center justify-center gap-x-1">
           <Text className="font-semibold">{currencyLabel}</Text>

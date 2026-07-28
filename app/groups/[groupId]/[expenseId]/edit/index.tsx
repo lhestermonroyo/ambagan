@@ -948,7 +948,7 @@ function ScrollableContent(props: {
           <FormControlLabel>
             <FormControlLabelText>Amount</FormControlLabelText>
           </FormControlLabel>
-          <HStack className="gap-x-2 items-end h-12">
+          <HStack className="gap-x-2 items-end h-14">
             <CurrencySelection
               currency={currency}
               onCurrencyChange={setCurrency}
