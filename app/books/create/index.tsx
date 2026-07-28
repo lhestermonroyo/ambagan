@@ -22,9 +22,12 @@ import services from "@/services";
 import states from "@/states";
 import { GroupCategory } from "@/types/groups";
 import { categories, currencies } from "@/utils/constants";
+import * as offlineQueue from "@/utils/offlineQueue";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import "react-native-get-random-values";
+import { v4 as uuid } from "uuid";
 
 export default function CreateBookScreen() {
   const params = useLocalSearchParams();
@@ -96,10 +99,40 @@ export default function CreateBookScreen() {
 
     if (!userDetails?.id) return;
 
+    // Offline create → queue it (updateBook queues itself inside the service).
+    // The cover photo is skipped (no image upload offline).
+    if (!isEdit && !(await offlineQueue.isOnline())) {
+      const clientId = uuid();
+      const optimistic = offlineQueue.buildOptimisticBook({
+        clientId,
+        name: values.name,
+        category: values.category,
+        currency: values.currency,
+        userId: userDetails.id
+      });
+      await offlineQueue.queueCreateBook(
+        userDetails.id,
+        {
+          name: values.name,
+          category: values.category,
+          currency: values.currency,
+          avatar: null,
+          user_id: userDetails.id
+        },
+        optimistic
+      );
+      toast({
+        title: "Saved offline",
+        description:
+          "Your book will be created automatically when you're back online.",
+        type: "info"
+      });
+      router.replace("/books");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      // NOTE (slice #2): online-only. Offline queueing + optimistic cache land
-      // in slice #5, mirroring the group create/update flow.
       if (isEdit) {
         await services.book.updateBook(bookId, {
           name: values.name,

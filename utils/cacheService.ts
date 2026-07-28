@@ -258,5 +258,108 @@ export const cacheService = {
     );
     if (!row) return null;
     return { count: row.count, dayKey: row.day_key };
+  },
+
+  // ---- Personal books (offline "Books" feature) ----------------------------
+
+  async saveBooksList(userId: string, data: any[]): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_books_list (user_id, data, cached_at) VALUES (?, ?, ?)",
+      [userId, JSON.stringify(data), Date.now()]
+    );
+  },
+
+  async getBooksList(userId: string): Promise<any[] | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{ data: string }>(
+      "SELECT data FROM cache_books_list WHERE user_id = ?",
+      [userId]
+    );
+    return row ? JSON.parse(row.data) : null;
+  },
+
+  async saveBookDetail(
+    bookId: string,
+    book: any,
+    expenseList: any[],
+    totals: any[]
+  ): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_book_detail (book_id, book_json, expense_list, totals, cached_at) VALUES (?, ?, ?, ?, ?)",
+      [
+        bookId,
+        JSON.stringify(book),
+        JSON.stringify(expenseList),
+        JSON.stringify(totals),
+        Date.now()
+      ]
+    );
+  },
+
+  async getBookDetail(
+    bookId: string
+  ): Promise<{ book: any; expenseList: any[]; totals: any[] } | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{
+      book_json: string;
+      expense_list: string;
+      totals: string;
+    }>(
+      "SELECT book_json, expense_list, totals FROM cache_book_detail WHERE book_id = ?",
+      [bookId]
+    );
+    if (!row) return null;
+    return {
+      book: JSON.parse(row.book_json),
+      expenseList: JSON.parse(row.expense_list),
+      totals: JSON.parse(row.totals)
+    };
+  },
+
+  // The user's daily personal-expense count as last read from the server (see
+  // saveDailyExpenseCount) — a SEPARATE bucket from group expenses.
+  async saveDailyPersonalCount(
+    userId: string,
+    count: number,
+    dayKey: string
+  ): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_daily_personal_count (user_id, count, day_key, cached_at) VALUES (?, ?, ?, ?)",
+      [userId, count, dayKey, Date.now()]
+    );
+  },
+
+  async getDailyPersonalCount(
+    userId: string
+  ): Promise<{ count: number; dayKey: string } | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{ count: number; day_key: string }>(
+      "SELECT count, day_key FROM cache_daily_personal_count WHERE user_id = ?",
+      [userId]
+    );
+    if (!row) return null;
+    return { count: row.count, dayKey: row.day_key };
+  },
+
+  // The Overview "Personal spending · This month" per-currency totals, as last
+  // read from the server — served offline so the card shows the last value.
+  async savePersonalMonthly(userId: string, data: any[]): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_personal_monthly (user_id, data, cached_at) VALUES (?, ?, ?)",
+      [userId, JSON.stringify(data), Date.now()]
+    );
+  },
+
+  async getPersonalMonthly(userId: string): Promise<any[] | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{ data: string }>(
+      "SELECT data FROM cache_personal_monthly WHERE user_id = ?",
+      [userId]
+    );
+    return row ? JSON.parse(row.data) : null;
   }
 };

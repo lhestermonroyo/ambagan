@@ -1,8 +1,9 @@
 import { PersonalExpense } from "@/types/books";
+import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import { isUniqueViolation, supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
-import { ImagePickerSuccessResult } from "expo-image-picker";
+import { ImagePickerAsset, ImagePickerSuccessResult } from "expo-image-picker";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
@@ -113,6 +114,36 @@ export const updatePersonalExpense = async (
   return { message: "Expense updated successfully" };
 };
 
+/**
+ * Upload a locally-stashed receipt and attach it to an already-created/updated
+ * personal expense. Used by the offline sync to re-upload a proof that couldn't
+ * be sent while offline, once the expense row itself exists. Best-effort — kept
+ * separate so a failed image never blocks the expense from syncing.
+ */
+export const attachPersonalExpenseProof = async (
+  expenseId: string,
+  proof: { uri: string; fileName: string | null }
+): Promise<void> => {
+  const uploadResponse = await uploadFile(
+    { uri: proof.uri, fileName: proof.fileName } as ImagePickerAsset,
+    "receipts"
+  );
+
+  if (uploadResponse.error) {
+    throw new Error(uploadResponse.message ?? "Receipt upload failed");
+  }
+
+  const proofUrl = uploadResponse.data?.publicUrl;
+  if (!proofUrl) return;
+
+  const { error } = await supabase
+    .from(tables.PERSONAL_EXPENSES_TBL)
+    .update({ proof_of_payment: proofUrl })
+    .eq("id", expenseId);
+
+  if (error) throw error;
+};
+
 export const deletePersonalExpense = async (expenseId: string) => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
@@ -214,26 +245,37 @@ export const getPersonalBookTotals = async (
 export const getPersonalMonthlyTotals = async (
   userId: string
 ): Promise<{ currency: string; amount: number }[]> => {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const { data, error } = await supabase
-    .from(tables.PERSONAL_EXPENSES_TBL)
-    .select("amount, currency")
-    .eq("user_id", userId)
-    .gte("expense_date", startOfMonth.toISOString());
+    const { data, error } = await supabase
+      .from(tables.PERSONAL_EXPENSES_TBL)
+      .select("amount, currency")
+      .eq("user_id", userId)
+      .gte("expense_date", startOfMonth.toISOString());
 
-  if (error) throw error;
+    if (error) throw error;
 
-  const byCurrency = new Map<string, number>();
-  for (const row of data as { amount: number; currency: string }[]) {
-    const currency = row.currency || "PHP";
-    byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + row.amount);
+    const byCurrency = new Map<string, number>();
+    for (const row of data as { amount: number; currency: string }[]) {
+      const currency = row.currency || "PHP";
+      byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + row.amount);
+    }
+
+    const totals = Array.from(byCurrency.entries())
+      .map(([currency, amount]) => ({ currency, amount }))
+      .sort((a, b) => b.amount - a.amount);
+
+    // Snapshot so the Overview card shows the last value offline.
+    cacheService.savePersonalMonthly(userId, totals).catch(() => {});
+
+    return totals;
+  } catch (error) {
+    const cached = await cacheService.getPersonalMonthly(userId);
+    if (cached) return cached as { currency: string; amount: number }[];
+    throw error;
   }
-
-  return Array.from(byCurrency.entries())
-    .map(([currency, amount]) => ({ currency, amount }))
-    .sort((a, b) => b.amount - a.amount);
 };
 
 /**

@@ -177,6 +177,83 @@ export function useOfflineSync() {
                 op.payload.membersToAdd,
                 op.payload.membersToRemove
               );
+            } else if (op.type === "CREATE_BOOK") {
+              // saveBook is idempotent on the pinned id (unique violation on a
+              // retry is a no-op — the book already committed).
+              await services.book.saveBook(op.payload.args);
+              await offlineQueue._internal.clearPendingBook(
+                op.payload.userId,
+                op.payload.clientId
+              );
+            } else if (op.type === "UPDATE_BOOK") {
+              await services.book.updateBook(op.payload.bookId, op.payload.args);
+              const uid = states.user.getState().details?.id;
+              if (uid) {
+                await offlineQueue._internal.clearPendingBook(
+                  uid,
+                  op.payload.bookId
+                );
+              }
+            } else if (op.type === "SET_BOOK_ARCHIVED") {
+              if (op.payload.archived) {
+                await services.book.archiveBook(op.payload.bookId);
+              } else {
+                await services.book.unarchiveBook(op.payload.bookId);
+              }
+            } else if (op.type === "ADD_PERSONAL_EXPENSE") {
+              // savePersonalExpense is idempotent on the pinned id (see CREATE_BOOK).
+              const { args } = op.payload;
+              await services.bookExpense.savePersonalExpense({
+                ...args,
+                expense_date: args.expense_date
+                  ? new Date(args.expense_date)
+                  : undefined
+              });
+              await offlineQueue._internal.clearPendingBookExpense(
+                op.payload.bookId,
+                op.payload.clientId
+              );
+              // Re-upload a receipt stashed while offline. Best-effort: the
+              // expense already synced, so a missing/failed image is dropped.
+              if (op.payload.proofUpload) {
+                try {
+                  await services.bookExpense.attachPersonalExpenseProof(
+                    op.payload.clientId,
+                    op.payload.proofUpload
+                  );
+                } catch (e) {
+                  console.warn("Failed to re-upload offline receipt:", e);
+                }
+              }
+            } else if (op.type === "UPDATE_PERSONAL_EXPENSE") {
+              const { args } = op.payload;
+              await services.bookExpense.updatePersonalExpense(
+                op.payload.expenseId,
+                {
+                  ...args,
+                  expense_date: args.expense_date
+                    ? new Date(args.expense_date)
+                    : undefined
+                }
+              );
+              await offlineQueue._internal.clearPendingBookExpense(
+                op.payload.bookId,
+                op.payload.expenseId
+              );
+              if (op.payload.proofUpload) {
+                try {
+                  await services.bookExpense.attachPersonalExpenseProof(
+                    op.payload.expenseId,
+                    op.payload.proofUpload
+                  );
+                } catch (e) {
+                  console.warn("Failed to re-upload offline receipt:", e);
+                }
+              }
+            } else if (op.type === "DELETE_PERSONAL_EXPENSE") {
+              await services.bookExpense.deletePersonalExpense(
+                op.payload.expenseId
+              );
             }
 
             await offlineQueue.removeFromQueue(op.id);

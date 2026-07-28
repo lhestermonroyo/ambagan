@@ -31,7 +31,9 @@ import services from "@/services";
 import states from "@/states";
 import { Book, PersonalExpense } from "@/types/books";
 import { EmptyType } from "@/types/general";
+import { cacheService } from "@/utils/cacheService";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import * as offlineQueue from "@/utils/offlineQueue";
 import {
   Stack,
   useFocusEffect,
@@ -90,8 +92,26 @@ export default function BookDetailScreen() {
           details: bookRes,
           expenseList: expensesRes.data
         }));
+        // Snapshot for offline viewing + optimistic offline mutations.
+        cacheService
+          .saveBookDetail(bookId, bookRes, expensesRes.data, totalsRes)
+          .catch(() => {});
       } catch (error) {
-        console.error("Failed to load book:", error);
+        // Offline / fetch failure — serve the cached snapshot.
+        const cached = await cacheService.getBookDetail(bookId);
+        if (cached) {
+          setBook(cached.book);
+          setExpenses(cached.expenseList);
+          setTotals(cached.totals);
+          setHasMore(false);
+          states.book.setState((prev) => ({
+            ...prev,
+            details: cached.book,
+            expenseList: cached.expenseList
+          }));
+        } else {
+          console.error("Failed to load book:", error);
+        }
       } finally {
         setLoading(false);
       }
@@ -128,10 +148,28 @@ export default function BookDetailScreen() {
     setRefreshing(false);
   };
 
-  const handleDeleteExpense = async (expenseId: string) => {
+  const handleDeleteExpense = async (expense: PersonalExpense) => {
+    if (!bookId) return;
     setDeleting(true);
     try {
-      await services.bookExpense.deletePersonalExpense(expenseId);
+      // Offline → queue + optimistic cache removal (adjusts the cached totals),
+      // then reload from cache so the list + total stay consistent.
+      if (!(await offlineQueue.isOnline())) {
+        await offlineQueue.queueDeletePersonalExpense(
+          bookId,
+          expense.id,
+          expense.amount,
+          expense.currency
+        );
+        toast({
+          title: "Deleted offline",
+          description: "This will sync when you're back online.",
+          type: "info"
+        });
+        await load(true);
+        return;
+      }
+      await services.bookExpense.deletePersonalExpense(expense.id);
       toast({
         title: "Expense deleted",
         description: "The expense has been removed.",
@@ -444,7 +482,7 @@ export default function BookDetailScreen() {
                       isLoading={deleting}
                       onConfirm={() => {
                         rowMap[item.id]?.closeRow();
-                        handleDeleteExpense(item.id);
+                        handleDeleteExpense(item);
                       }}
                     />
                   </HStack>

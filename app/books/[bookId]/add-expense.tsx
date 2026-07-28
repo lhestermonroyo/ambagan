@@ -34,8 +34,10 @@ import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
 import { ExpenseCategory } from "@/types/expenses";
+import { cacheService } from "@/utils/cacheService";
 import { PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import * as offlineQueue from "@/utils/offlineQueue";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -43,6 +45,33 @@ import { CalendarDays } from "lucide-react-native";
 import { Fragment, useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 import { ImagePickerSuccessResult } from "expo-image-picker";
+import "react-native-get-random-values";
+import { v4 as uuid } from "uuid";
+
+// Local-day key so the cached daily count is compared against the same calendar
+// day the user is in (mirrors the group add-expense flow).
+const dayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+};
+
+/**
+ * The user's personal-expense count for today, usable offline. Online: the live
+ * server count, cached for later. Offline: the last cached server count for
+ * today plus the ADD_PERSONAL_EXPENSE ops queued today — keeping the 5/day free
+ * limit enforced without a server round trip.
+ */
+async function resolvePersonalDailyCount(userId: string): Promise<number> {
+  if (await offlineQueue.isOnline()) {
+    const count = await services.bookExpense.getDailyPersonalCount(userId);
+    await cacheService.saveDailyPersonalCount(userId, count, dayKey());
+    return count;
+  }
+  const cached = await cacheService.getDailyPersonalCount(userId);
+  const base = cached && cached.dayKey === dayKey() ? cached.count : 0;
+  const queuedToday = await offlineQueue.countPersonalExpensesQueuedToday();
+  return base + queuedToday;
+}
 
 export default function AddPersonalExpenseScreen() {
   const params = useLocalSearchParams<{ bookId: string; expenseId?: string }>();
@@ -70,6 +99,12 @@ export default function AddPersonalExpenseScreen() {
   const [proofOfPayment, setProofOfPayment] =
     useState<ImagePickerSuccessResult | null>(null);
   const [existingProofUrl, setExistingProofUrl] = useState<string | null>(null);
+  // The pre-edit amount/currency, so an offline edit can back the old value out
+  // of the cached book totals before folding the new one in.
+  const [original, setOriginal] = useState<{
+    amount: number;
+    currency: string;
+  } | null>(null);
 
   const [amountError, setAmountError] = useState("");
   const [descriptionError, setDescriptionError] = useState("");
@@ -92,7 +127,7 @@ export default function AddPersonalExpenseScreen() {
             ? services.bookExpense.getPersonalExpenseById(expenseId)
             : Promise.resolve(null),
           !isPro && userDetails?.id
-            ? services.bookExpense.getDailyPersonalCount(userDetails.id)
+            ? resolvePersonalDailyCount(userDetails.id)
             : Promise.resolve(0)
         ]);
         if (!active) return;
@@ -106,6 +141,7 @@ export default function AddPersonalExpenseScreen() {
           setExistingProofUrl(expense.proof_of_payment);
           // An edited expense keeps its own currency if it differs from the book.
           setCurrency(expense.currency);
+          setOriginal({ amount: expense.amount, currency: expense.currency });
         }
       } catch {
         toast({
@@ -140,23 +176,101 @@ export default function AddPersonalExpenseScreen() {
   const handleSubmit = async () => {
     if (!validate() || !userDetails?.id) return;
 
-    // Free-tier gate — only on ADD (an edit doesn't create a new log entry).
-    if (!isEdit && !isPro && dailyCount >= PERSONAL_EXPENSE_LIMIT) {
-      setUpgradeDescription(
-        "You've reached your 5 personal expenses for today. Upgrade to Pro for unlimited expenses."
-      );
-      setUpgradeOpen(true);
+    const parsedAmount = parseFloat(amount);
+    const trimmedDescription = description.trim();
+
+    // Free-tier gate (ADD only) — re-resolve so same-session/offline adds count
+    // toward today's limit, not just the value read on mount.
+    if (!isEdit && !isPro) {
+      const count = await resolvePersonalDailyCount(userDetails.id);
+      setDailyCount(count);
+      if (count >= PERSONAL_EXPENSE_LIMIT) {
+        setUpgradeDescription(
+          "You've reached your 5 personal expenses for today. Upgrade to Pro for unlimited expenses."
+        );
+        setUpgradeOpen(true);
+        return;
+      }
+    }
+
+    // Offline → queue + optimistic cache. A receipt picked before going offline
+    // is stashed on-device and re-uploaded once the expense syncs.
+    if (!(await offlineQueue.isOnline())) {
+      const proofAsset = proofOfPayment?.assets?.[0];
+      const proofUpload = proofAsset
+        ? { uri: proofAsset.uri, fileName: proofAsset.fileName ?? null }
+        : undefined;
+      if (isEdit) {
+        const optimistic = offlineQueue.buildOptimisticPersonalExpense({
+          clientId: expenseId!,
+          bookId,
+          userId: userDetails.id,
+          amount: parsedAmount,
+          description: trimmedDescription,
+          category,
+          currency,
+          expenseDate: expenseDate.toISOString()
+        });
+        await offlineQueue.queueUpdatePersonalExpense(
+          bookId,
+          expenseId!,
+          {
+            amount: parsedAmount,
+            description: trimmedDescription,
+            category,
+            currency,
+            expense_date: expenseDate.toISOString(),
+            proof_of_payment: null,
+            existing_proof_url: existingProofUrl
+          },
+          optimistic,
+          original?.amount ?? parsedAmount,
+          original?.currency ?? currency,
+          proofUpload
+        );
+      } else {
+        const clientId = uuid();
+        const optimistic = offlineQueue.buildOptimisticPersonalExpense({
+          clientId,
+          bookId,
+          userId: userDetails.id,
+          amount: parsedAmount,
+          description: trimmedDescription,
+          category,
+          currency,
+          expenseDate: expenseDate.toISOString()
+        });
+        await offlineQueue.queueAddPersonalExpense(
+          bookId,
+          {
+            book_id: bookId,
+            user_id: userDetails.id,
+            amount: parsedAmount,
+            description: trimmedDescription,
+            category,
+            currency,
+            expense_date: expenseDate.toISOString(),
+            proof_of_payment: null
+          },
+          optimistic,
+          proofUpload
+        );
+      }
+      toast({
+        title: "Saved offline",
+        description: "Your expense will sync when you're back online.",
+        type: "info"
+      });
+      router.back();
       return;
     }
 
     setSubmitting(true);
     try {
-      // NOTE (slice #3): online-only. Offline queueing + optimistic cache land in
-      // slice #5, along with the offline-aware daily-count resolver.
       if (isEdit) {
-        await services.bookExpense.updatePersonalExpense(expenseId, {
-          amount: parseFloat(amount),
-          description: description.trim(),
+        await services.bookExpense.updatePersonalExpense(expenseId!, {
+          amount: parsedAmount,
+          description: trimmedDescription,
           category,
           currency,
           expense_date: expenseDate,
@@ -172,8 +286,8 @@ export default function AddPersonalExpenseScreen() {
         await services.bookExpense.savePersonalExpense({
           book_id: bookId,
           user_id: userDetails.id,
-          amount: parseFloat(amount),
-          description: description.trim(),
+          amount: parsedAmount,
+          description: trimmedDescription,
           category,
           currency,
           expense_date: expenseDate,

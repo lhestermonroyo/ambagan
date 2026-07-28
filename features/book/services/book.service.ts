@@ -1,14 +1,13 @@
+import states from "@/states";
 import { Book } from "@/types/books";
+import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
+import * as offlineQueue from "@/utils/offlineQueue";
 import { isUniqueViolation, supabase } from "@/utils/supabase";
 import { uploadFile } from "@/utils/upload";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
-
-// NOTE (slice #1 — foundation): these are the ONLINE paths only. Offline
-// queueing + cached read-fallback (mirroring group.service) land in slice #5,
-// where the offlineQueue/cacheService book helpers are added.
 
 const BOOK_SELECT = `id, created_at, user_id, name, category, avatar, currency, budget, archived, group_id`;
 
@@ -82,6 +81,21 @@ export const updateBook = async (
     avatar: ImagePickerSuccessResult | null;
   }
 ) => {
+  // Offline → queue name/category/currency (avatar uploads are blocked offline)
+  // + optimistic cache. Mirrors group.updateGroup.
+  if (!(await offlineQueue.isOnline())) {
+    const uid = states.user.getState().details?.id;
+    if (uid) {
+      await offlineQueue.queueUpdateBook(uid, bookId, {
+        name: payload.name,
+        category: payload.category,
+        currency: payload.currency,
+        avatar: null
+      });
+    }
+    return { message: "Book will be updated when you're back online" };
+  }
+
   const user = await supabase.auth.getUser();
 
   if (!user.data.user) {
@@ -118,6 +132,14 @@ export const updateBook = async (
 };
 
 export const deleteBook = async (bookId: string) => {
+  // Hard cascade delete — ONLINE ONLY (mirrors deleteGroup): a destructive
+  // delete must not run optimistically and then diverge from the server.
+  if (!(await offlineQueue.isOnline())) {
+    throw new Error(
+      "Deleting a book needs an internet connection. Please try again when you're back online."
+    );
+  }
+
   const user = await supabase.auth.getUser();
 
   if (!user.data.user) {
@@ -177,56 +199,86 @@ export const getBooksByUserIdPaginated = async (
   page: number = 0,
   filter: BookFilter = "all"
 ): Promise<{ data: Book[]; hasNext: boolean }> => {
-  const user = await supabase.auth.getUser();
-  if (!user.data.user) throw new Error("User not authenticated");
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error("User not authenticated");
 
-  const from = page * BOOKS_PAGE_SIZE;
-  const to = from + BOOKS_PAGE_SIZE - 1;
+    const from = page * BOOKS_PAGE_SIZE;
+    const to = from + BOOKS_PAGE_SIZE - 1;
 
-  const { data, error, count } = await supabase
-    .from(tables.PERSONAL_BOOKS_TBL)
-    .select(`${BOOK_SELECT}, expenses:${tables.PERSONAL_EXPENSES_TBL}(count)`, {
-      count: "exact"
-    })
-    .eq("user_id", userId)
-    .eq("archived", filter === "archived")
-    .order("created_at", { ascending: false })
-    .range(from, to);
+    const { data, error, count } = await supabase
+      .from(tables.PERSONAL_BOOKS_TBL)
+      .select(
+        `${BOOK_SELECT}, expenses:${tables.PERSONAL_EXPENSES_TBL}(count)`,
+        { count: "exact" }
+      )
+      .eq("user_id", userId)
+      .eq("archived", filter === "archived")
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
-  if (error) throw error;
+    if (error) throw error;
 
-  const books = (data as any[]).map(({ expenses, ...book }) => ({
-    ...book,
-    expense_count: (expenses as any[])?.[0]?.count ?? 0
-  })) as Book[];
+    const books = (data as any[]).map(({ expenses, ...book }) => ({
+      ...book,
+      expense_count: (expenses as any[])?.[0]?.count ?? 0
+    })) as Book[];
 
-  const totalPages = Math.ceil((count || 0) / BOOKS_PAGE_SIZE);
+    const totalPages = Math.ceil((count || 0) / BOOKS_PAGE_SIZE);
+    const result = { data: books, hasNext: page < totalPages - 1 };
 
-  return {
-    data: books,
-    hasNext: page < totalPages - 1
-  };
+    // Cache the complete active list (first page, no more pages) for offline.
+    if (page === 0 && filter === "all" && !result.hasNext) {
+      cacheService.saveBooksList(userId, result.data).catch(() => {});
+    }
+
+    return result;
+  } catch (error) {
+    // Offline / fetch failure — serve the cached active snapshot on page 0.
+    if (page > 0) return { data: [], hasNext: false };
+
+    const cached = (await cacheService.getBooksList(userId)) as Book[] | null;
+    if (!cached) throw error;
+    // Only the active (non-archived) list is cached; archived isn't available offline.
+    return { data: filter === "archived" ? [] : cached, hasNext: false };
+  }
 };
 
 export const getBookById = async (bookId: string): Promise<Book> => {
-  const user = await supabase.auth.getUser();
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error("User not authenticated");
 
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
+    const { data, error } = await supabase
+      .from(tables.PERSONAL_BOOKS_TBL)
+      .select(BOOK_SELECT)
+      .eq("id", bookId)
+      .single();
+
+    if (error) throw error;
+
+    return { ...(data as any), expense_count: 0 } as Book;
+  } catch (error) {
+    // Offline — the cached book detail (or active list) carries the meta.
+    const detail = await cacheService.getBookDetail(bookId);
+    if (detail?.book) return detail.book as Book;
+    const uid = states.user.getState().details?.id;
+    if (uid) {
+      const list = (await cacheService.getBooksList(uid)) as Book[] | null;
+      const found = list?.find((b) => b.id === bookId);
+      if (found) return found;
+    }
+    throw error;
   }
-
-  const { data, error } = await supabase
-    .from(tables.PERSONAL_BOOKS_TBL)
-    .select(BOOK_SELECT)
-    .eq("id", bookId)
-    .single();
-
-  if (error) throw error;
-
-  return { ...(data as any), expense_count: 0 } as Book;
 };
 
 export const archiveBook = async (bookId: string) => {
+  if (!(await offlineQueue.isOnline())) {
+    const uid = states.user.getState().details?.id;
+    if (uid) await offlineQueue.queueSetBookArchived(uid, bookId, true);
+    return { success: true };
+  }
+
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 
@@ -241,6 +293,12 @@ export const archiveBook = async (bookId: string) => {
 };
 
 export const unarchiveBook = async (bookId: string) => {
+  if (!(await offlineQueue.isOnline())) {
+    const uid = states.user.getState().details?.id;
+    if (uid) await offlineQueue.queueSetBookArchived(uid, bookId, false);
+    return { success: true };
+  }
+
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 
