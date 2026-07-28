@@ -12,7 +12,8 @@ const glyphMap = {
   house: 57589,
   users: 57764,
   "circle-user": 58465,
-  "scan-line": 57944
+  "scan-line": 57944,
+  "notebook-pen": 58774
 } as const;
 
 export type LucideGlyph = keyof typeof glyphMap;

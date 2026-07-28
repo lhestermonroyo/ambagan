@@ -95,6 +95,19 @@ export default function TabLayout() {
           <NativeTabs.Trigger.Label>Groups</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
+        <NativeTabs.Trigger name="books">
+          <NativeTabs.Trigger.Icon
+            renderingMode="template"
+            src={
+              <NativeTabs.Trigger.VectorIcon
+                family={LucideIcon}
+                name="notebook-pen"
+              />
+            }
+          />
+          <NativeTabs.Trigger.Label>Books</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
         <NativeTabs.Trigger name="friends">
           <NativeTabs.Trigger.Icon
             renderingMode="template"

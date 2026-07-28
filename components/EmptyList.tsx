@@ -42,6 +42,7 @@ const TYPE_TO_IMAGE: Record<EmptyType, ImageKey> = {
   [EmptyType.FAVORITE]: "user",
   [EmptyType.MEMBER]: "user",
   [EmptyType.GROUP]: "user",
+  [EmptyType.BOOK]: "list",
   [EmptyType.ACTIVITY]: "list",
   [EmptyType.SETTLEMENT]: "expense",
   [EmptyType.SETTLEMENT_ALL]: "expense",

@@ -40,6 +40,7 @@ import { Stack, useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import {
   Bell,
   BellDot,
+  ChevronRight,
   CircleQuestionMark,
   HousePlus,
   ListPlus,
@@ -69,9 +70,13 @@ export default function HomeScreen() {
     stats: false,
     activities: false,
     groups: false,
-    friends: false
+    friends: false,
+    personal: false
   });
   const [friends, setFriends] = useState<FriendSummary[]>([]);
+  const [personalTotals, setPersonalTotals] = useState<
+    { currency: string; amount: number }[]
+  >([]);
   const [stats, setStats] = useState<{
     toPay: { currency: string; amount: number }[];
     toReceive: { currency: string; amount: number }[];
@@ -169,6 +174,22 @@ export default function HomeScreen() {
     return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
   }, [displayStats.toPay, defaultCurrency]);
 
+  // This-month personal spending, primary currency first (then others). Always
+  // shows at least the default currency at 0 so the card is a stable entry point
+  // into Books even before the user logs anything.
+  const displayPersonal = useMemo(() => {
+    if (personalTotals.length === 0) {
+      return [{ currency: defaultCurrency, amount: 0 }];
+    }
+    return [...personalTotals].sort((a, b) =>
+      a.currency === defaultCurrency
+        ? -1
+        : b.currency === defaultCurrency
+          ? 1
+          : 0
+    );
+  }, [personalTotals, defaultCurrency]);
+
   // The hero card is ~250pt tall; start the fade partway through so the compact
   // bar is fully in by the time the hero is gone. `contentInsetAdjustmentBehavior`
   // seeds scrollY negative at rest, which only delays the fade — never triggers
@@ -207,10 +228,29 @@ export default function HomeScreen() {
       fetchGroups(isInitialized),
       fetchActivities(isInitialized),
       fetchFriends(isInitialized),
+      fetchPersonal(isInitialized),
       fetchUnreadCount()
     ]).then(() => {
       setInitialized(true);
     });
+  };
+
+  const fetchPersonal = async (isInitialized = false) => {
+    if (!userId) return;
+
+    if (!isInitialized) {
+      setLoading((prev) => ({ ...prev, personal: true }));
+    }
+
+    try {
+      const totals =
+        await services.bookExpense.getPersonalMonthlyTotals(userId);
+      setPersonalTotals(totals);
+    } catch (error) {
+      console.error("Failed to fetch personal spending:", error);
+    } finally {
+      setLoading((prev) => ({ ...prev, personal: false }));
+    }
   };
 
   const fetchUnreadCount = async () => {
@@ -579,6 +619,39 @@ export default function HomeScreen() {
                 </HStack>
               </VStack>
             </Box>
+
+            {/* Personal spending — a distinct card in the white body (kept out of
+              the purple net-balance hero so it never reads as money owed). Taps
+              through to the Books tab. */}
+            <Pressable onPress={() => router.push("/books")}>
+              <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-2">
+                <HStack className="items-center justify-between">
+                  <Text className="text-sm text-white font-medium uppercase flex-1">
+                    Personal Spending · This Month
+                  </Text>
+                  <ChevronRight size={20} color="#fff" />
+                </HStack>
+                {loading.personal ? (
+                  <Text bold className="text-3xl text-white">
+                    —
+                  </Text>
+                ) : (
+                  displayPersonal.map((t, i) => (
+                    <Text
+                      key={t.currency}
+                      bold
+                      className={
+                        i === 0
+                          ? "text-3xl text-primary-400"
+                          : "text-lg text-white/80"
+                      }
+                    >
+                      {formatAmount(t.amount, t.currency)}
+                    </Text>
+                  ))
+                )}
+              </VStack>
+            </Pressable>
 
             <VStack>
               <HStack className="items-center justify-between px-4">

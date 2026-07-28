@@ -1,3 +1,4 @@
+import BOOK_STATE from "@/features/book/states/book.state";
 import EXPENSE_STATE from "@/features/expense/states/expense.state";
 import GROUP_STATE from "@/features/group/states/group.state";
 import NOTIFICATION_STATE from "@/features/notifications/states/notification.state";
@@ -64,6 +65,7 @@ const USER_STATE = create<UserState>((set, get) => ({
     clearCachedUserSession();
     EXPENSE_STATE.getState().reset();
     GROUP_STATE.getState().reset();
+    BOOK_STATE.getState().reset();
     NOTIFICATION_STATE.getState().reset();
     // Clear the persisted Supabase session so a cold launch's getSession() can't
     // restore the account we just left (and a stale token refresh can't silently

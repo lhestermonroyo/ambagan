@@ -23,6 +23,11 @@ import {
 
 export const DAILY_EXPENSE_LIMIT = 5;
 
+// Free-tier daily cap on personal (book) expenses. A SEPARATE bucket from
+// DAILY_EXPENSE_LIMIT — a free user gets 5 group + 5 personal expenses per day,
+// each tracked by its own append-only creation log.
+export const PERSONAL_EXPENSE_LIMIT = 5;
+
 export const tables = {
   USERS_TBL: "users_tbl",
   GROUPS_TBL: "groups_tbl",
@@ -36,7 +41,11 @@ export const tables = {
   NOTIFICATIONS_TBL: "notifications_tbl",
   USER_FAVORITES_TBL: "user_favorites_tbl",
   USER_PREFERENCES_TBL: "user_preferences_tbl",
-  USER_PUSH_TOKENS_TBL: "user_push_tokens_tbl"
+  USER_PUSH_TOKENS_TBL: "user_push_tokens_tbl",
+  // Personal-expense feature (standalone "books").
+  PERSONAL_BOOKS_TBL: "personal_books_tbl",
+  PERSONAL_EXPENSES_TBL: "personal_expenses_tbl",
+  PERSONAL_EXPENSE_CREATION_LOG_TBL: "personal_expense_creation_log_tbl"
 };
 
 // apply signs to all currencies
@@ -223,6 +232,11 @@ export const emptyTypes = [
     type: EmptyType.GROUP,
     content: "No groups yet. Create or join a group to get started!",
     icon: "🏠"
+  },
+  {
+    type: EmptyType.BOOK,
+    content: "No books yet. Create one to start tracking your personal spending!",
+    icon: "📒"
   },
   {
     type: EmptyType.EXPENSE,

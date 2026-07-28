@@ -3,6 +3,7 @@ import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
 import CurrencySelection from "@/components/CurrencySelection";
+import DailyLimitBadge from "@/components/DailyLimitBadge";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
@@ -18,7 +19,6 @@ import {
   ActionsheetDragIndicator,
   ActionsheetDragIndicatorWrapper
 } from "@/components/ui/actionsheet";
-import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -1426,21 +1426,3 @@ export default function AddExpenseScreen() {
   );
 }
 
-function DailyLimitBadge({ count, limit }: { count: number; limit: number }) {
-  const remaining = limit - count;
-  const isLimitReached = remaining <= 0;
-
-  return (
-    <Badge
-      size="md"
-      variant="solid"
-      className={`rounded-full px-4 py-2 ${isLimitReached ? "bg-error-50" : "bg-primary-50"}`}
-    >
-      <BadgeText
-        className={`font-bold text-sm uppercase ${isLimitReached ? "text-error-600" : "text-primary-400"}`}
-      >
-        {isLimitReached ? "LIMIT REACHED" : `${remaining} / ${limit} LEFT`}
-      </BadgeText>
-    </Badge>
-  );
-}
