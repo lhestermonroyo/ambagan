@@ -9,6 +9,8 @@ import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import { Badge, BadgeText } from "@/components/ui/badge";
+import { Box } from "@/components/ui/box";
 import { Fab } from "@/components/ui/fab";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
@@ -19,6 +21,7 @@ import {
   ModalFooter,
   ModalHeader
 } from "@/components/ui/modal";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -26,6 +29,7 @@ import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem"
 import { groupCategoryMeta } from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
@@ -43,18 +47,27 @@ import {
 import {
   Archive,
   ArchiveRestore,
+  ListPlus,
   Pencil,
   Plus,
-  Trash2
+  ScanLine,
+  Trash2,
+  X
 } from "lucide-react-native";
 import { Fragment, useCallback, useState } from "react";
-import { Platform, RefreshControl, useColorScheme } from "react-native";
+import {
+  Platform,
+  RefreshControl,
+  Modal as RNModal,
+  useColorScheme
+} from "react-native";
 import { SwipeListView } from "react-native-swipe-list-view";
 
 export default function BookDetailScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
   const toast = useAppToast();
+  const ensureOnline = useEnsureOnline();
   const colorScheme = useColorScheme() ?? "light";
 
   const [book, setBook] = useState<Book | null>(
@@ -69,6 +82,7 @@ export default function BookDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
 
@@ -371,33 +385,127 @@ export default function BookDetailScreen() {
         }
         androidActions={renderAndroidActions()}
       >
-        {/* Floating "+" to add an expense — mirrors the group detail FAB. A book
-            has a single add action (no speed-dial), so it navigates directly. */}
-        {!isArchived &&
-          (Platform.OS === "ios" ? (
-            <Stack.Toolbar placement="bottom">
-              <Stack.Toolbar.Spacer />
-              <Stack.Toolbar.Button
-                icon="plus"
-                variant="prominent"
-                tintColor={getPrimaryHex("text-primary-500", colorScheme)}
-                accessibilityLabel="Add expense"
-                onPress={() => router.push(`/books/${bookId}/add-expense`)}
-              />
-            </Stack.Toolbar>
-          ) : (
-            <Fab
-              placement="bottom right"
-              className="bottom-10"
-              aria-label="Add expense"
-              onPress={() => router.push(`/books/${bookId}/add-expense`)}
+        {/* Floating "+" speed-dial — Add Expense + Scan Receipt, mirroring the
+            group detail FAB. */}
+        {!isArchived && (
+          <>
+            {/* Speed-dial in a Modal so its dim masks the WHOLE window (native
+                header + bottom toolbar included). */}
+            <RNModal
+              visible={fabOpen}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setFabOpen(false)}
             >
-              <Plus
-                size={24}
-                color={getSecondaryHex("text-secondary-0", colorScheme)}
+              <Pressable
+                onPress={() => setFabOpen(false)}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "rgba(0,0,0,0.5)"
+                }}
               />
-            </Fab>
-          ))}
+              <Box
+                className="absolute bottom-24 right-4"
+                style={{
+                  width: 240,
+                  borderRadius: 14,
+                  overflow: "hidden",
+                  backgroundColor:
+                    colorScheme === "dark" ? "#2C2C2E" : "#FFFFFF",
+                  shadowColor: "#000",
+                  shadowOpacity: 0.2,
+                  shadowRadius: 16,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 8
+                }}
+              >
+                <Pressable
+                  className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
+                  onPress={() => {
+                    setFabOpen(false);
+                    router.push(`/books/${bookId}/add-expense`);
+                  }}
+                >
+                  <Text className="text-base">Add Expense</Text>
+                  <ListPlus
+                    size={20}
+                    color={getPrimaryHex("text-primary-500", colorScheme)}
+                  />
+                </Pressable>
+                <Box
+                  style={{
+                    height: 0.5,
+                    backgroundColor:
+                      colorScheme === "dark" ? "#3A3A3C" : "#E5E5EA"
+                  }}
+                />
+                <Pressable
+                  className="flex-row items-center justify-between px-4 py-3.5 active:opacity-60"
+                  onPress={async () => {
+                    setFabOpen(false);
+                    if (
+                      !(await ensureOnline(
+                        "You need an internet connection to scan a receipt. Please try again when you're back online."
+                      ))
+                    ) {
+                      return;
+                    }
+                    router.push(`/books/${bookId}/scan-receipt` as any);
+                  }}
+                >
+                  <HStack className="items-center gap-x-2">
+                    <Text className="text-base">Scan Receipt</Text>
+                    <Badge size="sm" action="info" variant="solid">
+                      <BadgeText>Beta</BadgeText>
+                    </Badge>
+                  </HStack>
+                  <ScanLine
+                    size={20}
+                    color={getPrimaryHex("text-primary-500", colorScheme)}
+                  />
+                </Pressable>
+              </Box>
+            </RNModal>
+
+            {Platform.OS === "ios" ? (
+              <Stack.Toolbar placement="bottom">
+                <Stack.Toolbar.Spacer />
+                <Stack.Toolbar.Button
+                  icon={fabOpen ? "xmark" : "plus"}
+                  variant="prominent"
+                  tintColor={getPrimaryHex("text-primary-500", colorScheme)}
+                  accessibilityLabel={
+                    fabOpen ? "Close add menu" : "Add expense"
+                  }
+                  onPress={() => setFabOpen((prev) => !prev)}
+                />
+              </Stack.Toolbar>
+            ) : (
+              <Fab
+                placement="bottom right"
+                className="bottom-10"
+                aria-label={fabOpen ? "Close add menu" : "Add expense"}
+                onPress={() => setFabOpen((prev) => !prev)}
+              >
+                {fabOpen ? (
+                  <X
+                    size={24}
+                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                  />
+                ) : (
+                  <Plus
+                    size={24}
+                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                  />
+                )}
+              </Fab>
+            )}
+          </>
+        )}
 
         <LoadingWrapper isLoading={loading} skeleton={<ExpenseListSkeleton />}>
           <ScrollView
@@ -441,13 +549,13 @@ export default function BookDetailScreen() {
                     className={
                       i === 0
                         ? "text-3xl text-primary-400"
-                        : "text-xl text-white/80"
+                        : "text-xl text-white/70"
                     }
                   >
                     {formatAmount(t.amount, t.currency)}
                   </Text>
                 ))}
-                <Text className="text-sm text-white/60">
+                <Text className="text-sm text-white/70">
                   {expenses.length}
                   {hasMore ? "+" : ""} expense
                   {expenses.length !== 1 ? "s" : ""}

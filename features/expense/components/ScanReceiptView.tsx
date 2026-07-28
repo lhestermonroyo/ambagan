@@ -44,6 +44,11 @@ type ScanReceiptViewProps = {
   /** When set, pre-locks that group in the Add Expense flow. */
   groupId?: string;
   /**
+   * When set, hands off to that book's personal Add Expense form instead of the
+   * group flow (autofills amount/description/currency/date/receipt the same way).
+   */
+  bookId?: string;
+  /**
    * Where the scanner is mounted, which decides how it hands off and dismisses:
    * - `tab`: the Scan tab. Pushing the form covers the tab; replacing would
    *   swap out the whole tab navigator this screen lives in.
@@ -63,6 +68,7 @@ type ScanReceiptViewProps = {
  */
 export default function ScanReceiptView({
   groupId,
+  bookId,
   presentation
 }: ScanReceiptViewProps) {
   const router = useRouter();
@@ -196,9 +202,11 @@ export default function ScanReceiptView({
   // group, replace so backing out returns to the group, not a live camera.
   const goToExpense = () => {
     const target = (
-      groupId
-        ? `/groups/${groupId}/add-expense`
-        : "/groups/[groupId]/add-expense"
+      bookId
+        ? `/books/${bookId}/add-expense`
+        : groupId
+          ? `/groups/${groupId}/add-expense`
+          : "/groups/[groupId]/add-expense"
     ) as any;
     if (presentation === "tab") {
       router.push(target);

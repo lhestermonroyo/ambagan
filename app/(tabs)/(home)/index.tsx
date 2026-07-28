@@ -626,10 +626,10 @@ export default function HomeScreen() {
             <Pressable onPress={() => router.push("/books")}>
               <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-2">
                 <HStack className="items-center justify-between">
-                  <Text className="text-sm text-white font-medium uppercase flex-1">
+                  <Text className="text-sm text-white/70 font-medium uppercase flex-1">
                     Personal Spending · This Month
                   </Text>
-                  <ChevronRight size={20} color="#fff" />
+                  <ChevronRight color="#fff" />
                 </HStack>
                 {loading.personal ? (
                   <Text bold className="text-3xl text-white">

@@ -35,7 +35,7 @@ import services from "@/services";
 import states from "@/states";
 import { ExpenseCategory } from "@/types/expenses";
 import { cacheService } from "@/utils/cacheService";
-import { PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
+import { currencies, PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -80,24 +80,53 @@ export default function AddPersonalExpenseScreen() {
     typeof params.expenseId === "string" ? params.expenseId : undefined;
   const isEdit = !!expenseId;
 
-  const { details: userDetails } = states.user();
+  const { details: userDetails, defaultCurrency } = states.user();
   const isPro = userDetails?.plan === "pro";
 
   const router = useRouter();
   const toast = useAppToast();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
+  // Seed from a Scan Receipt (Beta) hand-off if one is waiting (ADD mode only).
+  // Read once at mount; the draft is cleared in the effect below so a back-out +
+  // re-entry starts clean. Scanned currency is honored only for Pro and only for
+  // a supported currency (mirrors the group add-expense flow).
+  const [seed] = useState(() => {
+    if (isEdit) return null;
+    const draft = states.expense.getState().scanDraft;
+    if (!draft) return null;
+    const scannedCurrency =
+      isPro &&
+      draft.currency &&
+      currencies.some((c) => c.value === draft.currency)
+        ? draft.currency
+        : null;
+    const scannedDate = draft.date ? new Date(draft.date) : null;
+    return {
+      amount: draft.amount ?? "",
+      description: draft.description ?? "",
+      currency: scannedCurrency,
+      expenseDate:
+        scannedDate && !isNaN(scannedDate.getTime()) ? scannedDate : null,
+      proofOfPayment: draft.proof_of_payment as ImagePickerSuccessResult
+    };
+  });
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [currency, setCurrency] = useState("PHP");
+  // Scanned currency (if any) wins; otherwise the book's currency is filled in
+  // once it loads. Default until then.
+  const [currency, setCurrency] = useState(
+    seed?.currency ?? (isPro ? defaultCurrency : "PHP")
+  );
   const [dailyCount, setDailyCount] = useState(0);
 
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState(seed?.amount ?? "");
+  const [description, setDescription] = useState(seed?.description ?? "");
   const [category, setCategory] = useState<string>(ExpenseCategory.GENERAL);
-  const [expenseDate, setExpenseDate] = useState(new Date());
+  const [expenseDate, setExpenseDate] = useState(seed?.expenseDate ?? new Date());
   const [proofOfPayment, setProofOfPayment] =
-    useState<ImagePickerSuccessResult | null>(null);
+    useState<ImagePickerSuccessResult | null>(seed?.proofOfPayment ?? null);
   const [existingProofUrl, setExistingProofUrl] = useState<string | null>(null);
   // The pre-edit amount/currency, so an offline edit can back the old value out
   // of the cached book totals before folding the new one in.
@@ -131,7 +160,8 @@ export default function AddPersonalExpenseScreen() {
             : Promise.resolve(0)
         ]);
         if (!active) return;
-        setCurrency(book.currency);
+        // A scanned currency (Pro) wins; otherwise inherit the book's currency.
+        if (!seed?.currency) setCurrency(book.currency);
         setDailyCount(count);
         if (expense) {
           setAmount(String(expense.amount));
@@ -158,6 +188,13 @@ export default function AddPersonalExpenseScreen() {
       active = false;
     };
   }, [bookId, expenseId]);
+
+  // Consume the scan hand-off once seeded, so backing out + re-entering starts
+  // from a clean form.
+  useEffect(() => {
+    const { scanDraft, clearScanDraft } = states.expense.getState();
+    if (scanDraft) clearScanDraft();
+  }, []);
 
   const validate = () => {
     const parsed = parseFloat(amount);
