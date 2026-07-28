@@ -14,7 +14,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import { ImageUp, ReceiptText, X, Zap, ZapOff } from "lucide-react-native";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Linking, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -79,6 +79,17 @@ export default function ScanReceiptView({
   const isFocused = useIsFocused();
 
   useFocusEffect(useCallback(() => () => setTorch(false), []));
+
+  // App Review guideline 5.1.1(iv): the system permission dialog has to be the
+  // first thing the user sees — a custom screen in front of it reads as
+  // priming, and giving them a way to dismiss that screen lets them dodge the
+  // request entirely. So ask the moment we know we're allowed to, and only fall
+  // back to our own UI once the OS stops letting us prompt.
+  useEffect(() => {
+    if (permission && !permission.granted && permission.canAskAgain) {
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
 
   // On the tab this is the only way out, since the tab bar is hidden. Tabs
   // record their history, so back lands on the tab we came from; when pushed,
@@ -168,16 +179,9 @@ export default function ScanReceiptView({
   const handleUploadReceipt = async () => {
     if (scanning) return;
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      toast({
-        title: "Photo access needed",
-        description: "Allow photo library access to upload a receipt image.",
-        type: "warning"
-      });
-      return;
-    }
-
+    // No permission request here on purpose: the picker runs out of process
+    // (PHPicker on iOS, the system photo picker on Android), so it hands back
+    // only the chosen image and never needs library access of its own.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 1
@@ -203,11 +207,15 @@ export default function ScanReceiptView({
     }
   };
 
-  // Permission still resolving on first mount.
-  if (!permission) {
+  // Permission still resolving on first mount, or the system dialog is up —
+  // sit behind it rather than showing anything Apple could read as priming.
+  if (!permission || (!permission.granted && permission.canAskAgain)) {
     return <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} />;
   }
 
+  // Denied for good: the OS won't prompt again, so Settings is the only way
+  // back. This screen is fine by 5.1.1(iv) precisely because it comes *after*
+  // the request rather than in front of it.
   if (!permission.granted) {
     return (
       <SafeAreaView className="bg-secondary-0" style={{ flex: 1 }}>
@@ -218,26 +226,21 @@ export default function ScanReceiptView({
           />
           <VStack className="gap-y-2">
             <Text bold className="text-xl text-center">
-              Camera access needed
+              Camera access is off
             </Text>
             <Text className="text-secondary-950 text-center">
-              Ambagan needs your camera to scan a receipt.
+              Turn on camera access in Settings to photograph a receipt. You can
+              also pick a receipt you&apos;ve already saved to your photos.
             </Text>
           </VStack>
           <VStack className="w-full gap-y-2">
             <FormButton
-              text="Grant Camera Access"
-              onPress={() =>
-                permission.canAskAgain
-                  ? requestPermission()
-                  : Linking.openSettings()
-              }
+              text="Open Settings"
+              onPress={() => Linking.openSettings()}
             />
             <FormButton
               variant="outline"
-              text={
-                scanning ? "Reading receipt…" : "Upload Receipt from Photos"
-              }
+              text={scanning ? "Reading receipt…" : "Choose from Photos"}
               onPress={handleUploadReceipt}
               disabled={scanning}
             />

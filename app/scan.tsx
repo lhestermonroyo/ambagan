@@ -15,7 +15,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { ImageUp, ScanLine, X } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Linking, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -40,6 +40,17 @@ export default function ScanJoinScreen() {
   const colorScheme = useColorScheme() ?? "light";
 
   const handleClose = () => router.back();
+
+  // App Review guideline 5.1.1(iv): the system permission dialog has to be the
+  // first thing the user sees — a custom screen in front of it reads as
+  // priming, and giving them a way to dismiss that screen lets them dodge the
+  // request entirely. So ask the moment we know we're allowed to, and only fall
+  // back to our own UI once the OS stops letting us prompt.
+  useEffect(() => {
+    if (permission && !permission.granted && permission.canAskAgain) {
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
 
   // Reuse the deep-link join flow (auth/onboarding checks + join + routing).
   // Joining hits the server, so bail with the standard offline toast (leaving
@@ -91,16 +102,9 @@ export default function ScanJoinScreen() {
   const handleUploadQR = async () => {
     if (handledRef.current || uploading) return;
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      toast({
-        title: "Photo access needed",
-        description: "Allow photo library access to upload a QR image.",
-        type: "warning"
-      });
-      return;
-    }
-
+    // No permission request here on purpose: the picker runs out of process
+    // (PHPicker on iOS, the system photo picker on Android), so it hands back
+    // only the chosen image and never needs library access of its own.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 1
@@ -139,11 +143,15 @@ export default function ScanJoinScreen() {
     }
   };
 
-  // Permission still resolving on first mount.
-  if (!permission) {
+  // Permission still resolving on first mount, or the system dialog is up —
+  // sit behind it rather than showing anything Apple could read as priming.
+  if (!permission || (!permission.granted && permission.canAskAgain)) {
     return <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} />;
   }
 
+  // Denied for good: the OS won't prompt again, so Settings is the only way
+  // back. This screen is fine by 5.1.1(iv) precisely because it comes *after*
+  // the request rather than in front of it.
   if (!permission.granted) {
     return (
       <SafeAreaView className="bg-secondary-0" style={{ flex: 1 }}>
@@ -154,24 +162,21 @@ export default function ScanJoinScreen() {
           />
           <VStack className="gap-y-2">
             <Text bold className="text-xl text-center">
-              Camera access needed
+              Camera access is off
             </Text>
             <Text className="text-secondary-950 text-center">
-              Ambagan needs your camera to scan a group invite QR code.
+              Turn on camera access in Settings to scan a group invite QR code.
+              You can also pick a saved QR image from your photos instead.
             </Text>
           </VStack>
           <VStack className="w-full gap-y-2">
             <FormButton
-              text="Grant Camera Access"
-              onPress={() =>
-                permission.canAskAgain
-                  ? requestPermission()
-                  : Linking.openSettings()
-              }
+              text="Open Settings"
+              onPress={() => Linking.openSettings()}
             />
             <FormButton
               variant="outline"
-              text={uploading ? "Reading image…" : "Upload QR from Photos"}
+              text={uploading ? "Reading image…" : "Choose from Photos"}
               onPress={handleUploadQR}
               disabled={uploading}
             />
