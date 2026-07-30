@@ -4,7 +4,6 @@ import AndroidHeaderMenu, {
 import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
-import ConfirmIconButton from "@/components/ConfirmIconButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
@@ -25,9 +24,11 @@ import { VStack } from "@/components/ui/vstack";
 import { expenseCategoryMeta } from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
+  CustomDateRange,
   DateRangeOption,
-  dateRangeLabels,
-  getDateRangeCutoff
+  formatDateRangeLabel,
+  getDateRangeBounds,
+  isWithinRange
 } from "@/features/group/components/DateRangeSheet";
 import DeleteGroupSheet from "@/features/group/components/DeleteGroupSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
@@ -77,10 +78,10 @@ import {
   Modal,
   Platform,
   RefreshControl,
+  SectionList,
   UIManager,
   useColorScheme
 } from "react-native";
-import { SwipeListView } from "react-native-swipe-list-view";
 
 // LayoutAnimation needs to be opted into on old-architecture Android; it's a
 // no-op elsewhere. Guards the row swap when opening/closing expense search.
@@ -116,6 +117,8 @@ export default function GroupDetailsScreen() {
   const [payerSheetOpen, setPayerSheetOpen] = useState(false);
   const [expenseDateRange, setExpenseDateRange] =
     useState<DateRangeOption>("All");
+  const [expenseCustomRange, setExpenseCustomRange] =
+    useState<CustomDateRange | null>(null);
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
 
   const {
@@ -352,34 +355,6 @@ export default function GroupDetailsScreen() {
     }
   };
 
-  const handleDeleteExpense = async (expenseId: string) => {
-    try {
-      const deleteResponse = await services.expense.deleteExpense(
-        expenseId,
-        groupId!
-      );
-
-      if (deleteResponse.success) {
-        toast({
-          title: "Success",
-          description: "Expense deleted successfully",
-          type: "success"
-        });
-        // Refresh the expense list and force the Settlements tab to refetch so
-        // it drops the deleted expense's payments.
-        setSettlementRefreshTrigger((prev) => prev + 1);
-        init(groupId!, true);
-      }
-    } catch (error) {
-      console.log("Error deleting expense:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete expense. Please try again.",
-        type: "error"
-      });
-    }
-  };
-
   const handleBack = () => {
     states.group.setState((prev) => ({
       ...prev,
@@ -398,7 +373,10 @@ export default function GroupDetailsScreen() {
 
   const filteredExpenseList = useMemo(() => {
     const query = expenseSearch.trim().toLowerCase();
-    const cutoff = getDateRangeCutoff(expenseDateRange);
+    const { start: cutoff, end: until } = getDateRangeBounds(
+      expenseDateRange,
+      expenseCustomRange
+    );
 
     return expenseList.filter((item) => {
       if (query && !item.description?.toLowerCase().includes(query)) {
@@ -410,7 +388,7 @@ export default function GroupDetailsScreen() {
       ) {
         return false;
       }
-      if (cutoff && new Date(item.created_at || 0) < cutoff) {
+      if (!isWithinRange(new Date(item.created_at || 0), cutoff, until)) {
         return false;
       }
       return true;
@@ -420,6 +398,7 @@ export default function GroupDetailsScreen() {
     expenseSearch,
     payerFilter,
     expenseDateRange,
+    expenseCustomRange,
     userDetails?.id
   ]);
 
@@ -1082,11 +1061,17 @@ export default function GroupDetailsScreen() {
                       )}
                       {expenseDateRange !== "All" && (
                         <Pressable
-                          onPress={() => setExpenseDateRange("All")}
+                          onPress={() => {
+                            setExpenseDateRange("All");
+                            setExpenseCustomRange(null);
+                          }}
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
                           <Text className="text-sm text-primary-600">
-                            {dateRangeLabels[expenseDateRange]}
+                            {formatDateRangeLabel(
+                              expenseDateRange,
+                              expenseCustomRange
+                            )}
                           </Text>
                           <X
                             size={12}
@@ -1100,10 +1085,13 @@ export default function GroupDetailsScreen() {
                     </HStack>
                   )}
                 </VStack>
-                <SwipeListView
+                {/* Plain list — edit/delete live on the expense detail screen,
+                    which gates them per expense. Surfacing them as swipe
+                    actions here meant a settled expense revealed a lone delete
+                    button. */}
+                <SectionList
                   className="flex-1"
                   scrollEnabled={false}
-                  useSectionList
                   sections={formattedExpenseList}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }: { item: ExpensePreview }) => (
@@ -1115,65 +1103,6 @@ export default function GroupDetailsScreen() {
                       }
                     />
                   )}
-                  renderHiddenItem={({ item }, rowMap) => {
-                    const isCreator = item.creator?.id === userDetails?.id;
-                    const isPayer = item.payer_list.some(
-                      (payer) => payer.payer.id === userDetails?.id
-                    );
-
-                    // Mirror the detail screen's guards: only the creator may
-                    // delete a draft; anyone who paid may delete a finalized
-                    // expense. Editing is the creator's alone and only while no
-                    // settlement has moved past "pending".
-                    const deletable = item.is_draft ? isCreator : isPayer;
-                    const editable =
-                      isCreator &&
-                      !item.is_draft &&
-                      !item.has_settlement_progress;
-
-                    if (!deletable && !editable) return null;
-
-                    return (
-                      <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
-                        {editable && (
-                          <Button
-                            variant="solid"
-                            action="primary"
-                            className="rounded-full h-[40] w-[40] p-0"
-                            onPress={() => {
-                              rowMap[item.id]?.closeRow();
-                              router.push(
-                                `/groups/${groupId}/${item.id}/edit` as any
-                              );
-                            }}
-                          >
-                            <Icon
-                              as="edit"
-                              size={20}
-                              className="text-background-0"
-                            />
-                          </Button>
-                        )}
-                        {deletable && (
-                          <ConfirmIconButton
-                            icon="delete"
-                            iconClassName="text-background-0"
-                            variant="solid"
-                            action="negative"
-                            className="rounded-full h-[40] w-[40] p-0"
-                            confirmTitle="Delete Expense"
-                            confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
-                            isDelete
-                            onConfirm={() => {
-                              rowMap[item.id]?.closeRow();
-                              handleDeleteExpense(item.id);
-                            }}
-                          />
-                        )}
-                      </HStack>
-                    );
-                  }}
-                  rightOpenValue={-122}
                   renderSectionHeader={({ section: { title } }) => (
                     <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
                       <Text className="text-sm text-secondary-950">
@@ -1317,7 +1246,11 @@ export default function GroupDetailsScreen() {
         isOpen={dateRangeSheetOpen}
         onClose={() => setDateRangeSheetOpen(false)}
         dateRange={expenseDateRange}
-        onSelect={setExpenseDateRange}
+        customRange={expenseCustomRange}
+        onSelect={(value, custom) => {
+          setExpenseDateRange(value);
+          setExpenseCustomRange(custom ?? null);
+        }}
       />
     </Fragment>
   );

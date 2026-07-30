@@ -1822,12 +1822,12 @@ const SETTLED_PAGE_SIZE = 20;
 export const getSettledPaymentsByGroupAndUserId = async (
   groupId: string,
   userId: string,
-  options: { cutoff?: Date | null; page?: number } = {}
+  options: { cutoff?: Date | null; until?: Date | null; page?: number } = {}
 ): Promise<{ data: Payment[]; hasNext: boolean }> => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 
-  const { cutoff = null, page = 0 } = options;
+  const { cutoff = null, until = null, page = 0 } = options;
   const from = page * SETTLED_PAGE_SIZE;
   const to = from + SETTLED_PAGE_SIZE - 1;
 
@@ -1843,6 +1843,9 @@ export const getSettledPaymentsByGroupAndUserId = async (
   if (cutoff) {
     query = query.gte("created_at", cutoff.toISOString());
   }
+  if (until) {
+    query = query.lte("created_at", until.toISOString());
+  }
 
   const { data, error, count } = await query;
   if (error) throw error;
@@ -1854,7 +1857,8 @@ export const getSettledPaymentsByGroupAndUserId = async (
 export const getPaymentsForExport = async (
   groupId: string,
   userId: string,
-  cutoff: Date | null
+  cutoff: Date | null,
+  until: Date | null = null
 ): Promise<PaymentExportRow[]> => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
@@ -1868,6 +1872,9 @@ export const getPaymentsForExport = async (
 
   if (cutoff) {
     query = query.gte("created_at", cutoff.toISOString());
+  }
+  if (until) {
+    query = query.lte("created_at", until.toISOString());
   }
 
   const { data, error } = await query;

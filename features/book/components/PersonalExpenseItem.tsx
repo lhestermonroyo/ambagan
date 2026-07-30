@@ -30,8 +30,7 @@ export default function PersonalExpenseItem({
                 <Icon as="sync" size={14} className="text-primary-400" />
               )}
               <Text className="text-sm text-secondary-950">
-                {formatDate(details.expense_date)} •{" "}
-                {expenseCategoryMeta(details.category).label}
+                {formatDate(details.expense_date)}{" "}
               </Text>
             </HStack>
           </VStack>

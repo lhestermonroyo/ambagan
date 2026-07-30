@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import ExpenseDestinationSheet from "@/features/expense/components/ExpenseDestinationSheet";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
@@ -77,6 +78,7 @@ export default function HomeScreen() {
   const [personalTotals, setPersonalTotals] = useState<
     { currency: string; amount: number }[]
   >([]);
+  const [addChooserOpen, setAddChooserOpen] = useState(false);
   const [stats, setStats] = useState<{
     toPay: { currency: string; amount: number }[];
     toReceive: { currency: string; amount: number }[];
@@ -424,13 +426,19 @@ export default function HomeScreen() {
   );
   const handleRefetch = useCallback(() => init(true), [userId]);
 
-  // Home reaches Add Expense through the literal "[groupId]" segment: the screen
-  // then defaults the group to the one most recently joined that can hold an
-  // expense, and lets the user change it.
-  const handleOpenAddExpense = useCallback(
-    () => router.push("/groups/[groupId]/add-expense"),
-    [router]
-  );
+  // Groups and personal books both have an Add Expense flow, so the Overview
+  // button asks which one first (see ExpenseDestinationSheet). Each destination
+  // is reached via its literal "[groupId]" / "[bookId]" segment, so the form
+  // defaults the group/book (most recent, changeable) rather than locking one.
+  const handleOpenAddExpense = useCallback(() => setAddChooserOpen(true), []);
+  const handleAddGroupExpense = useCallback(() => {
+    setAddChooserOpen(false);
+    router.push("/groups/[groupId]/add-expense");
+  }, [router]);
+  const handleAddPersonalExpense = useCallback(() => {
+    setAddChooserOpen(false);
+    router.push("/books/[bookId]/add-expense");
+  }, [router]);
 
   const handleOpenScan = useCallback(async () => {
     if (
@@ -623,14 +631,19 @@ export default function HomeScreen() {
             {/* Personal spending — a distinct card in the white body (kept out of
               the purple net-balance hero so it never reads as money owed). Taps
               through to the Books tab. */}
-            <Pressable onPress={() => router.push("/books")}>
-              <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-2">
-                <HStack className="items-center justify-between">
-                  <Text className="text-sm text-white/70 font-medium uppercase flex-1">
-                    Personal Spending · This Month
-                  </Text>
+            <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-2">
+              <HStack className="items-center justify-between">
+                <Text className="text-sm text-secondary-950/70 font-medium uppercase flex-1">
+                  Personal Spending · This Month
+                </Text>
+                <Pressable
+                  onPress={() => router.push("/books")}
+                  accessibilityLabel="Open Books"
+                >
                   <ChevronRight color="#fff" />
-                </HStack>
+                </Pressable>
+              </HStack>
+              <Pressable onPress={() => router.push("/books")}>
                 {loading.personal ? (
                   <Text bold className="text-3xl text-white">
                     —
@@ -643,15 +656,15 @@ export default function HomeScreen() {
                       className={
                         i === 0
                           ? "text-3xl text-primary-400"
-                          : "text-lg text-white/80"
+                          : "text-lg text-white/70"
                       }
                     >
                       {formatAmount(t.amount, t.currency)}
                     </Text>
                   ))
                 )}
-              </VStack>
-            </Pressable>
+              </Pressable>
+            </VStack>
 
             <VStack>
               <HStack className="items-center justify-between px-4">
@@ -799,6 +812,13 @@ export default function HomeScreen() {
         onClose={handleCloseActionSheet}
         item={selectedPayment}
         onRefetch={handleRefetch}
+      />
+
+      <ExpenseDestinationSheet
+        isOpen={addChooserOpen}
+        onClose={() => setAddChooserOpen(false)}
+        onSelectGroup={handleAddGroupExpense}
+        onSelectPersonal={handleAddPersonalExpense}
       />
     </Fragment>
   );

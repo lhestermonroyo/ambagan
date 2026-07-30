@@ -1,9 +1,11 @@
 import AmountInput from "@/components/AmountInput";
+import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
 import CurrencySelection from "@/components/CurrencySelection";
 import DailyLimitBadge from "@/components/DailyLimitBadge";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
+import Icon from "@/components/Icon";
 import SelectField from "@/components/SelectField";
 import {
   Actionsheet,
@@ -20,12 +22,22 @@ import {
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
+import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader
+} from "@/components/ui/modal";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import UploadImage from "@/components/UploadImage";
 import UpgradeSheet from "@/components/UpgradeSheet";
+import UploadImage from "@/components/UploadImage";
+import BookPickerSheet from "@/features/book/components/BookPickerSheet";
 import CategorySheet, {
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
@@ -33,6 +45,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
+import { Book } from "@/types/books";
 import { ExpenseCategory } from "@/types/expenses";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
@@ -40,11 +53,11 @@ import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
+import { ImagePickerSuccessResult } from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { CalendarDays } from "lucide-react-native";
+import { CalendarDays, Trash2 } from "lucide-react-native";
 import { Fragment, useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
-import { ImagePickerSuccessResult } from "expo-image-picker";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
@@ -75,12 +88,17 @@ async function resolvePersonalDailyCount(userId: string): Promise<number> {
 
 export default function AddPersonalExpenseScreen() {
   const params = useLocalSearchParams<{ bookId: string; expenseId?: string }>();
-  const bookId = params.bookId;
+  const bookIdParam = params.bookId;
+  // Reached with the literal "[bookId]" segment from Home / Scan (book
+  // changeable) or with a real id from a book screen (book locked). Edit always
+  // arrives with a real id, so it's locked too.
+  const isLocked = !!bookIdParam && bookIdParam !== "[bookId]";
   const expenseId =
     typeof params.expenseId === "string" ? params.expenseId : undefined;
   const isEdit = !!expenseId;
 
   const { details: userDetails, defaultCurrency } = states.user();
+  const { list: bookList } = states.book();
   const isPro = userDetails?.plan === "pro";
 
   const router = useRouter();
@@ -112,8 +130,16 @@ export default function AddPersonalExpenseScreen() {
     };
   });
 
-  const [loading, setLoading] = useState(true);
+  // Two-stage load: resolve which book we're adding to, then (edit) its expense
+  // + the daily count. The form stays skeletoned until both settle.
+  const [bookResolved, setBookResolved] = useState(false);
+  const [detailLoaded, setDetailLoaded] = useState(false);
+  const loading = !bookResolved || !detailLoaded;
   const [submitting, setSubmitting] = useState(false);
+  // The book this expense belongs to. Locked → the routed book; unlocked →
+  // defaults to the most recent book and is changeable via the picker.
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [bookPickerOpen, setBookPickerOpen] = useState(false);
   // Scanned currency (if any) wins; otherwise the book's currency is filled in
   // once it loads. Default until then.
   const [currency, setCurrency] = useState(
@@ -124,7 +150,9 @@ export default function AddPersonalExpenseScreen() {
   const [amount, setAmount] = useState(seed?.amount ?? "");
   const [description, setDescription] = useState(seed?.description ?? "");
   const [category, setCategory] = useState<string>(ExpenseCategory.GENERAL);
-  const [expenseDate, setExpenseDate] = useState(seed?.expenseDate ?? new Date());
+  const [expenseDate, setExpenseDate] = useState(
+    seed?.expenseDate ?? new Date()
+  );
   const [proofOfPayment, setProofOfPayment] =
     useState<ImagePickerSuccessResult | null>(seed?.proofOfPayment ?? null);
   const [existingProofUrl, setExistingProofUrl] = useState<string | null>(null);
@@ -143,15 +171,68 @@ export default function AddPersonalExpenseScreen() {
   const [upgradeDescription, setUpgradeDescription] = useState<
     string | undefined
   >();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  // Hydrate: the book's currency (inherited by every expense) + title, the
-  // existing expense in edit mode, and the free-tier daily count.
+  // Resolve which book we're adding to. Locked → fetch the routed book. Unlocked
+  // (from Home / Scan) → default to the most recent book, fetching the list once
+  // if the store is empty. No books resolves to null → the empty state below.
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const [book, expense, count] = await Promise.all([
-          services.book.getBookById(bookId),
+        if (isLocked) {
+          const book = await services.book.getBookById(bookIdParam);
+          if (active) setSelectedBook(book);
+        } else {
+          let books = states.book.getState().list;
+          if (books.length === 0 && userDetails?.id) {
+            try {
+              const res = await services.book.getBooksByUserIdPaginated(
+                userDetails.id,
+                0,
+                "all"
+              );
+              books = res.data;
+              states.book.setState((prev) => ({ ...prev, list: res.data }));
+            } catch {
+              // Offline with no cached list — resolves to no book → empty state.
+            }
+          }
+          if (active) setSelectedBook(books[0] ?? null);
+        }
+      } catch {
+        if (active) {
+          toast({
+            title: "Error",
+            description: "Couldn't load this book. Please try again.",
+            type: "error"
+          });
+          router.back();
+        }
+      } finally {
+        if (active) setBookResolved(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [isLocked, bookIdParam]);
+
+  // A scanned currency (Pro) wins; otherwise every expense inherits the selected
+  // book's currency — re-applied whenever the book changes (skipped in edit,
+  // where the expense keeps its own currency).
+  useEffect(() => {
+    if (isEdit || seed?.currency) return;
+    if (selectedBook) setCurrency(selectedBook.currency);
+  }, [selectedBook?.id]);
+
+  // Hydrate the existing expense (edit mode) and the free-tier daily count.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const [expense, count] = await Promise.all([
           isEdit
             ? services.bookExpense.getPersonalExpenseById(expenseId)
             : Promise.resolve(null),
@@ -160,8 +241,6 @@ export default function AddPersonalExpenseScreen() {
             : Promise.resolve(0)
         ]);
         if (!active) return;
-        // A scanned currency (Pro) wins; otherwise inherit the book's currency.
-        if (!seed?.currency) setCurrency(book.currency);
         setDailyCount(count);
         if (expense) {
           setAmount(String(expense.amount));
@@ -181,13 +260,13 @@ export default function AddPersonalExpenseScreen() {
         });
         router.back();
       } finally {
-        if (active) setLoading(false);
+        if (active) setDetailLoaded(true);
       }
     })();
     return () => {
       active = false;
     };
-  }, [bookId, expenseId]);
+  }, [expenseId]);
 
   // Consume the scan hand-off once seeded, so backing out + re-entering starts
   // from a clean form.
@@ -210,9 +289,19 @@ export default function AddPersonalExpenseScreen() {
     return !nextAmountError && !nextDescriptionError;
   };
 
-  const handleSubmit = async () => {
-    if (!validate() || !userDetails?.id) return;
+  // Switching book re-defaults the currency to the new book's (via the effect
+  // above, keyed on the book id) — matches how the group form re-defaults on a
+  // group change.
+  const handleChangeBook = (next: Book) => {
+    setBookPickerOpen(false);
+    if (next.id === selectedBook?.id) return;
+    setSelectedBook(next);
+  };
 
+  const handleSubmit = async () => {
+    if (!validate() || !userDetails?.id || !selectedBook) return;
+
+    const bookId = selectedBook.id;
     const parsedAmount = parseFloat(amount);
     const trimmedDescription = description.trim();
 
@@ -349,13 +438,91 @@ export default function AddPersonalExpenseScreen() {
     }
   };
 
+  // Delete (edit mode only) — the personal expense list has no swipe actions, so
+  // this header action is the single delete path. Offline → queue + optimistic
+  // cache removal (adjusts the cached book totals), same as the online delete.
+  const handleDelete = async () => {
+    if (!expenseId || !selectedBook) return;
+    setDeleting(true);
+    try {
+      if (!(await offlineQueue.isOnline())) {
+        await offlineQueue.queueDeletePersonalExpense(
+          selectedBook.id,
+          expenseId,
+          original?.amount ?? 0,
+          original?.currency ?? currency
+        );
+        toast({
+          title: "Deleted offline",
+          description: "This will sync when you're back online.",
+          type: "info"
+        });
+      } else {
+        await services.bookExpense.deletePersonalExpense(expenseId);
+        toast({
+          title: "Expense deleted",
+          description: "The expense has been removed.",
+          type: "success"
+        });
+      }
+      setDeleteOpen(false);
+      router.back();
+    } catch (error) {
+      console.error("Failed to delete personal expense:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete expense. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Unlocked entry (Home / Scan) but the user has no book yet — mirror the group
+  // form's no-group state with a Create Book CTA. Replace so backing out of
+  // create doesn't return to this empty form.
+  if (bookResolved && !selectedBook) {
+    return (
+      <FormLayout title="Add Expense" onBack={() => router.back()} footer={[]}>
+        <VStack className="flex-1 p-4">
+          <VStack className="items-center justify-center flex-1 gap-y-4">
+            <Icon
+              as="sentiment-dissatisfied"
+              size={64}
+              className="text-primary-400"
+            />
+            <Text className="text-center">
+              You don&apos;t have a book yet. Create one to start tracking your
+              personal expenses.
+            </Text>
+            <FormButton
+              text="Create Book"
+              iconEnd={
+                <Icon as="chevron-right" className="text-background-0" />
+              }
+              onPress={() => router.replace("/books/create")}
+            />
+          </VStack>
+        </VStack>
+      </FormLayout>
+    );
+  }
+
   return (
     <Fragment>
       <FormLayout
         title={isEdit ? "Edit Expense" : "Add Expense"}
         onBack={() => router.back()}
         actions={
-          !isPro && !isEdit ? (
+          isEdit ? (
+            <Stack.Toolbar.Button
+              icon="trash"
+              tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
+              accessibilityLabel="Delete expense"
+              onPress={() => setDeleteOpen(true)}
+            />
+          ) : !isPro ? (
             <Stack.Toolbar.View>
               <DailyLimitBadge
                 count={dailyCount}
@@ -365,7 +532,18 @@ export default function AddPersonalExpenseScreen() {
           ) : undefined
         }
         androidActions={
-          !isPro && !isEdit ? (
+          isEdit ? (
+            <Pressable
+              className="pr-1"
+              aria-label="Delete expense"
+              onPress={() => setDeleteOpen(true)}
+            >
+              <Trash2
+                size={22}
+                color={getSecondaryHex("text-secondary-950", colorScheme)}
+              />
+            </Pressable>
+          ) : !isPro ? (
             <Box className="pr-1">
               <DailyLimitBadge
                 count={dailyCount}
@@ -471,21 +649,70 @@ export default function AddPersonalExpenseScreen() {
               </FormControl>
             </HStack>
 
+            {!isEdit && selectedBook && (
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>Book</FormControlLabelText>
+                </FormControlLabel>
+                {isLocked ? (
+                  <Box className="p-4 border border-background-200 rounded-lg">
+                    <HStack className="items-center gap-x-3">
+                      <AppAvatar
+                        size="xs"
+                        name={selectedBook.name}
+                        uri={selectedBook.avatar || undefined}
+                      />
+                      <Text className="text-lg" numberOfLines={1}>
+                        {selectedBook.name}
+                      </Text>
+                    </HStack>
+                  </Box>
+                ) : (
+                  <SelectField
+                    onPress={() => setBookPickerOpen(true)}
+                    leading={
+                      <AppAvatar
+                        size="xs"
+                        name={selectedBook.name}
+                        uri={selectedBook.avatar || undefined}
+                      />
+                    }
+                  >
+                    <Text className="text-lg" numberOfLines={1}>
+                      {selectedBook.name}
+                    </Text>
+                  </SelectField>
+                )}
+              </FormControl>
+            )}
+
             <VStack className="gap-y-1 pb-4">
               <UploadImage
                 title="Upload Proof of Payment (optional)"
-                key={proofOfPayment?.assets?.[0]?.uri ?? existingProofUrl ?? "none"}
-                defaultUri={proofOfPayment?.assets?.[0]?.uri ?? existingProofUrl}
+                key={
+                  proofOfPayment?.assets?.[0]?.uri ?? existingProofUrl ?? "none"
+                }
+                defaultUri={
+                  proofOfPayment?.assets?.[0]?.uri ?? existingProofUrl
+                }
                 onSelect={setProofOfPayment}
               />
               <Text className="text-secondary-950 text-sm">
-                Proof could be a photo of a receipt, a payment screenshot, or any
-                document that shows the expense details.
+                Proof could be a photo of a receipt, a payment screenshot, or
+                any document that shows the expense details.
               </Text>
             </VStack>
           </VStack>
         </ScrollView>
       </FormLayout>
+
+      <BookPickerSheet
+        isOpen={bookPickerOpen}
+        onClose={() => setBookPickerOpen(false)}
+        books={bookList}
+        onSelect={handleChangeBook}
+        title="Select Book"
+      />
 
       <CategorySheet
         isOpen={categorySheetOpen}
@@ -494,7 +721,10 @@ export default function AddPersonalExpenseScreen() {
         onSelect={setCategory}
       />
 
-      <Actionsheet isOpen={dateSheetOpen} onClose={() => setDateSheetOpen(false)}>
+      <Actionsheet
+        isOpen={dateSheetOpen}
+        onClose={() => setDateSheetOpen(false)}
+      >
         <ActionsheetBackdrop />
         <ActionsheetContent className="p-0">
           <ActionsheetDragIndicatorWrapper>
@@ -531,6 +761,40 @@ export default function AddPersonalExpenseScreen() {
         onClose={() => setUpgradeOpen(false)}
         description={upgradeDescription}
       />
+
+      {/* Delete confirm (header-action triggered) — mirrors the group expense
+          detail screen. */}
+      <Modal
+        isOpen={deleteOpen}
+        onClose={() => !deleting && setDeleteOpen(false)}
+      >
+        <ModalContent>
+          <ModalHeader>
+            <Heading size="lg">Delete Expense</Heading>
+          </ModalHeader>
+          <ModalBody>
+            <Text>
+              This expense will be permanently removed. This cannot be undone.
+            </Text>
+          </ModalBody>
+          <ModalFooter>
+            <HStack className="gap-x-2">
+              <FormButton
+                variant="outline"
+                text="Cancel"
+                disabled={deleting}
+                onPress={() => setDeleteOpen(false)}
+              />
+              <FormButton
+                text="Delete"
+                action="negative"
+                loading={deleting}
+                onPress={handleDelete}
+              />
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Fragment>
   );
 }

@@ -5,6 +5,7 @@ import { Pressable } from "@/components/ui/pressable";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import ExpenseDestinationSheet from "@/features/expense/components/ExpenseDestinationSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
@@ -74,10 +75,14 @@ export default function ScanReceiptView({
   const router = useRouter();
   const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
-  const { setScanDraft } = states.expense();
+  const { setScanDraft, clearScanDraft } = states.expense();
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [scanning, setScanning] = useState(false);
+  // Post-scan Group/Personal chooser — only for the generic scanner (no group or
+  // book locked in), where the draft could land in either flow.
+  const [destinationOpen, setDestinationOpen] = useState(false);
+  const isGeneric = !groupId && !bookId;
   const cameraRef = useRef<CameraView>(null);
   const colorScheme = useColorScheme() ?? "light";
   // On the tab this screen stays mounted once visited, so tear the camera down
@@ -152,8 +157,13 @@ export default function ScanReceiptView({
       });
 
       setScanning(false);
-      // Hand the stashed draft straight to the Add Expense screen.
-      goToExpense();
+      // A locked group/book hands straight off; the generic scanner asks which
+      // flow the receipt belongs to first (both seed from the same draft).
+      if (isGeneric) {
+        setDestinationOpen(true);
+      } else {
+        goToExpense();
+      }
     } catch {
       setScanning(false);
       toast({
@@ -213,6 +223,25 @@ export default function ScanReceiptView({
     } else {
       router.replace(target);
     }
+  };
+
+  // Route the just-scanned draft to the chosen flow, via the literal
+  // "[groupId]" / "[bookId]" segment so the form defaults (and lets the user
+  // change) the group/book. Same push/replace rule as goToExpense.
+  const goToDestination = (target: string) => {
+    setDestinationOpen(false);
+    if (presentation === "tab") {
+      router.push(target as any);
+    } else {
+      router.replace(target as any);
+    }
+  };
+
+  // Dismissed without choosing — drop the draft so it can't seed a later,
+  // unrelated Add Expense screen, and leave the user on the camera to re-scan.
+  const handleDestinationClose = () => {
+    setDestinationOpen(false);
+    clearScanDraft();
   };
 
   // Permission still resolving on first mount, or the system dialog is up —
@@ -345,6 +374,15 @@ export default function ScanReceiptView({
           </VStack>
         </Box>
       )}
+
+      <ExpenseDestinationSheet
+        isOpen={destinationOpen}
+        onClose={handleDestinationClose}
+        onSelectGroup={() => goToDestination("/groups/[groupId]/add-expense")}
+        onSelectPersonal={() => goToDestination("/books/[bookId]/add-expense")}
+        title="Where should this go?"
+        subtitle="Add the scanned receipt to a group or a personal book."
+      />
     </Box>
   );
 }

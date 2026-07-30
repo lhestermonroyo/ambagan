@@ -207,6 +207,35 @@ export const getPersonalExpensesByBookId = async (
 };
 
 /**
+ * Every personal expense in a book, unpaginated — feeds the Stats tab, which
+ * needs the whole ledger (not just a page) to compute totals, top expenses, and
+ * the category breakdown. Books are personal and small, so a single fetch is
+ * fine. Falls back to the cached detail snapshot when offline.
+ */
+export const getAllPersonalExpensesByBookId = async (
+  bookId: string
+): Promise<PersonalExpense[]> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  try {
+    const { data, error } = await supabase
+      .from(tables.PERSONAL_EXPENSES_TBL)
+      .select(EXPENSE_SELECT)
+      .eq("book_id", bookId)
+      .order("expense_date", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return (data as PersonalExpense[]) ?? [];
+  } catch (error) {
+    const cached = await cacheService.getBookDetail(bookId).catch(() => null);
+    if (cached) return cached.expenseList;
+    throw error;
+  }
+};
+
+/**
  * Total spent in a book, broken down per currency (an expense keeps its own
  * currency, so a trip book can mix PHP + JPY). Summed client-side — books are
  * personal and small. Currencies aren't converted against each other; each is

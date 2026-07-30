@@ -2,7 +2,6 @@ import AndroidHeaderMenu, {
   type AndroidHeaderMenuItem
 } from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
-import ConfirmIconButton from "@/components/ConfirmIconButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -25,8 +24,9 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import BookInfoTab from "@/features/book/components/BookInfoTab";
+import BookStatsTab from "@/features/book/components/BookStatsTab";
 import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
-import { groupCategoryMeta } from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
@@ -36,8 +36,8 @@ import states from "@/states";
 import { Book, PersonalExpense } from "@/types/books";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
+import { formatDate } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import * as offlineQueue from "@/utils/offlineQueue";
 import {
   Stack,
   useFocusEffect,
@@ -56,12 +56,14 @@ import {
 } from "lucide-react-native";
 import { Fragment, useCallback, useState } from "react";
 import {
+  FlatList,
   Platform,
   RefreshControl,
   Modal as RNModal,
   useColorScheme
 } from "react-native";
-import { SwipeListView } from "react-native-swipe-list-view";
+
+const tabs = ["Expenses", "Stats", "Book Info"] as const;
 
 export default function BookDetailScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
@@ -85,6 +87,7 @@ export default function BookDetailScreen() {
   const [fabOpen, setFabOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [tab, setTab] = useState<(typeof tabs)[number]>("Expenses");
 
   const load = useCallback(
     async (isRefresh = false) => {
@@ -160,46 +163,6 @@ export default function BookDetailScreen() {
     setRefreshing(true);
     await load(true);
     setRefreshing(false);
-  };
-
-  const handleDeleteExpense = async (expense: PersonalExpense) => {
-    if (!bookId) return;
-    setDeleting(true);
-    try {
-      // Offline → queue + optimistic cache removal (adjusts the cached totals),
-      // then reload from cache so the list + total stay consistent.
-      if (!(await offlineQueue.isOnline())) {
-        await offlineQueue.queueDeletePersonalExpense(
-          bookId,
-          expense.id,
-          expense.amount,
-          expense.currency
-        );
-        toast({
-          title: "Deleted offline",
-          description: "This will sync when you're back online.",
-          type: "info"
-        });
-        await load(true);
-        return;
-      }
-      await services.bookExpense.deletePersonalExpense(expense.id);
-      toast({
-        title: "Expense deleted",
-        description: "The expense has been removed.",
-        type: "success"
-      });
-      await load(true);
-    } catch (error) {
-      console.error("Failed to delete expense:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete expense. Please try again.",
-        type: "error"
-      });
-    } finally {
-      setDeleting(false);
-    }
   };
 
   const handleArchive = async () => {
@@ -386,8 +349,8 @@ export default function BookDetailScreen() {
         androidActions={renderAndroidActions()}
       >
         {/* Floating "+" speed-dial — Add Expense + Scan Receipt, mirroring the
-            group detail FAB. */}
-        {!isArchived && (
+            group detail FAB. Expenses tab only. */}
+        {!isArchived && tab === "Expenses" && (
           <>
             {/* Speed-dial in a Modal so its dim masks the WHOLE window (native
                 header + bottom toolbar included). */}
@@ -531,89 +494,96 @@ export default function BookDetailScreen() {
                     {book?.name}
                   </Text>
                   <Text className="text-secondary-950">
-                    {groupCategoryMeta(book?.category ?? "general").label}
-                    {isArchived ? " · Archived" : ""}
+                    {formatDate(book?.created_at || "")} • {expenses.length}
+                    {hasMore ? "+" : ""} expense
+                    {expenses.length !== 1 ? "s" : ""}
                   </Text>
                 </VStack>
               </HStack>
 
-              {/* Total spent, per currency — net-balance hero treatment. */}
-              <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-2">
-                <Text className="text-sm text-white font-medium uppercase">
-                  Total Spent
-                </Text>
-                {displayTotals.map((t, i) => (
-                  <Text
-                    key={t.currency}
-                    bold
-                    className={
-                      i === 0
-                        ? "text-3xl text-primary-400"
-                        : "text-xl text-white/70"
-                    }
-                  >
-                    {formatAmount(t.amount, t.currency)}
-                  </Text>
-                ))}
-                <Text className="text-sm text-white/70">
-                  {expenses.length}
-                  {hasMore ? "+" : ""} expense
-                  {expenses.length !== 1 ? "s" : ""}
-                </Text>
-              </VStack>
-
-              <SwipeListView
-                scrollEnabled={false}
-                data={expenses}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <PersonalExpenseItem
-                    details={item}
-                    onOpen={() =>
-                      router.push(
-                        `/books/${bookId}/add-expense?expenseId=${item.id}`
-                      )
-                    }
-                  />
-                )}
-                renderHiddenItem={({ item }, rowMap) => (
-                  <HStack className="flex-1 justify-end items-center px-4 gap-x-2 bg-background-50">
-                    <ConfirmIconButton
-                      icon="delete"
-                      iconClassName="text-background-0"
-                      variant="solid"
-                      action="negative"
-                      className="rounded-full h-[40] w-[40] p-0"
-                      confirmTitle="Delete Expense"
-                      confirmDescription="This expense will be permanently removed. This cannot be undone."
-                      isDelete
-                      isLoading={deleting}
-                      onConfirm={() => {
-                        rowMap[item.id]?.closeRow();
-                        handleDeleteExpense(item);
-                      }}
+              {/* Expenses / Stats tab switch, matching the group detail tabs. */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <HStack className="gap-x-2 px-4">
+                  {tabs.map((type) => (
+                    <FormButton
+                      size="sm"
+                      key={type}
+                      variant={type === tab ? "solid" : "outline"}
+                      text={type}
+                      onPress={() => setTab(type)}
                     />
-                  </HStack>
-                )}
-                rightOpenValue={-64}
-                disableRightSwipe
-                ItemSeparatorComponent={ListDivider}
-                ListEmptyComponent={() => (
-                  <EmptyList type={EmptyType.EXPENSE} />
-                )}
-                ListFooterComponent={() => (
-                  <>
-                    {hasMore && (
-                      <ListFooter
-                        hasNextPage={hasMore}
-                        loading={loadingMore}
-                        onLoadMore={loadMore}
-                      />
-                    )}
-                  </>
-                )}
-              />
+                  ))}
+                </HStack>
+              </ScrollView>
             </VStack>
+
+            {tab === "Expenses" && (
+              <VStack className="gap-y-6 pb-4">
+                {/* Total spent, per currency — net-balance hero treatment. */}
+                <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-2">
+                  <Text className="text-sm text-white font-medium uppercase">
+                    Total Spent
+                  </Text>
+                  {displayTotals.map((t, i) => (
+                    <Text
+                      key={t.currency}
+                      bold
+                      className={
+                        i === 0
+                          ? "text-3xl text-primary-400"
+                          : "text-xl text-white/70"
+                      }
+                    >
+                      {formatAmount(t.amount, t.currency)}
+                    </Text>
+                  ))}
+                  <Text className="text-sm text-white/70">
+                    {expenses.length}
+                    {hasMore ? "+" : ""} expense
+                    {expenses.length !== 1 ? "s" : ""}
+                  </Text>
+                </VStack>
+
+                {/* Plain list — delete lives on the expense form the row opens,
+                    so the row itself has no swipe actions. */}
+                <FlatList
+                  scrollEnabled={false}
+                  data={expenses}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <PersonalExpenseItem
+                      details={item}
+                      onOpen={() =>
+                        router.push(
+                          `/books/${bookId}/add-expense?expenseId=${item.id}`
+                        )
+                      }
+                    />
+                  )}
+                  ItemSeparatorComponent={ListDivider}
+                  ListEmptyComponent={() => (
+                    <EmptyList type={EmptyType.EXPENSE} />
+                  )}
+                  ListFooterComponent={() => (
+                    <>
+                      {hasMore && (
+                        <ListFooter
+                          hasNextPage={hasMore}
+                          loading={loadingMore}
+                          onLoadMore={loadMore}
+                        />
+                      )}
+                    </>
+                  )}
+                />
+              </VStack>
+            )}
+
+            {tab === "Stats" && bookId && (
+              <BookStatsTab bookId={bookId} primaryCurrency={primaryCurrency} />
+            )}
+
+            {tab === "Book Info" && book && <BookInfoTab book={book} />}
           </ScrollView>
         </LoadingWrapper>
       </InnerLayout>

@@ -5,11 +5,10 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
-import services from "@/services";
 import { ExpensePreview, MemberSplit } from "@/types/expenses";
 import { UserPreview } from "@/types/user";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 
 type MemberRow = {
   member: UserPreview;
@@ -20,58 +19,24 @@ type MemberRow = {
 
 export default function GroupMemberBreakdown({
   expenses,
+  splits,
+  loading,
   userId,
-  primaryCurrency = "PHP"
+  primaryCurrency = "PHP",
 }: {
   /** Already date-range-filtered expenses from the Stats tab. */
   expenses: ExpensePreview[];
+  /** Member splits for the filtered expenses, fetched once by the Stats tab. */
+  splits: MemberSplit[];
+  loading: boolean;
   userId: string;
   primaryCurrency?: string;
 }) {
-  const [splits, setSplits] = useState<MemberSplit[]>([]);
-  const [loading, setLoading] = useState(false);
-
   // Only finalized expenses have splits; drafts carry an amount but no shares.
   const finalized = useMemo(
     () => expenses.filter((e) => !e.is_draft),
-    [expenses]
+    [expenses],
   );
-
-  // Stable key so the fetch only re-runs when the actual set of expenses (i.e.
-  // the selected date range) changes, not on every render.
-  const expenseIdsKey = useMemo(
-    () =>
-      finalized
-        .map((e) => e.id)
-        .sort()
-        .join(","),
-    [finalized]
-  );
-
-  const requestIdRef = useRef(0);
-
-  useEffect(() => {
-    const ids = expenseIdsKey ? expenseIdsKey.split(",") : [];
-    if (ids.length === 0) {
-      setSplits([]);
-      return;
-    }
-
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    services.expense
-      .getMemberSplitsByExpenseIds(ids)
-      .then((data) => {
-        // Ignore a stale response that resolves after a newer range change.
-        if (requestId === requestIdRef.current) setSplits(data);
-      })
-      .catch(() => {
-        if (requestId === requestIdRef.current) setSplits([]);
-      })
-      .finally(() => {
-        if (requestId === requestIdRef.current) setLoading(false);
-      });
-  }, [expenseIdsKey]);
 
   // Per-member paid vs. share, scoped to the primary currency. Amounts in other
   // currencies are excluded here to keep each member's net meaningful — mixing
@@ -109,7 +74,7 @@ export default function GroupMemberBreakdown({
 
   const totalPaid = useMemo(
     () => rows.reduce((sum, row) => sum + row.paid, 0),
-    [rows]
+    [rows],
   );
 
   if (!loading && rows.length === 0) return null;

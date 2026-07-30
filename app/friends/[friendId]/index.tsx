@@ -40,9 +40,11 @@ import { getSettlementUpdatedAt } from "@/features/expense/utils/settlementDate.
 import FriendInfoTab from "@/features/friends/components/FriendInfoTab";
 import FriendStatsTab from "@/features/friends/components/FriendStatsTab";
 import DateRangeSheet, {
+  CustomDateRange,
   DateRangeOption,
-  dateRangeLabels,
-  getDateRangeCutoff
+  formatDateRangeLabel,
+  getDateRangeBounds,
+  isWithinRange
 } from "@/features/group/components/DateRangeSheet";
 import StatusSheet, {
   SettlementStatus
@@ -134,6 +136,7 @@ export default function FriendDetailScreen() {
   const [viewBy, setViewBy] = useState<ViewOption>("By Date");
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
+  const [customRange, setCustomRange] = useState<CustomDateRange | null>(null);
   const [pendingAction, setPendingAction] = useState<
     "settle" | "request" | null
   >(null);
@@ -185,11 +188,10 @@ export default function FriendDetailScreen() {
   useEffect(() => {
     if (!initializedRef.current) return;
     if (!userDetails?.id || !friendId) return;
-    const cutoff = getDateRangeCutoff(dateRange);
     setSettledSettlements([]);
     setSettledPage(0);
-    fetchSettled(0, cutoff);
-  }, [dateRange]);
+    fetchSettled(0, getDateRangeBounds(dateRange, customRange));
+  }, [dateRange, customRange]);
 
   // Deep-link from a settlement notification: once the lists are loaded, open
   // the referenced settlement's sheet and highlight its row. One-shot so it
@@ -272,11 +274,15 @@ export default function FriendDetailScreen() {
     if (!userDetails?.id || !friendId) return;
     if (showLoading) setLoading(true);
     try {
-      const cutoff = getDateRangeCutoff(dateRange);
+      const { start: cutoff, end: until } = getDateRangeBounds(
+        dateRange,
+        customRange
+      );
       const [active, settled] = await Promise.all([
         services.friend.getActiveFriendSettlements(userDetails.id, friendId),
         services.friend.getSettledFriendSettlements(userDetails.id, friendId, {
           cutoff,
+          until,
           page: 0
         })
       ]);
@@ -310,13 +316,16 @@ export default function FriendDetailScreen() {
     }
   };
 
-  const fetchSettled = async (page: number, cutoff: Date | null) => {
+  const fetchSettled = async (
+    page: number,
+    bounds: { start: Date | null; end: Date | null }
+  ) => {
     if (!userDetails?.id || !friendId) return;
     try {
       const result = await services.friend.getSettledFriendSettlements(
         userDetails.id,
         friendId,
-        { cutoff, page }
+        { cutoff: bounds.start, until: bounds.end, page }
       );
       setSettledSettlements((prev) =>
         page === 0 ? result.data : [...prev, ...result.data]
@@ -331,7 +340,10 @@ export default function FriendDetailScreen() {
   const loadMoreSettled = async () => {
     setLoadingMore(true);
     try {
-      await fetchSettled(settledPage + 1, getDateRangeCutoff(dateRange));
+      await fetchSettled(
+        settledPage + 1,
+        getDateRangeBounds(dateRange, customRange)
+      );
     } finally {
       setLoadingMore(false);
     }
@@ -485,7 +497,10 @@ export default function FriendDetailScreen() {
   });
 
   const filteredSettlements = useMemo(() => {
-    const cutoff = getDateRangeCutoff(dateRange);
+    const { start: cutoff, end: until } = getDateRangeBounds(
+      dateRange,
+      customRange
+    );
 
     let filtered: PaymentPreview[];
     if (settlementTab === "Settled") {
@@ -493,14 +508,14 @@ export default function FriendDetailScreen() {
     } else if (settlementTab === "Pending") {
       filtered = activeSettlements
         .filter((s) => s.status === "pending")
-        .filter((s) => !cutoff || new Date(s.created_at) >= cutoff);
+        .filter((s) => isWithinRange(s.created_at, cutoff, until));
     } else if (settlementTab === "Requested") {
       filtered = activeSettlements
         .filter((s) => s.status === "requested")
-        .filter((s) => !cutoff || new Date(s.created_at) >= cutoff);
+        .filter((s) => isWithinRange(s.created_at, cutoff, until));
     } else {
-      const activeFiltered = activeSettlements.filter(
-        (s) => !cutoff || new Date(s.created_at) >= cutoff
+      const activeFiltered = activeSettlements.filter((s) =>
+        isWithinRange(s.created_at, cutoff, until)
       );
       filtered = [...activeFiltered, ...settledSettlements];
     }
@@ -534,6 +549,7 @@ export default function FriendDetailScreen() {
     settledSettlements,
     settlementTab,
     dateRange,
+    customRange,
     searchQuery
   ]);
 
@@ -890,11 +906,14 @@ export default function FriendDetailScreen() {
                     )}
                     {dateRange !== "All" && (
                       <Pressable
-                        onPress={() => setDateRange("All")}
+                        onPress={() => {
+                          setDateRange("All");
+                          setCustomRange(null);
+                        }}
                         className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                       >
                         <Text className="text-sm text-primary-600">
-                          {dateRangeLabels[dateRange]}
+                          {formatDateRangeLabel(dateRange, customRange)}
                         </Text>
                         <X
                           size={12}
@@ -1068,7 +1087,11 @@ export default function FriendDetailScreen() {
         isOpen={dateRangeSheetOpen}
         onClose={() => setDateRangeSheetOpen(false)}
         dateRange={dateRange}
-        onSelect={setDateRange}
+        customRange={customRange}
+        onSelect={(value, custom) => {
+          setDateRange(value);
+          setCustomRange(custom ?? null);
+        }}
       />
       <ViewBySheet
         isOpen={viewSheetOpen}

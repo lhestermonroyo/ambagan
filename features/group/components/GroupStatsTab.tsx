@@ -10,11 +10,15 @@ import { VStack } from "@/components/ui/vstack";
 import { expenseCategoryMeta } from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
+  CustomDateRange,
   DateRangeOption,
-  dateRangeLabels,
-  getDateRangeCutoff
+  formatDateRangeLabel,
+  getDateRangeBounds,
+  isWithinRange,
 } from "@/features/group/components/DateRangeSheet";
 import GroupMemberBreakdown from "@/features/group/components/GroupMemberBreakdown";
+import GroupPersonalStats from "@/features/group/components/GroupPersonalStats";
+import { useMemberSplits } from "@/features/group/hooks/useMemberSplits";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
@@ -28,7 +32,7 @@ import { useColorScheme } from "react-native";
 export default function GroupStatsTab({
   groupId,
   groupName,
-  userId
+  userId,
 }: {
   groupId: string;
   groupName: string;
@@ -40,49 +44,61 @@ export default function GroupStatsTab({
   const toast = useAppToast();
   const colorScheme = useColorScheme() ?? "light";
 
+  // "Group" (default) vs. "You" — a segmented toggle swaps the whole card set
+  // between the shared group view and the current user's personal figures. Both
+  // read the same date range and the same fetched-once member splits.
+  const [statsView, setStatsView] = useState<"You" | "Group">("Group");
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
+  const [customRange, setCustomRange] = useState<CustomDateRange | null>(null);
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
 
-  const cutoff = useMemo(() => getDateRangeCutoff(dateRange), [dateRange]);
+  const { start: cutoff, end: until } = useMemo(
+    () => getDateRangeBounds(dateRange, customRange),
+    [dateRange, customRange],
+  );
 
   const filteredExpenses = useMemo(() => {
-    if (!cutoff) return expenseList;
-    return expenseList.filter((e) => new Date(e.created_at) >= cutoff);
-  }, [expenseList, cutoff]);
+    if (!cutoff && !until) return expenseList;
+    return expenseList.filter((e) => isWithinRange(e.created_at, cutoff, until));
+  }, [expenseList, cutoff, until]);
+
+  // Member splits for the filtered expenses, fetched once and shared by the
+  // personal "Your Activity" card and the group Member Breakdown below.
+  const { splits, loading: splitsLoading } = useMemberSplits(filteredExpenses);
 
   const filteredActivePayments = useMemo(() => {
     const active = settlementList.filter((p) => p.status !== "settled");
-    if (!cutoff) return active;
-    return active.filter((p) => new Date(p.created_at) >= cutoff);
-  }, [settlementList, cutoff]);
+    if (!cutoff && !until) return active;
+    return active.filter((p) => isWithinRange(p.created_at, cutoff, until));
+  }, [settlementList, cutoff, until]);
 
   const totalSpendingsByCurrency = useMemo(
     () => groupByCurrency(filteredExpenses),
-    [filteredExpenses]
+    [filteredExpenses],
   );
 
   const toCollect = useMemo(
     () =>
       groupByCurrency(
-        filteredActivePayments.filter((p) => p.payer.id === userId)
+        filteredActivePayments.filter((p) => p.payer.id === userId),
       ),
-    [filteredActivePayments, userId]
+    [filteredActivePayments, userId],
   );
 
   const toPay = useMemo(
     () =>
       groupByCurrency(
-        filteredActivePayments.filter((p) => p.member.id === userId)
+        filteredActivePayments.filter((p) => p.member.id === userId),
       ),
-    [filteredActivePayments, userId]
+    [filteredActivePayments, userId],
   );
 
   const netBalance = useMemo(() => {
     const allCurrencies = new Set([
       ...toCollect.map((i) => i.currency),
-      ...toPay.map((i) => i.currency)
+      ...toPay.map((i) => i.currency),
     ]);
     return Array.from(allCurrencies).map((currency) => {
       const receive =
@@ -98,7 +114,7 @@ export default function GroupStatsTab({
   // primary-currency total.
   const primaryStats = useMemo(() => {
     const inCurrency = filteredExpenses.filter(
-      (e) => e.currency === defaultCurrency
+      (e) => e.currency === defaultCurrency,
     );
     const count = inCurrency.length;
     const total = inCurrency.reduce((sum, e) => sum + e.amount, 0);
@@ -114,7 +130,7 @@ export default function GroupStatsTab({
         .filter((e) => !e.is_draft && e.currency === defaultCurrency)
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5),
-    [filteredExpenses, defaultCurrency]
+    [filteredExpenses, defaultCurrency],
   );
 
   // Spending grouped by category (primary currency, drafts excluded), largest
@@ -135,7 +151,7 @@ export default function GroupStatsTab({
       .map(([category, amount]) => ({
         category,
         amount,
-        pct: total > 0 ? (amount / total) * 100 : 0
+        pct: total > 0 ? (amount / total) * 100 : 0,
       }))
       .sort((a, b) => b.amount - a.amount);
   }, [filteredExpenses, defaultCurrency]);
@@ -150,14 +166,15 @@ export default function GroupStatsTab({
       const payments = await services.expense.getPaymentsForExport(
         groupId,
         userId,
-        cutoff
+        cutoff,
+        until,
       );
 
       if (payments.length === 0) {
         toast({
           title: "No data",
           description: "No settlements found for the selected date range.",
-          type: "info"
+          type: "info",
         });
         return;
       }
@@ -168,7 +185,7 @@ export default function GroupStatsTab({
       toast({
         title: "Export failed",
         description: "Could not export settlements. Please try again.",
-        type: "error"
+        type: "error",
       });
     } finally {
       setExporting(false);
@@ -186,15 +203,35 @@ export default function GroupStatsTab({
         isOpen={dateRangeSheetOpen}
         onClose={() => setDateRangeSheetOpen(false)}
         dateRange={dateRange}
-        onSelect={setDateRange}
+        customRange={customRange}
+        onSelect={(value, custom) => {
+          setDateRange(value);
+          setCustomRange(custom ?? null);
+        }}
       />
       <VStack className="gap-y-6 pb-6">
-        {/* Date range filter pill — opens the same sheet the Settlements tab uses */}
-        <HStack className="px-4">
+        {/* You | Group segmented toggle + the date-range pill (opens the same
+            sheet the Settlements tab uses). The toggle swaps which card set
+            renders; the date range applies to whichever view is active. */}
+        <HStack className="px-4 items-center justify-between">
+          <HStack className="gap-x-2">
+            <FormButton
+              size="sm"
+              variant={statsView === "Group" ? "solid" : "outline"}
+              text="Group"
+              onPress={() => setStatsView("Group")}
+            />
+            <FormButton
+              size="sm"
+              variant={statsView === "You" ? "solid" : "outline"}
+              text="You"
+              onPress={() => setStatsView("You")}
+            />
+          </HStack>
           <FormButton
             size="sm"
             variant="outline"
-            text={dateRangeLabels[dateRange]}
+            text={formatDateRangeLabel(dateRange, customRange)}
             iconEnd={
               <ChevronDown
                 size={16}
@@ -206,161 +243,194 @@ export default function GroupStatsTab({
         </HStack>
 
         <VStack className="px-4 gap-y-4">
-          {/* Total Group Spendings */}
-          <Card className="rounded-xl bg-secondary-100">
-            <VStack className="gap-y-4">
-              <SpendingHero
-                items={totalSpendingsByCurrency}
+          {statsView === "You" && (
+            /* Your Activity — personal summary for the selected range, leading
+               with the current user's own share / paid / net. */
+            <GroupPersonalStats
+              expenses={filteredExpenses}
+              splits={splits}
+              loading={splitsLoading}
+              userId={userId}
+              primaryCurrency={defaultCurrency}
+            />
+          )}
+
+          {statsView === "Group" && (
+            <>
+              {/* Total Group Spendings */}
+              <Card className="rounded-xl bg-secondary-100">
+                <VStack className="gap-y-4">
+                  <SpendingHero
+                    items={totalSpendingsByCurrency}
+                    primaryCurrency={defaultCurrency}
+                  />
+                  <Divider />
+                  <HStack className="items-stretch">
+                    <VStack className="flex-1 gap-y-1">
+                      <Text className="text-sm text-secondary-950 uppercase">
+                        Expenses
+                      </Text>
+                      <Text bold className="text-lg">
+                        {primaryStats.count}
+                      </Text>
+                    </VStack>
+                    <Divider orientation="vertical" className="mx-4" />
+                    <VStack className="flex-1 gap-y-1">
+                      <Text className="text-sm text-secondary-950 uppercase">
+                        Avg / Expense
+                      </Text>
+                      <Text bold className="text-lg">
+                        {formatAmount(primaryStats.average, defaultCurrency)}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                </VStack>
+              </Card>
+
+              {/* Per-member paid vs. share breakdown */}
+              <GroupMemberBreakdown
+                expenses={filteredExpenses}
+                splits={splits}
+                loading={splitsLoading}
+                userId={userId}
                 primaryCurrency={defaultCurrency}
               />
-              <Divider />
-              <HStack className="items-stretch">
-                <VStack className="flex-1 gap-y-1">
-                  <Text className="text-sm text-secondary-950 uppercase">
-                    Expenses
-                  </Text>
-                  <Text bold className="text-lg">
-                    {primaryStats.count}
-                  </Text>
-                </VStack>
-                <Divider orientation="vertical" className="mx-4" />
-                <VStack className="flex-1 gap-y-1">
-                  <Text className="text-sm text-secondary-950 uppercase">
-                    Avg / Expense
-                  </Text>
-                  <Text bold className="text-lg">
-                    {formatAmount(primaryStats.average, defaultCurrency)}
-                  </Text>
-                </VStack>
-              </HStack>
-            </VStack>
-          </Card>
 
-          {/* Per-member paid vs. share breakdown */}
-          <GroupMemberBreakdown
-            expenses={filteredExpenses}
-            userId={userId}
-            primaryCurrency={defaultCurrency}
-          />
+              {/* Top Expenses */}
+              {topExpenses.length > 0 && (
+                <Card className="rounded-xl bg-secondary-100">
+                  <VStack className="gap-y-4">
+                    <VStack>
+                      <Text
+                        bold
+                        className="text-secondary-950 uppercase text-sm"
+                      >
+                        Top Expenses
+                      </Text>
+                      <Text className="text-sm text-secondary-950">
+                        Biggest expenses in this range.
+                      </Text>
+                    </VStack>
+                    <VStack className="gap-y-3">
+                      {topExpenses.map((expense, index) => {
+                        const lead = expense.payer_list[0]?.payer;
+                        const leadName = lead
+                          ? lead.id === userId
+                            ? `${lead.first_name} (You)`
+                            : lead.first_name
+                          : "";
+                        const others = expense.payer_list.length - 1;
+                        const payerLabel =
+                          others > 0 ? `${leadName} +${others}` : leadName;
 
-          {/* Top Expenses */}
-          {topExpenses.length > 0 && (
-            <Card className="rounded-xl bg-secondary-100">
-              <VStack className="gap-y-4">
-                <VStack>
-                  <Text bold className="text-secondary-950 uppercase text-sm">
-                    Top Expenses
-                  </Text>
-                  <Text className="text-sm text-secondary-950">
-                    Biggest expenses in this range.
-                  </Text>
-                </VStack>
-                <VStack className="gap-y-3">
-                  {topExpenses.map((expense, index) => {
-                    const lead = expense.payer_list[0]?.payer;
-                    const leadName = lead
-                      ? lead.id === userId
-                        ? `${lead.first_name} (You)`
-                        : lead.first_name
-                      : "";
-                    const others = expense.payer_list.length - 1;
-                    const payerLabel =
-                      others > 0 ? `${leadName} +${others}` : leadName;
+                        return (
+                          <HStack
+                            key={expense.id}
+                            className="items-center gap-x-3"
+                          >
+                            <Text className="w-4 text-sm text-secondary-950">
+                              {index + 1}
+                            </Text>
+                            <VStack className="flex-1">
+                              <Text numberOfLines={1}>
+                                {expense.description}
+                              </Text>
+                              {payerLabel ? (
+                                <Text
+                                  className="text-sm text-secondary-950"
+                                  numberOfLines={1}
+                                >
+                                  Paid by {payerLabel}
+                                </Text>
+                              ) : null}
+                            </VStack>
+                            <Text className="text-lg font-medium">
+                              {formatAmount(expense.amount, expense.currency)}
+                            </Text>
+                          </HStack>
+                        );
+                      })}
+                    </VStack>
+                  </VStack>
+                </Card>
+              )}
 
-                    return (
-                      <HStack key={expense.id} className="items-center gap-x-3">
-                        <Text className="w-4 text-sm text-secondary-950">
-                          {index + 1}
-                        </Text>
-                        <VStack className="flex-1">
-                          <Text numberOfLines={1}>{expense.description}</Text>
-                          {payerLabel ? (
+              {/* Spending by Category */}
+              {categoryBreakdown.length > 0 && (
+                <Card className="rounded-xl bg-secondary-100">
+                  <VStack className="gap-y-4">
+                    <VStack>
+                      <Text
+                        bold
+                        className="text-secondary-950 uppercase text-sm"
+                      >
+                        Spending by Category
+                      </Text>
+                      <Text className="text-sm text-secondary-950">
+                        Where the money went in this range.
+                      </Text>
+                    </VStack>
+                    <VStack className="gap-y-4">
+                      {categoryBreakdown.map((row) => (
+                        <VStack key={row.category} className="gap-y-2">
+                          <HStack className="items-center gap-x-3">
+                            <CategoryIcon
+                              icon={expenseCategoryMeta(row.category).icon}
+                            />
                             <Text
-                              className="text-sm text-secondary-950"
+                              className="flex-1 text-base"
                               numberOfLines={1}
                             >
-                              Paid by {payerLabel}
+                              {expenseCategoryMeta(row.category).label}
                             </Text>
-                          ) : null}
+                            <Text className="text-sm text-secondary-950">
+                              {row.pct.toFixed(0)}%
+                            </Text>
+                            <Text className="text-lg font-medium">
+                              {formatAmount(row.amount, defaultCurrency)}
+                            </Text>
+                          </HStack>
+                          <Box className="h-1.5 rounded-full bg-secondary-200 overflow-hidden">
+                            <Box
+                              className="h-full rounded-full bg-primary-500"
+                              style={{ width: `${Math.max(2, row.pct)}%` }}
+                            />
+                          </Box>
                         </VStack>
-                        <Text className="text-lg font-medium">
-                          {formatAmount(expense.amount, expense.currency)}
-                        </Text>
-                      </HStack>
-                    );
-                  })}
-                </VStack>
-              </VStack>
-            </Card>
-          )}
+                      ))}
+                    </VStack>
+                  </VStack>
+                </Card>
+              )}
 
-          {/* Spending by Category */}
-          {categoryBreakdown.length > 0 && (
-            <Card className="rounded-xl bg-secondary-100">
+              {/* Export */}
               <VStack className="gap-y-4">
-                <VStack>
-                  <Text bold className="text-secondary-950 uppercase text-sm">
-                    Spending by Category
+                <VStack className="gap-y-2">
+                  <Text bold className="text-secondary-950 uppercase">
+                    Export Settlements
                   </Text>
                   <Text className="text-sm text-secondary-950">
-                    Where the money went in this range.
+                    The CSV includes all settlements you're involved in for this
+                    group within the selected date range — settlement ID,
+                    recorded and expense dates, description, category, payer,
+                    member, amount, currency, status, request/settle timestamps,
+                    and notes.
                   </Text>
                 </VStack>
-                <VStack className="gap-y-4">
-                  {categoryBreakdown.map((row) => (
-                    <VStack key={row.category} className="gap-y-2">
-                      <HStack className="items-center gap-x-3">
-                        <CategoryIcon
-                          icon={expenseCategoryMeta(row.category).icon}
-                        />
-                        <Text className="flex-1 text-base" numberOfLines={1}>
-                          {expenseCategoryMeta(row.category).label}
-                        </Text>
-                        <Text className="text-sm text-secondary-950">
-                          {row.pct.toFixed(0)}%
-                        </Text>
-                        <Text className="text-lg font-medium">
-                          {formatAmount(row.amount, defaultCurrency)}
-                        </Text>
-                      </HStack>
-                      <Box className="h-1.5 rounded-full bg-secondary-200 overflow-hidden">
-                        <Box
-                          className="h-full rounded-full bg-primary-500"
-                          style={{ width: `${Math.max(2, row.pct)}%` }}
-                        />
-                      </Box>
-                    </VStack>
-                  ))}
-                </VStack>
-              </VStack>
-            </Card>
-          )}
-
-          {/* Export */}
-          <VStack className="gap-y-4">
-            <VStack className="gap-y-2">
-              <Text bold className="text-secondary-950 uppercase">
-                Export Settlements
-              </Text>
-              <Text className="text-sm text-secondary-950">
-                The CSV includes all settlements you're involved in for this
-                group within the selected date range — settlement ID, recorded
-                and expense dates, description, category, payer, member, amount,
-                currency, status, request/settle timestamps, and notes.
-              </Text>
-            </VStack>
-            <FormButton
-              text={isPro ? "Export CSV" : "Export CSV — Pro"}
-              icon={
-                <Download
-                  size={18}
-                  color={getSecondaryHex("text-secondary-0", colorScheme)}
+                <FormButton
+                  text={isPro ? "Export CSV" : "Export CSV — Pro"}
+                  icon={
+                    <Download
+                      size={18}
+                      color={getSecondaryHex("text-secondary-0", colorScheme)}
+                    />
+                  }
+                  loading={exporting}
+                  onPress={handleExport}
                 />
-              }
-              loading={exporting}
-              onPress={handleExport}
-            />
-          </VStack>
+              </VStack>
+            </>
+          )}
         </VStack>
       </VStack>
     </>
@@ -369,13 +439,17 @@ export default function GroupStatsTab({
 
 function SpendingHero({
   items,
-  primaryCurrency = "PHP"
+  primaryCurrency = "PHP",
 }: {
   items: { currency: string; amount: number }[];
   primaryCurrency?: string;
 }) {
   const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+    a.currency === primaryCurrency
+      ? -1
+      : b.currency === primaryCurrency
+        ? 1
+        : 0,
   );
   const [primary, ...secondary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
@@ -406,13 +480,17 @@ function SpendingHero({
 
 function NetBalanceHero({
   items,
-  primaryCurrency = "PHP"
+  primaryCurrency = "PHP",
 }: {
   items: { currency: string; amount: number }[];
   primaryCurrency?: string;
 }) {
   const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
+    a.currency === primaryCurrency
+      ? -1
+      : b.currency === primaryCurrency
+        ? 1
+        : 0,
   );
   const [primary, ...secondary] = sorted;
   const primaryAmount = primary?.amount ?? 0;

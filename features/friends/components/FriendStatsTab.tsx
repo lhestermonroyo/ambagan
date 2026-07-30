@@ -11,9 +11,11 @@ import { VStack } from "@/components/ui/vstack";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
+  CustomDateRange,
   DateRangeOption,
-  dateRangeLabels,
-  getDateRangeCutoff
+  formatDateRangeLabel,
+  getDateRangeBounds,
+  isWithinRange
 } from "@/features/group/components/DateRangeSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
@@ -46,6 +48,7 @@ export default function FriendStatsTab({
   const [loading, setLoading] = useState(true);
   const [settlements, setSettlements] = useState<PaymentPreview[]>([]);
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
+  const [customRange, setCustomRange] = useState<CustomDateRange | null>(null);
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
@@ -73,12 +76,15 @@ export default function FriendStatsTab({
     };
   }, [userId, friendId]);
 
-  const cutoff = useMemo(() => getDateRangeCutoff(dateRange), [dateRange]);
+  const { start: cutoff, end: until } = useMemo(
+    () => getDateRangeBounds(dateRange, customRange),
+    [dateRange, customRange]
+  );
 
   const filtered = useMemo(() => {
-    if (!cutoff) return settlements;
-    return settlements.filter((s) => new Date(s.created_at) >= cutoff);
-  }, [settlements, cutoff]);
+    if (!cutoff && !until) return settlements;
+    return settlements.filter((s) => isWithinRange(s.created_at, cutoff, until));
+  }, [settlements, cutoff, until]);
 
   const active = useMemo(
     () => filtered.filter((s) => s.status !== "settled"),
@@ -183,7 +189,8 @@ export default function FriendStatsTab({
       const payments = await services.friend.getFriendPaymentsForExport(
         userId,
         friendId,
-        cutoff
+        cutoff,
+        until
       );
 
       if (payments.length === 0) {
@@ -235,7 +242,11 @@ export default function FriendStatsTab({
         isOpen={dateRangeSheetOpen}
         onClose={() => setDateRangeSheetOpen(false)}
         dateRange={dateRange}
-        onSelect={setDateRange}
+        customRange={customRange}
+        onSelect={(value, custom) => {
+          setDateRange(value);
+          setCustomRange(custom ?? null);
+        }}
       />
       <VStack className="gap-y-6 pb-6">
         {/* Date range filter pill — opens the same sheet the Settlements tab uses */}
@@ -243,7 +254,7 @@ export default function FriendStatsTab({
           <FormButton
             size="sm"
             variant="outline"
-            text={dateRangeLabels[dateRange]}
+            text={formatDateRangeLabel(dateRange, customRange)}
             iconEnd={
               <ChevronDown
                 size={16}

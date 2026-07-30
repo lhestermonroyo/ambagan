@@ -30,9 +30,11 @@ import {
 import { sortPaymentsByStatus } from "@/features/expense/utils/payment.util";
 import { getSettlementUpdatedAt } from "@/features/expense/utils/settlementDate.util";
 import DateRangeSheet, {
+  CustomDateRange,
   DateRangeOption,
-  dateRangeLabels,
-  getDateRangeCutoff
+  formatDateRangeLabel,
+  getDateRangeBounds,
+  isWithinRange
 } from "@/features/group/components/DateRangeSheet";
 import StatusSheet, {
   SettlementStatus
@@ -105,6 +107,7 @@ export default function GroupSettlements({
   const [viewBy, setViewBy] = useState<ViewOption>("By Date");
   const [viewSheetOpen, setViewSheetOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
+  const [customRange, setCustomRange] = useState<CustomDateRange | null>(null);
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -136,17 +139,19 @@ export default function GroupSettlements({
   useEffect(() => {
     if (!initializedRef.current) return;
     if (!details?.id || !userDetails?.id) return;
-    const cutoff = getDateRangeCutoff(dateRange);
     setSettledPayments([]);
     setSettledPage(0);
-    fetchSettled(0, cutoff);
-  }, [dateRange]);
+    fetchSettled(0, getDateRangeBounds(dateRange, customRange));
+  }, [dateRange, customRange]);
 
   const fetchAll = async () => {
     if (!details?.id || !userDetails?.id) return;
     setLoading(true);
     try {
-      const cutoff = getDateRangeCutoff(dateRange);
+      const { start: cutoff, end: until } = getDateRangeBounds(
+        dateRange,
+        customRange
+      );
       const [active, settled] = await Promise.all([
         services.expense.getActivePaymentsByGroupAndUserId(
           details.id,
@@ -155,7 +160,7 @@ export default function GroupSettlements({
         services.expense.getSettledPaymentsByGroupAndUserId(
           details.id,
           userDetails.id,
-          { cutoff, page: 0 }
+          { cutoff, until, page: 0 }
         )
       ]);
       setActivePayments(sortPaymentsByStatus(active));
@@ -201,13 +206,16 @@ export default function GroupSettlements({
     }
   };
 
-  const fetchSettled = async (page: number, cutoff: Date | null) => {
+  const fetchSettled = async (
+    page: number,
+    bounds: { start: Date | null; end: Date | null }
+  ) => {
     if (!details?.id || !userDetails?.id) return;
     try {
       const result = await services.expense.getSettledPaymentsByGroupAndUserId(
         details.id,
         userDetails.id,
-        { cutoff, page }
+        { cutoff: bounds.start, until: bounds.end, page }
       );
       setSettledPayments((prev) =>
         page === 0 ? result.data : [...prev, ...result.data]
@@ -222,7 +230,10 @@ export default function GroupSettlements({
   const loadMoreSettled = async () => {
     setLoadingMore(true);
     try {
-      await fetchSettled(settledPage + 1, getDateRangeCutoff(dateRange));
+      await fetchSettled(
+        settledPage + 1,
+        getDateRangeBounds(dateRange, customRange)
+      );
     } finally {
       setLoadingMore(false);
     }
@@ -259,7 +270,10 @@ export default function GroupSettlements({
   }, [yourToCollectTotalByCurrency, yourTotalUnpaidByCurrency]);
 
   const settlementSections = useMemo(() => {
-    const cutoff = getDateRangeCutoff(dateRange);
+    const { start: cutoff, end: until } = getDateRangeBounds(
+      dateRange,
+      customRange
+    );
 
     let filtered: Payment[];
     if (settlementTab === "Settled") {
@@ -267,14 +281,14 @@ export default function GroupSettlements({
     } else if (settlementTab === "Pending") {
       filtered = activePayments
         .filter((p) => p.status === "pending")
-        .filter((p) => !cutoff || new Date(p.created_at) >= cutoff);
+        .filter((p) => isWithinRange(p.created_at, cutoff, until));
     } else if (settlementTab === "Requested") {
       filtered = activePayments
         .filter((p) => p.status === "requested")
-        .filter((p) => !cutoff || new Date(p.created_at) >= cutoff);
+        .filter((p) => isWithinRange(p.created_at, cutoff, until));
     } else {
-      const activeFiltered = activePayments.filter(
-        (p) => !cutoff || new Date(p.created_at) >= cutoff
+      const activeFiltered = activePayments.filter((p) =>
+        isWithinRange(p.created_at, cutoff, until)
       );
       filtered = [...activeFiltered, ...settledPayments];
     }
@@ -337,6 +351,7 @@ export default function GroupSettlements({
     viewBy,
     userDetails,
     dateRange,
+    customRange,
     searchQuery
   ]);
 
@@ -567,11 +582,14 @@ export default function GroupSettlements({
               )}
               {dateRange !== "All" && (
                 <Pressable
-                  onPress={() => setDateRange("All")}
+                  onPress={() => {
+                    setDateRange("All");
+                    setCustomRange(null);
+                  }}
                   className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                 >
                   <Text className="text-sm text-primary-600">
-                    {dateRangeLabels[dateRange]}
+                    {formatDateRangeLabel(dateRange, customRange)}
                   </Text>
                   <X
                     size={12}
@@ -669,7 +687,11 @@ export default function GroupSettlements({
         isOpen={dateRangeSheetOpen}
         onClose={() => setDateRangeSheetOpen(false)}
         dateRange={dateRange}
-        onSelect={setDateRange}
+        customRange={customRange}
+        onSelect={(value, custom) => {
+          setDateRange(value);
+          setCustomRange(custom ?? null);
+        }}
       />
       <ViewBySheet
         isOpen={viewSheetOpen}

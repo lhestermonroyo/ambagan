@@ -210,12 +210,12 @@ const FRIEND_SETTLED_PAGE_SIZE = 20;
 export const getSettledFriendSettlements = async (
   userId: string,
   friendId: string,
-  options: { cutoff?: Date | null; page?: number } = {}
+  options: { cutoff?: Date | null; until?: Date | null; page?: number } = {}
 ): Promise<{ data: PaymentPreview[]; hasNext: boolean }> => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 
-  const { cutoff = null, page = 0 } = options;
+  const { cutoff = null, until = null, page = 0 } = options;
   const from = page * FRIEND_SETTLED_PAGE_SIZE;
   const to = from + FRIEND_SETTLED_PAGE_SIZE - 1;
 
@@ -228,6 +228,7 @@ export const getSettledFriendSettlements = async (
     .range(from, to);
 
   if (cutoff) query = query.gte("created_at", cutoff.toISOString());
+  if (until) query = query.lte("created_at", until.toISOString());
 
   const { data, error, count } = await query;
   if (error) throw error;
@@ -258,7 +259,8 @@ const mapFriendExportRows = (data: any[]): PaymentExportRow[] =>
 export const getFriendPaymentsForExport = async (
   userId: string,
   friendId: string,
-  cutoff: Date | null
+  cutoff: Date | null,
+  until: Date | null = null
 ): Promise<PaymentExportRow[]> => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
@@ -270,6 +272,7 @@ export const getFriendPaymentsForExport = async (
     .order("created_at", { ascending: false });
 
   if (cutoff) query = query.gte("created_at", cutoff.toISOString());
+  if (until) query = query.lte("created_at", until.toISOString());
 
   const { data, error } = await query;
   if (error) throw error;
