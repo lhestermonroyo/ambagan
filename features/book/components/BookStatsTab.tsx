@@ -74,17 +74,21 @@ export default function BookStatsTab({
     );
   }, [expenses, cutoff, until]);
 
-  // Total spent, per currency (a trip book can mix PHP + JPY). Never converted —
-  // each currency is its own line, matching the Expenses-tab hero.
+  // Total spent, per currency (a trip book can mix PHP + JPY), split into paid
+  // vs pending. Never converted — each currency is its own line, matching the
+  // Expenses-tab hero.
   const totalsByCurrency = useMemo(() => {
-    const byCurrency = new Map<string, number>();
+    const byCurrency = new Map<string, { paid: number; pending: number }>();
     filtered.forEach((e) => {
       const currency = e.currency || "PHP";
-      byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + e.amount);
+      const entry = byCurrency.get(currency) ?? { paid: 0, pending: 0 };
+      if (e.status === "pending") entry.pending += e.amount;
+      else entry.paid += e.amount;
+      byCurrency.set(currency, entry);
     });
     return Array.from(byCurrency.entries())
-      .map(([currency, amount]) => ({ currency, amount }))
-      .sort((a, b) => b.amount - a.amount);
+      .map(([currency, v]) => ({ currency, paid: v.paid, pending: v.pending }))
+      .sort((a, b) => b.paid + b.pending - (a.paid + a.pending));
   }, [filtered]);
 
   // Count + average, scoped to the primary currency so the average stays a
@@ -96,25 +100,29 @@ export default function BookStatsTab({
     return { count, average: count > 0 ? total / count : 0 };
   }, [filtered, primaryCurrency]);
 
-  // Biggest expenses in range, scoped to the primary currency — ranking a
-  // ¥5,000 expense above a ₱4,000 one by raw amount would be misleading.
+  // Biggest expenses in range, scoped to the primary currency AND to paid
+  // spend (pending bills aren't money out yet) — ranking a ¥5,000 expense above
+  // a ₱4,000 one by raw amount would be misleading.
   const topExpenses = useMemo(
     () =>
       filtered
-        .filter((e) => e.currency === primaryCurrency)
+        .filter(
+          (e) => e.currency === primaryCurrency && e.status !== "pending"
+        )
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5),
     [filtered, primaryCurrency]
   );
 
-  // Spending grouped by category (primary currency), largest first, with each
-  // slice's share of the total. Falls back to "general" for any unset row so the
-  // total always reconciles with the spending hero.
+  // Spending grouped by category (primary currency, paid only), largest first,
+  // with each slice's share of the total. Pending bills are excluded so this
+  // reflects where money actually went. Falls back to "general" for any unset
+  // row.
   const categoryBreakdown = useMemo(() => {
     const byCategory = new Map<string, number>();
     let total = 0;
     filtered
-      .filter((e) => e.currency === primaryCurrency)
+      .filter((e) => e.currency === primaryCurrency && e.status !== "pending")
       .forEach((e) => {
         const key = e.category || "general";
         byCategory.set(key, (byCategory.get(key) ?? 0) + e.amount);
@@ -304,34 +312,41 @@ function SpendingHero({
   items,
   primaryCurrency = "PHP"
 }: {
-  items: { currency: string; amount: number }[];
+  items: { currency: string; paid: number; pending: number }[];
   primaryCurrency?: string;
 }) {
   const sorted = [...items].sort((a, b) =>
     a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
   );
   const [primary, ...secondary] = sorted;
-  const primaryAmount = primary?.amount ?? 0;
+  const currency = primary?.currency ?? primaryCurrency;
 
   return (
     <VStack className="gap-y-2">
       <Text bold className="text-secondary-950 uppercase text-sm">
         Total Spent
       </Text>
-      <HStack className="items-end gap-x-2">
-        <Text bold className="text-3xl">
-          {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
-        </Text>
-        <HStack className="items-center gap-x-1 pb-1">
-          <Text className="text-secondary-950 text-base">
-            {primary?.currency ?? primaryCurrency}
+      <HStack className="items-end justify-between">
+        <VStack className="gap-y-0.5">
+          <Text className="text-secondary-950 text-xs uppercase">Paid</Text>
+          <Text bold className="text-3xl">
+            {formatAmount(primary?.paid ?? 0, currency)}
           </Text>
-          {secondary.length > 0 && (
-            <Text className="text-secondary-950 text-sm">
-              +{secondary.length} more
-            </Text>
-          )}
-        </HStack>
+        </VStack>
+        <VStack className="items-end gap-y-0.5">
+          <Text className="text-secondary-950 text-xs uppercase">Pending</Text>
+          <Text bold className="text-xl">
+            {formatAmount(primary?.pending ?? 0, currency)}
+          </Text>
+        </VStack>
+      </HStack>
+      <HStack className="items-center gap-x-1">
+        <Text className="text-secondary-950 text-sm">{currency}</Text>
+        {secondary.length > 0 && (
+          <Text className="text-secondary-950 text-sm">
+            · +{secondary.length} more
+          </Text>
+        )}
       </HStack>
     </VStack>
   );

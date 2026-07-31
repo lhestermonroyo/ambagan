@@ -1186,7 +1186,7 @@
   resolved "https://registry.npmjs.org/@expo/sudo-prompt/-/sudo-prompt-9.3.2.tgz"
   integrity sha512-HHQigo3rQWKMDzYDLkubN5WQOYXJJE2eNqIQC2axC2iO3mHdwnIR7FgZVvHWtBwAdzBgAP0ECp8KqS8TiMKvgw==
 
-"@expo/ui@^56.0.24":
+"@expo/ui@^56.0.24", "@expo/ui@~56.0.24":
   version "56.0.24"
   resolved "https://registry.yarnpkg.com/@expo/ui/-/ui-56.0.24.tgz#04348427f55efb372f09b76e58da610efc22c687"
   integrity sha512-5i3ON+MlRwDneYIb2X1kyrXnj6Ew/0QMrU1TpnCccFW0P4jexV4NrqvVz/hkv3xkgQxpjXyxGaCCWn92NeMxKQ==

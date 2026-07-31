@@ -10,8 +10,10 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
+import ProBadge from "@/components/ProBadge";
 import SearchInput from "@/components/SearchInput";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
@@ -120,6 +122,7 @@ export default function GroupDetailsScreen() {
   const [expenseCustomRange, setExpenseCustomRange] =
     useState<CustomDateRange | null>(null);
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const {
     details: groupDetails,
@@ -128,6 +131,8 @@ export default function GroupDetailsScreen() {
     memberList
   } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
+
+  const isPro = userDetails?.plan === "pro";
 
   // This group's own home currency drives which balance line surfaces first (a
   // JPY trip group shows JPY first). Falls back to the user default until the
@@ -369,6 +374,16 @@ export default function GroupDetailsScreen() {
       settlementList: []
     }));
     router.back();
+  };
+
+  // Recurring expenses are Pro. Free users get the upgrade sheet; Pro users go
+  // to the manage screen. Mirrors the personal book detail gating.
+  const handleOpenRecurring = () => {
+    if (!isPro) {
+      setUpgradeOpen(true);
+      return;
+    }
+    router.push(`/groups/${groupId}/recurring`);
   };
 
   const hasActiveFilters =
@@ -950,15 +965,18 @@ export default function GroupDetailsScreen() {
               <VStack className="pb-2 gap-y-4">
                 <Pressable
                   className="mx-4 bg-background-50 rounded-lg p-4 data-[hover=true]:bg-background-100 data-[active=true]:bg-background-100"
-                  onPress={() => router.push(`/groups/${groupId}/recurring`)}
+                  onPress={handleOpenRecurring}
                 >
                   <HStack className="items-start gap-x-2">
                     <Icon as="repeat" className="text-primary-500" />
                     <HStack className="flex-1 items-center">
                       <VStack className="flex-1">
-                        <Text className="text-lg" bold>
-                          Recurring expenses
-                        </Text>
+                        <HStack className="items-center gap-x-2">
+                          <Text className="text-lg" bold>
+                            Recurring expenses
+                          </Text>
+                          {!isPro && <ProBadge />}
+                        </HStack>
                         <Text className="text-sm text-secondary-950">
                           {activeRecurringCount > 0
                             ? `${activeRecurringCount} active series`
@@ -1256,6 +1274,11 @@ export default function GroupDetailsScreen() {
           setExpenseDateRange(value);
           setExpenseCustomRange(custom ?? null);
         }}
+      />
+      <UpgradeSheet
+        isOpen={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        description="Recurring expenses are a Pro feature. Upgrade to auto-post monthly rent, subscriptions, and other regular bills on a schedule."
       />
     </Fragment>
   );

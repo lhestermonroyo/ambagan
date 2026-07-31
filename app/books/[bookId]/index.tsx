@@ -32,6 +32,10 @@ import { VStack } from "@/components/ui/vstack";
 import BookInfoTab from "@/features/book/components/BookInfoTab";
 import BookStatsTab from "@/features/book/components/BookStatsTab";
 import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
+import PersonalStatusFilterSheet, {
+  PersonalStatusFilter,
+  personalStatusFilterLabel
+} from "@/features/book/components/PersonalStatusFilterSheet";
 import CategorySheet from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
@@ -46,12 +50,13 @@ import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
-import { Book, PersonalExpense } from "@/types/books";
+import { Book, PersonalBookTotal, PersonalExpense } from "@/types/books";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { CategoryOption, expenseCategories } from "@/utils/constants";
-import { formatDate } from "@/utils/formatDate";
+import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import * as offlineQueue from "@/utils/offlineQueue";
 import {
   Stack,
   useFocusEffect,
@@ -69,16 +74,18 @@ import {
   Plus,
   ScanLine,
   Search,
+  Tag,
   Trash2,
   X
 } from "lucide-react-native";
+import { format, parseISO } from "date-fns";
 import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import {
-  FlatList,
   LayoutAnimation,
   Platform,
   RefreshControl,
   Modal as RNModal,
+  SectionList,
   UIManager,
   useColorScheme
 } from "react-native";
@@ -107,6 +114,27 @@ const categoryFilterLabel = (value: string) =>
   categoryFilterOptions.find((c) => c.value === value)?.label ??
   "All Categories";
 
+// Move `amount` of `currency` between the paid/pending buckets of a
+// PersonalBookTotal[] — the optimistic math behind flipping an expense's status.
+// The combined per-currency total is unchanged; only the split moves.
+const moveTotalsBucket = (
+  totals: PersonalBookTotal[],
+  currency: string,
+  amount: number,
+  from: "paid" | "pending",
+  to: "paid" | "pending"
+): PersonalBookTotal[] => {
+  if (from === to) return totals;
+  let found = false;
+  const next = totals.map((t) => {
+    if (t.currency !== currency) return t;
+    found = true;
+    return { ...t, [from]: t[from] - amount, [to]: t[to] + amount };
+  });
+  if (!found) next.push({ currency, paid: 0, pending: 0, [to]: amount });
+  return next;
+};
+
 export default function BookDetailScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
@@ -121,9 +149,7 @@ export default function BookDetailScreen() {
     states.book().list.find((b) => b.id === bookId) ?? null
   );
   const [expenses, setExpenses] = useState<PersonalExpense[]>([]);
-  const [totals, setTotals] = useState<{ currency: string; amount: number }[]>(
-    []
-  );
+  const [totals, setTotals] = useState<PersonalBookTotal[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -134,6 +160,9 @@ export default function BookDetailScreen() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Expenses");
+  // Expense ids whose paid/pending toggle is in flight — dims the pill and
+  // guards against a double-tap re-entering the handler mid-request.
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   // Drives the Expenses-tab "Recurring expenses" entry card's subtitle. The list
   // itself lives on the standalone /recurring route; here we only need the active
   // count. Best-effort — recurring reads aren't cached, so offline it stays 0.
@@ -149,6 +178,8 @@ export default function BookDetailScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>(ALL_CATEGORIES);
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<PersonalStatusFilter>("all");
+  const [statusFilterSheetOpen, setStatusFilterSheetOpen] = useState(false);
   const [expenseDateRange, setExpenseDateRange] =
     useState<DateRangeOption>("All");
   const [expenseCustomRange, setExpenseCustomRange] =
@@ -166,7 +197,8 @@ export default function BookDetailScreen() {
   const hasActiveFilters =
     expenseSearch.trim().length > 0 ||
     categoryFilter !== ALL_CATEGORIES ||
-    expenseDateRange !== "All";
+    expenseDateRange !== "All" ||
+    statusFilter !== "all";
 
   const fetchAllExpenses = useCallback(async () => {
     if (!bookId) return;
@@ -273,6 +305,80 @@ export default function BookDetailScreen() {
     setRefreshing(false);
   };
 
+  // Inline paid⇄pending toggle from the expense row. Flips optimistically across
+  // the loaded page, the whole-ledger filter source, and the shared store, then
+  // persists online (or queues it offline). Reverts everything on failure.
+  const handleToggleStatus = async (expense: PersonalExpense) => {
+    if (!bookId || togglingIds.has(expense.id)) return;
+    const next = expense.status === "paid" ? "pending" : "paid";
+
+    const apply = (status: PersonalExpense["status"]) => {
+      const map = (e: PersonalExpense) =>
+        e.id === expense.id ? { ...e, status } : e;
+      setExpenses((prev) => prev.map(map));
+      setAllExpenses((prev) => (prev ? prev.map(map) : prev));
+      states.book.setState((prev) => ({
+        ...prev,
+        expenseList: prev.expenseList.map(map)
+      }));
+      // Shift this expense's amount into the target bucket so the split totals
+      // card tracks the toggle live.
+      const from = status === "paid" ? "pending" : "paid";
+      setTotals((prev) =>
+        moveTotalsBucket(prev, expense.currency, expense.amount, from, status)
+      );
+    };
+
+    apply(next);
+    setTogglingIds((prev) => new Set(prev).add(expense.id));
+    try {
+      if (await offlineQueue.isOnline()) {
+        await services.bookExpense.setPersonalExpenseStatus(expense.id, next);
+        // Keep the offline snapshot coherent until the next focus refetch.
+        cacheService
+          .getBookDetail(bookId)
+          .then((cached) => {
+            if (!cached) return;
+            cacheService.saveBookDetail(
+              bookId,
+              cached.book,
+              cached.expenseList.map((e) =>
+                e.id === expense.id ? { ...e, status: next } : e
+              ),
+              moveTotalsBucket(
+                cached.totals,
+                expense.currency,
+                expense.amount,
+                expense.status,
+                next
+              )
+            );
+          })
+          .catch(() => {});
+      } else {
+        await offlineQueue.queueSetPersonalExpenseStatus(
+          bookId,
+          expense.id,
+          next
+        );
+      }
+    } catch (error) {
+      console.error("Failed to update expense status:", error);
+      apply(expense.status);
+      toast({
+        title: "Error",
+        description: "Couldn't update the status. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setTogglingIds((prev) => {
+        const nextSet = new Set(prev);
+        nextSet.delete(expense.id);
+        return nextSet;
+      });
+    }
+  };
+
   // Recurring expenses are Pro. Free users get the upgrade sheet; Pro users go
   // to the manage screen. Gates every entry point (the Expenses-tab card and the
   // ⋯ menu item) so there's no way around the paywall.
@@ -308,6 +414,7 @@ export default function BookDetailScreen() {
       ) {
         return false;
       }
+      if (statusFilter !== "all" && item.status !== statusFilter) return false;
       if (!isWithinRange(item.expense_date, start, end)) return false;
       return true;
     });
@@ -316,9 +423,34 @@ export default function BookDetailScreen() {
     hasActiveFilters,
     expenseSearch,
     categoryFilter,
+    statusFilter,
     expenseDateRange,
     expenseCustomRange
   ]);
+
+  // Group the (filtered) rows by expense_date into dated sections, newest first
+  // — mirroring the group detail Expenses tab. Ordering by expense_date keeps
+  // the section a row lands in consistent with the date the row itself shows.
+  const expenseSections = useMemo(() => {
+    const groupedByDate: { [key: string]: PersonalExpense[] } = {};
+
+    filteredExpenses.forEach((item) => {
+      const dateKey = format(parseISO(item.expense_date), "yyyy-MM-dd");
+      if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+      groupedByDate[dateKey].push(item);
+    });
+
+    return Object.keys(groupedByDate)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+      .map((dateKey) => ({
+        title: getDateGroupTitle(dateKey + "T00:00:00"),
+        data: groupedByDate[dateKey].sort(
+          (a, b) =>
+            new Date(b.expense_date).getTime() -
+            new Date(a.expense_date).getTime()
+        )
+      }));
+  }, [filteredExpenses]);
 
   // Swap the filter row for the full-width search field (and back). The query
   // is kept when collapsing so it persists as a chip, matching group details.
@@ -415,7 +547,7 @@ export default function BookDetailScreen() {
             ? 1
             : 0
       )
-    : [{ currency: primaryCurrency, amount: 0 }];
+    : [{ currency: primaryCurrency, paid: 0, pending: 0 }];
 
   const renderAndroidActions = () => {
     if (loading) return undefined;
@@ -682,29 +814,57 @@ export default function BookDetailScreen() {
 
             {tab === "Expenses" && (
               <VStack className="gap-y-6 pb-4">
-                {/* Total spent, per currency — net-balance hero treatment. */}
-                <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-2">
-                  <Text className="text-sm text-white font-medium uppercase">
-                    Total Spent
-                  </Text>
-                  {displayTotals.map((t, i) => (
-                    <Text
-                      key={t.currency}
-                      bold
-                      className={
-                        i === 0
-                          ? "text-3xl text-primary-400"
-                          : "text-xl text-white/70"
-                      }
-                    >
-                      {formatAmount(t.amount, t.currency)}
-                    </Text>
-                  ))}
-                  <Text className="text-sm text-white/70">
-                    {expenses.length}
-                    {hasMore ? "+" : ""} expense
-                    {expenses.length !== 1 ? "s" : ""}
-                  </Text>
+                {/* Total spent split into two side-by-side cards — Paid
+                    (settled) and Pending (upcoming/unpaid), each per currency. */}
+                <VStack className="mx-4 gap-y-2">
+                  <HStack className="gap-x-3">
+                    <VStack className="flex-1 p-4 rounded-xl bg-secondary-100 gap-y-1">
+                      <Text
+                        bold
+                        className="text-sm text-secondary-950 uppercase"
+                      >
+                        Paid
+                      </Text>
+                      {displayTotals.map((t, i) => (
+                        <Text
+                          key={t.currency}
+                          bold
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          className={
+                            i === 0
+                              ? "text-2xl text-background-950"
+                              : "text-base text-background-950/70"
+                          }
+                        >
+                          {formatAmount(t.paid, t.currency)}
+                        </Text>
+                      ))}
+                    </VStack>
+                    <VStack className="flex-1 p-4 rounded-xl bg-secondary-100 gap-y-1">
+                      <Text
+                        bold
+                        className="text-sm text-secondary-950 uppercase"
+                      >
+                        Pending
+                      </Text>
+                      {displayTotals.map((t, i) => (
+                        <Text
+                          key={t.currency}
+                          bold
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          className={
+                            i === 0
+                              ? "text-2xl text-background-950"
+                              : "text-base text-background-950/70"
+                          }
+                        >
+                          {formatAmount(t.pending, t.currency)}
+                        </Text>
+                      ))}
+                    </VStack>
+                  </HStack>
                 </VStack>
 
                 {/* Recurring-expenses entry card — taps through to the standalone
@@ -760,7 +920,7 @@ export default function BookDetailScreen() {
                       <FormButton
                         size="sm"
                         variant="outline"
-                        text={categoryFilterLabel(categoryFilter)}
+                        text={personalStatusFilterLabel(statusFilter)}
                         iconEnd={
                           <ChevronDown
                             size={16}
@@ -772,7 +932,7 @@ export default function BookDetailScreen() {
                         }
                         onPress={() => {
                           if (!fetchedAllRef.current) fetchAllExpenses();
-                          setCategorySheetOpen(true);
+                          setStatusFilterSheetOpen(true);
                         }}
                       />
                       <HStack className="gap-x-6 items-center">
@@ -784,6 +944,25 @@ export default function BookDetailScreen() {
                           <Search
                             color={
                               expenseSearch
+                                ? getPrimaryHex("text-primary-400", colorScheme)
+                                : getSecondaryHex(
+                                    "text-secondary-950",
+                                    colorScheme
+                                  )
+                            }
+                          />
+                        </Button>
+                        <Button
+                          variant="link"
+                          className="rounded-full"
+                          onPress={() => {
+                            if (!fetchedAllRef.current) fetchAllExpenses();
+                            setCategorySheetOpen(true);
+                          }}
+                        >
+                          <Tag
+                            color={
+                              categoryFilter !== ALL_CATEGORIES
                                 ? getPrimaryHex("text-primary-400", colorScheme)
                                 : getSecondaryHex(
                                     "text-secondary-950",
@@ -816,6 +995,7 @@ export default function BookDetailScreen() {
                   )}
 
                   {(expenseDateRange !== "All" ||
+                    categoryFilter !== ALL_CATEGORIES ||
                     (!!expenseSearch && !searchOpen)) && (
                     <HStack className="gap-x-2 px-4 flex-wrap">
                       {!!expenseSearch && !searchOpen && (
@@ -828,6 +1008,23 @@ export default function BookDetailScreen() {
                             numberOfLines={1}
                           >
                             &ldquo;{expenseSearch}&rdquo;
+                          </Text>
+                          <X
+                            size={12}
+                            color={getPrimaryHex(
+                              "text-primary-600",
+                              colorScheme
+                            )}
+                          />
+                        </Pressable>
+                      )}
+                      {categoryFilter !== ALL_CATEGORIES && (
+                        <Pressable
+                          onPress={() => setCategoryFilter(ALL_CATEGORIES)}
+                          className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                        >
+                          <Text className="text-sm text-primary-600">
+                            {categoryFilterLabel(categoryFilter)}
                           </Text>
                           <X
                             size={12}
@@ -867,13 +1064,15 @@ export default function BookDetailScreen() {
 
                 {/* Plain list — delete lives on the expense form the row opens,
                     so the row itself has no swipe actions. */}
-                <FlatList
+                <SectionList
                   scrollEnabled={false}
-                  data={filteredExpenses}
+                  sections={expenseSections}
                   keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
+                  renderItem={({ item }: { item: PersonalExpense }) => (
                     <PersonalExpenseItem
                       details={item}
+                      togglingStatus={togglingIds.has(item.id)}
+                      onToggleStatus={() => handleToggleStatus(item)}
                       onOpen={() =>
                         router.push(
                           `/books/${bookId}/add-expense?expenseId=${item.id}`
@@ -881,6 +1080,14 @@ export default function BookDetailScreen() {
                       }
                     />
                   )}
+                  renderSectionHeader={({ section: { title } }) => (
+                    <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
+                      <Text className="text-sm text-secondary-950">
+                        {title}
+                      </Text>
+                    </Box>
+                  )}
+                  stickySectionHeadersEnabled
                   ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() =>
                     hasActiveFilters ? (
@@ -924,6 +1131,12 @@ export default function BookDetailScreen() {
         category={categoryFilter}
         onSelect={setCategoryFilter}
         options={categoryFilterOptions}
+      />
+      <PersonalStatusFilterSheet
+        isOpen={statusFilterSheetOpen}
+        onClose={() => setStatusFilterSheetOpen(false)}
+        status={statusFilter}
+        onSelect={setStatusFilter}
       />
       <UpgradeSheet
         isOpen={upgradeOpen}

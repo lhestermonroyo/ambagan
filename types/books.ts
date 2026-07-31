@@ -38,8 +38,27 @@ export type PersonalExpense = {
   expense_date: string;
   proof_of_payment: string | null;
   recurring_id: string | null;
+  /** Whether the expense is actually settled ('paid', the default) or still an
+   *  upcoming/unpaid bill ('pending'). Purely a personal tracking flag — books
+   *  have no settlements. Paid vs pending totals are reported split out. */
+  status: "paid" | "pending";
   /** True for an expense created offline and not yet synced to the server. */
   pending?: boolean;
+};
+
+/** The two states a personal expense's {@link PersonalExpense.status} can hold. */
+export type PersonalExpenseStatus = "paid" | "pending";
+
+/**
+ * Per-currency spend for a book (or a month), split by status — `paid` is money
+ * actually settled, `pending` is upcoming/unpaid bills. Currencies are never
+ * converted against each other; each is reported on its own entry. Total for an
+ * entry is `paid + pending`.
+ */
+export type PersonalBookTotal = {
+  currency: string;
+  paid: number;
+  pending: number;
 };
 
 /**

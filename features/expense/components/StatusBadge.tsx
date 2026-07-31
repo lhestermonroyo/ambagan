@@ -1,8 +1,8 @@
 import AppBadge from "@/components/AppBadge";
 import {
   CheckCheck,
+  Clock,
   FileCheckCorner,
-  Hourglass,
   RefreshCcw
 } from "lucide-react-native";
 
@@ -31,7 +31,7 @@ export default function StatusBadge({
   } else if (status === "pending") {
     action = "warning";
     text = "Pending";
-    icon = <Hourglass size={iconSize} color="#D76C1F" />;
+    icon = <Clock size={iconSize} color="#D76C1F" />;
   } else if (status === "ongoing") {
     action = "warning";
     text = "Ongoing";
@@ -49,7 +49,7 @@ export default function StatusBadge({
 
   return (
     <AppBadge
-      className="self-start rounded-md"
+      className="self-start rounded-full"
       text={text}
       action={action}
       size={size}

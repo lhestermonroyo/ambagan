@@ -1,4 +1,5 @@
 import Icon from "@/components/Icon";
+import ListDivider from "@/components/ListDivider";
 import PressableListItem from "@/components/PressableListItem";
 import {
   Actionsheet,
@@ -65,6 +66,7 @@ export default function ExpenseDestinationSheet({
             description="Split a bill with people in a group."
             onPress={onSelectGroup}
           />
+          <ListDivider />
           <Option
             icon={<NotebookPen color={iconColor} />}
             title="Personal expense"

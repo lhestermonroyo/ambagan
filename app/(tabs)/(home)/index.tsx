@@ -29,6 +29,7 @@ import GroupItem from "@/features/group/components/GroupItem";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
+import { PersonalBookTotal } from "@/types/books";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { getPrimaryHex } from "@/utils/getColorHex";
@@ -75,9 +76,7 @@ export default function HomeScreen() {
     personal: false
   });
   const [friends, setFriends] = useState<FriendSummary[]>([]);
-  const [personalTotals, setPersonalTotals] = useState<
-    { currency: string; amount: number }[]
-  >([]);
+  const [personalTotals, setPersonalTotals] = useState<PersonalBookTotal[]>([]);
   const [addChooserOpen, setAddChooserOpen] = useState(false);
   const [stats, setStats] = useState<{
     toPay: { currency: string; amount: number }[];
@@ -181,7 +180,7 @@ export default function HomeScreen() {
   // into Books even before the user logs anything.
   const displayPersonal = useMemo(() => {
     if (personalTotals.length === 0) {
-      return [{ currency: defaultCurrency, amount: 0 }];
+      return [{ currency: defaultCurrency, paid: 0, pending: 0 }];
     }
     return [...personalTotals].sort((a, b) =>
       a.currency === defaultCurrency
@@ -650,17 +649,23 @@ export default function HomeScreen() {
                   </Text>
                 ) : (
                   displayPersonal.map((t, i) => (
-                    <Text
-                      key={t.currency}
-                      bold
-                      className={
-                        i === 0
-                          ? "text-3xl text-primary-400"
-                          : "text-lg text-white/70"
-                      }
-                    >
-                      {formatAmount(t.amount, t.currency)}
-                    </Text>
+                    <VStack key={t.currency} className="gap-y-0.5">
+                      <Text
+                        bold
+                        className={
+                          i === 0
+                            ? "text-3xl text-primary-400"
+                            : "text-lg text-white/70"
+                        }
+                      >
+                        {formatAmount(t.paid, t.currency)}
+                      </Text>
+                      {t.pending > 0 && (
+                        <Text className="text-sm text-white/70">
+                          {formatAmount(t.pending, t.currency)} pending
+                        </Text>
+                      )}
+                    </VStack>
                   ))
                 )}
               </Pressable>

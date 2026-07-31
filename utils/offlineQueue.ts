@@ -6,7 +6,7 @@ import {
   PaymentPreview,
   PaymentStatus
 } from "@/types/expenses";
-import { Book, PersonalExpense } from "@/types/books";
+import { Book, PersonalBookTotal, PersonalExpense } from "@/types/books";
 import { Group, Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
 import NetInfo from "@react-native-community/netinfo";
@@ -114,7 +114,8 @@ export type QueueOpType =
   | "SET_BOOK_ARCHIVED"
   | "ADD_PERSONAL_EXPENSE"
   | "UPDATE_PERSONAL_EXPENSE"
-  | "DELETE_PERSONAL_EXPENSE";
+  | "DELETE_PERSONAL_EXPENSE"
+  | "TOGGLE_PERSONAL_EXPENSE_STATUS";
 
 /**
  * A local receipt image captured/attached while offline. The file can't be
@@ -234,6 +235,7 @@ export type AddPersonalExpenseArgs = {
   currency: string;
   expense_date?: string;
   proof_of_payment: null;
+  status?: "paid" | "pending";
   id?: string;
 };
 
@@ -253,6 +255,7 @@ export type UpdatePersonalExpenseArgs = {
   expense_date?: string;
   proof_of_payment: null;
   existing_proof_url: string | null;
+  status?: "paid" | "pending";
 };
 
 export type UpdatePersonalExpensePayload = {
@@ -266,6 +269,12 @@ export type UpdatePersonalExpensePayload = {
 export type DeletePersonalExpensePayload = {
   bookId: string;
   expenseId: string;
+};
+
+export type TogglePersonalExpenseStatusPayload = {
+  bookId: string;
+  expenseId: string;
+  status: "paid" | "pending";
 };
 
 export type QueuedOp =
@@ -401,6 +410,14 @@ export type QueuedOp =
       id: string;
       type: "DELETE_PERSONAL_EXPENSE";
       payload: DeletePersonalExpensePayload;
+      status: "pending" | "failed" | "dead";
+      attempts: number;
+      created_at: number;
+    }
+  | {
+      id: string;
+      type: "TOGGLE_PERSONAL_EXPENSE_STATUS";
+      payload: TogglePersonalExpenseStatusPayload;
       status: "pending" | "failed" | "dead";
       attempts: number;
       created_at: number;
@@ -1787,16 +1804,21 @@ export function buildOptimisticGroup(params: {
 
 /** Add `delta` to a currency's total, dropping near-zero entries; sorted desc. */
 function applyCurrencyDelta(
-  totals: { currency: string; amount: number }[],
+  totals: PersonalBookTotal[],
   currency: string,
-  delta: number
-): { currency: string; amount: number }[] {
-  const map = new Map(totals.map((t) => [t.currency, t.amount]));
-  map.set(currency, (map.get(currency) ?? 0) + delta);
+  delta: number,
+  status: "paid" | "pending"
+): PersonalBookTotal[] {
+  const map = new Map(
+    totals.map((t) => [t.currency, { paid: t.paid, pending: t.pending }])
+  );
+  const entry = map.get(currency) ?? { paid: 0, pending: 0 };
+  entry[status] += delta;
+  map.set(currency, entry);
   return Array.from(map.entries())
-    .filter(([, amount]) => Math.abs(amount) > 0.005)
-    .map(([currency, amount]) => ({ currency, amount }))
-    .sort((a, b) => b.amount - a.amount);
+    .map(([c, v]) => ({ currency: c, paid: v.paid, pending: v.pending }))
+    .filter((t) => Math.abs(t.paid) > 0.005 || Math.abs(t.pending) > 0.005)
+    .sort((a, b) => b.paid + b.pending - (a.paid + a.pending));
 }
 
 /** Nudge a book's expense_count in the live list + cached books list. */
@@ -1921,7 +1943,12 @@ async function injectPendingBookExpense(
         bookId,
         cached.book,
         [expense, ...cached.expenseList],
-        applyCurrencyDelta(cached.totals, expense.currency, expense.amount)
+        applyCurrencyDelta(
+          cached.totals,
+          expense.currency,
+          expense.amount,
+          expense.status
+        )
       );
     }
   } catch {
@@ -1959,7 +1986,8 @@ async function replaceBookExpenseOptimistic(
   bookId: string,
   expense: PersonalExpense,
   oldAmount: number,
-  oldCurrency: string
+  oldCurrency: string,
+  oldStatus: "paid" | "pending"
 ) {
   const swap = (e: PersonalExpense) => (e.id === expense.id ? expense : e);
 
@@ -1972,8 +2000,19 @@ async function replaceBookExpenseOptimistic(
   try {
     const cached = await cacheService.getBookDetail(bookId);
     if (cached) {
-      let totals = applyCurrencyDelta(cached.totals, oldCurrency, -oldAmount);
-      totals = applyCurrencyDelta(totals, expense.currency, expense.amount);
+      // Back the old value out of its old status bucket, fold the new one in.
+      let totals = applyCurrencyDelta(
+        cached.totals,
+        oldCurrency,
+        -oldAmount,
+        oldStatus
+      );
+      totals = applyCurrencyDelta(
+        totals,
+        expense.currency,
+        expense.amount,
+        expense.status
+      );
       await cacheService.saveBookDetail(
         bookId,
         cached.book,
@@ -1986,11 +2025,61 @@ async function replaceBookExpenseOptimistic(
   }
 }
 
+async function setBookExpenseStatusOptimistic(
+  bookId: string,
+  expenseId: string,
+  status: "paid" | "pending"
+) {
+  const flip = (e: PersonalExpense) =>
+    e.id === expenseId ? { ...e, status } : e;
+
+  if (states.book.getState().details?.id === bookId) {
+    states.book.setState((prev) => ({
+      ...prev,
+      expenseList: prev.expenseList.map(flip)
+    }));
+  }
+  try {
+    const cached = await cacheService.getBookDetail(bookId);
+    if (cached) {
+      const target = cached.expenseList.find(
+        (e: PersonalExpense) => e.id === expenseId
+      );
+      let totals = cached.totals as PersonalBookTotal[];
+      // Move the expense's amount from its old status bucket to the new one
+      // (same currency) — the combined total is unchanged, only the split.
+      if (target && target.status !== status) {
+        totals = applyCurrencyDelta(
+          totals,
+          target.currency,
+          -target.amount,
+          target.status
+        );
+        totals = applyCurrencyDelta(
+          totals,
+          target.currency,
+          target.amount,
+          status
+        );
+      }
+      await cacheService.saveBookDetail(
+        bookId,
+        cached.book,
+        cached.expenseList.map(flip),
+        totals
+      );
+    }
+  } catch {
+    // best-effort
+  }
+}
+
 async function removeBookExpenseOptimistic(
   bookId: string,
   expenseId: string,
   amount: number,
-  currency: string
+  currency: string,
+  status: "paid" | "pending"
 ) {
   const userId = states.user.getState().details?.id;
 
@@ -2007,7 +2096,7 @@ async function removeBookExpenseOptimistic(
         bookId,
         cached.book,
         cached.expenseList.filter((e) => e.id !== expenseId),
-        applyCurrencyDelta(cached.totals, currency, -amount)
+        applyCurrencyDelta(cached.totals, currency, -amount, status)
       );
     }
   } catch {
@@ -2048,6 +2137,7 @@ export function buildOptimisticPersonalExpense(params: {
   category: string;
   currency: string;
   expenseDate?: string;
+  status?: "paid" | "pending";
 }): PersonalExpense {
   const now = new Date().toISOString();
   return {
@@ -2062,6 +2152,7 @@ export function buildOptimisticPersonalExpense(params: {
     expense_date: params.expenseDate ?? now,
     proof_of_payment: null,
     recurring_id: null,
+    status: params.status ?? "paid",
     pending: true
   };
 }
@@ -2132,6 +2223,7 @@ export async function queueUpdatePersonalExpense(
   optimistic: PersonalExpense,
   oldAmount: number,
   oldCurrency: string,
+  oldStatus: "paid" | "pending",
   proofUpload?: ProofUpload
 ): Promise<void> {
   await enqueue("UPDATE_PERSONAL_EXPENSE", {
@@ -2140,20 +2232,40 @@ export async function queueUpdatePersonalExpense(
     args,
     proofUpload
   } as UpdatePersonalExpensePayload);
-  await replaceBookExpenseOptimistic(bookId, optimistic, oldAmount, oldCurrency);
+  await replaceBookExpenseOptimistic(
+    bookId,
+    optimistic,
+    oldAmount,
+    oldCurrency,
+    oldStatus
+  );
 }
 
 export async function queueDeletePersonalExpense(
   bookId: string,
   expenseId: string,
   amount: number,
-  currency: string
+  currency: string,
+  status: "paid" | "pending"
 ): Promise<void> {
   await enqueue("DELETE_PERSONAL_EXPENSE", {
     bookId,
     expenseId
   } as DeletePersonalExpensePayload);
-  await removeBookExpenseOptimistic(bookId, expenseId, amount, currency);
+  await removeBookExpenseOptimistic(bookId, expenseId, amount, currency, status);
+}
+
+export async function queueSetPersonalExpenseStatus(
+  bookId: string,
+  expenseId: string,
+  status: "paid" | "pending"
+): Promise<void> {
+  await enqueue("TOGGLE_PERSONAL_EXPENSE_STATUS", {
+    bookId,
+    expenseId,
+    status
+  } as TogglePersonalExpenseStatusPayload);
+  await setBookExpenseStatusOptimistic(bookId, expenseId, status);
 }
 
 export const _internal = {

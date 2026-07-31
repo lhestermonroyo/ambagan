@@ -254,6 +254,12 @@ export function useOfflineSync() {
               await services.bookExpense.deletePersonalExpense(
                 op.payload.expenseId
               );
+            } else if (op.type === "TOGGLE_PERSONAL_EXPENSE_STATUS") {
+              // Idempotent — replaying just re-sets the same flag.
+              await services.bookExpense.setPersonalExpenseStatus(
+                op.payload.expenseId,
+                op.payload.status
+              );
             }
 
             await offlineQueue.removeFromQueue(op.id);

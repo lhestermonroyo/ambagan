@@ -1,4 +1,8 @@
-import { PersonalExpense } from "@/types/books";
+import {
+  PersonalBookTotal,
+  PersonalExpense,
+  PersonalExpenseStatus
+} from "@/types/books";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import { isUniqueViolation, supabase } from "@/utils/supabase";
@@ -12,7 +16,7 @@ import { v4 as uuid } from "uuid";
 // is checked here against the server log; the offline-aware resolver (cached
 // count + queued-today) is added in slice #5 too.
 
-const EXPENSE_SELECT = `id, created_at, book_id, user_id, amount, description, category, currency, expense_date, proof_of_payment, recurring_id`;
+const EXPENSE_SELECT = `id, created_at, book_id, user_id, amount, description, category, currency, expense_date, proof_of_payment, recurring_id, status`;
 
 export const savePersonalExpense = async (payload: {
   book_id: string;
@@ -23,6 +27,8 @@ export const savePersonalExpense = async (payload: {
   currency: string;
   expense_date?: Date;
   proof_of_payment: ImagePickerSuccessResult | null;
+  /** Settled ('paid', the default) or an upcoming/unpaid bill ('pending'). */
+  status?: PersonalExpenseStatus;
   /** Optional pre-generated id — used so offline-queued expenses keep a stable id on sync. */
   id?: string;
   /** Set when this expense is materialized from a personal recurring series. */
@@ -61,6 +67,7 @@ export const savePersonalExpense = async (payload: {
       currency: payload.currency || "PHP",
       expense_date: (payload.expense_date ?? new Date()).toISOString(),
       proof_of_payment: proofUrl,
+      status: payload.status ?? "paid",
       recurring_id: payload.recurring_id ?? null
     }
   ]);
@@ -82,6 +89,8 @@ export const updatePersonalExpense = async (
     proof_of_payment: ImagePickerSuccessResult | null;
     /** The existing receipt URL to keep when no new image is picked. */
     existing_proof_url: string | null;
+    /** Settled ('paid') or an upcoming/unpaid bill ('pending'). */
+    status?: PersonalExpenseStatus;
   }
 ) => {
   const user = await supabase.auth.getUser();
@@ -107,7 +116,10 @@ export const updatePersonalExpense = async (
       category: payload.category || "general",
       currency: payload.currency || "PHP",
       expense_date: (payload.expense_date ?? new Date()).toISOString(),
-      proof_of_payment: proofUrl
+      proof_of_payment: proofUrl,
+      // Only overwrite status when the caller passes one, so an edit that
+      // doesn't touch it leaves the stored value alone.
+      ...(payload.status ? { status: payload.status } : {})
     })
     .eq("id", expenseId)
     .eq("user_id", user.data.user.id);
@@ -115,6 +127,29 @@ export const updatePersonalExpense = async (
   if (error) throw error;
 
   return { message: "Expense updated successfully" };
+};
+
+/**
+ * Flip just the paid/pending flag on one expense — the lightweight write behind
+ * the inline status toggle on the book detail list. Owner-only RLS scopes it to
+ * the current user's own expense.
+ */
+export const setPersonalExpenseStatus = async (
+  expenseId: string,
+  status: PersonalExpenseStatus
+) => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { error } = await supabase
+    .from(tables.PERSONAL_EXPENSES_TBL)
+    .update({ status })
+    .eq("id", expenseId)
+    .eq("user_id", user.data.user.id);
+
+  if (error) throw error;
+
+  return { message: "Expense status updated" };
 };
 
 /**
@@ -240,64 +275,75 @@ export const getAllPersonalExpensesByBookId = async (
 
 /**
  * Total spent in a book, broken down per currency (an expense keeps its own
- * currency, so a trip book can mix PHP + JPY). Summed client-side — books are
- * personal and small. Currencies aren't converted against each other; each is
- * reported on its own line, the same way the group Net Balance shows per-currency
- * amounts. Sorted by amount descending.
+ * currency, so a trip book can mix PHP + JPY) AND per status — `paid` vs
+ * `pending`. Summed client-side — books are personal and small. Currencies
+ * aren't converted against each other; each is reported on its own entry, the
+ * same way the group Net Balance shows per-currency amounts. Sorted by combined
+ * (paid + pending) amount descending.
  */
 export const getPersonalBookTotals = async (
   bookId: string
-): Promise<{ currency: string; amount: number }[]> => {
+): Promise<PersonalBookTotal[]> => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 
   const { data, error } = await supabase
     .from(tables.PERSONAL_EXPENSES_TBL)
-    .select("amount, currency")
+    .select("amount, currency, status")
     .eq("book_id", bookId);
 
   if (error) throw error;
 
-  const byCurrency = new Map<string, number>();
-  for (const row of data as { amount: number; currency: string }[]) {
-    const currency = row.currency || "PHP";
-    byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + row.amount);
-  }
-
-  return Array.from(byCurrency.entries())
-    .map(([currency, amount]) => ({ currency, amount }))
-    .sort((a, b) => b.amount - a.amount);
+  return sumByCurrencyAndStatus(
+    data as { amount: number; currency: string; status: string }[]
+  );
 };
 
 /**
+ * Fold expense rows into per-currency {paid, pending} totals. Shared by the book
+ * and monthly totals. Any status other than 'pending' counts as paid (so legacy
+ * rows without a status still land in the paid bucket).
+ */
+function sumByCurrencyAndStatus(
+  rows: { amount: number; currency: string; status?: string }[]
+): PersonalBookTotal[] {
+  const byCurrency = new Map<string, { paid: number; pending: number }>();
+  for (const row of rows) {
+    const currency = row.currency || "PHP";
+    const entry = byCurrency.get(currency) ?? { paid: 0, pending: 0 };
+    if (row.status === "pending") entry.pending += row.amount;
+    else entry.paid += row.amount;
+    byCurrency.set(currency, entry);
+  }
+
+  return Array.from(byCurrency.entries())
+    .map(([currency, v]) => ({ currency, paid: v.paid, pending: v.pending }))
+    .sort((a, b) => b.paid + b.pending - (a.paid + a.pending));
+}
+
+/**
  * This calendar month's personal spending across ALL of the user's books,
- * broken down per currency (never converted). Drives the Overview "Personal
- * spending · This month" card. Summed client-side.
+ * broken down per currency (never converted) and per status (paid vs pending).
+ * Drives the Overview "Personal spending · This month" card. Summed client-side.
  */
 export const getPersonalMonthlyTotals = async (
   userId: string
-): Promise<{ currency: string; amount: number }[]> => {
+): Promise<PersonalBookTotal[]> => {
   try {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const { data, error } = await supabase
       .from(tables.PERSONAL_EXPENSES_TBL)
-      .select("amount, currency")
+      .select("amount, currency, status")
       .eq("user_id", userId)
       .gte("expense_date", startOfMonth.toISOString());
 
     if (error) throw error;
 
-    const byCurrency = new Map<string, number>();
-    for (const row of data as { amount: number; currency: string }[]) {
-      const currency = row.currency || "PHP";
-      byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + row.amount);
-    }
-
-    const totals = Array.from(byCurrency.entries())
-      .map(([currency, amount]) => ({ currency, amount }))
-      .sort((a, b) => b.amount - a.amount);
+    const totals = sumByCurrencyAndStatus(
+      data as { amount: number; currency: string; status: string }[]
+    );
 
     // Snapshot so the Overview card shows the last value offline.
     cacheService.savePersonalMonthly(userId, totals).catch(() => {});
@@ -305,7 +351,7 @@ export const getPersonalMonthlyTotals = async (
     return totals;
   } catch (error) {
     const cached = await cacheService.getPersonalMonthly(userId);
-    if (cached) return cached as { currency: string; amount: number }[];
+    if (cached) return cached as PersonalBookTotal[];
     throw error;
   }
 };

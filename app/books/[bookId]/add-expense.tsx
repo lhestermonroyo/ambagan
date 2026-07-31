@@ -32,6 +32,7 @@ import { VStack } from "@/components/ui/vstack";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import UploadImage from "@/components/UploadImage";
 import BookPickerSheet from "@/features/book/components/BookPickerSheet";
+import PersonalExpenseStatusSheet from "@/features/book/components/PersonalExpenseStatusSheet";
 import CategorySheet, {
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
@@ -41,7 +42,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
-import { Book } from "@/types/books";
+import { Book, PersonalExpenseStatus } from "@/types/books";
 import { ExpenseCategory, RecurrenceConfig } from "@/types/expenses";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
@@ -148,6 +149,9 @@ export default function AddPersonalExpenseScreen() {
   const [expenseDate, setExpenseDate] = useState(
     seed?.expenseDate ?? new Date()
   );
+  // Paid by default — most logged expenses are already spent; the user flips to
+  // Pending for an upcoming/unpaid bill. In edit mode it's hydrated below.
+  const [status, setStatus] = useState<PersonalExpenseStatus>("paid");
   const [proofOfPayment, setProofOfPayment] =
     useState<ImagePickerSuccessResult | null>(seed?.proofOfPayment ?? null);
   const [existingProofUrl, setExistingProofUrl] = useState<string | null>(null);
@@ -156,12 +160,14 @@ export default function AddPersonalExpenseScreen() {
   const [original, setOriginal] = useState<{
     amount: number;
     currency: string;
+    status: PersonalExpenseStatus;
   } | null>(null);
 
   const [amountError, setAmountError] = useState("");
   const [descriptionError, setDescriptionError] = useState("");
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [dateSheetOpen, setDateSheetOpen] = useState(false);
+  const [statusSheetOpen, setStatusSheetOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [upgradeDescription, setUpgradeDescription] = useState<
     string | undefined
@@ -246,9 +252,14 @@ export default function AddPersonalExpenseScreen() {
           setCategory(expense.category);
           setExpenseDate(new Date(expense.expense_date));
           setExistingProofUrl(expense.proof_of_payment);
+          setStatus(expense.status);
           // An edited expense keeps its own currency if it differs from the book.
           setCurrency(expense.currency);
-          setOriginal({ amount: expense.amount, currency: expense.currency });
+          setOriginal({
+            amount: expense.amount,
+            currency: expense.currency,
+            status: expense.status
+          });
         }
       } catch {
         toast({
@@ -397,7 +408,8 @@ export default function AddPersonalExpenseScreen() {
           description: trimmedDescription,
           category,
           currency,
-          expenseDate: expenseDate.toISOString()
+          expenseDate: expenseDate.toISOString(),
+          status
         });
         await offlineQueue.queueUpdatePersonalExpense(
           bookId,
@@ -409,11 +421,13 @@ export default function AddPersonalExpenseScreen() {
             currency,
             expense_date: expenseDate.toISOString(),
             proof_of_payment: null,
-            existing_proof_url: existingProofUrl
+            existing_proof_url: existingProofUrl,
+            status
           },
           optimistic,
           original?.amount ?? parsedAmount,
           original?.currency ?? currency,
+          original?.status ?? status,
           proofUpload
         );
       } else {
@@ -426,7 +440,8 @@ export default function AddPersonalExpenseScreen() {
           description: trimmedDescription,
           category,
           currency,
-          expenseDate: expenseDate.toISOString()
+          expenseDate: expenseDate.toISOString(),
+          status
         });
         await offlineQueue.queueAddPersonalExpense(
           bookId,
@@ -438,7 +453,8 @@ export default function AddPersonalExpenseScreen() {
             category,
             currency,
             expense_date: expenseDate.toISOString(),
-            proof_of_payment: null
+            proof_of_payment: null,
+            status
           },
           optimistic,
           proofUpload
@@ -463,7 +479,8 @@ export default function AddPersonalExpenseScreen() {
           currency,
           expense_date: expenseDate,
           proof_of_payment: proofOfPayment,
-          existing_proof_url: existingProofUrl
+          existing_proof_url: existingProofUrl,
+          status
         });
         toast({
           title: "Expense updated",
@@ -479,7 +496,8 @@ export default function AddPersonalExpenseScreen() {
           category,
           currency,
           expense_date: expenseDate,
-          proof_of_payment: proofOfPayment
+          proof_of_payment: proofOfPayment,
+          status
         });
         toast({
           title: "Expense added",
@@ -512,7 +530,8 @@ export default function AddPersonalExpenseScreen() {
           selectedBook.id,
           expenseId,
           original?.amount ?? 0,
-          original?.currency ?? currency
+          original?.currency ?? currency,
+          original?.status ?? status
         );
         toast({
           title: "Deleted offline",
@@ -711,6 +730,29 @@ export default function AddPersonalExpenseScreen() {
               </FormControl>
             </HStack>
 
+            {/* Status — paid vs an upcoming/unpaid bill. Hidden while a
+                recurrence is set: a series has no single status, and each
+                materialized occurrence starts Paid. */}
+            {!recurrence && (
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>Status</FormControlLabelText>
+                </FormControlLabel>
+                <SelectField
+                  onPress={() => setStatusSheetOpen(true)}
+                  leading={
+                    <Icon
+                      as={status === "paid" ? "check-circle" : "schedule"}
+                      className="text-secondary-950"
+                      size={22}
+                    />
+                  }
+                >
+                  <Text className="text-lg capitalize">{status}</Text>
+                </SelectField>
+              </FormControl>
+            )}
+
             {/* Repeat — Pro-only, ADD mode only. A recurrence turns this into a
                 server-side series (the same cron that posts group recurring
                 expenses materializes it). Not offered in edit mode: an already
@@ -827,6 +869,13 @@ export default function AddPersonalExpenseScreen() {
         onClose={() => setDateSheetOpen(false)}
         value={expenseDate}
         onChange={setExpenseDate}
+      />
+
+      <PersonalExpenseStatusSheet
+        isOpen={statusSheetOpen}
+        onClose={() => setStatusSheetOpen(false)}
+        status={status}
+        onSelect={setStatus}
       />
 
       <RecurrenceSheet
