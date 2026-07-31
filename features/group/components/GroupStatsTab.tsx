@@ -38,9 +38,15 @@ export default function GroupStatsTab({
   groupName: string;
   userId: string;
 }) {
-  const { expenseList, settlementList } = states.group();
+  const { expenseList, settlementList, details: groupDetails } = states.group();
   const { defaultCurrency, details: userDetails } = states.user();
   const isPro = userDetails?.plan === "pro";
+
+  // The group's own home currency is the one every card leads with (a JPY trip
+  // group must scope its stats to JPY, not the user's PHP default — else the
+  // primary-currency cards would come up empty). Falls back to the user default
+  // for legacy rows / until the detail loads.
+  const primaryCurrency = groupDetails?.currency ?? defaultCurrency;
   const toast = useAppToast();
   const colorScheme = useColorScheme() ?? "light";
 
@@ -114,12 +120,12 @@ export default function GroupStatsTab({
   // primary-currency total.
   const primaryStats = useMemo(() => {
     const inCurrency = filteredExpenses.filter(
-      (e) => e.currency === defaultCurrency,
+      (e) => e.currency === primaryCurrency,
     );
     const count = inCurrency.length;
     const total = inCurrency.reduce((sum, e) => sum + e.amount, 0);
     return { count, average: count > 0 ? total / count : 0 };
-  }, [filteredExpenses, defaultCurrency]);
+  }, [filteredExpenses, primaryCurrency]);
 
   // Biggest expenses in range. Scoped to the primary currency too — ranking a
   // ¥5,000 expense above a ₱4,000 one by raw amount would be misleading. Drafts
@@ -127,10 +133,10 @@ export default function GroupStatsTab({
   const topExpenses = useMemo(
     () =>
       filteredExpenses
-        .filter((e) => !e.is_draft && e.currency === defaultCurrency)
+        .filter((e) => !e.is_draft && e.currency === primaryCurrency)
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5),
-    [filteredExpenses, defaultCurrency],
+    [filteredExpenses, primaryCurrency],
   );
 
   // Spending grouped by category (primary currency, drafts excluded), largest
@@ -140,7 +146,7 @@ export default function GroupStatsTab({
     const byCategory = new Map<string, number>();
     let total = 0;
     filteredExpenses
-      .filter((e) => !e.is_draft && e.currency === defaultCurrency)
+      .filter((e) => !e.is_draft && e.currency === primaryCurrency)
       .forEach((e) => {
         const key = e.category || "other";
         byCategory.set(key, (byCategory.get(key) ?? 0) + e.amount);
@@ -154,7 +160,7 @@ export default function GroupStatsTab({
         pct: total > 0 ? (amount / total) * 100 : 0,
       }))
       .sort((a, b) => b.amount - a.amount);
-  }, [filteredExpenses, defaultCurrency]);
+  }, [filteredExpenses, primaryCurrency]);
 
   const handleExport = async () => {
     if (!isPro) {
@@ -251,7 +257,7 @@ export default function GroupStatsTab({
               splits={splits}
               loading={splitsLoading}
               userId={userId}
-              primaryCurrency={defaultCurrency}
+              primaryCurrency={primaryCurrency}
             />
           )}
 
@@ -262,7 +268,7 @@ export default function GroupStatsTab({
                 <VStack className="gap-y-4">
                   <SpendingHero
                     items={totalSpendingsByCurrency}
-                    primaryCurrency={defaultCurrency}
+                    primaryCurrency={primaryCurrency}
                   />
                   <Divider />
                   <HStack className="items-stretch">
@@ -280,7 +286,7 @@ export default function GroupStatsTab({
                         Avg / Expense
                       </Text>
                       <Text bold className="text-lg">
-                        {formatAmount(primaryStats.average, defaultCurrency)}
+                        {formatAmount(primaryStats.average, primaryCurrency)}
                       </Text>
                     </VStack>
                   </HStack>
@@ -293,7 +299,7 @@ export default function GroupStatsTab({
                 splits={splits}
                 loading={splitsLoading}
                 userId={userId}
-                primaryCurrency={defaultCurrency}
+                primaryCurrency={primaryCurrency}
               />
 
               {/* Top Expenses */}
@@ -387,7 +393,7 @@ export default function GroupStatsTab({
                               {row.pct.toFixed(0)}%
                             </Text>
                             <Text className="text-lg font-medium">
-                              {formatAmount(row.amount, defaultCurrency)}
+                              {formatAmount(row.amount, primaryCurrency)}
                             </Text>
                           </HStack>
                           <Box className="h-1.5 rounded-full bg-secondary-200 overflow-hidden">

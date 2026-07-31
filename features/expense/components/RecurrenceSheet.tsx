@@ -1,3 +1,4 @@
+import AppDatePicker from "@/components/AppDatePicker";
 import AppSheet from "@/components/AppSheet";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
@@ -19,9 +20,8 @@ import {
   RecurrenceEndType,
   RecurrenceFrequency
 } from "@/types/expenses";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { CalendarDays } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -113,8 +113,6 @@ export default function RecurrenceSheet({
         draft.end_type === RecurrenceEndType.AFTER_COUNT ? parsedCount : null
     });
   };
-
-  const primary = getPrimaryHex("text-primary-400", colorScheme);
 
   return (
     <AppSheet
@@ -318,33 +316,30 @@ export default function RecurrenceSheet({
           }}
         />
         <Box className="absolute bottom-0 left-0 right-0 bg-background-0 rounded-t-3xl">
-          <VStack className="w-full items-center pb-4">
+          <VStack className="w-full items-center">
             <VStack className="self-start px-4 pt-4">
               <Text bold className="text-xl">
                 {endPickerOpen ? "Select End Date" : "Select Start Date"}
               </Text>
             </VStack>
-            <DateTimePicker
-              value={
-                endPickerOpen
-                  ? (draft.end_date ?? draft.start_date)
-                  : draft.start_date
-              }
-              mode="date"
-              display="inline"
-              themeVariant={colorScheme}
-              accentColor={primary}
-              onChange={(_, date) => {
-                const wasEnd = endPickerOpen;
-                closePickers();
-                if (date)
+            <VStack>
+              <AppDatePicker
+                value={
+                  endPickerOpen
+                    ? (draft.end_date ?? draft.start_date)
+                    : draft.start_date
+                }
+                onChange={(date) => {
+                  const wasEnd = endPickerOpen;
+                  closePickers();
                   setDraft((d) =>
                     wasEnd
                       ? { ...d, end_date: date }
                       : { ...d, start_date: date }
                   );
-              }}
-            />
+                }}
+              />
+            </VStack>
           </VStack>
         </Box>
       </Modal>

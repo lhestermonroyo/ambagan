@@ -3,17 +3,11 @@ import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
 import CurrencySelection from "@/components/CurrencySelection";
 import DailyLimitBadge from "@/components/DailyLimitBadge";
+import DatePickerModal from "@/components/DatePickerModal";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
 import SelectField from "@/components/SelectField";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -41,17 +35,18 @@ import BookPickerSheet from "@/features/book/components/BookPickerSheet";
 import CategorySheet, {
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
+import RecurrenceSheet from "@/features/expense/components/RecurrenceSheet";
+import { recurrenceSummary } from "@/features/expense/utils/recurrence.util";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
 import { Book } from "@/types/books";
-import { ExpenseCategory } from "@/types/expenses";
+import { ExpenseCategory, RecurrenceConfig } from "@/types/expenses";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -173,6 +168,9 @@ export default function AddPersonalExpenseScreen() {
   >();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [recurrenceSheetOpen, setRecurrenceSheetOpen] = useState(false);
+  // null = one-off expense (the default); set = a recurring series.
+  const [recurrence, setRecurrence] = useState<RecurrenceConfig | null>(null);
 
   // Resolve which book we're adding to. Locked → fetch the routed book. Unlocked
   // (from Home / Scan) → default to the most recent book, fetching the list once
@@ -298,8 +296,72 @@ export default function AddPersonalExpenseScreen() {
     setSelectedBook(next);
   };
 
+  // Repeat row: Pro-only. Free users get the upgrade sheet instead of the
+  // recurrence picker (mirrors the currency-lock pattern above and the group
+  // Add Expense flow).
+  const handleOpenRecurrence = () => {
+    if (!isPro) {
+      setUpgradeDescription(
+        "Recurring expenses are a Pro feature. Upgrade to auto-post monthly rent, subscriptions, and other regular bills on a schedule."
+      );
+      setUpgradeOpen(true);
+      return;
+    }
+    setRecurrenceSheetOpen(true);
+  };
+
+  // A recurring series is a server-side template (materialized by the same cron
+  // that posts group recurring expenses), so it's online-only — queuing a
+  // template could race a server run.
+  const handleSubmitRecurring = async () => {
+    if (!validate() || !userDetails?.id || !selectedBook || !recurrence) return;
+
+    if (!(await offlineQueue.isOnline())) {
+      toast({
+        title: "You're offline",
+        description:
+          "Recurring expenses need a connection. Reconnect to set one up.",
+        type: "info"
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await services.bookRecurring.savePersonalRecurring({
+        book_id: selectedBook.id,
+        amount: parseFloat(amount),
+        description: description.trim(),
+        category,
+        currency,
+        recurrence
+      });
+      toast({
+        title: "Recurring Expense Set",
+        description: `${recurrenceSummary(recurrence)} — we'll post it for you.`,
+        type: "success"
+      });
+      router.back();
+    } catch (error) {
+      console.error("Failed to save personal recurring expense:", error);
+      toast({
+        title: "Couldn't set up",
+        description: "Could not set up the recurring expense. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validate() || !userDetails?.id || !selectedBook) return;
+
+    // A recurrence turns this into a server-side series, not a one-off insert.
+    if (recurrence) {
+      await handleSubmitRecurring();
+      return;
+    }
 
     const bookId = selectedBook.id;
     const parsedAmount = parseFloat(amount);
@@ -556,7 +618,7 @@ export default function AddPersonalExpenseScreen() {
           <FormButton
             key="save"
             className="flex-1"
-            text={isEdit ? "Save" : "Add Expense"}
+            text={isEdit ? "Save" : recurrence ? "Save Recurring" : "Add Expense"}
             loading={submitting}
             disabled={loading}
             onPress={handleSubmit}
@@ -649,12 +711,51 @@ export default function AddPersonalExpenseScreen() {
               </FormControl>
             </HStack>
 
-            {!isEdit && selectedBook && (
+            {/* Repeat — Pro-only, ADD mode only. A recurrence turns this into a
+                server-side series (the same cron that posts group recurring
+                expenses materializes it). Not offered in edit mode: an already
+                posted occurrence is an independent one-off. */}
+            {!isEdit && (
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>Repeat</FormControlLabelText>
+                </FormControlLabel>
+                <SelectField
+                  onPress={handleOpenRecurrence}
+                  leading={
+                    <Icon
+                      as="event-repeat"
+                      className="text-secondary-950"
+                      size={22}
+                    />
+                  }
+                >
+                  <Text className="text-lg">
+                    {recurrence
+                      ? recurrenceSummary(recurrence)
+                      : isPro
+                        ? "One-time"
+                        : "One-time - Pro"}
+                  </Text>
+                </SelectField>
+                {recurrence && (
+                  <Text className="text-sm text-secondary-950 mt-1">
+                    This creates a recurring series — the first expense posts
+                    now, the rest post automatically.
+                  </Text>
+                )}
+              </FormControl>
+            )}
+
+            {/* Book — read-only whenever the book is fixed (added from a book
+                screen, or editing an existing expense); changeable only on the
+                unlocked entry from Home / Scan. */}
+            {selectedBook && (
               <FormControl size="md">
                 <FormControlLabel>
                   <FormControlLabelText>Book</FormControlLabelText>
                 </FormControlLabel>
-                {isLocked ? (
+                {isLocked || isEdit ? (
                   <Box className="p-4 border border-background-200 rounded-lg">
                     <HStack className="items-center gap-x-3">
                       <AppAvatar
@@ -721,40 +822,22 @@ export default function AddPersonalExpenseScreen() {
         onSelect={setCategory}
       />
 
-      <Actionsheet
+      <DatePickerModal
         isOpen={dateSheetOpen}
         onClose={() => setDateSheetOpen(false)}
-      >
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full gap-y-2 items-center">
-            <VStack className="self-start px-4 pt-4">
-              <Text bold className="text-xl">
-                Select Expense Date
-              </Text>
-            </VStack>
-            <VStack className="pb-4">
-              <DateTimePicker
-                value={expenseDate}
-                mode="date"
-                display="inline"
-                themeVariant={colorScheme}
-                accentColor={getPrimaryHex("text-primary-400", colorScheme)}
-                onNeutralButtonPress={() => setDateSheetOpen(false)}
-                onChange={(_, date) => {
-                  if (date) {
-                    setExpenseDate(date);
-                    setDateSheetOpen(false);
-                  }
-                }}
-              />
-            </VStack>
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
+        value={expenseDate}
+        onChange={setExpenseDate}
+      />
+
+      <RecurrenceSheet
+        isOpen={recurrenceSheetOpen}
+        value={recurrence}
+        onClose={() => setRecurrenceSheetOpen(false)}
+        onDone={(value) => {
+          setRecurrence(value);
+          setRecurrenceSheetOpen(false);
+        }}
+      />
 
       <UpgradeSheet
         isOpen={upgradeOpen}

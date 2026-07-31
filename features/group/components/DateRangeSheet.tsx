@@ -1,3 +1,4 @@
+import DatePickerModal from "@/components/DatePickerModal";
 import FormButton from "@/components/FormButton";
 import SelectField from "@/components/SelectField";
 import {
@@ -26,11 +27,10 @@ import {
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { CalendarDays, ChevronLeft, CircleIcon } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Modal, useColorScheme } from "react-native";
+import { useColorScheme } from "react-native";
 
 export const dateRangeOptions = [
   "All",
@@ -324,55 +324,24 @@ export default function DateRangeSheet({
           )}
         </VStack>
 
-        {/* The inline calendar lives in a Modal so it overlays the sheet
-            instead of laying out inside it. */}
-        <Modal
-          visible={picker !== null}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setPicker(null)}
-        >
-          <Pressable
-            onPress={() => setPicker(null)}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.5)"
-            }}
-          />
-          <Box className="absolute bottom-0 left-0 right-0 bg-background-0 rounded-t-3xl">
-            <VStack className="w-full items-center pb-4">
-              <VStack className="self-start px-4 pt-4">
-                <Text bold className="text-xl">
-                  {picker === "end" ? "Select End Date" : "Select Start Date"}
-                </Text>
-              </VStack>
-              <DateTimePicker
-                value={picker === "end" ? draftEnd : draftStart}
-                mode="date"
-                display="inline"
-                themeVariant={colorScheme}
-                accentColor={getPrimaryHex("text-primary-400", colorScheme)}
-                onChange={(_, date) => {
-                  const wasEnd = picker === "end";
-                  setPicker(null);
-                  if (!date) return;
-                  if (wasEnd) {
-                    setDraftEnd(date);
-                  } else {
-                    setDraftStart(date);
-                    // Keep the window valid — drag the end along when the new
-                    // start passes it.
-                    setDraftEnd((prev) => (prev < date ? date : prev));
-                  }
-                }}
-              />
-            </VStack>
-          </Box>
-        </Modal>
+        {/* The inline calendar lives in a centered modal so it overlays the
+            sheet instead of laying out inside it. */}
+        <DatePickerModal
+          isOpen={picker !== null}
+          onClose={() => setPicker(null)}
+          title={picker === "end" ? "Select End Date" : "Select Start Date"}
+          value={picker === "end" ? draftEnd : draftStart}
+          onChange={(date) => {
+            if (picker === "end") {
+              setDraftEnd(date);
+            } else {
+              setDraftStart(date);
+              // Keep the window valid — drag the end along when the new start
+              // passes it.
+              setDraftEnd((prev) => (prev < date ? date : prev));
+            }
+          }}
+        />
       </ActionsheetContent>
     </Actionsheet>
   );

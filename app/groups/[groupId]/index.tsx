@@ -129,6 +129,11 @@ export default function GroupDetailsScreen() {
   } = states.group();
   const { details: userDetails, defaultCurrency } = states.user();
 
+  // This group's own home currency drives which balance line surfaces first (a
+  // JPY trip group shows JPY first). Falls back to the user default until the
+  // group detail loads / for legacy rows.
+  const primaryCurrency = groupDetails?.currency ?? defaultCurrency;
+
   // A split needs at least two people, so expenses are gated until the group
   // has a second member (joined via invite, or added as a phone contact).
   const canAddExpense = memberList.length >= 2;
@@ -175,36 +180,36 @@ export default function GroupDetailsScreen() {
 
   const primaryCompactNet = useMemo(() => {
     const sorted = [...compactNetBalance].sort((a, b) =>
-      a.currency === defaultCurrency
+      a.currency === primaryCurrency
         ? -1
-        : b.currency === defaultCurrency
+        : b.currency === primaryCurrency
           ? 1
           : 0
     );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [compactNetBalance, defaultCurrency]);
+    return sorted[0] ?? { currency: primaryCurrency, amount: 0 };
+  }, [compactNetBalance, primaryCurrency]);
 
   const primaryCompactCollect = useMemo(() => {
     const sorted = [...compactToCollect].sort((a, b) =>
-      a.currency === defaultCurrency
+      a.currency === primaryCurrency
         ? -1
-        : b.currency === defaultCurrency
+        : b.currency === primaryCurrency
           ? 1
           : 0
     );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [compactToCollect, defaultCurrency]);
+    return sorted[0] ?? { currency: primaryCurrency, amount: 0 };
+  }, [compactToCollect, primaryCurrency]);
 
   const primaryCompactPay = useMemo(() => {
     const sorted = [...compactToPay].sort((a, b) =>
-      a.currency === defaultCurrency
+      a.currency === primaryCurrency
         ? -1
-        : b.currency === defaultCurrency
+        : b.currency === primaryCurrency
           ? 1
           : 0
     );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [compactToPay, defaultCurrency]);
+    return sorted[0] ?? { currency: primaryCurrency, amount: 0 };
+  }, [compactToPay, primaryCurrency]);
 
   const COMPACT_THRESHOLD = 280;
   const compactOpacity = scrollY.interpolate({

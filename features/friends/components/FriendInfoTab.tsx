@@ -64,15 +64,15 @@ export default function FriendInfoTab({
         />
         <RowDivider />
         <DetailRow
+          label="Member since"
+          value={loading ? "…" : profile ? formatDate(profile.created_at) : "—"}
+        />
+        <RowDivider />
+        <DetailRow
           label="Account"
           value={
             loading ? "…" : isPlaceholder ? "Contact (no account)" : "Active"
           }
-        />
-        <RowDivider />
-        <DetailRow
-          label="Member since"
-          value={loading ? "…" : profile ? formatDate(profile.created_at) : "—"}
         />
       </Box>
 

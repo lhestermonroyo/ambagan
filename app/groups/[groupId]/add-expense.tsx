@@ -3,6 +3,7 @@ import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
 import CurrencySelection from "@/components/CurrencySelection";
+import DatePickerModal from "@/components/DatePickerModal";
 import DailyLimitBadge from "@/components/DailyLimitBadge";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
@@ -12,13 +13,6 @@ import {
   GroupCardSkeleton,
   PayerFieldSkeleton
 } from "@/components/SkeletonLoader";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -61,7 +55,6 @@ import { currencies, DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import {
@@ -148,6 +141,9 @@ export default function AddExpenseScreen() {
       amount: draft?.amount ?? "",
       description: draft?.description ?? "",
       currency: scannedCurrency ?? (isPro ? defaultCurrency : "PHP"),
+      // Kept so the group-currency sync below can tell an explicit scanned
+      // currency (which wins) apart from the plain default.
+      scannedCurrency,
       expenseDate:
         scannedDate && !isNaN(scannedDate.getTime()) ? scannedDate : new Date(),
       proofOfPayment: (draft?.proof_of_payment ??
@@ -278,6 +274,22 @@ export default function AddExpenseScreen() {
     // the group id so a re-fetch fires when the selected group changes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (selectedGroup) fetchMembers(selectedGroup.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGroup?.id]);
+
+  // Default the currency to the resolved group's own currency (a Pro "Japan
+  // Trip" group is JPY-first). A scanned currency always wins; free groups are
+  // "PHP" so this is a no-op for them. Fires when the selected group changes,
+  // mirroring the book add-expense flow.
+  useEffect(() => {
+    if (seed.scannedCurrency) return;
+    // A group cached before group-currency shipped has no `currency` — fall back
+    // to the plain default so we never set `undefined`.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (selectedGroup)
+      setCurrency(
+        selectedGroup.currency ?? (isPro ? defaultCurrency : "PHP")
+      );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGroup?.id]);
 
@@ -1391,38 +1403,12 @@ export default function AddExpenseScreen() {
         description={upgradeDescription}
       />
 
-      <Actionsheet isOpen={dateSheetOpen} onClose={closeDateSheet}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full gap-y-2 items-center">
-            <VStack className="self-start px-4 pt-4">
-              <Text bold className="text-xl">
-                Select Expense Date
-              </Text>
-            </VStack>
-            <VStack className="pb-4">
-              <DateTimePicker
-                value={expenseDate}
-                mode="date"
-                display="inline"
-                themeVariant={colorScheme}
-                accentColor={getPrimaryHex("text-primary-400", colorScheme)}
-                onNeutralButtonPress={closeDateSheet}
-                onChange={(_, date) => {
-                  if (date) {
-                    setExpenseDate(date);
-                    closeDateSheet();
-                  }
-                }}
-              />
-            </VStack>
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
+      <DatePickerModal
+        isOpen={dateSheetOpen}
+        onClose={closeDateSheet}
+        value={expenseDate}
+        onChange={setExpenseDate}
+      />
     </>
   );
 }
-

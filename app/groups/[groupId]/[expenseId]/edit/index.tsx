@@ -3,18 +3,12 @@ import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
 import CurrencySelection from "@/components/CurrencySelection";
+import DatePickerModal from "@/components/DatePickerModal";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SelectField from "@/components/SelectField";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -51,7 +45,6 @@ import { cacheService } from "@/utils/cacheService";
 import { splitTypes } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -817,37 +810,12 @@ export default function EditExpenseScreen() {
         description={upgradeDescription}
       />
 
-      <Actionsheet isOpen={dateSheetOpen} onClose={closeDateSheet}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full gap-y-2 items-center">
-            <VStack className="self-start px-4 pt-4">
-              <Text bold className="text-xl">
-                Select Expense Date
-              </Text>
-            </VStack>
-            <VStack className="pb-4">
-              <DateTimePicker
-                value={expenseDate}
-                mode="date"
-                display="inline"
-                themeVariant={colorScheme}
-                accentColor={getPrimaryHex("text-primary-400", colorScheme)}
-                onNeutralButtonPress={closeDateSheet}
-                onChange={(_, date) => {
-                  if (date) {
-                    setExpenseDate(date);
-                    closeDateSheet();
-                  }
-                }}
-              />
-            </VStack>
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
+      <DatePickerModal
+        isOpen={dateSheetOpen}
+        onClose={closeDateSheet}
+        value={expenseDate}
+        onChange={setExpenseDate}
+      />
     </>
   );
 }

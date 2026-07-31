@@ -2,10 +2,16 @@
 //
 // Materializes due recurring expenses. Invoked on a schedule by pg_cron (see
 // migrations/2026-07-21_recurring_expenses.sql). For every active template whose
-// next_run_at has passed, it generates a real expense (+ payers + member splits
-// + payment splits + notifications), reconciling against the group's *current*
-// membership, then advances the template's schedule. Runs entirely as the
-// service role, so it bypasses RLS.
+// next_run_at has passed, it generates a real expense, then advances the
+// template's schedule. Runs entirely as the service role, so it bypasses RLS.
+//
+// It processes TWO kinds of template in one invocation:
+//   * recurring_expenses_tbl (group)    → expenses_tbl (+ payers + member splits
+//     + payment splits + notifications), reconciled against the group's *current*
+//     membership.
+//   * personal_recurring_tbl (book, Pro) → personal_expenses_tbl. Much simpler:
+//     a personal expense has no payers/splits/settlements, so it's a single
+//     insert per period with no membership reconciliation or notifications.
 //
 // Deploy:   supabase functions deploy run-recurring
 // Secrets:  SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (injected by Supabase),
@@ -359,6 +365,103 @@ async function generateOccurrence(
   return "created";
 }
 
+// --- personal occurrence generation ----------------------------------------
+// A personal expense has no payers/splits/settlements, so a period is a single
+// insert into personal_expenses_tbl. The (recurring_id, expense_date) unique
+// index backstops double-posting exactly like the group path.
+async function generatePersonalOccurrence(
+  admin: SupabaseClient,
+  t: any,
+  runAt: Date
+): Promise<GenResult> {
+  const { error } = await admin.from("personal_expenses_tbl").insert({
+    id: crypto.randomUUID(),
+    book_id: t.book_id,
+    user_id: t.user_id,
+    amount: Number(t.amount),
+    description: t.description,
+    category: t.category || "general",
+    currency: t.currency,
+    expense_date: runAt.toISOString(),
+    recurring_id: t.id
+  });
+  if (error) return isUniqueViolation(error) ? "duplicate" : Promise.reject(error);
+  return "created";
+}
+
+// Active-Pro check (mirrors is_user_pro / the group loop's guard). Lapsed
+// creators are skipped, not deleted, so a series resumes once Pro is active
+// again.
+async function isCreatorPro(
+  admin: SupabaseClient,
+  userId: string,
+  now: Date
+): Promise<boolean> {
+  const { data: user } = await admin
+    .from("users_tbl")
+    .select("plan, plan_expires_at")
+    .eq("id", userId)
+    .maybeSingle();
+  return (
+    user?.plan === "pro" &&
+    (!user.plan_expires_at || new Date(user.plan_expires_at) > now)
+  );
+}
+
+// Advance a due personal template through every period it owes, generating an
+// occurrence per period, and persist its new schedule state. Returns how many
+// occurrences were created for the run tally.
+async function processPersonalTemplate(
+  admin: SupabaseClient,
+  t: any,
+  now: Date
+): Promise<number> {
+  let created = 0;
+  let runAt = new Date(t.next_run_at);
+  let count: number = t.occurrences_count;
+  let active = true;
+  let iterations = 0;
+
+  while (runAt <= now && active && iterations < MAX_CATCHUP) {
+    iterations++;
+    const result = await generatePersonalOccurrence(admin, t, runAt);
+    if (result === "created") {
+      created++;
+      count++;
+    }
+    // "duplicate" → already generated for this period; still advance.
+
+    runAt = advance(runAt, t.frequency, t.repeat_interval);
+
+    if (
+      t.end_type === "on_date" &&
+      t.end_date &&
+      startOfDay(runAt) > startOfDay(new Date(t.end_date))
+    ) {
+      active = false;
+    }
+    if (
+      t.end_type === "after_count" &&
+      t.occurrence_limit != null &&
+      count >= t.occurrence_limit
+    ) {
+      active = false;
+    }
+  }
+
+  await admin
+    .from("personal_recurring_tbl")
+    .update({
+      next_run_at: runAt.toISOString(),
+      last_run_at: now.toISOString(),
+      occurrences_count: count,
+      is_active: active
+    })
+    .eq("id", t.id);
+
+  return created;
+}
+
 export const handler = async (req: Request): Promise<Response> => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const auth = req.headers.get("Authorization");
@@ -393,16 +496,7 @@ export const handler = async (req: Request): Promise<Response> => {
     try {
       // Pro guard — skip (don't delete) templates whose creator lapsed; they
       // resume automatically once Pro is active again.
-      const { data: creator } = await admin
-        .from("users_tbl")
-        .select("plan, plan_expires_at")
-        .eq("id", t.creator_id)
-        .maybeSingle();
-      const isPro =
-        creator?.plan === "pro" &&
-        (!creator.plan_expires_at ||
-          new Date(creator.plan_expires_at) > now);
-      if (!isPro) continue;
+      if (!(await isCreatorPro(admin, t.creator_id, now))) continue;
 
       const { data: memberRows } = await admin
         .from("group_members_tbl")
@@ -462,11 +556,37 @@ export const handler = async (req: Request): Promise<Response> => {
     }
   }
 
+  // --- personal (book) recurring — Pro-only, one insert per period ----------
+  const { data: personalTemplates, error: personalErr } = await admin
+    .from("personal_recurring_tbl")
+    .select("*")
+    .eq("is_active", true)
+    .lte("next_run_at", now.toISOString());
+
+  if (personalErr) {
+    console.error("Failed to load due personal templates:", personalErr);
+  }
+
+  let personalGenerated = 0;
+
+  for (const t of personalTemplates ?? []) {
+    try {
+      // Pro guard — skip (don't delete) lapsed creators; resumes on re-subscribe.
+      if (!(await isCreatorPro(admin, t.user_id, now))) continue;
+      personalGenerated += await processPersonalTemplate(admin, t, now);
+    } catch (e) {
+      // One bad template must not stop the rest.
+      console.error(`Personal template ${t.id} failed:`, e);
+    }
+  }
+
   return new Response(
     JSON.stringify({
       processed: (templates ?? []).length,
       generated,
-      drafts
+      drafts,
+      personalProcessed: (personalTemplates ?? []).length,
+      personalGenerated
     }),
     { status: 200, headers: { "Content-Type": "application/json" } }
   );

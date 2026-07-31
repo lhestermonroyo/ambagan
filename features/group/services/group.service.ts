@@ -17,12 +17,15 @@ export const saveGroup = async ({
   name,
   avatar,
   category,
+  currency,
   admin_id,
   member_ids,
   id
 }: {
   name: string;
   category: string;
+  /** The group's home currency (free = "PHP"; Pro can pick). */
+  currency: string;
   avatar: ImagePickerSuccessResult | null;
   admin_id: string;
   member_ids: string[];
@@ -55,6 +58,7 @@ export const saveGroup = async ({
       id: groupId,
       name,
       category,
+      currency,
       avatar: avatarUrl,
       admin_id
     }
@@ -126,17 +130,19 @@ export const updateGroup = async (
   payload: {
     name: string;
     category: string;
+    currency: string;
     avatar: ImagePickerSuccessResult | null;
   }
 ) => {
-  // Offline → queue name/category (avatar uploads are blocked offline, so it
-  // stays null) + optimistic cache. Folds into a still-pending create.
+  // Offline → queue name/category/currency (avatar uploads are blocked offline,
+  // so it stays null) + optimistic cache. Folds into a still-pending create.
   if (!(await offlineQueue.isOnline())) {
     const uid = states.user.getState().details?.id;
     if (uid) {
       await offlineQueue.queueUpdateGroup(uid, groupId, {
         name: payload.name,
         category: payload.category,
+        currency: payload.currency,
         avatar: null
       });
     }
@@ -163,7 +169,7 @@ export const updateGroup = async (
     throw new Error("Only the group admin can update the group");
   }
 
-  const { name, category, avatar } = payload;
+  const { name, category, currency, avatar } = payload;
 
   let avatarUrl: string | null = null;
 
@@ -177,7 +183,8 @@ export const updateGroup = async (
 
   const updateData: Record<string, any> = {
     name,
-    category
+    category,
+    currency
   };
 
   if (avatarUrl) {
@@ -317,6 +324,7 @@ export const getGroupsByUserId = async (userId: string) => {
           created_at,
           name,
           category,
+          currency,
           avatar,
           admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
           archived,
@@ -384,7 +392,7 @@ export const getGroupsByUserIdPaginated = async (
     let query = supabase
       .from(tables.GROUPS_TBL)
       .select(
-        `id, created_at, name, category, avatar, archived,
+        `id, created_at, name, category, currency, avatar, archived,
          admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
          ${tables.GROUP_MEMBERS_TBL}!inner(member_id),
          expenses:${tables.EXPENSES_TBL}(count)`,

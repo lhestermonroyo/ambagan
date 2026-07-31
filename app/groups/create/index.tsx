@@ -1,12 +1,16 @@
 import CategoryIcon from "@/components/CategoryIcon";
+import { CurrencySelectionSheet } from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
 import SelectField from "@/components/SelectField";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import {
   FormControl,
+  FormControlHelper,
+  FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -26,32 +30,42 @@ import services from "@/services";
 import states from "@/states";
 import { GroupCategory } from "@/types/groups";
 import { UserPreview } from "@/types/user";
-import { categories } from "@/utils/constants";
+import { categories, currencies } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
 export default function CreateGroupScreen() {
+  const user = states.user();
+  const isPro = user.details?.plan === "pro";
+
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
     name: "",
     avatar: null as ImagePickerSuccessResult | null,
-    category: GroupCategory.GENERAL as string
+    category: GroupCategory.GENERAL as string,
+    // Free users are pinned to PHP; Pro users default to their preferred currency.
+    currency: isPro ? user.defaultCurrency : "PHP"
   });
   const [formErrors, setFormErrors] = useState({
     name: ""
   }) as any;
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+  const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [openSelectMembers, setOpenSelectMembers] = useState(false);
   const [tab, setTab] = useState<"members" | "admin">("members");
   const [members, setMembers] = useState<UserPreview[]>([]);
   const [admin, setAdmin] = useState<UserPreview[]>([]);
 
-  const user = states.user();
+  const currencyLabel = useMemo(
+    () => currencies.find((c) => c.value === values.currency)?.label,
+    [values.currency]
+  );
 
   const router = useRouter();
   const toast = useAppToast();
@@ -122,6 +136,7 @@ export default function CreateGroupScreen() {
         clientId,
         name: values.name,
         category: values.category,
+        currency: values.currency,
         admin: admin[0],
         members: memberPreviews
       });
@@ -131,6 +146,7 @@ export default function CreateGroupScreen() {
         {
           name: values.name,
           category: values.category,
+          currency: values.currency,
           avatar: null,
           admin_id: admin[0].id,
           member_ids: memberPreviews.map((member) => member.id)
@@ -161,6 +177,7 @@ export default function CreateGroupScreen() {
         name: values.name,
         avatar: values.avatar,
         category: values.category,
+        currency: values.currency,
         admin_id: admin[0].id,
         member_ids: resolvedMembers.concat(admin).map((member) => member.id)
       });
@@ -242,6 +259,28 @@ export default function CreateGroupScreen() {
                 </Text>
               </SelectField>
             </FormControl>
+
+            <FormControl size="md">
+              <FormControlLabel>
+                <FormControlLabelText>Currency</FormControlLabelText>
+              </FormControlLabel>
+              <SelectField
+                onPress={() =>
+                  isPro ? setCurrencySheetOpen(true) : setUpgradeOpen(true)
+                }
+              >
+                <Text className="text-lg" numberOfLines={1}>
+                  {isPro ? currencyLabel : `${currencyLabel} - Pro`}
+                </Text>
+              </SelectField>
+              <FormControlHelper>
+                <FormControlHelperText>
+                  New expenses in this group default to this currency. You can
+                  still change it per expense.
+                </FormControlHelperText>
+              </FormControlHelper>
+            </FormControl>
+
             <FormControl size="md">
               <VStack className="gap-y-2">
                 <HStack>
@@ -324,6 +363,19 @@ export default function CreateGroupScreen() {
         onClose={() => setCategorySheetOpen(false)}
         onSelect={(value) => setValues({ ...values, category: value })}
         options={categories}
+      />
+
+      <CurrencySelectionSheet
+        isOpen={currencySheetOpen}
+        currency={values.currency}
+        onClose={() => setCurrencySheetOpen(false)}
+        onCurrencyChange={(value) => setValues({ ...values, currency: value })}
+      />
+
+      <UpgradeSheet
+        isOpen={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        description="Multi-currency groups are a Pro feature. Upgrade to track a trip's spending in any currency."
       />
     </Fragment>
   );

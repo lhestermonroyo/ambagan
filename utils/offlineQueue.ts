@@ -79,6 +79,7 @@ export type UpdateExpenseArgs = {
 export type CreateGroupArgs = {
   name: string;
   category: string;
+  currency: string;
   avatar: null;
   admin_id: string;
   member_ids: string[];
@@ -92,6 +93,7 @@ export type CreateGroupArgs = {
 export type UpdateGroupArgs = {
   name: string;
   category: string;
+  currency: string;
   avatar: null;
 };
 
@@ -1071,7 +1073,7 @@ async function removeExpenseOptimistic(groupId: string, expenseId: string) {
 async function updateGroupOptimistic(
   userId: string,
   groupId: string,
-  patch: { name: string; category: string }
+  patch: { name: string; category: string; currency: string }
 ) {
   const apply = (g: any) =>
     g.id === groupId ? { ...g, ...patch, pending: true } : g;
@@ -1400,7 +1402,8 @@ export async function queueUpdateGroup(
       args: {
         ...createOp.payload.args,
         name: args.name,
-        category: args.category
+        category: args.category,
+        currency: args.currency
       }
     };
     await updateQueuePayload(createOp.id, patched);
@@ -1410,7 +1413,8 @@ export async function queueUpdateGroup(
 
   await updateGroupOptimistic(userId, groupId, {
     name: args.name,
-    category: args.category
+    category: args.category,
+    currency: args.currency
   });
 }
 
@@ -1749,6 +1753,7 @@ export function buildOptimisticGroup(params: {
   clientId: string;
   name: string;
   category: string;
+  currency: string;
   admin: UserPreview;
   members: UserPreview[];
 }): Group & { members: Member[] } {
@@ -1760,6 +1765,7 @@ export function buildOptimisticGroup(params: {
     admin: params.admin,
     name: params.name,
     category: params.category,
+    currency: params.currency,
     avatar: null,
     archived: false,
     expense_count: 0,

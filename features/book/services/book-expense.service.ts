@@ -25,6 +25,8 @@ export const savePersonalExpense = async (payload: {
   proof_of_payment: ImagePickerSuccessResult | null;
   /** Optional pre-generated id — used so offline-queued expenses keep a stable id on sync. */
   id?: string;
+  /** Set when this expense is materialized from a personal recurring series. */
+  recurring_id?: string | null;
 }) => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
@@ -58,7 +60,8 @@ export const savePersonalExpense = async (payload: {
       category: payload.category || "general",
       currency: payload.currency || "PHP",
       expense_date: (payload.expense_date ?? new Date()).toISOString(),
-      proof_of_payment: proofUrl
+      proof_of_payment: proofUrl,
+      recurring_id: payload.recurring_id ?? null
     }
   ]);
 

@@ -1,10 +1,14 @@
 import CategoryIcon from "@/components/CategoryIcon";
+import { CurrencySelectionSheet } from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SelectField from "@/components/SelectField";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import {
   FormControl,
+  FormControlHelper,
+  FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -20,24 +24,35 @@ import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
 import { GroupCategory } from "@/types/groups";
-import { categories } from "@/utils/constants";
+import { categories, currencies } from "@/utils/constants";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useMemo, useState } from "react";
 
 export default function EditGroupScreen() {
+  const { details: userDetails } = states.user();
+  const isPro = userDetails?.plan === "pro";
+
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
     name: "",
     avatar: null as ImagePickerSuccessResult | null,
-    category: GroupCategory.GENERAL as string
+    category: GroupCategory.GENERAL as string,
+    currency: "PHP"
   });
   const [formErrors, setFormErrors] = useState({
     name: ""
   }) as any;
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+  const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [defaultAvatar, setDefaultAvatar] = useState<string | null>(null);
+
+  const currencyLabel = useMemo(
+    () => currencies.find((c) => c.value === values.currency)?.label,
+    [values.currency]
+  );
 
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -70,7 +85,8 @@ export default function EditGroupScreen() {
       setValues({
         name: response.name,
         avatar: null,
-        category: response.category
+        category: response.category,
+        currency: response.currency ?? "PHP"
       });
       setDefaultAvatar(response.avatar || null);
     } catch (error) {
@@ -86,7 +102,8 @@ export default function EditGroupScreen() {
         setValues({
           name: fromState.name,
           avatar: null,
-          category: fromState.category
+          category: fromState.category,
+          currency: fromState.currency ?? "PHP"
         });
         setDefaultAvatar(fromState.avatar || null);
       } else {
@@ -106,7 +123,8 @@ export default function EditGroupScreen() {
     setValues({
       name: "",
       avatar: null,
-      category: GroupCategory.GENERAL
+      category: GroupCategory.GENERAL,
+      currency: "PHP"
     });
   };
 
@@ -127,6 +145,7 @@ export default function EditGroupScreen() {
       const response = await services.group.updateGroup(groupId, {
         name: values.name,
         category: values.category,
+        currency: values.currency,
         avatar: values.avatar
       });
 
@@ -216,6 +235,27 @@ export default function EditGroupScreen() {
                   </Text>
                 </SelectField>
               </FormControl>
+
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>Currency</FormControlLabelText>
+                </FormControlLabel>
+                <SelectField
+                  onPress={() =>
+                    isPro ? setCurrencySheetOpen(true) : setUpgradeOpen(true)
+                  }
+                >
+                  <Text className="text-lg" numberOfLines={1}>
+                    {isPro ? currencyLabel : `${currencyLabel} - Pro`}
+                  </Text>
+                </SelectField>
+                <FormControlHelper>
+                  <FormControlHelperText>
+                    New expenses in this group default to this currency. Existing
+                    expenses keep the currency they were logged in.
+                  </FormControlHelperText>
+                </FormControlHelper>
+              </FormControl>
             </VStack>
           </LoadingWrapper>
         </ScrollView>
@@ -227,6 +267,19 @@ export default function EditGroupScreen() {
         onClose={() => setCategorySheetOpen(false)}
         onSelect={(value) => setValues({ ...values, category: value })}
         options={categories}
+      />
+
+      <CurrencySelectionSheet
+        isOpen={currencySheetOpen}
+        currency={values.currency}
+        onClose={() => setCurrencySheetOpen(false)}
+        onCurrencyChange={(value) => setValues({ ...values, currency: value })}
+      />
+
+      <UpgradeSheet
+        isOpen={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        description="Multi-currency groups are a Pro feature. Upgrade to track a trip's spending in any currency."
       />
     </Fragment>
   );

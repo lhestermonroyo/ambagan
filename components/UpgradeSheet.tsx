@@ -1,5 +1,6 @@
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import ProBadge from "@/components/ProBadge";
 import {
   Actionsheet,
   ActionsheetBackdrop,
@@ -91,11 +92,7 @@ export default function UpgradeSheet({
               <Text bold className="text-2xl">
                 Upgrade to
               </Text>
-              <Box className="bg-warning-400 px-2 py-0.5 rounded-full">
-                <Text bold className="text-background-0 text-sm">
-                  PRO
-                </Text>
-              </Box>
+              <ProBadge />
             </HStack>
             <Text className="text-sm text-secondary-950">
               {description ??

@@ -20,6 +20,10 @@ export type Group = {
   name: string;
   category: string;
   avatar: string | null;
+  /** The group's home currency (e.g. a Pro "Japan Trip" group is JPY). New
+   *  expenses default to it, and the group's own totals/stats surface it first.
+   *  Free groups are always "PHP". Mirrors {@link Book.currency}. */
+  currency: string;
   archived: boolean;
   expense_count: number;
   /** Stable invite token for the share link / QR. Present on group detail

@@ -42,6 +42,40 @@ export type PersonalExpense = {
   pending?: boolean;
 };
 
+/**
+ * A personal recurring-expense *template* + schedule (Pro). The generator
+ * (run-recurring Edge Function, invoked by pg_cron) materializes a real
+ * {@link PersonalExpense} from this every time `next_run_at` passes. It mirrors
+ * the group {@link import("./expenses").RecurringExpense} but is deliberately
+ * simpler — a personal expense has no payers, splits, or settlements, so there
+ * are no `split_type`/`payers_snapshot`/`splits_snapshot` fields.
+ */
+export type PersonalRecurring = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  book_id: string;
+  user_id: string;
+  amount: number;
+  description: string;
+  /** Spending category (see ExpenseCategory). Copied onto every materialized
+   *  occurrence by the run-recurring generator. */
+  category: string;
+  currency: string;
+  frequency: string;
+  /** Repeat every N frequency units (e.g. every 2 weeks). */
+  repeat_interval: number;
+  start_date: string;
+  end_type: string;
+  end_date: string | null;
+  occurrence_limit: number | null;
+  occurrences_count: number;
+  next_run_at: string;
+  last_run_at: string | null;
+  /** False while paused — the generator skips it until resumed. */
+  is_active: boolean;
+};
+
 export type BookState = {
   list: Book[];
   /** True once the book list has been fetched at least once, so consumers can

@@ -6,6 +6,8 @@ import SelectField from "@/components/SelectField";
 import { Text } from "@/components/ui/text";
 import {
   FormControl,
+  FormControlHelper,
+  FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -238,6 +240,12 @@ export default function CreateBookScreen() {
                   {isPro ? currencyLabel : `${currencyLabel} - Pro`}
                 </Text>
               </SelectField>
+              <FormControlHelper>
+                <FormControlHelperText>
+                  New expenses in this book default to this currency. You can
+                  still change it per expense.
+                </FormControlHelperText>
+              </FormControlHelper>
             </FormControl>
           </VStack>
         </ScrollView>

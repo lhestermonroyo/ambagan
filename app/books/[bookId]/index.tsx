@@ -4,12 +4,17 @@ import AndroidHeaderMenu, {
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
+import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import ProBadge from "@/components/ProBadge";
+import SearchInput from "@/components/SearchInput";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
+import { Button } from "@/components/ui/button";
 import { Fab } from "@/components/ui/fab";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
@@ -27,7 +32,15 @@ import { VStack } from "@/components/ui/vstack";
 import BookInfoTab from "@/features/book/components/BookInfoTab";
 import BookStatsTab from "@/features/book/components/BookStatsTab";
 import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
+import CategorySheet from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import DateRangeSheet, {
+  CustomDateRange,
+  DateRangeOption,
+  formatDateRangeLabel,
+  getDateRangeBounds,
+  isWithinRange
+} from "@/features/group/components/DateRangeSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
@@ -36,6 +49,7 @@ import states from "@/states";
 import { Book, PersonalExpense } from "@/types/books";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
+import { CategoryOption, expenseCategories } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import {
@@ -47,23 +61,51 @@ import {
 import {
   Archive,
   ArchiveRestore,
+  CalendarRange,
+  ChevronDown,
+  LayoutGrid,
   ListPlus,
   Pencil,
   Plus,
   ScanLine,
+  Search,
   Trash2,
   X
 } from "lucide-react-native";
-import { Fragment, useCallback, useState } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import {
   FlatList,
+  LayoutAnimation,
   Platform,
   RefreshControl,
   Modal as RNModal,
+  UIManager,
   useColorScheme
 } from "react-native";
 
+// LayoutAnimation needs to be opted into on old-architecture Android; it's a
+// no-op elsewhere. Guards the row swap when opening/closing expense search.
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 const tabs = ["Expenses", "Stats", "Book Info"] as const;
+
+// Filter-only sentinel — no expense ever stores it, so it can share the
+// CategorySheet options list with the real categories.
+const ALL_CATEGORIES = "all";
+
+const categoryFilterOptions: CategoryOption[] = [
+  { label: "All Categories", value: ALL_CATEGORIES, icon: LayoutGrid },
+  ...expenseCategories
+];
+
+const categoryFilterLabel = (value: string) =>
+  categoryFilterOptions.find((c) => c.value === value)?.label ??
+  "All Categories";
 
 export default function BookDetailScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
@@ -71,6 +113,9 @@ export default function BookDetailScreen() {
   const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
   const colorScheme = useColorScheme() ?? "light";
+
+  const { details: userDetails } = states.user();
+  const isPro = userDetails?.plan === "pro";
 
   const [book, setBook] = useState<Book | null>(
     states.book().list.find((b) => b.id === bookId) ?? null
@@ -84,10 +129,57 @@ export default function BookDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Expenses");
+  // Drives the Expenses-tab "Recurring expenses" entry card's subtitle. The list
+  // itself lives on the standalone /recurring route; here we only need the active
+  // count. Best-effort — recurring reads aren't cached, so offline it stays 0.
+  const [activeRecurringCount, setActiveRecurringCount] = useState(0);
+
+  // Expenses tab filters, mirroring the group detail Expenses tab: a pill that
+  // opens a bottom sheet, plus search + date-range icon buttons that collapse
+  // into removable chips. Search matches the description; the range clamps on
+  // expense_date (the field the rows show and the list is ordered by). The pill
+  // filters by category — the group's payer filter has no meaning here, since a
+  // personal book only ever has one payer.
+  const [expenseSearch, setExpenseSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>(ALL_CATEGORIES);
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+  const [expenseDateRange, setExpenseDateRange] =
+    useState<DateRangeOption>("All");
+  const [expenseCustomRange, setExpenseCustomRange] =
+    useState<CustomDateRange | null>(null);
+  const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
+
+  // The list is paginated, so filtering `expenses` alone would hide matches
+  // sitting on a page that hasn't been loaded yet. The first time a filter is
+  // switched on we pull the book's whole ledger and filter that instead.
+  const [allExpenses, setAllExpenses] = useState<PersonalExpense[] | null>(
+    null
+  );
+  const fetchedAllRef = useRef(false);
+
+  const hasActiveFilters =
+    expenseSearch.trim().length > 0 ||
+    categoryFilter !== ALL_CATEGORIES ||
+    expenseDateRange !== "All";
+
+  const fetchAllExpenses = useCallback(async () => {
+    if (!bookId) return;
+    fetchedAllRef.current = true;
+    try {
+      setAllExpenses(
+        await services.bookExpense.getAllPersonalExpensesByBookId(bookId)
+      );
+    } catch (error) {
+      // Leave the paginated pages as the fallback source.
+      console.error("Failed to load all book expenses:", error);
+    }
+  }, [bookId]);
 
   const load = useCallback(
     async (isRefresh = false) => {
@@ -113,6 +205,8 @@ export default function BookDetailScreen() {
         cacheService
           .saveBookDetail(bookId, bookRes, expensesRes.data, totalsRes)
           .catch(() => {});
+        // Keep the filtered source in step with the page-1 refetch.
+        if (fetchedAllRef.current) fetchAllExpenses();
       } catch (error) {
         // Offline / fetch failure — serve the cached snapshot.
         const cached = await cacheService.getBookDetail(bookId);
@@ -133,13 +227,27 @@ export default function BookDetailScreen() {
         setLoading(false);
       }
     },
-    [bookId]
+    [bookId, fetchAllExpenses]
   );
 
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load])
+  );
+
+  // Keep the Expenses tab's recurring entry-card count fresh on focus (e.g. after
+  // creating a series from the Add Expense screen and navigating back).
+  useFocusEffect(
+    useCallback(() => {
+      if (!bookId) return;
+      services.bookRecurring
+        .getPersonalRecurringByBookId(bookId)
+        .then((list) =>
+          setActiveRecurringCount(list.filter((r) => r.is_active).length)
+        )
+        .catch(() => setActiveRecurringCount(0));
+    }, [bookId])
   );
 
   const loadMore = async () => {
@@ -163,6 +271,61 @@ export default function BookDetailScreen() {
     setRefreshing(true);
     await load(true);
     setRefreshing(false);
+  };
+
+  // Recurring expenses are Pro. Free users get the upgrade sheet; Pro users go
+  // to the manage screen. Gates every entry point (the Expenses-tab card and the
+  // ⋯ menu item) so there's no way around the paywall.
+  const handleOpenRecurring = () => {
+    if (!isPro) {
+      setUpgradeOpen(true);
+      return;
+    }
+    router.push(`/books/${bookId}/recurring`);
+  };
+
+  // Filters run over the whole ledger once it's in; until then (first fetch in
+  // flight, or it failed) fall back to the pages already loaded.
+  const filterSource = hasActiveFilters ? (allExpenses ?? expenses) : expenses;
+  const filteringWholeLedger = hasActiveFilters && !!allExpenses;
+
+  const filteredExpenses = useMemo(() => {
+    if (!hasActiveFilters) return filterSource;
+
+    const query = expenseSearch.trim().toLowerCase();
+    const { start, end } = getDateRangeBounds(
+      expenseDateRange,
+      expenseCustomRange
+    );
+
+    return filterSource.filter((item) => {
+      if (query && !item.description?.toLowerCase().includes(query)) {
+        return false;
+      }
+      if (
+        categoryFilter !== ALL_CATEGORIES &&
+        item.category !== categoryFilter
+      ) {
+        return false;
+      }
+      if (!isWithinRange(item.expense_date, start, end)) return false;
+      return true;
+    });
+  }, [
+    filterSource,
+    hasActiveFilters,
+    expenseSearch,
+    categoryFilter,
+    expenseDateRange,
+    expenseCustomRange
+  ]);
+
+  // Swap the filter row for the full-width search field (and back). The query
+  // is kept when collapsing so it persists as a chip, matching group details.
+  const toggleExpenseSearch = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSearchOpen((prev) => !prev);
+    if (!fetchedAllRef.current) fetchAllExpenses();
   };
 
   const handleArchive = async () => {
@@ -544,11 +707,169 @@ export default function BookDetailScreen() {
                   </Text>
                 </VStack>
 
+                {/* Recurring-expenses entry card — taps through to the standalone
+                    /recurring route, mirroring the group detail Expenses tab. */}
+                <Pressable
+                  className="mx-4 bg-background-50 rounded-lg p-4 data-[hover=true]:bg-background-100 data-[active=true]:bg-background-100"
+                  onPress={handleOpenRecurring}
+                >
+                  <HStack className="items-start gap-x-2">
+                    <Icon as="repeat" className="text-primary-500" />
+                    <HStack className="flex-1 items-center">
+                      <VStack className="flex-1">
+                        <HStack className="items-center gap-x-2">
+                          <Text className="text-lg" bold>
+                            Recurring expenses
+                          </Text>
+                          {!isPro && <ProBadge />}
+                        </HStack>
+                        <Text className="text-sm text-secondary-950">
+                          {activeRecurringCount > 0
+                            ? `${activeRecurringCount} active series`
+                            : "Auto-post expenses on a schedule"}
+                        </Text>
+                      </VStack>
+                      <Icon as="chevron-right" className="text-secondary-950" />
+                    </HStack>
+                  </HStack>
+                </Pressable>
+
+                {/* Search + date-range actions, mirroring the group detail
+                    Expenses tab. Open search takes over the row; the active
+                    query and range collapse into removable chips below. */}
+                <VStack className="gap-y-4">
+                  {searchOpen ? (
+                    <HStack className="px-4 items-center gap-x-2">
+                      <Box className="flex-1">
+                        <SearchInput
+                          autoFocus
+                          value={expenseSearch}
+                          onChangeText={setExpenseSearch}
+                          placeholder="Search expenses"
+                        />
+                      </Box>
+                      <FormButton
+                        size="md"
+                        variant="link"
+                        text="Cancel"
+                        onPress={toggleExpenseSearch}
+                      />
+                    </HStack>
+                  ) : (
+                    <HStack className="px-4 items-center justify-between">
+                      <FormButton
+                        size="sm"
+                        variant="outline"
+                        text={categoryFilterLabel(categoryFilter)}
+                        iconEnd={
+                          <ChevronDown
+                            size={16}
+                            color={getPrimaryHex(
+                              "text-primary-500",
+                              colorScheme
+                            )}
+                          />
+                        }
+                        onPress={() => {
+                          if (!fetchedAllRef.current) fetchAllExpenses();
+                          setCategorySheetOpen(true);
+                        }}
+                      />
+                      <HStack className="gap-x-6 items-center">
+                        <Button
+                          variant="link"
+                          className="rounded-full"
+                          onPress={toggleExpenseSearch}
+                        >
+                          <Search
+                            color={
+                              expenseSearch
+                                ? getPrimaryHex("text-primary-400", colorScheme)
+                                : getSecondaryHex(
+                                    "text-secondary-950",
+                                    colorScheme
+                                  )
+                            }
+                          />
+                        </Button>
+                        <Button
+                          variant="link"
+                          className="rounded-full"
+                          onPress={() => {
+                            if (!fetchedAllRef.current) fetchAllExpenses();
+                            setDateRangeSheetOpen(true);
+                          }}
+                        >
+                          <CalendarRange
+                            color={
+                              expenseDateRange !== "All"
+                                ? getPrimaryHex("text-primary-400", colorScheme)
+                                : getSecondaryHex(
+                                    "text-secondary-950",
+                                    colorScheme
+                                  )
+                            }
+                          />
+                        </Button>
+                      </HStack>
+                    </HStack>
+                  )}
+
+                  {(expenseDateRange !== "All" ||
+                    (!!expenseSearch && !searchOpen)) && (
+                    <HStack className="gap-x-2 px-4 flex-wrap">
+                      {!!expenseSearch && !searchOpen && (
+                        <Pressable
+                          onPress={() => setExpenseSearch("")}
+                          className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                        >
+                          <Text
+                            className="text-sm text-primary-600 max-w-[160px]"
+                            numberOfLines={1}
+                          >
+                            &ldquo;{expenseSearch}&rdquo;
+                          </Text>
+                          <X
+                            size={12}
+                            color={getPrimaryHex(
+                              "text-primary-600",
+                              colorScheme
+                            )}
+                          />
+                        </Pressable>
+                      )}
+                      {expenseDateRange !== "All" && (
+                        <Pressable
+                          onPress={() => {
+                            setExpenseDateRange("All");
+                            setExpenseCustomRange(null);
+                          }}
+                          className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                        >
+                          <Text className="text-sm text-primary-600">
+                            {formatDateRangeLabel(
+                              expenseDateRange,
+                              expenseCustomRange
+                            )}
+                          </Text>
+                          <X
+                            size={12}
+                            color={getPrimaryHex(
+                              "text-primary-600",
+                              colorScheme
+                            )}
+                          />
+                        </Pressable>
+                      )}
+                    </HStack>
+                  )}
+                </VStack>
+
                 {/* Plain list — delete lives on the expense form the row opens,
                     so the row itself has no swipe actions. */}
                 <FlatList
                   scrollEnabled={false}
-                  data={expenses}
+                  data={filteredExpenses}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
                     <PersonalExpenseItem
@@ -561,12 +882,21 @@ export default function BookDetailScreen() {
                     />
                   )}
                   ItemSeparatorComponent={ListDivider}
-                  ListEmptyComponent={() => (
-                    <EmptyList type={EmptyType.EXPENSE} />
-                  )}
+                  ListEmptyComponent={() =>
+                    hasActiveFilters ? (
+                      <EmptyList
+                        type={EmptyType.EXPENSE}
+                        content="No expenses match your filters. Try adjusting your search, category, or date range."
+                      />
+                    ) : (
+                      <EmptyList type={EmptyType.EXPENSE} />
+                    )
+                  }
                   ListFooterComponent={() => (
                     <>
-                      {hasMore && (
+                      {/* Filtering swaps in the whole ledger, so there's
+                          nothing left to page through. */}
+                      {hasMore && !filteringWholeLedger && (
                         <ListFooter
                           hasNextPage={hasMore}
                           loading={loadingMore}
@@ -587,6 +917,29 @@ export default function BookDetailScreen() {
           </ScrollView>
         </LoadingWrapper>
       </InnerLayout>
+
+      <CategorySheet
+        isOpen={categorySheetOpen}
+        onClose={() => setCategorySheetOpen(false)}
+        category={categoryFilter}
+        onSelect={setCategoryFilter}
+        options={categoryFilterOptions}
+      />
+      <UpgradeSheet
+        isOpen={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        description="Recurring expenses are a Pro feature. Upgrade to auto-post monthly rent, subscriptions, and other regular bills on a schedule."
+      />
+      <DateRangeSheet
+        isOpen={dateRangeSheetOpen}
+        onClose={() => setDateRangeSheetOpen(false)}
+        dateRange={expenseDateRange}
+        customRange={expenseCustomRange}
+        onSelect={(value, custom) => {
+          setExpenseDateRange(value);
+          setExpenseCustomRange(custom ?? null);
+        }}
+      />
 
       {/* Delete-book confirm (menu-triggered) — mirrors DeleteGroupSheet. */}
       <Modal

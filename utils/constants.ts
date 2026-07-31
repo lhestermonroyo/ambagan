@@ -45,6 +45,7 @@ export const tables = {
   // Personal-expense feature (standalone "books").
   PERSONAL_BOOKS_TBL: "personal_books_tbl",
   PERSONAL_EXPENSES_TBL: "personal_expenses_tbl",
+  PERSONAL_RECURRING_TBL: "personal_recurring_tbl",
   PERSONAL_EXPENSE_CREATION_LOG_TBL: "personal_expense_creation_log_tbl"
 };
 

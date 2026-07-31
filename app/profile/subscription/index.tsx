@@ -2,6 +2,7 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
+import ProBadge from "@/components/ProBadge";
 import RadioButton from "@/components/RadioButton";
 import { SubscriptionPlanSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
@@ -316,11 +317,7 @@ export default function SubscriptionScreen() {
                 <Text bold className="text-xl">
                   Upgrade to
                 </Text>
-                <Box className="bg-warning-400 px-2 py-0.5 rounded-full">
-                  <Text bold className="text-background-0 text-sm">
-                    PRO
-                  </Text>
-                </Box>
+                <ProBadge />
               </HStack>
               <Text className="text-sm text-secondary-950">
                 One subscription, all features — cancel anytime.
