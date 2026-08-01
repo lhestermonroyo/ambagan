@@ -1,3 +1,4 @@
+import AmountInput from "@/components/AmountInput";
 import CategoryIcon from "@/components/CategoryIcon";
 import { CurrencySelectionSheet } from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
@@ -6,11 +7,14 @@ import SelectField from "@/components/SelectField";
 import { Text } from "@/components/ui/text";
 import {
   FormControl,
+  FormControlError,
+  FormControlErrorText,
   FormControlHelper,
   FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
+import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { VStack } from "@/components/ui/vstack";
 import UpgradeSheet from "@/components/UpgradeSheet";
@@ -22,6 +26,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
+import { BookBudgetPeriod } from "@/types/books";
 import { GroupCategory } from "@/types/groups";
 import { categories, currencies } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
@@ -30,6 +35,11 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
+
+const budgetPeriods: { value: BookBudgetPeriod; label: string }[] = [
+  { value: "monthly", label: "Every month" },
+  { value: "total", label: "Never (total)" }
+];
 
 export default function CreateBookScreen() {
   const params = useLocalSearchParams();
@@ -47,9 +57,12 @@ export default function CreateBookScreen() {
     defaultAvatar: undefined as string | undefined,
     category: GroupCategory.GENERAL as string,
     // Free users are pinned to PHP; Pro users default to their preferred currency.
-    currency: isPro ? defaultCurrency : "PHP"
+    currency: isPro ? defaultCurrency : "PHP",
+    // Budget is optional and free for everyone. Empty string = no budget set.
+    budget: "",
+    budgetPeriod: "monthly" as BookBudgetPeriod
   });
-  const [formErrors, setFormErrors] = useState({ name: "" });
+  const [formErrors, setFormErrors] = useState({ name: "", budget: "" });
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -70,7 +83,9 @@ export default function CreateBookScreen() {
           name: book.name,
           defaultAvatar: book.avatar ?? undefined,
           category: book.category,
-          currency: book.currency
+          currency: book.currency,
+          budget: book.budget != null ? String(book.budget) : "",
+          budgetPeriod: book.budget_period ?? "monthly"
         }));
       })
       .catch(() => {
@@ -87,17 +102,26 @@ export default function CreateBookScreen() {
     };
   }, [bookId]);
 
-  const currencyLabel = useMemo(
-    () => currencies.find((c) => c.value === values.currency)?.label,
+  const currencyMeta = useMemo(
+    () => currencies.find((c) => c.value === values.currency),
     [values.currency]
   );
+  const currencyLabel = currencyMeta?.label;
+
+  // Blank = no budget (a valid choice). Anything typed has to be a positive
+  // number — the DB enforces the same via personal_books_budget_positive_chk.
+  const parsedBudget = values.budget.trim() ? parseFloat(values.budget) : null;
 
   const handleSubmit = async () => {
     const nextErrors = {
-      name: values.name.trim() ? "" : "Name is required"
+      name: values.name.trim() ? "" : "Name is required",
+      budget:
+        parsedBudget !== null && (isNaN(parsedBudget) || parsedBudget <= 0)
+          ? "Enter a budget greater than 0, or leave it blank"
+          : ""
     };
     setFormErrors(nextErrors);
-    if (nextErrors.name) return;
+    if (nextErrors.name || nextErrors.budget) return;
 
     if (!userDetails?.id) return;
 
@@ -110,6 +134,8 @@ export default function CreateBookScreen() {
         name: values.name,
         category: values.category,
         currency: values.currency,
+        budget: parsedBudget,
+        budgetPeriod: values.budgetPeriod,
         userId: userDetails.id
       });
       await offlineQueue.queueCreateBook(
@@ -118,6 +144,8 @@ export default function CreateBookScreen() {
           name: values.name,
           category: values.category,
           currency: values.currency,
+          budget: parsedBudget,
+          budget_period: values.budgetPeriod,
           avatar: null,
           user_id: userDetails.id
         },
@@ -140,6 +168,8 @@ export default function CreateBookScreen() {
           name: values.name,
           category: values.category,
           currency: values.currency,
+          budget: parsedBudget,
+          budget_period: values.budgetPeriod,
           avatar: values.avatar
         });
         toast({
@@ -153,6 +183,8 @@ export default function CreateBookScreen() {
           name: values.name,
           category: values.category,
           currency: values.currency,
+          budget: parsedBudget,
+          budget_period: values.budgetPeriod,
           avatar: values.avatar,
           user_id: userDetails.id
         });
@@ -247,6 +279,70 @@ export default function CreateBookScreen() {
                 </FormControlHelperText>
               </FormControlHelper>
             </FormControl>
+
+            {/* Optional spending cap. Free for everyone — no Pro gate. */}
+            <FormControl size="md" isInvalid={!!formErrors.budget}>
+              <FormControlLabel>
+                <FormControlLabelText>Budget (optional)</FormControlLabelText>
+              </FormControlLabel>
+              <AmountInput
+                placeholder="0.00"
+                leftAddon={currencyMeta?.sign ?? values.currency}
+                value={values.budget}
+                onChangeText={(text) => {
+                  setValues({ ...values, budget: text });
+                  if (formErrors.budget)
+                    setFormErrors((prev) => ({ ...prev, budget: "" }));
+                }}
+              />
+              {formErrors.budget ? (
+                <FormControlError>
+                  <FormControlErrorText>
+                    {formErrors.budget}
+                  </FormControlErrorText>
+                </FormControlError>
+              ) : (
+                <FormControlHelper>
+                  <FormControlHelperText>
+                    Only expenses in {values.currency} count toward this budget.
+                    Leave blank for no budget.
+                  </FormControlHelperText>
+                </FormControlHelper>
+              )}
+            </FormControl>
+
+            {/* Period only matters once a budget is actually set. */}
+            {parsedBudget !== null && (
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>Budget resets</FormControlLabelText>
+                </FormControlLabel>
+                <HStack className="gap-x-2">
+                  {budgetPeriods.map((period) => (
+                    <FormButton
+                      key={period.value}
+                      size="sm"
+                      variant={
+                        values.budgetPeriod === period.value
+                          ? "solid"
+                          : "outline"
+                      }
+                      text={period.label}
+                      onPress={() =>
+                        setValues({ ...values, budgetPeriod: period.value })
+                      }
+                    />
+                  ))}
+                </HStack>
+                <FormControlHelper>
+                  <FormControlHelperText>
+                    {values.budgetPeriod === "monthly"
+                      ? "Starts over on the 1st of each month — best for ongoing books like Daily or Groceries."
+                      : "One cap for the whole book, never reset — best for a finite book like a trip."}
+                  </FormControlHelperText>
+                </FormControlHelper>
+              </FormControl>
+            )}
           </VStack>
         </ScrollView>
       </FormLayout>

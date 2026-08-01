@@ -1,4 +1,5 @@
 import CategoryIcon from "@/components/CategoryIcon";
+import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
@@ -318,8 +319,16 @@ function SpendingHero({
   const sorted = [...items].sort((a, b) =>
     a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
   );
-  const [primary, ...secondary] = sorted;
+  const [primary] = sorted;
   const currency = primary?.currency ?? primaryCurrency;
+
+  // Paid leads, pending rides along as the second line of each sheet row, so
+  // both figures the hero shows stay reachable for the other currencies.
+  const breakdown = sorted.map((t) => ({
+    currency: t.currency,
+    amount: t.paid,
+    secondaryAmount: t.pending
+  }));
 
   return (
     <VStack className="gap-y-2">
@@ -340,13 +349,14 @@ function SpendingHero({
           </Text>
         </VStack>
       </HStack>
-      <HStack className="items-center gap-x-1">
+      <HStack className="items-center gap-x-2">
         <Text className="text-secondary-950 text-sm">{currency}</Text>
-        {secondary.length > 0 && (
-          <Text className="text-secondary-950 text-sm">
-            · +{secondary.length} more
-          </Text>
-        )}
+        <CurrencyCountButton
+          items={breakdown}
+          title="Total Spent"
+          subtitle="Paid, by currency"
+          secondaryLabel="pending"
+        />
       </HStack>
     </VStack>
   );

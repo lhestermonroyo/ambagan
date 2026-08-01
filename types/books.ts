@@ -1,4 +1,13 @@
 /**
+ * How a book's budget is measured:
+ *   * `monthly` — a recurring cap that resets each calendar month, for books
+ *     that run indefinitely ("Daily", "Groceries").
+ *   * `total` — one lifetime cap for the whole book, for finite ones
+ *     ("Japan Trip"), where a mid-trip monthly reset would make no sense.
+ */
+export type BookBudgetPeriod = "monthly" | "total";
+
+/**
  * A "book" is a standalone personal-expense ledger owned by a single user
  * (e.g. "Daily", "Japan Trip", "Groceries"). Unlike a group it has no members,
  * splits, or settlements — it just holds the owner's personal expenses.
@@ -11,8 +20,12 @@ export type Book = {
   category: string;
   avatar: string | null;
   currency: string;
-  /** Forward-compat (v1: design-for, not built) — per-book monthly cap. */
+  /** Optional spending cap, in the book's own {@link Book.currency}. Null = no
+   *  budget set. Only expenses in the book currency count against it — a mixed
+   *  PHP/JPY trip book never converts one into the other. */
   budget: number | null;
+  /** How {@link Book.budget} is measured. Meaningless when `budget` is null. */
+  budget_period: BookBudgetPeriod;
   archived: boolean;
   /** Forward-compat (v1: unused) — future group→book roll-up link. */
   group_id: string | null;

@@ -1,5 +1,5 @@
 import states from "@/states";
-import { Book } from "@/types/books";
+import { Book, BookBudgetPeriod } from "@/types/books";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
@@ -9,13 +9,15 @@ import { ImagePickerSuccessResult } from "expo-image-picker";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
-const BOOK_SELECT = `id, created_at, user_id, name, category, avatar, currency, budget, archived, group_id`;
+const BOOK_SELECT = `id, created_at, user_id, name, category, avatar, currency, budget, budget_period, archived, group_id`;
 
 export const saveBook = async ({
   name,
   category,
   avatar,
   currency,
+  budget,
+  budget_period,
   user_id,
   id
 }: {
@@ -23,6 +25,9 @@ export const saveBook = async ({
   category: string;
   avatar: ImagePickerSuccessResult | null;
   currency: string;
+  /** Null = no budget on this book. */
+  budget?: number | null;
+  budget_period?: BookBudgetPeriod;
   user_id: string;
   /** Optional pre-generated id — used so offline-queued books keep a stable id on sync. */
   id?: string;
@@ -55,7 +60,9 @@ export const saveBook = async ({
       name,
       category,
       avatar: avatarUrl,
-      currency: currency || "PHP"
+      currency: currency || "PHP",
+      budget: budget ?? null,
+      budget_period: budget_period ?? "monthly"
     }
   ]);
 
@@ -78,11 +85,14 @@ export const updateBook = async (
     name: string;
     category: string;
     currency: string;
+    /** Null clears the budget; undefined leaves it untouched. */
+    budget?: number | null;
+    budget_period?: BookBudgetPeriod;
     avatar: ImagePickerSuccessResult | null;
   }
 ) => {
-  // Offline → queue name/category/currency (avatar uploads are blocked offline)
-  // + optimistic cache. Mirrors group.updateGroup.
+  // Offline → queue name/category/currency/budget (avatar uploads are blocked
+  // offline) + optimistic cache. Mirrors group.updateGroup.
   if (!(await offlineQueue.isOnline())) {
     const uid = states.user.getState().details?.id;
     if (uid) {
@@ -90,6 +100,8 @@ export const updateBook = async (
         name: payload.name,
         category: payload.category,
         currency: payload.currency,
+        budget: payload.budget ?? null,
+        budget_period: payload.budget_period ?? "monthly",
         avatar: null
       });
     }
@@ -102,7 +114,7 @@ export const updateBook = async (
     throw new Error("User not authenticated");
   }
 
-  const { name, category, currency, avatar } = payload;
+  const { name, category, currency, budget, budget_period, avatar } = payload;
 
   let avatarUrl: string | null = null;
 
@@ -117,6 +129,13 @@ export const updateBook = async (
   const updateData: Record<string, any> = { name, category, currency };
   if (avatarUrl) {
     updateData.avatar = avatarUrl;
+  }
+  // `undefined` means "not edited here"; an explicit null clears the budget.
+  if (budget !== undefined) {
+    updateData.budget = budget;
+  }
+  if (budget_period !== undefined) {
+    updateData.budget_period = budget_period;
   }
 
   // Owner-only RLS keeps this scoped to the current user's own book.

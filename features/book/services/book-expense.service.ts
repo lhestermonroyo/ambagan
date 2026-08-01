@@ -300,6 +300,48 @@ export const getPersonalBookTotals = async (
 };
 
 /**
+ * The same per-currency {paid, pending} totals as {@link getPersonalBookTotals},
+ * but scoped to the CURRENT calendar month. Drives the budget card on a book
+ * whose `budget_period` is 'monthly' (a 'total' budget just uses the all-time
+ * totals instead).
+ */
+export const getPersonalBookMonthTotals = async (
+  bookId: string
+): Promise<PersonalBookTotal[]> => {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error("User not authenticated");
+
+    const { data, error } = await supabase
+      .from(tables.PERSONAL_EXPENSES_TBL)
+      .select("amount, currency, status")
+      .eq("book_id", bookId)
+      .gte("expense_date", startOfMonth.toISOString());
+
+    if (error) throw error;
+
+    return sumByCurrencyAndStatus(
+      data as { amount: number; currency: string; status: string }[]
+    );
+  } catch (error) {
+    // Offline — fall back to the cached book detail. That snapshot holds only
+    // the first page of expenses, which is sorted newest-first and so normally
+    // covers the whole current month; on a very busy book the offline figure
+    // can under-report until the next sync.
+    const cached = await cacheService.getBookDetail(bookId).catch(() => null);
+    if (!cached) throw error;
+
+    const inMonth = (cached.expenseList as PersonalExpense[]).filter(
+      (e) => new Date(e.expense_date || e.created_at) >= startOfMonth
+    );
+    return sumByCurrencyAndStatus(inMonth);
+  }
+};
+
+/**
  * Fold expense rows into per-currency {paid, pending} totals. Shared by the book
  * and monthly totals. Any status other than 'pending' counts as paid (so legacy
  * rows without a status still land in the paid bucket).

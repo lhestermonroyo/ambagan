@@ -6,7 +6,12 @@ import {
   PaymentPreview,
   PaymentStatus
 } from "@/types/expenses";
-import { Book, PersonalBookTotal, PersonalExpense } from "@/types/books";
+import {
+  Book,
+  BookBudgetPeriod,
+  PersonalBookTotal,
+  PersonalExpense
+} from "@/types/books";
 import { Group, Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
 import NetInfo from "@react-native-community/netinfo";
@@ -198,6 +203,8 @@ export type CreateBookArgs = {
   name: string;
   category: string;
   currency: string;
+  budget: number | null;
+  budget_period: BookBudgetPeriod;
   avatar: null;
   user_id: string;
   id?: string;
@@ -213,6 +220,8 @@ export type UpdateBookArgs = {
   name: string;
   category: string;
   currency: string;
+  budget: number | null;
+  budget_period: BookBudgetPeriod;
   avatar: null;
 };
 
@@ -1872,7 +1881,13 @@ async function clearPendingBook(userId: string, clientId: string) {
 async function updateBookOptimistic(
   userId: string,
   bookId: string,
-  patch: { name: string; category: string; currency: string }
+  patch: {
+    name: string;
+    category: string;
+    currency: string;
+    budget: number | null;
+    budget_period: BookBudgetPeriod;
+  }
 ) {
   const apply = (b: Book) =>
     b.id === bookId ? { ...b, ...patch, pending: true } : b;
@@ -2110,6 +2125,8 @@ export function buildOptimisticBook(params: {
   name: string;
   category: string;
   currency: string;
+  budget?: number | null;
+  budgetPeriod?: BookBudgetPeriod;
   userId: string;
 }): Book {
   return {
@@ -2120,7 +2137,8 @@ export function buildOptimisticBook(params: {
     category: params.category,
     avatar: null,
     currency: params.currency,
-    budget: null,
+    budget: params.budget ?? null,
+    budget_period: params.budgetPeriod ?? "monthly",
     archived: false,
     group_id: null,
     expense_count: 0,
@@ -2182,7 +2200,9 @@ export async function queueUpdateBook(
   await updateBookOptimistic(userId, bookId, {
     name: args.name,
     category: args.category,
-    currency: args.currency
+    currency: args.currency,
+    budget: args.budget,
+    budget_period: args.budget_period
   });
 }
 

@@ -63,7 +63,11 @@ export default function BookInfoTab({ book }: { book: Book }) {
             <>
               <RowDivider />
               <DetailRow
-                label="Monthly budget"
+                label={
+                  book.budget_period === "total"
+                    ? "Total budget"
+                    : "Monthly budget"
+                }
                 value={<Text>{formatAmount(book.budget, book.currency)}</Text>}
               />
             </>

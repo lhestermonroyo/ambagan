@@ -29,6 +29,7 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import BookBudgetCard from "@/features/book/components/BookBudgetCard";
 import BookInfoTab from "@/features/book/components/BookInfoTab";
 import BookStatsTab from "@/features/book/components/BookStatsTab";
 import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
@@ -37,7 +38,7 @@ import PersonalStatusFilterSheet, {
   personalStatusFilterLabel
 } from "@/features/book/components/PersonalStatusFilterSheet";
 import CategorySheet from "@/features/expense/components/CategorySheet";
-import { formatAmount } from "@/features/expense/utils/formatAmount";
+import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import DateRangeSheet, {
   CustomDateRange,
   DateRangeOption,
@@ -135,6 +136,15 @@ const moveTotalsBucket = (
   return next;
 };
 
+/** Whether a date falls in the calendar month a monthly budget is measuring. */
+const isInCurrentMonth = (date: string): boolean => {
+  const d = new Date(date);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+  );
+};
+
 export default function BookDetailScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
@@ -150,6 +160,9 @@ export default function BookDetailScreen() {
   );
   const [expenses, setExpenses] = useState<PersonalExpense[]>([]);
   const [totals, setTotals] = useState<PersonalBookTotal[]>([]);
+  // This calendar month's spend — only used by the budget card on a 'monthly'
+  // book (a 'total' budget measures against `totals` instead).
+  const [monthTotals, setMonthTotals] = useState<PersonalBookTotal[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -218,16 +231,19 @@ export default function BookDetailScreen() {
       if (!bookId) return;
       if (!isRefresh) setLoading(true);
       try {
-        const [bookRes, expensesRes, totalsRes] = await Promise.all([
-          services.book.getBookById(bookId),
-          services.bookExpense.getPersonalExpensesByBookId(bookId, 0),
-          services.bookExpense.getPersonalBookTotals(bookId)
-        ]);
+        const [bookRes, expensesRes, totalsRes, monthTotalsRes] =
+          await Promise.all([
+            services.book.getBookById(bookId),
+            services.bookExpense.getPersonalExpensesByBookId(bookId, 0),
+            services.bookExpense.getPersonalBookTotals(bookId),
+            services.bookExpense.getPersonalBookMonthTotals(bookId)
+          ]);
         setBook(bookRes);
         setExpenses(expensesRes.data);
         setHasMore(expensesRes.hasNext);
         setPage(0);
         setTotals(totalsRes);
+        setMonthTotals(monthTotalsRes);
         states.book.setState((prev) => ({
           ...prev,
           details: bookRes,
@@ -246,6 +262,12 @@ export default function BookDetailScreen() {
           setBook(cached.book);
           setExpenses(cached.expenseList);
           setTotals(cached.totals);
+          // Derived from the same cached snapshot — never throws once we're here.
+          setMonthTotals(
+            await services.bookExpense
+              .getPersonalBookMonthTotals(bookId)
+              .catch(() => [])
+          );
           setHasMore(false);
           states.book.setState((prev) => ({
             ...prev,
@@ -327,6 +349,13 @@ export default function BookDetailScreen() {
       setTotals((prev) =>
         moveTotalsBucket(prev, expense.currency, expense.amount, from, status)
       );
+      // Same shift for the budget card, but only when the expense actually
+      // falls in the month the card is measuring.
+      if (isInCurrentMonth(expense.expense_date || expense.created_at)) {
+        setMonthTotals((prev) =>
+          moveTotalsBucket(prev, expense.currency, expense.amount, from, status)
+        );
+      }
     };
 
     apply(next);
@@ -536,8 +565,9 @@ export default function BookDetailScreen() {
   const isArchived = !!book?.archived;
 
   // Show the book's primary currency first, then any other currencies used
-  // (a trip book can mix PHP + JPY). Each currency is its own line — they're
-  // never converted against each other.
+  // (a trip book can mix PHP + JPY). Each currency stands alone — they're never
+  // converted against each other, so the card shows the primary one and hides
+  // the rest behind a "+N" breakdown sheet, as the group net balance does.
   const primaryCurrency = book?.currency ?? "PHP";
   const displayTotals = totals.length
     ? [...totals].sort((a, b) =>
@@ -548,6 +578,15 @@ export default function BookDetailScreen() {
             : 0
       )
     : [{ currency: primaryCurrency, paid: 0, pending: 0 }];
+
+  const paidByCurrency = displayTotals.map((t) => ({
+    currency: t.currency,
+    amount: t.paid
+  }));
+  const pendingByCurrency = displayTotals.map((t) => ({
+    currency: t.currency,
+    amount: t.pending
+  }));
 
   const renderAndroidActions = () => {
     if (loading) return undefined;
@@ -825,21 +864,14 @@ export default function BookDetailScreen() {
                       >
                         Paid
                       </Text>
-                      {displayTotals.map((t, i) => (
-                        <Text
-                          key={t.currency}
-                          bold
-                          numberOfLines={1}
-                          adjustsFontSizeToFit
-                          className={
-                            i === 0
-                              ? "text-2xl text-background-950"
-                              : "text-base text-background-950/70"
-                          }
-                        >
-                          {formatAmount(t.paid, t.currency)}
-                        </Text>
-                      ))}
+                      <CurrencyAmountDisplay
+                        items={paidByCurrency}
+                        label="Paid"
+                        subtitle="Settled spend, by currency"
+                        primaryCurrency={primaryCurrency}
+                        amountClassName="text-background-950"
+                        fitAmount
+                      />
                     </VStack>
                     <VStack className="flex-1 p-4 rounded-xl bg-secondary-100 gap-y-1">
                       <Text
@@ -848,24 +880,29 @@ export default function BookDetailScreen() {
                       >
                         Pending
                       </Text>
-                      {displayTotals.map((t, i) => (
-                        <Text
-                          key={t.currency}
-                          bold
-                          numberOfLines={1}
-                          adjustsFontSizeToFit
-                          className={
-                            i === 0
-                              ? "text-2xl text-background-950"
-                              : "text-base text-background-950/70"
-                          }
-                        >
-                          {formatAmount(t.pending, t.currency)}
-                        </Text>
-                      ))}
+                      <CurrencyAmountDisplay
+                        items={pendingByCurrency}
+                        label="Pending"
+                        subtitle="Upcoming spend, by currency"
+                        primaryCurrency={primaryCurrency}
+                        amountClassName="text-background-950"
+                        fitAmount
+                      />
                     </VStack>
                   </HStack>
                 </VStack>
+
+                {/* Budget progress — renders only when the book has a cap set.
+                    A monthly budget measures this calendar month; a total one
+                    measures the whole book. */}
+                {book && (
+                  <BookBudgetCard
+                    book={book}
+                    totals={
+                      book.budget_period === "total" ? totals : monthTotals
+                    }
+                  />
+                )}
 
                 {/* Recurring-expenses entry card — taps through to the standalone
                     /recurring route, mirroring the group detail Expenses tab. */}
