@@ -3,6 +3,7 @@ import {
   PersonalExpense,
   PersonalExpenseStatus
 } from "@/types/books";
+import { ExpenseCategory } from "@/types/expenses";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import { isUniqueViolation, supabase } from "@/utils/supabase";
@@ -245,6 +246,30 @@ export const getPersonalExpensesByBookId = async (
 };
 
 /**
+ * The user's latest personal expenses across ALL of their books. Feeds the
+ * Overview "Recent Activities" feed, which interleaves these with group
+ * settlements, so only a handful are ever needed.
+ */
+export const getRecentPersonalExpenses = async (
+  userId: string,
+  limit: number = 5
+): Promise<PersonalExpense[]> => {
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { data, error } = await supabase
+    .from(tables.PERSONAL_EXPENSES_TBL)
+    .select(EXPENSE_SELECT)
+    .eq("user_id", userId)
+    .order("expense_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data as PersonalExpense[]) ?? [];
+};
+
+/**
  * Every personal expense in a book, unpaginated — feeds the Stats tab, which
  * needs the whole ledger (not just a page) to compute totals, top expenses, and
  * the category breakdown. Books are personal and small, so a single fetch is
@@ -289,13 +314,18 @@ export const getPersonalBookTotals = async (
 
   const { data, error } = await supabase
     .from(tables.PERSONAL_EXPENSES_TBL)
-    .select("amount, currency, status")
+    .select("amount, currency, status, category")
     .eq("book_id", bookId);
 
   if (error) throw error;
 
   return sumByCurrencyAndStatus(
-    data as { amount: number; currency: string; status: string }[]
+    data as {
+      amount: number;
+      currency: string;
+      status: string;
+      category: string;
+    }[]
   );
 };
 
@@ -317,14 +347,19 @@ export const getPersonalBookMonthTotals = async (
 
     const { data, error } = await supabase
       .from(tables.PERSONAL_EXPENSES_TBL)
-      .select("amount, currency, status")
+      .select("amount, currency, status, category")
       .eq("book_id", bookId)
       .gte("expense_date", startOfMonth.toISOString());
 
     if (error) throw error;
 
     return sumByCurrencyAndStatus(
-      data as { amount: number; currency: string; status: string }[]
+      data as {
+        amount: number;
+        currency: string;
+        status: string;
+        category: string;
+      }[]
     );
   } catch (error) {
     // Offline — fall back to the cached book detail. That snapshot holds only
@@ -347,19 +382,50 @@ export const getPersonalBookMonthTotals = async (
  * rows without a status still land in the paid bucket).
  */
 function sumByCurrencyAndStatus(
-  rows: { amount: number; currency: string; status?: string }[]
+  rows: {
+    amount: number;
+    currency: string;
+    status?: string;
+    category?: string;
+  }[]
 ): PersonalBookTotal[] {
-  const byCurrency = new Map<string, { paid: number; pending: number }>();
+  const byCurrency = new Map<
+    string,
+    {
+      paid: number;
+      pending: number;
+      categories: Map<string, { paid: number; pending: number }>;
+    }
+  >();
   for (const row of rows) {
     const currency = row.currency || "PHP";
-    const entry = byCurrency.get(currency) ?? { paid: 0, pending: 0 };
-    if (row.status === "pending") entry.pending += row.amount;
-    else entry.paid += row.amount;
+    const entry = byCurrency.get(currency) ?? {
+      paid: 0,
+      pending: 0,
+      categories: new Map()
+    };
+    const category = row.category || ExpenseCategory.OTHER;
+    const catEntry = entry.categories.get(category) ?? { paid: 0, pending: 0 };
+    if (row.status === "pending") {
+      entry.pending += row.amount;
+      catEntry.pending += row.amount;
+    } else {
+      entry.paid += row.amount;
+      catEntry.paid += row.amount;
+    }
+    entry.categories.set(category, catEntry);
     byCurrency.set(currency, entry);
   }
 
   return Array.from(byCurrency.entries())
-    .map(([currency, v]) => ({ currency, paid: v.paid, pending: v.pending }))
+    .map(([currency, v]) => ({
+      currency,
+      paid: v.paid,
+      pending: v.pending,
+      byCategory: Array.from(v.categories.entries())
+        .map(([category, c]) => ({ category, paid: c.paid, pending: c.pending }))
+        .sort((a, b) => b.paid - a.paid)
+    }))
     .sort((a, b) => b.paid + b.pending - (a.paid + a.pending));
 }
 
@@ -377,14 +443,19 @@ export const getPersonalMonthlyTotals = async (
 
     const { data, error } = await supabase
       .from(tables.PERSONAL_EXPENSES_TBL)
-      .select("amount, currency, status")
+      .select("amount, currency, status, category")
       .eq("user_id", userId)
       .gte("expense_date", startOfMonth.toISOString());
 
     if (error) throw error;
 
     const totals = sumByCurrencyAndStatus(
-      data as { amount: number; currency: string; status: string }[]
+      data as {
+        amount: number;
+        currency: string;
+        status: string;
+        category: string;
+      }[]
     );
 
     // Snapshot so the Overview card shows the last value offline.

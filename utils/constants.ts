@@ -141,6 +141,13 @@ export type CategoryOption = {
   label: string;
   value: string;
   icon: LucideIcon;
+  /**
+   * Identity color for charts/legends (budget bar, breakdowns). One hex per
+   * category, picked mid-tone so it reads on both the light and dark card
+   * surfaces. Only the expense categories carry one — group categories are
+   * never charted.
+   */
+  color?: string;
 };
 
 export const categories: CategoryOption[] = [
@@ -191,16 +198,66 @@ export const categories: CategoryOption[] = [
 // on expenses_tbl.category and drives the Stats breakdown. "Other" is the
 // server default, so it's the implicit fallback for anything left unset.
 export const expenseCategories: CategoryOption[] = [
-  { label: "General", value: ExpenseCategory.GENERAL, icon: Star },
-  { label: "Food & Drinks", value: ExpenseCategory.FOOD, icon: UtensilsCrossed },
-  { label: "Groceries", value: ExpenseCategory.GROCERIES, icon: ShoppingCart },
-  { label: "Transport", value: ExpenseCategory.TRANSPORT, icon: Car },
-  { label: "Accommodation", value: ExpenseCategory.ACCOMMODATION, icon: BedDouble },
-  { label: "Entertainment", value: ExpenseCategory.ENTERTAINMENT, icon: Clapperboard },
-  { label: "Shopping", value: ExpenseCategory.SHOPPING, icon: ShoppingBag },
-  { label: "Bills & Utilities", value: ExpenseCategory.BILLS, icon: ReceiptText },
-  { label: "Health", value: ExpenseCategory.HEALTH, icon: Pill },
-  { label: "Other", value: ExpenseCategory.OTHER, icon: Folder }
+  {
+    label: "General",
+    value: ExpenseCategory.GENERAL,
+    icon: Star,
+    color: "#7C3AED"
+  },
+  {
+    label: "Food & Drinks",
+    value: ExpenseCategory.FOOD,
+    icon: UtensilsCrossed,
+    color: "#F97316"
+  },
+  {
+    label: "Groceries",
+    value: ExpenseCategory.GROCERIES,
+    icon: ShoppingCart,
+    color: "#22C55E"
+  },
+  {
+    label: "Transport",
+    value: ExpenseCategory.TRANSPORT,
+    icon: Car,
+    color: "#3B82F6"
+  },
+  {
+    label: "Accommodation",
+    value: ExpenseCategory.ACCOMMODATION,
+    icon: BedDouble,
+    color: "#14B8A6"
+  },
+  {
+    label: "Entertainment",
+    value: ExpenseCategory.ENTERTAINMENT,
+    icon: Clapperboard,
+    color: "#EC4899"
+  },
+  {
+    label: "Shopping",
+    value: ExpenseCategory.SHOPPING,
+    icon: ShoppingBag,
+    color: "#EAB308"
+  },
+  {
+    label: "Bills & Utilities",
+    value: ExpenseCategory.BILLS,
+    icon: ReceiptText,
+    color: "#EF4444"
+  },
+  {
+    label: "Health",
+    value: ExpenseCategory.HEALTH,
+    icon: Pill,
+    color: "#06B6D4"
+  },
+  {
+    label: "Other",
+    value: ExpenseCategory.OTHER,
+    icon: Folder,
+    color: "#94A3B8"
+  }
 ];
 
 export const splitTypes = [

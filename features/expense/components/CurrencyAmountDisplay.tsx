@@ -45,7 +45,7 @@ export default function CurrencyAmountDisplay({
     <HStack className="items-center gap-x-2">
       <Text
         bold
-        className={cn("text-2xl flex-shrink", amountColor, amountClassName)}
+        className={cn("text-xl flex-shrink", amountColor, amountClassName)}
         numberOfLines={fitAmount ? 1 : undefined}
         adjustsFontSizeToFit={fitAmount}
       >

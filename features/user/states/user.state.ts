@@ -45,7 +45,10 @@ const USER_STATE = create<UserState>((set, get) => ({
   details: null,
   oauthName: null,
   preferences: null,
-  appearanceMode: "light",
+  // Dark is the app's default theme: it's what the auth/onboarding screens use
+  // before any preference is loaded, and what a new account's row is created
+  // with below. An existing user's stored preference always wins over this.
+  appearanceMode: "dark",
   settlementView: "full",
   notificationsEnabled: true,
   defaultCurrency: "PHP",
@@ -162,7 +165,7 @@ const USER_STATE = create<UserState>((set, get) => ({
 
       if (!prefs) {
         prefs = await createPreferences(userId, {
-          appearance: "light",
+          appearance: "dark",
           settlement_view: "full",
           default_currency: "PHP",
           ...NOTIF_ALL_ON

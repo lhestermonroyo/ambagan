@@ -146,6 +146,90 @@ export function ExpenseFormStepSkeleton() {
 }
 
 // ─────────────────────────────────────────────
+// Personal (book) expense form skeletons
+// The destination book is fetched on mount — the routed one when the form is
+// locked, the most recent one otherwise — and in edit mode every field is
+// hydrated from the expense being loaded.
+// ─────────────────────────────────────────────
+
+// Mirrors the Book field: label + bordered row with avatar(24) + book name.
+function BookFieldBones({ color }: { color: string }) {
+  return (
+    <View style={{ gap: 8 }}>
+      <Bone w={40} h={12} color={color} />
+      <View
+        style={{
+          height: 56,
+          borderWidth: 1,
+          borderColor: color,
+          borderRadius: 8,
+          paddingHorizontal: 16,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12
+        }}
+      >
+        <Bone w={24} h={24} radius={999} color={color} />
+        <Bone w="45%" h={16} color={color} />
+      </View>
+    </View>
+  );
+}
+
+export function BookFieldSkeleton() {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  return (
+    <Animated.View style={animStyle}>
+      <BookFieldBones color={color} />
+    </Animated.View>
+  );
+}
+
+// Mirrors the whole personal expense form — amount (currency + input),
+// description, book, and the collapsed More options chip row — for edit mode,
+// where every field is hydrated from the expense being loaded.
+export function PersonalExpenseFormSkeleton() {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  return (
+    <Animated.View style={[animStyle, { gap: 24 }]}>
+      {/* Amount: currency selector + input, both h-14 */}
+      <View style={{ gap: 8 }}>
+        <Bone w={56} h={12} color={color} />
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Bone w={88} h={56} radius={8} color={color} />
+          <View style={{ flex: 1 }}>
+            <Bone w="100%" h={56} radius={8} color={color} />
+          </View>
+        </View>
+      </View>
+
+      {/* Description */}
+      <View style={{ gap: 8 }}>
+        <Bone w={80} h={12} color={color} />
+        <Bone w="100%" h={80} radius={8} color={color} />
+      </View>
+
+      <BookFieldBones color={color} />
+
+      {/* Collapsed chip row + expand toggle */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        {[96, 80, 72].map((w) => (
+          <Bone key={w} w={w} h={36} radius={999} color={color} />
+        ))}
+        <View style={{ flex: 1 }} />
+        <Bone w={36} h={36} radius={999} color={color} />
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Header action skeleton
 // Icon-sized bone(s) shown in place of header action buttons whose behavior
 // depends on the record still being fetched (e.g. the group-details leave /

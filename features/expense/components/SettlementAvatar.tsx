@@ -8,9 +8,11 @@ import { useColorScheme } from "react-native";
 // icon size 18) so settlement rows and category rows share one avatar size.
 export default function SettlementAvatar({
   isPayer,
+  size = "md",
   light = false
 }: {
   isPayer: boolean;
+  size?: "sm" | "md";
   light?: boolean;
 }) {
   const colorScheme = useColorScheme() ?? "light";
@@ -19,9 +21,9 @@ export default function SettlementAvatar({
     return (
       <Box className="bg-white/20 p-1.5 rounded-full">
         {isPayer ? (
-          <BanknoteArrowUp size={18} color="#fff" />
+          <BanknoteArrowUp size={size === "sm" ? 14 : 18} color="#fff" />
         ) : (
-          <BanknoteArrowDown size={18} color="#fff" />
+          <BanknoteArrowDown size={size === "sm" ? 14 : 18} color="#fff" />
         )}
       </Box>
     );
@@ -36,12 +38,12 @@ export default function SettlementAvatar({
     >
       {isPayer ? (
         <BanknoteArrowUp
-          size={18}
+          size={size === "sm" ? 14 : 18}
           color={getSuccessHex("text-success-600", colorScheme)}
         />
       ) : (
         <BanknoteArrowDown
-          size={18}
+          size={size === "sm" ? 14 : 18}
           color={getErrorHex("text-error-600", colorScheme)}
         />
       )}

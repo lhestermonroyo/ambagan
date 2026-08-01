@@ -72,6 +72,19 @@ export type PersonalBookTotal = {
   currency: string;
   paid: number;
   pending: number;
+  /**
+   * The same paid/pending split, broken down one level further by spending
+   * category (see ExpenseCategory), largest paid first. Drives the budget
+   * card's segmented bar. Optional — older cached snapshots predate it.
+   */
+  byCategory?: PersonalCategoryTotal[];
+};
+
+/** Per-category slice of a {@link PersonalBookTotal}, within one currency. */
+export type PersonalCategoryTotal = {
+  category: string;
+  paid: number;
+  pending: number;
 };
 
 /**

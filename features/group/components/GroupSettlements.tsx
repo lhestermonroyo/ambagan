@@ -449,7 +449,7 @@ export default function GroupSettlements({
               <HStack className="items-stretch">
                 <VStack className="flex-1 gap-y-2">
                   <HStack className="items-center gap-x-2">
-                    <SettlementAvatar isPayer={true} />
+                    <SettlementAvatar isPayer={true} size="sm" />
                     <Text className="text-secondary-950 text-sm uppercase">
                       To Collect
                     </Text>
@@ -465,7 +465,7 @@ export default function GroupSettlements({
                 <Divider orientation="vertical" className="mx-4" />
                 <VStack className="flex-1 gap-y-2">
                   <HStack className="items-center gap-x-2">
-                    <SettlementAvatar isPayer={false} />
+                    <SettlementAvatar isPayer={false} size="sm" />
                     <Text className="text-secondary-950 text-sm uppercase">
                       To Pay
                     </Text>

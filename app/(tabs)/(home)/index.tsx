@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import BookItem from "@/features/book/components/BookItem";
+import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
 import ExpenseDestinationSheet from "@/features/expense/components/ExpenseDestinationSheet";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
@@ -29,7 +31,7 @@ import GroupItem from "@/features/group/components/GroupItem";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
-import { PersonalBookTotal } from "@/types/books";
+import { Book, PersonalBookTotal, PersonalExpense } from "@/types/books";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { getPrimaryHex } from "@/utils/getColorHex";
@@ -72,10 +74,15 @@ export default function HomeScreen() {
     stats: false,
     activities: false,
     groups: false,
+    books: false,
     friends: false,
     personal: false
   });
   const [friends, setFriends] = useState<FriendSummary[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [personalExpenses, setPersonalExpenses] = useState<PersonalExpense[]>(
+    []
+  );
   const [personalTotals, setPersonalTotals] = useState<PersonalBookTotal[]>([]);
   const [addChooserOpen, setAddChooserOpen] = useState(false);
   const [stats, setStats] = useState<{
@@ -227,6 +234,7 @@ export default function HomeScreen() {
     await Promise.all([
       fetchStats(isInitialized),
       fetchGroups(isInitialized),
+      fetchBooks(isInitialized),
       fetchActivities(isInitialized),
       fetchFriends(isInitialized),
       fetchPersonal(isInitialized),
@@ -330,25 +338,43 @@ export default function HomeScreen() {
       setLoading((prev) => ({ ...prev, activities: true }));
     }
 
-    try {
-      const response = await services.expense.getPaymentsByUserId(
-        userId,
-        0,
-        20,
-        false
-      );
+    // The two recent-activity sections share one loading flag, so they're
+    // fetched side by side — and caught independently, so a failure on one side
+    // (e.g. personal expenses offline) still fills the other.
+    await Promise.all([
+      (async () => {
+        try {
+          const response = await services.expense.getPaymentsByUserId(
+            userId,
+            0,
+            20,
+            false
+          );
 
-      if (!response || !response.data) return;
+          if (!response || !response.data) return;
 
-      states.expense.setState((prev) => ({
-        ...prev,
-        activityList: response.data
-      }));
-    } catch (error) {
-      console.error("Failed to fetch recent expenses:", error);
-    } finally {
-      setLoading((prev) => ({ ...prev, activities: false }));
-    }
+          states.expense.setState((prev) => ({
+            ...prev,
+            activityList: response.data
+          }));
+        } catch (error) {
+          console.error("Failed to fetch recent expenses:", error);
+        }
+      })(),
+      (async () => {
+        try {
+          const recent = await services.bookExpense.getRecentPersonalExpenses(
+            userId,
+            3
+          );
+          setPersonalExpenses(recent);
+        } catch (error) {
+          console.error("Failed to fetch recent personal expenses:", error);
+        }
+      })()
+    ]);
+
+    setLoading((prev) => ({ ...prev, activities: false }));
   };
 
   const fetchGroups = async (isInitialized = false) => {
@@ -384,6 +410,33 @@ export default function HomeScreen() {
     }
   };
 
+  // Only the first page is needed — the Overview shows the 3 most recent books
+  // and hands off to the Books tab for the rest. Paginated (not getBooksByUserId)
+  // so the offline cache fallback comes along for free.
+  const fetchBooks = async (isInitialized = false) => {
+    if (!userId) return;
+
+    if (!isInitialized) {
+      setLoading((prev) => ({ ...prev, books: true }));
+    }
+
+    try {
+      const response = await services.book.getBooksByUserIdPaginated(
+        userId,
+        0,
+        "all"
+      );
+
+      if (!response) return;
+
+      setBooks(response.data);
+    } catch (error) {
+      console.error("Failed to fetch books:", error);
+    } finally {
+      setLoading((prev) => ({ ...prev, books: false }));
+    }
+  };
+
   const fetchFriends = async (isInitialized = false) => {
     if (!userId) return;
     if (!isInitialized) setLoading((prev) => ({ ...prev, friends: true }));
@@ -407,12 +460,20 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  const groupsPreview = useMemo(() => groupList.slice(0, 5), [groupList]);
-  const activitiesPreview = useMemo(
-    () => activityList.slice(0, 5),
+  const groupsPreview = useMemo(() => groupList.slice(0, 3), [groupList]);
+  const booksPreview = useMemo(() => books.slice(0, 3), [books]);
+  const friendsPreview = useMemo(() => friends.slice(0, 5), [friends]);
+
+  // The two ledgers stay in their own sections — a settlement and a personal
+  // expense read too differently to sit in one list.
+  const settlementsPreview = useMemo(
+    () => activityList.slice(0, 3),
     [activityList]
   );
-  const friendsPreview = useMemo(() => friends.slice(0, 5), [friends]);
+  const personalExpensesPreview = useMemo(
+    () => personalExpenses.slice(0, 3),
+    [personalExpenses]
+  );
 
   const handleOpenActionSheet = useCallback((item: PaymentPreview) => {
     setSelectedPayment(item);
@@ -470,11 +531,23 @@ export default function HomeScreen() {
     [router]
   );
 
-  const renderActivityItem = useCallback(
+  const renderSettlementItem = useCallback(
     ({ item }: { item: PaymentPreview }) => (
       <SettlementItem item={item} onPress={() => handleOpenActionSheet(item)} />
     ),
     [handleOpenActionSheet]
+  );
+
+  const renderPersonalExpenseItem = useCallback(
+    ({ item }: { item: PersonalExpense }) => (
+      <PersonalExpenseItem
+        details={item}
+        onOpen={() =>
+          router.push(`/books/${item.book_id}/add-expense?expenseId=${item.id}`)
+        }
+      />
+    ),
+    [router]
   );
 
   const renderGroupItem = useCallback(
@@ -482,6 +555,16 @@ export default function HomeScreen() {
       <GroupItem
         details={item}
         onOpen={() => router.push(`/groups/${item.id}`)}
+      />
+    ),
+    [router]
+  );
+
+  const renderBookItem = useCallback(
+    ({ item }: { item: Book }) => (
+      <BookItem
+        details={item}
+        onOpen={() => router.push(`/books/${item.id}`)}
       />
     ),
     [router]
@@ -671,7 +754,7 @@ export default function HomeScreen() {
               </Pressable>
             </VStack>
 
-            <VStack>
+            <VStack className="gap-y-2">
               <HStack className="items-center justify-between px-4">
                 <Text bold className="text-2xl flex-1">
                   Friends
@@ -705,32 +788,7 @@ export default function HomeScreen() {
               </LoadingWrapper>
             </VStack>
 
-            <VStack>
-              <HStack className="items-center justify-between px-4">
-                <Text bold className="text-2xl">
-                  Recent Activities
-                </Text>
-              </HStack>
-              <LoadingWrapper
-                isLoading={loading.activities}
-                skeleton={<SettlementListSkeleton count={3} />}
-              >
-                <FlatList
-                  key={settlementView}
-                  data={activitiesPreview}
-                  extraData={settlementView}
-                  scrollEnabled={false}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={renderActivityItem}
-                  ItemSeparatorComponent={ListDivider}
-                  ListEmptyComponent={() => (
-                    <EmptyList type={EmptyType.ACTIVITY} />
-                  )}
-                />
-              </LoadingWrapper>
-            </VStack>
-
-            <VStack>
+            <VStack className="gap-y-2">
               <HStack className="items-center justify-between px-4">
                 <Text bold className="text-2xl">
                   Recent Groups
@@ -751,6 +809,78 @@ export default function HomeScreen() {
                   ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
                     <EmptyList type={EmptyType.GROUP} />
+                  )}
+                />
+              </LoadingWrapper>
+            </VStack>
+
+            <VStack className="gap-y-2">
+              <HStack className="items-center justify-between px-4">
+                <Text bold className="text-2xl">
+                  Recent Books
+                </Text>
+                <Button variant="link" onPress={() => router.push("/books")}>
+                  <Text className="text-primary-400 font-medium">View All</Text>
+                </Button>
+              </HStack>
+              <LoadingWrapper
+                isLoading={loading.books}
+                skeleton={<GroupListSkeleton count={3} />}
+              >
+                <FlatList
+                  data={booksPreview}
+                  scrollEnabled={false}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={renderBookItem}
+                  ItemSeparatorComponent={ListDivider}
+                  ListEmptyComponent={() => <EmptyList type={EmptyType.BOOK} />}
+                />
+              </LoadingWrapper>
+            </VStack>
+
+            <VStack className="gap-y-2">
+              <HStack className="items-center justify-between px-4">
+                <Text bold className="text-2xl">
+                  Recent Settlements
+                </Text>
+              </HStack>
+              <LoadingWrapper
+                isLoading={loading.activities}
+                skeleton={<SettlementListSkeleton count={3} />}
+              >
+                <FlatList
+                  key={settlementView}
+                  data={settlementsPreview}
+                  extraData={settlementView}
+                  scrollEnabled={false}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={renderSettlementItem}
+                  ItemSeparatorComponent={ListDivider}
+                  ListEmptyComponent={() => (
+                    <EmptyList type={EmptyType.ACTIVITY} />
+                  )}
+                />
+              </LoadingWrapper>
+            </VStack>
+
+            <VStack className="gap-y-2">
+              <HStack className="items-center justify-between px-4">
+                <Text bold className="text-2xl">
+                  Recent Personal Expenses
+                </Text>
+              </HStack>
+              <LoadingWrapper
+                isLoading={loading.activities}
+                skeleton={<SettlementListSkeleton count={3} />}
+              >
+                <FlatList
+                  data={personalExpensesPreview}
+                  scrollEnabled={false}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={renderPersonalExpenseItem}
+                  ItemSeparatorComponent={ListDivider}
+                  ListEmptyComponent={() => (
+                    <EmptyList type={EmptyType.EXPENSE} />
                   )}
                 />
               </LoadingWrapper>

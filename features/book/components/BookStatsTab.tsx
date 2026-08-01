@@ -9,7 +9,10 @@ import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { groupCategoryMeta } from "@/features/expense/components/CategorySheet";
+import {
+  expenseCategoryColor,
+  expenseCategoryMeta
+} from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
   CustomDateRange,
@@ -248,7 +251,7 @@ export default function BookStatsTab({
                             className="text-sm text-secondary-950"
                             numberOfLines={1}
                           >
-                            {groupCategoryMeta(expense.category).label}
+                            {expenseCategoryMeta(expense.category).label}
                           </Text>
                         </VStack>
                         <Text className="text-lg font-medium">
@@ -278,10 +281,10 @@ export default function BookStatsTab({
                       <VStack key={row.category} className="gap-y-2">
                         <HStack className="items-center gap-x-3">
                           <CategoryIcon
-                            icon={groupCategoryMeta(row.category).icon}
+                            icon={expenseCategoryMeta(row.category).icon}
                           />
                           <Text className="flex-1 text-base" numberOfLines={1}>
-                            {groupCategoryMeta(row.category).label}
+                            {expenseCategoryMeta(row.category).label}
                           </Text>
                           <Text className="text-sm text-secondary-950">
                             {row.pct.toFixed(0)}%
@@ -290,10 +293,15 @@ export default function BookStatsTab({
                             {formatAmount(row.amount, primaryCurrency)}
                           </Text>
                         </HStack>
+                        {/* Same category color the budget card's bar and
+                            legend use, so the two surfaces agree. */}
                         <Box className="h-1.5 rounded-full bg-secondary-200 overflow-hidden">
                           <Box
-                            className="h-full rounded-full bg-primary-500"
-                            style={{ width: `${Math.max(2, row.pct)}%` }}
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${Math.max(2, row.pct)}%`,
+                              backgroundColor: expenseCategoryColor(row.category)
+                            }}
                           />
                         </Box>
                       </VStack>

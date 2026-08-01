@@ -31,6 +31,10 @@ export const expenseCategoryMeta = (value: string): CategoryOption =>
 export const expenseCategoryLabel = (value: string): string =>
   expenseCategoryMeta(value).label;
 
+/** Chart/legend color for a stored category value (see CategoryOption.color). */
+export const expenseCategoryColor = (value: string): string =>
+  expenseCategoryMeta(value).color ?? "#94A3B8";
+
 /** Full option (label + icon) for a stored group category value, falling back to
  *  "Other" for anything unrecognized (e.g. a value from a newer client). */
 export const groupCategoryMeta = (value: string): CategoryOption =>

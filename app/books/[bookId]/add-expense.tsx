@@ -8,6 +8,11 @@ import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
 import SelectField from "@/components/SelectField";
+import {
+  BookFieldSkeleton,
+  HeaderActionSkeleton,
+  PersonalExpenseFormSkeleton
+} from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -662,6 +667,44 @@ export default function AddPersonalExpenseScreen() {
     }
   ];
 
+  // Editing hydrates every field from the fetched expense, so the whole form is
+  // a skeleton until the book + expense land — an empty form that fills itself
+  // in a beat later reads as one the user already typed into, and its Delete
+  // action would have no expense behind it. Adding skeletons only the Book field
+  // (below): amount and description are usable from the first frame.
+  if (isEdit && loading) {
+    return (
+      <FormLayout
+        title="Edit Expense"
+        onBack={() => router.back()}
+        actions={
+          <Stack.Toolbar.View>
+            <HeaderActionSkeleton />
+          </Stack.Toolbar.View>
+        }
+        androidActions={
+          <Box className="pr-1">
+            <HeaderActionSkeleton />
+          </Box>
+        }
+        footer={[
+          <FormButton
+            key="save"
+            className="flex-1"
+            text="Save Changes"
+            disabled
+          />
+        ]}
+      >
+        <ScrollView className="flex-1 px-4">
+          <VStack className="pt-2 pb-4">
+            <PersonalExpenseFormSkeleton />
+          </VStack>
+        </ScrollView>
+      </FormLayout>
+    );
+  }
+
   // Unlocked entry (Home / Scan) but the user has no book yet — mirror the group
   // form's no-group state with a Create Book CTA. Replace so backing out of
   // create doesn't return to this empty form.
@@ -806,7 +849,9 @@ export default function AddPersonalExpenseScreen() {
                 is the one mistake this form can't walk back. Read-only whenever
                 the book is fixed (added from a book screen, or editing an
                 existing expense); changeable only on the unlocked entry from
-                Home / Scan. */}
+                Home / Scan. Skeletoned while the book is still resolving, so the
+                field doesn't pop in under the description. */}
+            {!bookResolved && <BookFieldSkeleton />}
             {selectedBook && (
               <FormControl size="md">
                 <FormControlLabel>

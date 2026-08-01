@@ -51,7 +51,12 @@ import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
-import { Book, PersonalBookTotal, PersonalExpense } from "@/types/books";
+import {
+  Book,
+  PersonalBookTotal,
+  PersonalCategoryTotal,
+  PersonalExpense
+} from "@/types/books";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { CategoryOption, expenseCategories } from "@/utils/constants";
@@ -117,22 +122,59 @@ const categoryFilterLabel = (value: string) =>
 
 // Move `amount` of `currency` between the paid/pending buckets of a
 // PersonalBookTotal[] — the optimistic math behind flipping an expense's status.
-// The combined per-currency total is unchanged; only the split moves.
+// The combined per-currency total is unchanged; only the split moves. The
+// expense's `category` bucket is shifted in step so the budget card's segmented
+// bar tracks the toggle too.
 const moveTotalsBucket = (
   totals: PersonalBookTotal[],
   currency: string,
   amount: number,
   from: "paid" | "pending",
-  to: "paid" | "pending"
+  to: "paid" | "pending",
+  category?: string
 ): PersonalBookTotal[] => {
   if (from === to) return totals;
   let found = false;
   const next = totals.map((t) => {
     if (t.currency !== currency) return t;
     found = true;
-    return { ...t, [from]: t[from] - amount, [to]: t[to] + amount };
+    return {
+      ...t,
+      [from]: t[from] - amount,
+      [to]: t[to] + amount,
+      byCategory: moveCategoryBucket(t.byCategory, category, amount, from, to)
+    };
   });
-  if (!found) next.push({ currency, paid: 0, pending: 0, [to]: amount });
+  if (!found) {
+    next.push({
+      currency,
+      paid: 0,
+      pending: 0,
+      [to]: amount,
+      byCategory: moveCategoryBucket([], category, amount, from, to)
+    });
+  }
+  return next;
+};
+
+// The per-category half of moveTotalsBucket. Left untouched when the caller
+// has no category (or the totals predate the breakdown) — the next refetch
+// fills it in rather than us inventing a slice.
+const moveCategoryBucket = (
+  byCategory: PersonalCategoryTotal[] | undefined,
+  category: string | undefined,
+  amount: number,
+  from: "paid" | "pending",
+  to: "paid" | "pending"
+): PersonalCategoryTotal[] | undefined => {
+  if (!byCategory || !category) return byCategory;
+  let found = false;
+  const next = byCategory.map((c) => {
+    if (c.category !== category) return c;
+    found = true;
+    return { ...c, [from]: c[from] - amount, [to]: c[to] + amount };
+  });
+  if (!found) next.push({ category, paid: 0, pending: 0, [to]: amount });
   return next;
 };
 
@@ -347,13 +389,27 @@ export default function BookDetailScreen() {
       // card tracks the toggle live.
       const from = status === "paid" ? "pending" : "paid";
       setTotals((prev) =>
-        moveTotalsBucket(prev, expense.currency, expense.amount, from, status)
+        moveTotalsBucket(
+          prev,
+          expense.currency,
+          expense.amount,
+          from,
+          status,
+          expense.category
+        )
       );
       // Same shift for the budget card, but only when the expense actually
       // falls in the month the card is measuring.
       if (isInCurrentMonth(expense.expense_date || expense.created_at)) {
         setMonthTotals((prev) =>
-          moveTotalsBucket(prev, expense.currency, expense.amount, from, status)
+          moveTotalsBucket(
+            prev,
+            expense.currency,
+            expense.amount,
+            from,
+            status,
+            expense.category
+          )
         );
       }
     };
@@ -379,7 +435,8 @@ export default function BookDetailScreen() {
                 expense.currency,
                 expense.amount,
                 expense.status,
-                next
+                next,
+                expense.category
               )
             );
           })
@@ -587,6 +644,10 @@ export default function BookDetailScreen() {
     currency: t.currency,
     amount: t.pending
   }));
+
+  // Mirrors BookBudgetCard's own render guard — decides whether the Paid/Pending
+  // totals live inside that card or as their own pair of cards.
+  const hasBudget = !!book?.budget && book.budget > 0;
 
   const renderAndroidActions = () => {
     if (loading) return undefined;
@@ -853,55 +914,61 @@ export default function BookDetailScreen() {
 
             {tab === "Expenses" && (
               <VStack className="gap-y-6 pb-4">
-                {/* Total spent split into two side-by-side cards — Paid
-                    (settled) and Pending (upcoming/unpaid), each per currency. */}
-                <VStack className="mx-4 gap-y-2">
-                  <HStack className="gap-x-3">
-                    <VStack className="flex-1 p-4 rounded-xl bg-secondary-100 gap-y-1">
-                      <Text
-                        bold
-                        className="text-sm text-secondary-950 uppercase"
-                      >
-                        Paid
-                      </Text>
-                      <CurrencyAmountDisplay
-                        items={paidByCurrency}
-                        label="Paid"
-                        subtitle="Settled spend, by currency"
-                        primaryCurrency={primaryCurrency}
-                        amountClassName="text-background-950"
-                        fitAmount
-                      />
-                    </VStack>
-                    <VStack className="flex-1 p-4 rounded-xl bg-secondary-100 gap-y-1">
-                      <Text
-                        bold
-                        className="text-sm text-secondary-950 uppercase"
-                      >
-                        Pending
-                      </Text>
-                      <CurrencyAmountDisplay
-                        items={pendingByCurrency}
-                        label="Pending"
-                        subtitle="Upcoming spend, by currency"
-                        primaryCurrency={primaryCurrency}
-                        amountClassName="text-background-950"
-                        fitAmount
-                      />
-                    </VStack>
-                  </HStack>
-                </VStack>
-
                 {/* Budget progress — renders only when the book has a cap set.
                     A monthly budget measures this calendar month; a total one
-                    measures the whole book. */}
-                {book && (
+                    measures the whole book. The Paid/Pending totals ride along
+                    in the card's footer. */}
+                {book && hasBudget && (
                   <BookBudgetCard
                     book={book}
                     totals={
                       book.budget_period === "total" ? totals : monthTotals
                     }
+                    paidByCurrency={paidByCurrency}
+                    pendingByCurrency={pendingByCurrency}
+                    primaryCurrency={primaryCurrency}
                   />
+                )}
+
+                {/* No budget to hang them off — Paid (settled) and Pending
+                    (upcoming/unpaid) stand on their own, each per currency. */}
+                {!hasBudget && (
+                  <VStack className="mx-4 gap-y-2">
+                    <HStack className="gap-x-3">
+                      <VStack className="flex-1 p-4 rounded-xl bg-secondary-100 gap-y-1">
+                        <Text
+                          bold
+                          className="text-sm text-secondary-950 uppercase"
+                        >
+                          Paid
+                        </Text>
+                        <CurrencyAmountDisplay
+                          items={paidByCurrency}
+                          label="Paid"
+                          subtitle="Settled spend, by currency"
+                          primaryCurrency={primaryCurrency}
+                          amountClassName="text-background-950"
+                          fitAmount
+                        />
+                      </VStack>
+                      <VStack className="flex-1 p-4 rounded-xl bg-secondary-100 gap-y-1">
+                        <Text
+                          bold
+                          className="text-sm text-secondary-950 uppercase"
+                        >
+                          Pending
+                        </Text>
+                        <CurrencyAmountDisplay
+                          items={pendingByCurrency}
+                          label="Pending"
+                          subtitle="Upcoming spend, by currency"
+                          primaryCurrency={primaryCurrency}
+                          amountClassName="text-background-950"
+                          fitAmount
+                        />
+                      </VStack>
+                    </HStack>
+                  </VStack>
                 )}
 
                 {/* Recurring-expenses entry card — taps through to the standalone
