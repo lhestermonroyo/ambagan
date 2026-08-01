@@ -2,7 +2,7 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import { currencies } from "@/utils/constants";
 import { getSecondaryHex } from "@/utils/getColorHex";
-import { ChevronDown, CircleIcon, Lock } from "lucide-react-native";
+import { CircleIcon, Lock } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 import AppSheet from "./AppSheet";
@@ -110,10 +110,7 @@ const CurrencySelection = ({
               color={getSecondaryHex("text-secondary-950", colorScheme)}
             />
           ) : (
-            <ChevronDown
-              size={18}
-              color={getSecondaryHex("text-secondary-950", colorScheme)}
-            />
+            <Icon as="unfold-more" className="text-sm text-secondary-950" />
           )}
         </HStack>
       </PressableListItem>

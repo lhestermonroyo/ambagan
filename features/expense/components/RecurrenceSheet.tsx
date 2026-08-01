@@ -168,7 +168,7 @@ export default function RecurrenceSheet({
                     className={cn(
                       "flex-1 py-3 rounded-lg border items-center",
                       selected
-                        ? "border-primary-400 bg-primary-0"
+                        ? "border-primary-200 bg-primary-50"
                         : "border-background-200"
                     )}
                     onPress={() =>
@@ -176,9 +176,8 @@ export default function RecurrenceSheet({
                     }
                   >
                     <Text
-                      className={cn(
-                        selected ? "text-primary-400 font-bold" : ""
-                      )}
+                      bold={selected}
+                      className={cn(selected ? "text-primary-400" : "")}
                     >
                       {f.label}
                     </Text>
@@ -245,7 +244,7 @@ export default function RecurrenceSheet({
                     className={cn(
                       "flex-1 py-3 rounded-lg border items-center",
                       selected
-                        ? "border-primary-400 bg-primary-0"
+                        ? "border-primary-200 bg-primary-50"
                         : "border-background-200"
                     )}
                     onPress={() =>
@@ -253,9 +252,8 @@ export default function RecurrenceSheet({
                     }
                   >
                     <Text
-                      className={cn(
-                        selected ? "text-primary-400 font-bold" : ""
-                      )}
+                      bold={selected}
+                      className={cn(selected ? "text-primary-400" : "")}
                     >
                       {e.label}
                     </Text>

@@ -36,6 +36,9 @@ import PersonalExpenseStatusSheet from "@/features/book/components/PersonalExpen
 import CategorySheet, {
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
+import ExpenseOptions, {
+  ExpenseOptionChip
+} from "@/features/expense/components/ExpenseOptions";
 import RecurrenceSheet from "@/features/expense/components/RecurrenceSheet";
 import { recurrenceSummary } from "@/features/expense/utils/recurrence.util";
 import useAppToast from "@/hooks/use-app-toast";
@@ -48,10 +51,17 @@ import { cacheService } from "@/utils/cacheService";
 import { currencies, PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
-import { format } from "date-fns";
+import { format, isThisYear, isToday } from "date-fns";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { CalendarDays, Trash2 } from "lucide-react-native";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Paperclip,
+  Repeat,
+  Trash2
+} from "lucide-react-native";
 import { Fragment, useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 import "react-native-get-random-values";
@@ -178,6 +188,12 @@ export default function AddPersonalExpenseScreen() {
   // null = one-off expense (the default); set = a recurring series.
   const [recurrence, setRecurrence] = useState<RecurrenceConfig | null>(null);
 
+  // Optional fields (category / date / status / repeat / receipt) collapse into
+  // a chip row. Adding always starts closed — the common case is amount +
+  // description on the defaults. Editing opens it when the loaded expense has a
+  // non-default value (see the hydrate effect below).
+  const [optionsExpanded, setOptionsExpanded] = useState(false);
+
   // Resolve which book we're adding to. Locked → fetch the routed book. Unlocked
   // (from Home / Scan) → default to the most recent book, fetching the list once
   // if the store is empty. No books resolves to null → the empty state below.
@@ -260,6 +276,18 @@ export default function AddPersonalExpenseScreen() {
             currency: expense.currency,
             status: expense.status
           });
+          // Editing is a review, not a quick log — open More options whenever
+          // this expense actually carries a non-default one, so nothing the
+          // user is about to re-save sits folded behind a chip. Adding still
+          // always starts closed.
+          if (
+            expense.category !== ExpenseCategory.GENERAL ||
+            !isToday(new Date(expense.expense_date)) ||
+            expense.status !== "paid" ||
+            !!expense.proof_of_payment
+          ) {
+            setOptionsExpanded(true);
+          }
         }
       } catch {
         toast({
@@ -283,6 +311,8 @@ export default function AddPersonalExpenseScreen() {
     const { scanDraft, clearScanDraft } = states.expense.getState();
     if (scanDraft) clearScanDraft();
   }, []);
+
+  const handleToggleOptions = () => setOptionsExpanded((prev) => !prev);
 
   const validate = () => {
     const parsed = parseFloat(amount);
@@ -357,7 +387,8 @@ export default function AddPersonalExpenseScreen() {
       console.error("Failed to save personal recurring expense:", error);
       toast({
         title: "Couldn't set up",
-        description: "Could not set up the recurring expense. Please try again.",
+        description:
+          "Could not set up the recurring expense. Please try again.",
         type: "error"
       });
     } finally {
@@ -560,6 +591,77 @@ export default function AddPersonalExpenseScreen() {
     }
   };
 
+  const hasReceipt = !!proofOfPayment || !!existingProofUrl;
+  const CategoryChipIcon = expenseCategoryMeta(category).icon;
+
+  // The collapsed row. Each chip opens the same sheet its full field does, so
+  // changing just the category never costs an expand. A chip renders muted while
+  // its field is on the default and fills in once it isn't.
+  const optionChips: ExpenseOptionChip[] = [
+    {
+      key: "category",
+      label: expenseCategoryMeta(category).label,
+      isDefault: category === ExpenseCategory.GENERAL,
+      icon: (color) => <CategoryChipIcon size={16} color={color} />,
+      onPress: () => setCategorySheetOpen(true)
+    },
+    {
+      key: "date",
+      label: isToday(expenseDate)
+        ? "Today"
+        : // Drop the year for the current one — "Aug 12" reads better in a chip,
+          // but a back-dated expense from last year must stay unambiguous.
+          format(
+            expenseDate,
+            isThisYear(expenseDate) ? "MMM dd" : "MMM dd, yyyy"
+          ),
+      isDefault: isToday(expenseDate),
+      icon: (color) => <CalendarDays size={16} color={color} />,
+      onPress: () => setDateSheetOpen(true)
+    },
+    // Status and Repeat mirror the visibility rules of their full fields below.
+    ...(!recurrence
+      ? [
+          {
+            key: "status",
+            label: status === "paid" ? "Paid" : "Pending",
+            isDefault: status === "paid",
+            icon: (color: string) =>
+              status === "paid" ? (
+                <CheckCircle2 size={16} color={color} />
+              ) : (
+                <Clock size={16} color={color} />
+              ),
+            onPress: () => setStatusSheetOpen(true)
+          }
+        ]
+      : []),
+    ...(!isEdit
+      ? [
+          {
+            key: "repeat",
+            label: recurrence
+              ? recurrenceSummary(recurrence)
+              : isPro
+                ? "One-time"
+                : "One-time · Pro",
+            isDefault: !recurrence,
+            icon: (color: string) => <Repeat size={16} color={color} />,
+            onPress: handleOpenRecurrence
+          }
+        ]
+      : []),
+    {
+      key: "receipt",
+      label: hasReceipt ? "Receipt added" : "Receipt",
+      isDefault: !hasReceipt,
+      icon: (color) => <Paperclip size={16} color={color} />,
+      // The one chip that expands instead of opening a sheet: the uploader is a
+      // preview surface, not a value a sheet can hand back.
+      onPress: () => setOptionsExpanded(true)
+    }
+  ];
+
   // Unlocked entry (Home / Scan) but the user has no book yet — mirror the group
   // form's no-group state with a Create Book CTA. Replace so backing out of
   // create doesn't return to this empty form.
@@ -637,7 +739,13 @@ export default function AddPersonalExpenseScreen() {
           <FormButton
             key="save"
             className="flex-1"
-            text={isEdit ? "Save" : recurrence ? "Save Recurring" : "Add Expense"}
+            text={
+              isEdit
+                ? "Save Changes"
+                : recurrence
+                  ? "Save Recurring"
+                  : "Add Expense"
+            }
             loading={submitting}
             disabled={loading}
             onPress={handleSubmit}
@@ -645,7 +753,7 @@ export default function AddPersonalExpenseScreen() {
         ]}
       >
         <ScrollView className="flex-1 px-4">
-          <VStack className="gap-y-6 pt-2">
+          <VStack className="gap-y-6 pt-2 pb-4">
             <FormControl size="md" isInvalid={!!amountError}>
               <FormControlLabel>
                 <FormControlLabelText>Amount</FormControlLabelText>
@@ -694,104 +802,11 @@ export default function AddPersonalExpenseScreen() {
               errorMessage={descriptionError}
             />
 
-            <HStack className="gap-x-2">
-              <FormControl size="md" className="flex-1">
-                <FormControlLabel>
-                  <FormControlLabelText>Category</FormControlLabelText>
-                </FormControlLabel>
-                <SelectField
-                  onPress={() => setCategorySheetOpen(true)}
-                  leading={
-                    <CategoryIcon icon={expenseCategoryMeta(category).icon} />
-                  }
-                >
-                  <Text className="text-lg" numberOfLines={1}>
-                    {expenseCategoryMeta(category).label}
-                  </Text>
-                </SelectField>
-              </FormControl>
-
-              <FormControl size="md" className="flex-1">
-                <FormControlLabel>
-                  <FormControlLabelText>Expense Date</FormControlLabelText>
-                </FormControlLabel>
-                <SelectField
-                  onPress={() => setDateSheetOpen(true)}
-                  leading={
-                    <CalendarDays
-                      color={getSecondaryHex("text-secondary-950", colorScheme)}
-                    />
-                  }
-                >
-                  <Text className="text-lg" numberOfLines={1}>
-                    {format(expenseDate, "MMM dd, yyyy")}
-                  </Text>
-                </SelectField>
-              </FormControl>
-            </HStack>
-
-            {/* Status — paid vs an upcoming/unpaid bill. Hidden while a
-                recurrence is set: a series has no single status, and each
-                materialized occurrence starts Paid. */}
-            {!recurrence && (
-              <FormControl size="md">
-                <FormControlLabel>
-                  <FormControlLabelText>Status</FormControlLabelText>
-                </FormControlLabel>
-                <SelectField
-                  onPress={() => setStatusSheetOpen(true)}
-                  leading={
-                    <Icon
-                      as={status === "paid" ? "check-circle" : "schedule"}
-                      className="text-secondary-950"
-                      size={22}
-                    />
-                  }
-                >
-                  <Text className="text-lg capitalize">{status}</Text>
-                </SelectField>
-              </FormControl>
-            )}
-
-            {/* Repeat — Pro-only, ADD mode only. A recurrence turns this into a
-                server-side series (the same cron that posts group recurring
-                expenses materializes it). Not offered in edit mode: an already
-                posted occurrence is an independent one-off. */}
-            {!isEdit && (
-              <FormControl size="md">
-                <FormControlLabel>
-                  <FormControlLabelText>Repeat</FormControlLabelText>
-                </FormControlLabel>
-                <SelectField
-                  onPress={handleOpenRecurrence}
-                  leading={
-                    <Icon
-                      as="event-repeat"
-                      className="text-secondary-950"
-                      size={22}
-                    />
-                  }
-                >
-                  <Text className="text-lg">
-                    {recurrence
-                      ? recurrenceSummary(recurrence)
-                      : isPro
-                        ? "One-time"
-                        : "One-time - Pro"}
-                  </Text>
-                </SelectField>
-                {recurrence && (
-                  <Text className="text-sm text-secondary-950 mt-1">
-                    This creates a recurring series — the first expense posts
-                    now, the rest post automatically.
-                  </Text>
-                )}
-              </FormControl>
-            )}
-
-            {/* Book — read-only whenever the book is fixed (added from a book
-                screen, or editing an existing expense); changeable only on the
-                unlocked entry from Home / Scan. */}
+            {/* Book — the destination. Never collapsed: picking the wrong book
+                is the one mistake this form can't walk back. Read-only whenever
+                the book is fixed (added from a book screen, or editing an
+                existing expense); changeable only on the unlocked entry from
+                Home / Scan. */}
             {selectedBook && (
               <FormControl size="md">
                 <FormControlLabel>
@@ -829,22 +844,130 @@ export default function AddPersonalExpenseScreen() {
               </FormControl>
             )}
 
-            <VStack className="gap-y-1 pb-4">
-              <UploadImage
-                title="Upload Proof of Payment (optional)"
-                key={
-                  proofOfPayment?.assets?.[0]?.uri ?? existingProofUrl ?? "none"
-                }
-                defaultUri={
-                  proofOfPayment?.assets?.[0]?.uri ?? existingProofUrl
-                }
-                onSelect={setProofOfPayment}
-              />
-              <Text className="text-secondary-950 text-sm">
-                Proof could be a photo of a receipt, a payment screenshot, or
-                any document that shows the expense details.
-              </Text>
-            </VStack>
+            {/* Everything below has a working default, so it collapses to the
+                chip row until the user wants it. */}
+            <ExpenseOptions
+              chips={optionChips}
+              expanded={optionsExpanded}
+              onToggle={handleToggleOptions}
+            >
+              <HStack className="gap-x-2">
+                <FormControl size="md" className="flex-1">
+                  <FormControlLabel>
+                    <FormControlLabelText>Category</FormControlLabelText>
+                  </FormControlLabel>
+                  <SelectField
+                    onPress={() => setCategorySheetOpen(true)}
+                    leading={
+                      <CategoryIcon icon={expenseCategoryMeta(category).icon} />
+                    }
+                  >
+                    <Text className="text-lg" numberOfLines={1}>
+                      {expenseCategoryMeta(category).label}
+                    </Text>
+                  </SelectField>
+                </FormControl>
+
+                <FormControl size="md" className="flex-1">
+                  <FormControlLabel>
+                    <FormControlLabelText>Expense Date</FormControlLabelText>
+                  </FormControlLabel>
+                  <SelectField
+                    onPress={() => setDateSheetOpen(true)}
+                    leading={
+                      <CalendarDays
+                        color={getSecondaryHex(
+                          "text-secondary-950",
+                          colorScheme
+                        )}
+                      />
+                    }
+                  >
+                    <Text className="text-lg" numberOfLines={1}>
+                      {format(expenseDate, "MMM dd, yyyy")}
+                    </Text>
+                  </SelectField>
+                </FormControl>
+              </HStack>
+
+              {/* Status — paid vs an upcoming/unpaid bill. Hidden while a
+                  recurrence is set: a series has no single status, and each
+                  materialized occurrence starts Paid. */}
+              {!recurrence && (
+                <FormControl size="md">
+                  <FormControlLabel>
+                    <FormControlLabelText>Status</FormControlLabelText>
+                  </FormControlLabel>
+                  <SelectField
+                    onPress={() => setStatusSheetOpen(true)}
+                    leading={
+                      <Icon
+                        as={status === "paid" ? "check-circle" : "schedule"}
+                        className="text-secondary-950"
+                        size={22}
+                      />
+                    }
+                  >
+                    <Text className="text-lg capitalize">{status}</Text>
+                  </SelectField>
+                </FormControl>
+              )}
+
+              {/* Repeat — Pro-only, ADD mode only. A recurrence turns this into
+                  a server-side series (the same cron that posts group recurring
+                  expenses materializes it). Not offered in edit mode: an already
+                  posted occurrence is an independent one-off. */}
+              {!isEdit && (
+                <FormControl size="md">
+                  <FormControlLabel>
+                    <FormControlLabelText>Repeat</FormControlLabelText>
+                  </FormControlLabel>
+                  <SelectField
+                    onPress={handleOpenRecurrence}
+                    leading={
+                      <Icon
+                        as="event-repeat"
+                        className="text-secondary-950"
+                        size={22}
+                      />
+                    }
+                  >
+                    <Text className="text-lg">
+                      {recurrence
+                        ? recurrenceSummary(recurrence)
+                        : isPro
+                          ? "One-time"
+                          : "One-time - Pro"}
+                    </Text>
+                  </SelectField>
+                  {recurrence && (
+                    <Text className="text-sm text-secondary-950 mt-1">
+                      This creates a recurring series — the first expense posts
+                      now, the rest post automatically.
+                    </Text>
+                  )}
+                </FormControl>
+              )}
+
+              <VStack className="gap-y-1">
+                <UploadImage
+                  title="Upload Proof of Payment (optional)"
+                  key={
+                    proofOfPayment?.assets?.[0]?.uri ??
+                    existingProofUrl ??
+                    "none"
+                  }
+                  defaultUri={
+                    proofOfPayment?.assets?.[0]?.uri ?? existingProofUrl
+                  }
+                  onSelect={setProofOfPayment}
+                />
+                <Text className="text-secondary-950 text-sm">
+                  Proof could be a photo of a receipt, a payment screenshot, or
+                  any document that shows the expense details.
+                </Text>
+              </VStack>
+            </ExpenseOptions>
           </VStack>
         </ScrollView>
       </FormLayout>

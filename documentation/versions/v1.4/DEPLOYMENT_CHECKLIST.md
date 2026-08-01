@@ -55,7 +55,14 @@ All of them are idempotent (`IF [NOT] EXISTS` / `CREATE OR REPLACE` /
   - ⚠️ **Unlike the others, this file is schema-qualified** (it names `dev.*` and `public.*` explicitly) and its `public.*` half touches `public.personal_books_tbl` / `personal_expenses_tbl` / `personal_recurring_tbl`. It therefore **must run after step 1** or it errors on the missing tables. **(verify)** whether its `public` half was already run — if it was, it failed partway on the personal tables and the `groups_tbl` / `expenses_tbl` / `recurring_expenses_tbl` defaults may or may not have landed. Re-running is harmless (it just re-sets the same defaults).
   - DEFAULT only — it does not rewrite existing rows.
 
-- [ ] **5. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
+- [ ] **5. [`2026-08-01_book_budget.sql`](../../../migrations/2026-08-01_book_budget.sql)** — per-book budgets (free for all users). Depends on step 1.
+  - `ALTER TABLE personal_books_tbl ADD COLUMN IF NOT EXISTS budget_period text NOT NULL DEFAULT 'monthly'` + a CHECK for `('monthly','total')`. Existing rows all have `budget IS NULL`, so the default is inert and no backfill is needed.
+  - Adds `personal_books_budget_positive_chk` → `budget IS NULL OR budget > 0`, making NULL the only way to express "no budget".
+  - The `budget` column itself already ships in step 1 — this file only adds the period and the checks.
+  - Ends with `NOTIFY pgrst, 'reload schema';`. Without it the app hits **PGRST204 "Could not find the 'budget_period' column … in the schema cache"** on book create until PostgREST catches up on its own. (Exactly what happened on dev.)
+  - Applied to `dev` 2026-08-01.
+
+- [ ] **6. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
 
 > [`db.dev.sql`](../../../db.dev.sql) at the repo root is a **reference dump of the
 > `dev` schema, not runnable** (its own header says so). Use it to diff the
