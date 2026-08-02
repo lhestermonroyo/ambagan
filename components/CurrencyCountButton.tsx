@@ -29,8 +29,20 @@ export default function CurrencyCountButton({
   totalLabel
 }: CurrencyCountButtonProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
-  const secondary = items.slice(1);
 
+  // A currency with nothing in it is noise behind this chip: it inflates the
+  // count and opens a sheet with a zero row that changes no total. Only the
+  // TAIL is filtered — items[0] is the figure the caller is already showing, so
+  // it stays even at zero, and the chip's job is purely to say what else there
+  // is. Filtering the head instead would hide a funded currency whenever the
+  // headline one happened to be zero, which is exactly the case the chip
+  // exists for. A row survives if EITHER figure has money in it, so a currency
+  // that's all pending keeps its place.
+  const secondary = items
+    .slice(1)
+    .filter((item) => item.amount !== 0 || (item.secondaryAmount ?? 0) !== 0);
+
+  // Nothing else to show — on an all-zero stat this is what removes the chip.
   if (secondary.length === 0) return null;
 
   return (
@@ -49,7 +61,7 @@ export default function CurrencyCountButton({
         onClose={() => setSheetOpen(false)}
         title={title}
         subtitle={subtitle}
-        items={items}
+        items={[items[0], ...secondary]}
         secondaryLabel={secondaryLabel}
         convertTo={convertTo}
         totalLabel={totalLabel}

@@ -16,9 +16,12 @@ export type GaugeSlice = {
   pct: number;
 };
 
-/** Tick count across the whole arc. High enough that a ~2% slice still reads
- *  as more than a rounding artifact, low enough to stay legible on a phone. */
-const TICKS = 44;
+/** Tick count across the whole arc, and the only real lever on how heavy the
+ *  ticks look: TICK_WIDTH below divides the arc by this, so fewer ticks means
+ *  fatter ones. Kept high enough that a ~3% slice still reads as more than a
+ *  rounding artifact — below that, the minimum-one-tick guarantee is doing the
+ *  work rather than the proportions. */
+const TICKS = 32;
 
 // Drawn in a fixed viewBox and scaled by the SVG's own aspect ratio, so the
 // geometry never has to care about the real pixel width.
@@ -28,6 +31,13 @@ const CENTER_Y = 132;
 const R_OUTER = 128;
 const R_INNER = 94;
 const VB_HEIGHT = CENTER_Y + 6;
+
+/** Ticks are radial, so they crowd hardest at the inner radius — that pitch is
+ *  what the stroke has to fit inside. Hardcoding a width instead let the ticks
+ *  overlap at the inner end, which read as a solid blob wherever they stack
+ *  vertically (the flat ends of the arc). */
+const TICK_GAP = 2;
+const TICK_WIDTH = (Math.PI / TICKS) * R_INNER - TICK_GAP;
 
 /**
  * Where the money went, as a semi-circle meter: one tick per ~2% of spend, colored
@@ -71,7 +81,8 @@ export default function CategoryGauge({
   // bug.
   const tickColors = useMemo(() => {
     const active = slices.filter((s) => s.amount > 0);
-    if (active.length === 0 || total <= 0) return Array<string>(TICKS).fill(emptyColor);
+    if (active.length === 0 || total <= 0)
+      return Array<string>(TICKS).fill(emptyColor);
 
     const exact = active.map((s) => (s.amount / total) * TICKS);
     // Guaranteed minimum only holds while there's a tick to spare for each.
@@ -93,7 +104,8 @@ export default function CategoryGauge({
     while (assigned > TICKS) {
       let best = -1;
       for (let i = 0; i < counts.length; i++) {
-        if (counts[i] > min && (best === -1 || counts[i] > counts[best])) best = i;
+        if (counts[i] > min && (best === -1 || counts[i] > counts[best]))
+          best = i;
       }
       if (best === -1) break;
       counts[best] -= 1;
@@ -114,14 +126,15 @@ export default function CategoryGauge({
           the box exactly. With any letterboxing, the arc's baseline stops
           matching the box's, and the absolutely-positioned centre label drifts
           off it at some screen widths. */}
-      <Box
-        className="w-full"
-        style={{ aspectRatio: VB_WIDTH / VB_HEIGHT }}
-      >
+      <Box className="w-full" style={{ aspectRatio: VB_WIDTH / VB_HEIGHT }}>
         {/* Arc and centre label are stacked rather than drawn together: SvgText
             can't inherit the app's font styling or dark-mode colors, and the
             centre figure has to match every other amount on the screen. */}
-        <Svg width="100%" height="100%" viewBox={`0 0 ${VB_WIDTH} ${VB_HEIGHT}`}>
+        <Svg
+          width="100%"
+          height="100%"
+          viewBox={`0 0 ${VB_WIDTH} ${VB_HEIGHT}`}
+        >
           {tickColors.map((color, i) => {
             // Half a step in from each end, so the run is visually centred on
             // the arc rather than butting against the baseline.
@@ -136,7 +149,7 @@ export default function CategoryGauge({
                 x2={CENTER_X + R_OUTER * cos}
                 y2={CENTER_Y + R_OUTER * sin}
                 stroke={color}
-                strokeWidth={7}
+                strokeWidth={TICK_WIDTH}
                 strokeLinecap="round"
               />
             );
@@ -147,7 +160,12 @@ export default function CategoryGauge({
             so a long converted figure has the most room available to it. */}
         <VStack className="absolute inset-x-0 bottom-0 items-center pb-2 px-16">
           <Text className="text-sm text-secondary-950">{label}</Text>
-          <Text bold className="text-2xl" numberOfLines={1} adjustsFontSizeToFit>
+          <Text
+            bold
+            className="text-2xl"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             {approx ? "≈ " : ""}
             {formatAmount(total, currency)}
           </Text>

@@ -16,9 +16,11 @@ import { useMemo } from "react";
  * Progress against a book's spending cap, in the book's own currency. Spend in
  * any OTHER currency is folded in at an approximate rate (see utils/fx) so a
  * mixed PHP/JPY trip book can't report a ¥42,000 month as 0% of budget used —
- * this is the one place in the app that converts, because a budget bar has to
- * be a single number. Money that must be exact (balances, settlements, the
- * Paid/Pending stats below) stays split per-currency and is never converted.
+ * a budget bar has to be a single number. The Paid/Pending stats in the footer
+ * convert on the same terms: they answer the same "how much have I spent"
+ * question as the bar, so showing them in one currency while the bar totals in
+ * another would put two different answers on one card. Money that must be exact
+ * — balances and settlements — stays split per-currency and never converts.
  *
  * The mixed-currency disclosure is deliberately ONE chip and ONE caption. An
  * earlier version spelled out what was included, what it converted to and what
@@ -83,7 +85,10 @@ export default function BookBudgetCard({
         // the sheet) and raises the flag for the caption below.
         if (rate === null) {
           if (t.paid > 0) {
-            priced.push({ row: { currency: t.currency, amount: t.paid }, value: -1 });
+            priced.push({
+              row: { currency: t.currency, amount: t.paid },
+              value: -1
+            });
             hasUncounted = true;
           }
           continue;
@@ -115,6 +120,28 @@ export default function BookBudgetCard({
 
       return { paid, pending, rows, convertedCurrencies, hasUncounted };
     }, [totals, currency, fx]);
+
+  // The footer's stats are book-wide while the bar covers only the budget's
+  // window, so a currency can be converted down there and absent up here (last
+  // month's yen on a monthly budget). The card keeps ONE rate caption, so it has
+  // to be told about both sets or it would quote a vintage for figures it didn't
+  // cover.
+  const noteCurrencies = useMemo(() => {
+    const seen = new Set(convertedCurrencies);
+    for (const item of [
+      ...(paidByCurrency ?? []),
+      ...(pendingByCurrency ?? [])
+    ]) {
+      if (
+        item.currency !== currency &&
+        item.amount !== 0 &&
+        getRate(fx, item.currency, currency) !== null
+      ) {
+        seen.add(item.currency);
+      }
+    }
+    return Array.from(seen);
+  }, [convertedCurrencies, paidByCurrency, pendingByCurrency, currency, fx]);
 
   if (budget == null || budget <= 0) return null;
 
@@ -198,13 +225,6 @@ export default function BookBudgetCard({
           </Text>
         </HStack>
 
-        {/* The rate vintage matters as much as the "approximate" — it tells
-            someone two years from now how much to trust the number — and the
-            attribution link is a licence condition of the rate feed, so this
-            one caption stays on the card even though the detail moved into the
-            sheet. Renders nothing on a single-currency book. */}
-        <ApproxRateNote currencies={convertedCurrencies} />
-
         {/* Two states that the bar itself can't show. Both are exceptions, so
             they're styled as flags rather than as another pair of body rows. */}
         {hasUncounted && (
@@ -234,6 +254,8 @@ export default function BookBudgetCard({
                 primaryCurrency={primaryCurrency}
                 amountClassName="text-background-950"
                 fitAmount
+                convertTo={currency}
+                totalLabel="Total paid"
               />
             </VStack>
             <Divider orientation="vertical" className="mx-4" />
@@ -248,11 +270,22 @@ export default function BookBudgetCard({
                 primaryCurrency={primaryCurrency}
                 amountClassName="text-background-950"
                 fitAmount
+                convertTo={currency}
+                totalLabel="Total pending"
               />
             </VStack>
           </HStack>
         </VStack>
       )}
+
+      {/* The rate vintage matters as much as the "approximate" — it tells
+          someone two years from now how much to trust the number — and the
+          attribution link is a licence condition of the rate feed, so this one
+          caption stays on the card even though the working moved into the
+          sheets. It closes the card rather than sitting under the bar because
+          it now covers the footer's converted totals too. Renders nothing on a
+          single-currency book. */}
+      <ApproxRateNote currencies={noteCurrencies} />
     </VStack>
   );
 }
