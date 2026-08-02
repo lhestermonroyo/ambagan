@@ -51,7 +51,6 @@ const USER_STATE = create<UserState>((set, get) => ({
   appearanceMode: "dark",
   settlementView: "full",
   notificationsEnabled: true,
-  defaultCurrency: "PHP",
 
   signOut: () => {
     set({
@@ -59,7 +58,6 @@ const USER_STATE = create<UserState>((set, get) => ({
       details: null,
       preferences: null,
       settlementView: "full",
-      defaultCurrency: "PHP",
       // Reset the routing intent so a stale "tabs"/"splash" from the previous
       // account can't survive into the next login and mis-route index.tsx.
       routeIntent: "login"
@@ -127,11 +125,6 @@ const USER_STATE = create<UserState>((set, get) => ({
     set({ notificationsEnabled: enabled });
   },
 
-  setDefaultCurrency: async (userId: string, currency: string) => {
-    await updatePreferencesInDB(userId, { default_currency: currency });
-    set({ defaultCurrency: currency });
-  },
-
   updatePreferences: async (prefs) => {
     const { details } = get();
     if (!details?.id) return;
@@ -144,9 +137,6 @@ const USER_STATE = create<UserState>((set, get) => ({
       }),
       ...(prefs.settlement_view !== undefined && {
         settlementView: prefs.settlement_view
-      }),
-      ...(prefs.default_currency !== undefined && {
-        defaultCurrency: prefs.default_currency
       })
     });
   },
@@ -164,10 +154,13 @@ const USER_STATE = create<UserState>((set, get) => ({
       let prefs = await getPreferences(userId);
 
       if (!prefs) {
+        // `default_currency` is deliberately absent — the column still exists
+        // (so an existing user's stored choice isn't destroyed if we ever bring
+        // the setting back) but nothing reads it, and it defaults to 'PHP' in
+        // the schema. See BASE_CURRENCY in utils/fx.
         prefs = await createPreferences(userId, {
           appearance: "dark",
           settlement_view: "full",
-          default_currency: "PHP",
           ...NOTIF_ALL_ON
         });
       }
@@ -180,8 +173,7 @@ const USER_STATE = create<UserState>((set, get) => ({
           (pending?.settlement_view as SettlementView) ??
           prefs.settlement_view ??
           "full",
-        notificationsEnabled: isAnyNotifEnabled(prefs),
-        defaultCurrency: prefs.default_currency
+        notificationsEnabled: isAnyNotifEnabled(prefs)
       });
     } catch (error) {
       // Offline / failed load — still apply a pending appearance change so the

@@ -6,7 +6,12 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { PersonalBookTotal, PersonalOverview } from "@/types/books";
-import { getRate, useConvertedTotal, useFxRates } from "@/utils/fx";
+import {
+  BASE_CURRENCY,
+  getRate,
+  useConvertedTotal,
+  useFxRates
+} from "@/utils/fx";
 import {
   getErrorHex,
   getSecondaryHex,
@@ -36,34 +41,33 @@ import { useColorScheme } from "react-native";
 export default function PersonalSpendingCard({
   overview,
   isLoading,
-  defaultCurrency,
   onPress
 }: {
   overview: PersonalOverview | null;
   isLoading: boolean;
-  defaultCurrency: string;
   onPress: () => void;
 }) {
   const colorScheme = useColorScheme() ?? "light";
 
-  // Default currency leads so the folded figure and the sheet behind the chip
-  // agree on which currency is the answer.
+  // This card spans every book, so it has no one book's currency to lead with —
+  // it folds into the app's home currency. The exact per-currency working stays
+  // behind the chip.
   const paidItems = useMemo(
-    () => toPaidItems(overview?.thisMonth ?? [], defaultCurrency),
-    [overview, defaultCurrency]
+    () => toPaidItems(overview?.thisMonth ?? [], BASE_CURRENCY),
+    [overview]
   );
   const prevPaidItems = useMemo(
-    () => toPaidItems(overview?.lastMonth ?? [], defaultCurrency),
-    [overview, defaultCurrency]
+    () => toPaidItems(overview?.lastMonth ?? [], BASE_CURRENCY),
+    [overview]
   );
 
   const { total, convertedCurrencies } = useConvertedTotal(
     paidItems,
-    defaultCurrency
+    BASE_CURRENCY
   );
   const { total: previousTotal } = useConvertedTotal(
     prevPaidItems,
-    defaultCurrency
+    BASE_CURRENCY
   );
 
   // Chip rows carry pending as the secondary figure, so the one tap that
@@ -71,13 +75,13 @@ export default function PersonalSpendingCard({
   const chipItems = useMemo(
     () =>
       [...(overview?.thisMonth ?? [])]
-        .sort(byPrimaryFirst(defaultCurrency))
+        .sort(byPrimaryFirst(BASE_CURRENCY))
         .map((t) => ({
           currency: t.currency,
           amount: t.paid,
           secondaryAmount: t.pending
         })),
-    [overview, defaultCurrency]
+    [overview]
   );
 
   const budgets = useMemo(() => overview?.budgets ?? [], [overview]);
@@ -132,7 +136,7 @@ export default function PersonalSpendingCard({
                     adjustsFontSizeToFit
                   >
                     {isApprox ? "≈ " : ""}
-                    {formatAmount(total, defaultCurrency)}
+                    {formatAmount(total, BASE_CURRENCY)}
                   </Text>
                   {chipItems.length > 0 && (
                     <CurrencyCountButton
@@ -140,7 +144,7 @@ export default function PersonalSpendingCard({
                       title="Personal spending"
                       subtitle="Paid this month, by currency"
                       secondaryLabel="pending"
-                      convertTo={defaultCurrency}
+                      convertTo={BASE_CURRENCY}
                       totalLabel="Total spent"
                     />
                   )}
@@ -284,13 +288,13 @@ function BudgetRollup({ budgets }: { budgets: PersonalOverview["budgets"] }) {
   );
 }
 
-/** Paid spend as plain currency amounts, default currency first. */
+/** Paid spend as plain currency amounts, home currency first. */
 function toPaidItems(
   totals: PersonalBookTotal[],
-  defaultCurrency: string
+  primary: string
 ): { currency: string; amount: number }[] {
   return [...totals]
-    .sort(byPrimaryFirst(defaultCurrency))
+    .sort(byPrimaryFirst(primary))
     .map((t) => ({ currency: t.currency, amount: t.paid }));
 }
 

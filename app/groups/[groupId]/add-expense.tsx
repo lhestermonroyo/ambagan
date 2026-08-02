@@ -55,6 +55,7 @@ import { ExpenseCategory, RecurrenceConfig } from "@/types/expenses";
 import { Group, Member } from "@/types/groups";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
+import { BASE_CURRENCY } from "@/utils/fx";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
@@ -118,7 +119,7 @@ export default function AddExpenseScreen() {
   const isLocked = !!groupId && groupId !== "[groupId]";
 
   const { list: groupList, initialized: groupsInitialized } = states.group();
-  const { details: currentUser, session, defaultCurrency } = states.user();
+  const { details: currentUser, session } = states.user();
   const userId = currentUser?.id ?? session?.user?.id;
   const isPro = currentUser?.plan === "pro";
 
@@ -143,7 +144,7 @@ export default function AddExpenseScreen() {
     return {
       amount: draft?.amount ?? "",
       description: draft?.description ?? "",
-      currency: scannedCurrency ?? (isPro ? defaultCurrency : "PHP"),
+      currency: scannedCurrency ?? BASE_CURRENCY,
       // Kept so the group-currency sync below can tell an explicit scanned
       // currency (which wins) apart from the plain default.
       scannedCurrency,
@@ -296,10 +297,9 @@ export default function AddExpenseScreen() {
   useEffect(() => {
     if (seed.scannedCurrency) return;
     // A group cached before group-currency shipped has no `currency` — fall back
-    // to the plain default so we never set `undefined`.
+    // to the home currency so we never set `undefined`.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (selectedGroup)
-      setCurrency(selectedGroup.currency ?? (isPro ? defaultCurrency : "PHP"));
+    if (selectedGroup) setCurrency(selectedGroup.currency ?? BASE_CURRENCY);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGroup?.id]);
 

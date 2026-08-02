@@ -23,7 +23,12 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { expenseCategoryMeta } from "@/features/expense/components/CategorySheet";
+import CategorySheet, {
+  ALL_CATEGORIES,
+  categoryFilterLabel,
+  categoryFilterOptions,
+  expenseCategoryMeta
+} from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
   CustomDateRange,
@@ -50,7 +55,7 @@ import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
-import { useConvertedTotal } from "@/utils/fx";
+import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
 import {
@@ -71,6 +76,7 @@ import {
   ScanLine,
   Search,
   Share2,
+  Tag,
   Trash2,
   X
 } from "lucide-react-native";
@@ -111,13 +117,16 @@ export default function GroupDetailsScreen() {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
   // Expenses tab filters, mirroring the Settlements tab: a payer pill that opens
-  // a bottom sheet, plus search + date-range icon buttons. Search matches the
-  // description; the payer filter narrows to expenses the user paid; the date
-  // range clamps on created_at (the field the list groups its date headers by).
+  // a bottom sheet, plus search + category + date-range icon buttons. Search
+  // matches the description; the payer filter narrows to expenses the user paid;
+  // the date range clamps on created_at (the field the list groups its date
+  // headers by).
   const [expenseSearch, setExpenseSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [payerFilter, setPayerFilter] = useState<PayerOption>("All");
   const [payerSheetOpen, setPayerSheetOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>(ALL_CATEGORIES);
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [expenseDateRange, setExpenseDateRange] =
     useState<DateRangeOption>("All");
   const [expenseCustomRange, setExpenseCustomRange] =
@@ -131,14 +140,14 @@ export default function GroupDetailsScreen() {
     settlementList,
     memberList
   } = states.group();
-  const { details: userDetails, defaultCurrency } = states.user();
+  const { details: userDetails } = states.user();
 
   const isPro = userDetails?.plan === "pro";
 
   // This group's own home currency drives which balance line surfaces first (a
-  // JPY trip group shows JPY first). Falls back to the user default until the
-  // group detail loads / for legacy rows.
-  const primaryCurrency = groupDetails?.currency ?? defaultCurrency;
+  // JPY trip group shows JPY first). Falls back to the app's home currency
+  // until the group detail loads / for legacy rows.
+  const primaryCurrency = groupDetails?.currency ?? BASE_CURRENCY;
 
   // A split needs at least two people, so expenses are gated until the group
   // has a second member (joined via invite, or added as a phone contact).
@@ -330,7 +339,7 @@ export default function GroupDetailsScreen() {
         description: "Group has been moved back to your active groups.",
         type: "success"
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to restore group. Please try again.",
@@ -365,6 +374,7 @@ export default function GroupDetailsScreen() {
   const hasActiveFilters =
     expenseSearch.trim().length > 0 ||
     payerFilter !== "All" ||
+    categoryFilter !== ALL_CATEGORIES ||
     expenseDateRange !== "All";
 
   const filteredExpenseList = useMemo(() => {
@@ -384,6 +394,12 @@ export default function GroupDetailsScreen() {
       ) {
         return false;
       }
+      if (
+        categoryFilter !== ALL_CATEGORIES &&
+        item.category !== categoryFilter
+      ) {
+        return false;
+      }
       if (!isWithinRange(new Date(item.created_at || 0), cutoff, until)) {
         return false;
       }
@@ -393,6 +409,7 @@ export default function GroupDetailsScreen() {
     expenseList,
     expenseSearch,
     payerFilter,
+    categoryFilter,
     expenseDateRange,
     expenseCustomRange,
     userDetails?.id
@@ -490,7 +507,7 @@ export default function GroupDetailsScreen() {
         type: "success"
       });
       router.replace("/groups");
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to archive group. Please try again.",
@@ -1018,6 +1035,22 @@ export default function GroupDetailsScreen() {
                         <Button
                           variant="link"
                           className="rounded-full"
+                          onPress={() => setCategorySheetOpen(true)}
+                        >
+                          <Tag
+                            color={
+                              categoryFilter !== ALL_CATEGORIES
+                                ? getPrimaryHex("text-primary-400", colorScheme)
+                                : getSecondaryHex(
+                                    "text-secondary-950",
+                                    colorScheme
+                                  )
+                            }
+                          />
+                        </Button>
+                        <Button
+                          variant="link"
+                          className="rounded-full"
                           onPress={() => setDateRangeSheetOpen(true)}
                         >
                           <CalendarRange
@@ -1036,6 +1069,7 @@ export default function GroupDetailsScreen() {
                   )}
 
                   {(expenseDateRange !== "All" ||
+                    categoryFilter !== ALL_CATEGORIES ||
                     (!!expenseSearch && !searchOpen)) && (
                     <HStack className="gap-x-2 px-4 flex-wrap">
                       {!!expenseSearch && !searchOpen && (
@@ -1048,6 +1082,23 @@ export default function GroupDetailsScreen() {
                             numberOfLines={1}
                           >
                             &ldquo;{expenseSearch}&rdquo;
+                          </Text>
+                          <X
+                            size={12}
+                            color={getPrimaryHex(
+                              "text-primary-600",
+                              colorScheme
+                            )}
+                          />
+                        </Pressable>
+                      )}
+                      {categoryFilter !== ALL_CATEGORIES && (
+                        <Pressable
+                          onPress={() => setCategoryFilter(ALL_CATEGORIES)}
+                          className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                        >
+                          <Text className="text-sm text-primary-600">
+                            {categoryFilterLabel(categoryFilter)}
                           </Text>
                           <X
                             size={12}
@@ -1115,7 +1166,7 @@ export default function GroupDetailsScreen() {
                     hasActiveFilters ? (
                       <EmptyList
                         type={EmptyType.EXPENSE}
-                        content="No expenses match your filters. Try adjusting your search, payer, or date range."
+                        content="No expenses match your filters. Try adjusting your search, payer, category, or date range."
                       />
                     ) : canAddExpense ? (
                       <EmptyList type={EmptyType.EXPENSE} />
@@ -1234,6 +1285,13 @@ export default function GroupDetailsScreen() {
         onClose={() => setPayerSheetOpen(false)}
         payer={payerFilter}
         onSelect={setPayerFilter}
+      />
+      <CategorySheet
+        isOpen={categorySheetOpen}
+        onClose={() => setCategorySheetOpen(false)}
+        category={categoryFilter}
+        onSelect={setCategoryFilter}
+        options={categoryFilterOptions}
       />
       <DateRangeSheet
         isOpen={dateRangeSheetOpen}

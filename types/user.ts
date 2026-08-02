@@ -7,6 +7,9 @@ export type SettlementView = "full" | "compact" | "arrow";
 export type UserPreferences = {
   id: string;
   user_id: string;
+  // No longer read by the app — the home currency is the BASE_CURRENCY constant
+  // in utils/fx. The column is kept so an existing user's stored choice survives
+  // in case the setting ever comes back; drop it once that's ruled out.
   default_currency: string;
   appearance: AppearanceMode;
   settlement_view: SettlementView;
@@ -21,11 +24,7 @@ export type UserPreferences = {
 };
 
 export type RouteIntent =
-  | "splash"
-  | "welcome"
-  | "onboarding"
-  | "tabs"
-  | "login";
+  "splash" | "welcome" | "onboarding" | "tabs" | "login";
 
 export type UserState = {
   session: Session | null;
@@ -43,13 +42,13 @@ export type UserState = {
   appearanceMode: AppearanceMode;
   settlementView: SettlementView;
   notificationsEnabled: boolean;
-  defaultCurrency: string;
   signOut: () => void;
   setAppearanceMode: (mode: AppearanceMode) => Promise<void>;
   setSettlementView: (view: SettlementView) => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
-  setDefaultCurrency: (userId: string, currency: string) => Promise<void>;
-  updatePreferences: (prefs: Partial<Omit<UserPreferences, "id" | "user_id" | "updated_at">>) => Promise<void>;
+  updatePreferences: (
+    prefs: Partial<Omit<UserPreferences, "id" | "user_id" | "updated_at">>
+  ) => Promise<void>;
   loadPreferences: (userId?: string) => Promise<void>;
 };
 

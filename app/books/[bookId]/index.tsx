@@ -38,7 +38,11 @@ import PersonalStatusFilterSheet, {
   PersonalStatusFilter,
   personalStatusFilterLabel
 } from "@/features/book/components/PersonalStatusFilterSheet";
-import CategorySheet from "@/features/expense/components/CategorySheet";
+import CategorySheet, {
+  ALL_CATEGORIES,
+  categoryFilterLabel,
+  categoryFilterOptions
+} from "@/features/expense/components/CategorySheet";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
@@ -56,7 +60,6 @@ import states from "@/states";
 import { Book, PersonalBookTotal, PersonalExpense } from "@/types/books";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
-import { CategoryOption, expenseCategories } from "@/utils/constants";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
 import { useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
@@ -73,7 +76,6 @@ import {
   ArchiveRestore,
   CalendarRange,
   ChevronDown,
-  LayoutGrid,
   ListPlus,
   Pencil,
   Plus,
@@ -105,19 +107,6 @@ if (
 }
 
 const tabs = ["Expenses", "Stats", "Book Info"] as const;
-
-// Filter-only sentinel — no expense ever stores it, so it can share the
-// CategorySheet options list with the real categories.
-const ALL_CATEGORIES = "all";
-
-const categoryFilterOptions: CategoryOption[] = [
-  { label: "All Categories", value: ALL_CATEGORIES, icon: LayoutGrid },
-  ...expenseCategories
-];
-
-const categoryFilterLabel = (value: string) =>
-  categoryFilterOptions.find((c) => c.value === value)?.label ??
-  "All Categories";
 
 // Move `amount` of `currency` between the paid/pending buckets of a
 // PersonalBookTotal[] — the optimistic math behind flipping an expense's status.

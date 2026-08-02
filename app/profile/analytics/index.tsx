@@ -21,6 +21,7 @@ import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
+import { BASE_CURRENCY } from "@/utils/fx";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -35,7 +36,7 @@ const BAR_MAX_HEIGHT = 72;
 
 export default function AnalyticsScreen() {
   const router = useRouter();
-  const { details: userDetails, defaultCurrency } = states.user();
+  const { details: userDetails } = states.user();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [dateRange, setDateRange] = useState<DateRangeOption>("1M");
@@ -116,14 +117,14 @@ export default function AnalyticsScreen() {
                     <Text bold className="text-xl">
                       {formatAmount(
                         data.summary.totalInvolved,
-                        defaultCurrency
+                        BASE_CURRENCY
                       )}
                     </Text>
                   </HStack>
                   <HStack className="items-center justify-between gap-x-4">
                     <Text className="text-secondary-950">You Paid</Text>
                     <Text bold className="text-xl">
-                      {formatAmount(data.summary.totalPaid, defaultCurrency)}
+                      {formatAmount(data.summary.totalPaid, BASE_CURRENCY)}
                     </Text>
                   </HStack>
                 </VStack>
@@ -152,7 +153,7 @@ export default function AnalyticsScreen() {
                                 {group.groupName}
                               </Text>
                               <Text bold className="text-lg">
-                                {formatAmount(group.amount, defaultCurrency)}
+                                {formatAmount(group.amount, BASE_CURRENCY)}
                               </Text>
                             </HStack>
                             <Box className="h-2 rounded-full bg-background-200 overflow-hidden">

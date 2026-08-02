@@ -54,17 +54,13 @@ import { Book, PersonalExpenseStatus } from "@/types/books";
 import { ExpenseCategory, RecurrenceConfig } from "@/types/expenses";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
+import { BASE_CURRENCY } from "@/utils/fx";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { format, isThisYear, isToday } from "date-fns";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import {
-  CalendarDays,
-  Paperclip,
-  Repeat,
-  Trash2
-} from "lucide-react-native";
+import { CalendarDays, Paperclip, Repeat, Trash2 } from "lucide-react-native";
 import { Fragment, useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 import "react-native-get-random-values";
@@ -106,7 +102,7 @@ export default function AddPersonalExpenseScreen() {
     typeof params.expenseId === "string" ? params.expenseId : undefined;
   const isEdit = !!expenseId;
 
-  const { details: userDetails, defaultCurrency } = states.user();
+  const { details: userDetails } = states.user();
   const { list: bookList } = states.book();
   const isPro = userDetails?.plan === "pro";
 
@@ -151,9 +147,7 @@ export default function AddPersonalExpenseScreen() {
   const [bookPickerOpen, setBookPickerOpen] = useState(false);
   // Scanned currency (if any) wins; otherwise the book's currency is filled in
   // once it loads. Default until then.
-  const [currency, setCurrency] = useState(
-    seed?.currency ?? (isPro ? defaultCurrency : "PHP")
-  );
+  const [currency, setCurrency] = useState(seed?.currency ?? BASE_CURRENCY);
   const [dailyCount, setDailyCount] = useState(0);
 
   const [amount, setAmount] = useState(seed?.amount ?? "");

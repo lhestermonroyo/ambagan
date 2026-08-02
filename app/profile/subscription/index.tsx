@@ -249,7 +249,7 @@ export default function SubscriptionScreen() {
           : "No previous purchase found for this account.",
         type: restored ? "success" : "info"
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Restore Failed",
         description: "Could not restore purchase. Please try again.",
@@ -264,7 +264,7 @@ export default function SubscriptionScreen() {
     setManagingSubscription(true);
     try {
       await services.purchase.showManageSubscriptions();
-    } catch (error) {
+    } catch {
       toast({
         title: "Unable to open",
         description:

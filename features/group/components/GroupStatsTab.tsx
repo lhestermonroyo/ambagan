@@ -14,7 +14,7 @@ import DateRangeSheet, {
   DateRangeOption,
   formatDateRangeLabel,
   getDateRangeBounds,
-  isWithinRange,
+  isWithinRange
 } from "@/features/group/components/DateRangeSheet";
 import GroupMemberBreakdown from "@/features/group/components/GroupMemberBreakdown";
 import GroupPersonalStats from "@/features/group/components/GroupPersonalStats";
@@ -24,6 +24,7 @@ import services from "@/services";
 import states from "@/states";
 import { groupByCurrency } from "@/utils/currency";
 import { exportGroupSettlementsAsCsv } from "@/utils/exportCsv";
+import { BASE_CURRENCY } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { ChevronDown, Download } from "lucide-react-native";
 import { useMemo, useState } from "react";
@@ -32,21 +33,21 @@ import { useColorScheme } from "react-native";
 export default function GroupStatsTab({
   groupId,
   groupName,
-  userId,
+  userId
 }: {
   groupId: string;
   groupName: string;
   userId: string;
 }) {
-  const { expenseList, settlementList, details: groupDetails } = states.group();
-  const { defaultCurrency, details: userDetails } = states.user();
+  const { expenseList, details: groupDetails } = states.group();
+  const { details: userDetails } = states.user();
   const isPro = userDetails?.plan === "pro";
 
   // The group's own home currency is the one every card leads with (a JPY trip
-  // group must scope its stats to JPY, not the user's PHP default — else the
-  // primary-currency cards would come up empty). Falls back to the user default
-  // for legacy rows / until the detail loads.
-  const primaryCurrency = groupDetails?.currency ?? defaultCurrency;
+  // group must scope its stats to JPY — else the primary-currency cards would
+  // come up empty). Falls back to the app's home currency for legacy rows /
+  // until the detail loads.
+  const primaryCurrency = groupDetails?.currency ?? BASE_CURRENCY;
   const toast = useAppToast();
   const colorScheme = useColorScheme() ?? "light";
 
@@ -62,57 +63,24 @@ export default function GroupStatsTab({
 
   const { start: cutoff, end: until } = useMemo(
     () => getDateRangeBounds(dateRange, customRange),
-    [dateRange, customRange],
+    [dateRange, customRange]
   );
 
   const filteredExpenses = useMemo(() => {
     if (!cutoff && !until) return expenseList;
-    return expenseList.filter((e) => isWithinRange(e.created_at, cutoff, until));
+    return expenseList.filter((e) =>
+      isWithinRange(e.created_at, cutoff, until)
+    );
   }, [expenseList, cutoff, until]);
 
   // Member splits for the filtered expenses, fetched once and shared by the
   // personal "Your Activity" card and the group Member Breakdown below.
   const { splits, loading: splitsLoading } = useMemberSplits(filteredExpenses);
 
-  const filteredActivePayments = useMemo(() => {
-    const active = settlementList.filter((p) => p.status !== "settled");
-    if (!cutoff && !until) return active;
-    return active.filter((p) => isWithinRange(p.created_at, cutoff, until));
-  }, [settlementList, cutoff, until]);
-
   const totalSpendingsByCurrency = useMemo(
     () => groupByCurrency(filteredExpenses),
-    [filteredExpenses],
+    [filteredExpenses]
   );
-
-  const toCollect = useMemo(
-    () =>
-      groupByCurrency(
-        filteredActivePayments.filter((p) => p.payer.id === userId),
-      ),
-    [filteredActivePayments, userId],
-  );
-
-  const toPay = useMemo(
-    () =>
-      groupByCurrency(
-        filteredActivePayments.filter((p) => p.member.id === userId),
-      ),
-    [filteredActivePayments, userId],
-  );
-
-  const netBalance = useMemo(() => {
-    const allCurrencies = new Set([
-      ...toCollect.map((i) => i.currency),
-      ...toPay.map((i) => i.currency),
-    ]);
-    return Array.from(allCurrencies).map((currency) => {
-      const receive =
-        toCollect.find((i) => i.currency === currency)?.amount ?? 0;
-      const pay = toPay.find((i) => i.currency === currency)?.amount ?? 0;
-      return { currency, amount: receive - pay };
-    });
-  }, [toCollect, toPay]);
 
   // Count + average, scoped to the primary currency so the average stays a
   // meaningful figure (averaging across currencies would be nonsense). Kept
@@ -120,7 +88,7 @@ export default function GroupStatsTab({
   // primary-currency total.
   const primaryStats = useMemo(() => {
     const inCurrency = filteredExpenses.filter(
-      (e) => e.currency === primaryCurrency,
+      (e) => e.currency === primaryCurrency
     );
     const count = inCurrency.length;
     const total = inCurrency.reduce((sum, e) => sum + e.amount, 0);
@@ -136,7 +104,7 @@ export default function GroupStatsTab({
         .filter((e) => !e.is_draft && e.currency === primaryCurrency)
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5),
-    [filteredExpenses, primaryCurrency],
+    [filteredExpenses, primaryCurrency]
   );
 
   // Spending grouped by category (primary currency, drafts excluded), largest
@@ -157,7 +125,7 @@ export default function GroupStatsTab({
       .map(([category, amount]) => ({
         category,
         amount,
-        pct: total > 0 ? (amount / total) * 100 : 0,
+        pct: total > 0 ? (amount / total) * 100 : 0
       }))
       .sort((a, b) => b.amount - a.amount);
   }, [filteredExpenses, primaryCurrency]);
@@ -173,14 +141,14 @@ export default function GroupStatsTab({
         groupId,
         userId,
         cutoff,
-        until,
+        until
       );
 
       if (payments.length === 0) {
         toast({
           title: "No data",
           description: "No settlements found for the selected date range.",
-          type: "info",
+          type: "info"
         });
         return;
       }
@@ -191,7 +159,7 @@ export default function GroupStatsTab({
       toast({
         title: "Export failed",
         description: "Could not export settlements. Please try again.",
-        type: "error",
+        type: "error"
       });
     } finally {
       setExporting(false);
@@ -445,17 +413,13 @@ export default function GroupStatsTab({
 
 function SpendingHero({
   items,
-  primaryCurrency = "PHP",
+  primaryCurrency = "PHP"
 }: {
   items: { currency: string; amount: number }[];
   primaryCurrency?: string;
 }) {
   const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency
-      ? -1
-      : b.currency === primaryCurrency
-        ? 1
-        : 0,
+    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
   );
   const [primary, ...secondary] = sorted;
   const primaryAmount = primary?.amount ?? 0;
@@ -484,45 +448,3 @@ function SpendingHero({
   );
 }
 
-function NetBalanceHero({
-  items,
-  primaryCurrency = "PHP",
-}: {
-  items: { currency: string; amount: number }[];
-  primaryCurrency?: string;
-}) {
-  const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency
-      ? -1
-      : b.currency === primaryCurrency
-        ? 1
-        : 0,
-  );
-  const [primary, ...secondary] = sorted;
-  const primaryAmount = primary?.amount ?? 0;
-
-  const amountColor = primaryAmount < 0 && "text-error-400";
-
-  return (
-    <VStack className="gap-y-2">
-      <Text bold className="text-secondary-950 uppercase text-sm">
-        Net Balance
-      </Text>
-      <HStack className="items-end gap-x-2">
-        <Text bold className={`text-3xl ${amountColor}`}>
-          {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
-        </Text>
-        <HStack className="items-center gap-x-1 pb-1">
-          <Text className="text-secondary-950 text-base">
-            {primary?.currency ?? primaryCurrency}
-          </Text>
-          {secondary.length > 0 && (
-            <Text className="text-secondary-950 text-sm">
-              +{secondary.length} more
-            </Text>
-          )}
-        </HStack>
-      </HStack>
-    </VStack>
-  );
-}

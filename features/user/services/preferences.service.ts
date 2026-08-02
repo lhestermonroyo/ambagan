@@ -2,7 +2,9 @@ import { UserPreferences } from "@/types/user";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
 
-export const getPreferences = async (userId: string): Promise<UserPreferences | null> => {
+export const getPreferences = async (
+  userId: string
+): Promise<UserPreferences | null> => {
   const { data, error } = await supabase
     .from(tables.USER_PREFERENCES_TBL)
     .select("*")
@@ -13,9 +15,12 @@ export const getPreferences = async (userId: string): Promise<UserPreferences | 
   return data as UserPreferences | null;
 };
 
+// Partial: every column has a DB default, so a caller only has to name the ones
+// it actually has an opinion about (`default_currency` is no longer one of
+// them — see BASE_CURRENCY in utils/fx).
 export const createPreferences = async (
   userId: string,
-  prefs: Omit<UserPreferences, "id" | "user_id" | "updated_at">
+  prefs: Partial<Omit<UserPreferences, "id" | "user_id" | "updated_at">>
 ): Promise<UserPreferences> => {
   const { data, error } = await supabase
     .from(tables.USER_PREFERENCES_TBL)

@@ -36,7 +36,7 @@ import states from "@/states";
 import { Book, PersonalExpense, PersonalOverview } from "@/types/books";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
-import { useConvertedTotal } from "@/utils/fx";
+import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { prefetchGroupDetails } from "@/utils/offlinePrefetch";
 import { addRecentUsers } from "@/utils/recentUsers";
@@ -100,12 +100,7 @@ export default function HomeScreen() {
   );
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
-  const {
-    details: userDetails,
-    session,
-    defaultCurrency,
-    settlementView
-  } = states.user();
+  const { details: userDetails, session, settlementView } = states.user();
   // Use session.user.id as fallback — it's available immediately after login
   // without waiting for fetchDetails to complete
   const userId = userDetails?.id ?? session?.user?.id;
@@ -156,12 +151,12 @@ export default function HomeScreen() {
   // terms — the two are on screen together mid-scroll, and a bar that disagreed
   // with the card it fades in from would read as a bug. It has no chip of its
   // own; the hero a scroll away is where the working lives.
-  const compactNet = useConvertedTotal(netBalance, defaultCurrency);
+  const compactNet = useConvertedTotal(netBalance, BASE_CURRENCY);
   const compactReceive = useConvertedTotal(
     displayStats.toReceive,
-    defaultCurrency
+    BASE_CURRENCY
   );
-  const compactPay = useConvertedTotal(displayStats.toPay, defaultCurrency);
+  const compactPay = useConvertedTotal(displayStats.toPay, BASE_CURRENCY);
 
   // The hero card is ~250pt tall; start the fade partway through so the compact
   // bar is fully in by the time the hero is gone. `contentInsetAdjustmentBehavior`
@@ -621,7 +616,7 @@ export default function HomeScreen() {
                   <NetBalanceDisplay
                     isLoading={loading.stats}
                     items={netBalance}
-                    currency={defaultCurrency}
+                    currency={BASE_CURRENCY}
                     tone="onColor"
                     size="lg"
                     subtitle="To Collect minus To Pay, per currency, across all groups"
@@ -635,7 +630,7 @@ export default function HomeScreen() {
                       type="RECEIVE"
                       isLoading={loading.stats}
                       items={displayStats.toReceive}
-                      primaryCurrency={defaultCurrency}
+                      primaryCurrency={BASE_CURRENCY}
                     />
                     <Divider
                       orientation="vertical"
@@ -645,7 +640,7 @@ export default function HomeScreen() {
                       type="PAY"
                       isLoading={loading.stats}
                       items={displayStats.toPay}
-                      primaryCurrency={defaultCurrency}
+                      primaryCurrency={BASE_CURRENCY}
                     />
                   </HStack>
                 </VStack>
@@ -684,7 +679,6 @@ export default function HomeScreen() {
             <PersonalSpendingCard
               overview={personalOverview}
               isLoading={loading.personal}
-              defaultCurrency={defaultCurrency}
               onPress={handleOpenBooks}
             />
 
@@ -847,7 +841,7 @@ export default function HomeScreen() {
               </Text>
               <Text bold className="text-white text-lg">
                 {compactNet.convertedCurrencies.length > 0 ? "≈ " : ""}
-                {formatAmount(compactNet.total, defaultCurrency)}
+                {formatAmount(compactNet.total, BASE_CURRENCY)}
               </Text>
             </VStack>
             <Text className="text-white/20">|</Text>
@@ -860,7 +854,7 @@ export default function HomeScreen() {
               </Text>
               <Text bold className="text-white text-lg" numberOfLines={1}>
                 {compactReceive.convertedCurrencies.length > 0 ? "≈ " : ""}
-                {formatAmount(compactReceive.total, defaultCurrency)}
+                {formatAmount(compactReceive.total, BASE_CURRENCY)}
               </Text>
             </VStack>
             <Text className="text-white/20">|</Text>
@@ -873,7 +867,7 @@ export default function HomeScreen() {
               </Text>
               <Text bold className="text-white text-lg" numberOfLines={1}>
                 {compactPay.convertedCurrencies.length > 0 ? "≈ " : ""}
-                {formatAmount(compactPay.total, defaultCurrency)}
+                {formatAmount(compactPay.total, BASE_CURRENCY)}
               </Text>
             </VStack>
           </HStack>

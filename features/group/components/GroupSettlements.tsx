@@ -48,6 +48,7 @@ import { Payment, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
+import { BASE_CURRENCY } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { useFocusEffect } from "expo-router";
 import {
@@ -80,11 +81,12 @@ export default function GroupSettlements({
   refreshTrigger?: number;
 }) {
   const { details, settlementRefreshToken } = states.group();
-  const {
-    details: userDetails,
-    defaultCurrency,
-    settlementView
-  } = states.user();
+  const { details: userDetails, settlementView } = states.user();
+
+  // These cards are scoped to one group, so they lead with that group's own
+  // currency — the same one the compact sticky bar on the detail screen folds
+  // into, which is what keeps the two figures agreeing.
+  const primaryCurrency = details?.currency ?? BASE_CURRENCY;
   const colorScheme = useColorScheme() ?? "light";
   const { isOnline } = useNetwork();
 
@@ -439,7 +441,7 @@ export default function GroupSettlements({
               <NetBalanceDisplay
                 isLoading={loading}
                 items={netBalance}
-                currency={defaultCurrency}
+                currency={primaryCurrency}
                 subtitle="To Collect minus To Pay in this group, per currency"
               />
 
@@ -459,8 +461,8 @@ export default function GroupSettlements({
                     label="To Collect"
                     subtitle="Owed to you in this group, per currency"
                     type="receive"
-                    primaryCurrency={defaultCurrency}
-                    convertTo={defaultCurrency}
+                    primaryCurrency={primaryCurrency}
+                    convertTo={primaryCurrency}
                     totalLabel="Total to collect"
                   />
                 </VStack>
@@ -478,8 +480,8 @@ export default function GroupSettlements({
                     label="To Pay"
                     subtitle="You owe in this group, per currency"
                     type="pay"
-                    primaryCurrency={defaultCurrency}
-                    convertTo={defaultCurrency}
+                    primaryCurrency={primaryCurrency}
+                    convertTo={primaryCurrency}
                     totalLabel="Total to pay"
                   />
                 </VStack>

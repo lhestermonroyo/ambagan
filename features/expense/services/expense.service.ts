@@ -1246,7 +1246,7 @@ export const getExpensesByGroupId = async (groupId: string) => {
           payer_list: payerData,
           has_settlement_progress
         };
-      } catch (error) {
+      } catch {
         return {
           ...item,
           creator: resolveUser(item.creator),

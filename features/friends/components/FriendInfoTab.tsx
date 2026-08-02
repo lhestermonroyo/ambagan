@@ -10,14 +10,10 @@ import React, { useEffect, useState } from "react";
 
 export default function FriendInfoTab({
   friendId,
-  name,
-  email,
-  avatar
+  email
 }: {
   friendId: string;
-  name: string;
   email: string;
-  avatar: string;
 }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<User | null>(null);
@@ -42,15 +38,9 @@ export default function FriendInfoTab({
     };
   }, [friendId]);
 
-  // Fall back to the params the row was opened with while the fetch is in
-  // flight (or if it fails), so the header never renders blank.
-  const fullName =
-    profile && `${profile.first_name} ${profile.last_name}`.trim()
-      ? `${profile.first_name} ${profile.last_name}`.trim()
-      : name;
+  // Fall back to the param the row was opened with while the fetch is in
+  // flight (or if it fails), so the row never renders blank.
   const displayEmail = profile?.email ?? email;
-  const displayAvatar = profile?.avatar ?? (avatar || undefined);
-  const isPro = profile?.plan === "pro";
   const isPlaceholder = profile?.is_placeholder;
 
   return (

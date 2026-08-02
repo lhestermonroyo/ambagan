@@ -362,8 +362,7 @@ export default function RootLayout() {
         await setCachedUserSession({
           userId: id,
           details: after.details,
-          appearanceMode: after.appearanceMode,
-          defaultCurrency: after.defaultCurrency
+          appearanceMode: after.appearanceMode
         });
       }
     } catch (error) {
@@ -383,9 +382,6 @@ export default function RootLayout() {
           details: cached.details,
           ...(cached.appearanceMode && {
             appearanceMode: cached.appearanceMode as typeof prev.appearanceMode
-          }),
-          ...(cached.defaultCurrency && {
-            defaultCurrency: cached.defaultCurrency
           }),
           routeIntent: "tabs"
         }));
@@ -438,8 +434,7 @@ export default function RootLayout() {
       await setCachedUserSession({
         userId: id,
         details: response.data,
-        appearanceMode: current.appearanceMode,
-        defaultCurrency: current.defaultCurrency
+        appearanceMode: current.appearanceMode
       });
 
       await refreshPlan(id);
@@ -523,8 +518,14 @@ export default function RootLayout() {
                     the whole group off the root stack — that's how an accidental
                     swipe was landing the user back on the login screen. All
                     other root screens keep the native swipe-back. */}
-                <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
-                <Stack.Screen name="(auth)" options={{ gestureEnabled: false }} />
+                <Stack.Screen
+                  name="(tabs)"
+                  options={{ gestureEnabled: false }}
+                />
+                <Stack.Screen
+                  name="(auth)"
+                  options={{ gestureEnabled: false }}
+                />
               </Stack>
               <StatusBar style="auto" />
               <OfflineSync />

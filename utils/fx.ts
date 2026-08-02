@@ -28,6 +28,25 @@ import { supabase } from "./supabase";
  * managed a fetch. Because `asOf` travels with the rates, a dead cron shows up
  * on screen as an ageing date rather than a silently stale number.
  */
+/**
+ * The app's home currency. Two distinct jobs, both of which used to be a
+ * per-user setting:
+ *
+ *   * the currency a new group or book is created in, and
+ *   * the currency the cross-container rollups (home, friends, analytics,
+ *     personal spending) fold their mixed-currency figures into.
+ *
+ * It stopped being user-configurable because it could never be right for both:
+ * the per-container currency answers the first job better (a JPY trip group
+ * next to a PHP rent book), and the second is a display choice on figures that
+ * are already marked approximate, with the exact per-currency working always a
+ * tap away. Ambagan is Philippines-first, so PHP is that floor.
+ *
+ * Anything that has a group's or book's OWN currency to hand must prefer it —
+ * this is only the fallback for figures that span containers.
+ */
+export const BASE_CURRENCY = "PHP";
+
 export type FxTable = {
   /** PHP per 1 unit of each currency. PHP is the anchor purely because it's the
    *  app default — cross-rates are derived, so any pair works. */

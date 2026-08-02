@@ -6,9 +6,8 @@ import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
-import states from "@/states";
 import { UserPreview } from "@/types/user";
-import { useConvertedTotal } from "@/utils/fx";
+import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
@@ -48,16 +47,15 @@ const FriendRow = React.memo(function FriendRow({
   if (!user || !balances) return null;
 
   const colorScheme = useColorScheme() ?? "light";
-  const { defaultCurrency } = states.user();
   const { total, convertedCurrencies } = useConvertedTotal(
     balances ?? NO_BALANCES,
-    defaultCurrency
+    BASE_CURRENCY
   );
   const hasBalance = (balances?.length ?? 0) > 0;
   const isNegative = total < 0;
   const amountText = `${convertedCurrencies.length > 0 ? "≈ " : ""}${
     isNegative ? "-" : ""
-  }${formatAmount(Math.abs(total), defaultCurrency)}`;
+  }${formatAmount(Math.abs(total), BASE_CURRENCY)}`;
 
   const handlePress = useCallback(() => onPress(user), [user, onPress]);
   const handleToggle = useCallback(

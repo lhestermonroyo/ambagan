@@ -30,6 +30,7 @@ import states from "@/states";
 import { BookBudgetPeriod } from "@/types/books";
 import { GroupCategory } from "@/types/groups";
 import { categories, currencies } from "@/utils/constants";
+import { BASE_CURRENCY } from "@/utils/fx";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { ImagePickerSuccessResult } from "expo-image-picker";
@@ -48,7 +49,7 @@ export default function CreateBookScreen() {
   const bookId = typeof params.bookId === "string" ? params.bookId : undefined;
   const isEdit = !!bookId;
 
-  const { details: userDetails, defaultCurrency } = states.user();
+  const { details: userDetails } = states.user();
   const isPro = userDetails?.plan === "pro";
 
   const [loading, setLoading] = useState(isEdit);
@@ -58,8 +59,9 @@ export default function CreateBookScreen() {
     avatar: null as ImagePickerSuccessResult | null,
     defaultAvatar: undefined as string | undefined,
     category: GroupCategory.GENERAL as string,
-    // Free users are pinned to PHP; Pro users default to their preferred currency.
-    currency: isPro ? defaultCurrency : "PHP",
+    // Every book starts in the app's home currency. Pro users can change it
+    // here; for free users the selection is locked, pinning them to PHP.
+    currency: BASE_CURRENCY,
     // Budget is optional and free for everyone. Empty string = no budget set.
     budget: "",
     budgetPeriod: "monthly" as BookBudgetPeriod

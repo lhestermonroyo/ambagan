@@ -18,8 +18,27 @@ import {
 } from "@/components/ui/radio";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { categories, CategoryOption, expenseCategories } from "@/utils/constants";
-import { CircleIcon } from "lucide-react-native";
+import {
+  categories,
+  CategoryOption,
+  expenseCategories
+} from "@/utils/constants";
+import { CircleIcon, LayoutGrid } from "lucide-react-native";
+
+/** Filter-only sentinel — no expense ever stores it, so it can share the
+ *  CategorySheet options list with the real categories. */
+export const ALL_CATEGORIES = "all";
+
+/** Options for a category *filter* sheet: the real categories preceded by an
+ *  "All Categories" reset row. */
+export const categoryFilterOptions: CategoryOption[] = [
+  { label: "All Categories", value: ALL_CATEGORIES, icon: LayoutGrid },
+  ...expenseCategories
+];
+
+export const categoryFilterLabel = (value: string) =>
+  categoryFilterOptions.find((c) => c.value === value)?.label ??
+  "All Categories";
 
 /** Full option (label + icon) for a stored category value, falling back to
  *  "Other" for anything unrecognized (e.g. a value from a newer client). */

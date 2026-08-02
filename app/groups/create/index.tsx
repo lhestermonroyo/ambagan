@@ -31,6 +31,7 @@ import states from "@/states";
 import { GroupCategory } from "@/types/groups";
 import { UserPreview } from "@/types/user";
 import { categories, currencies } from "@/utils/constants";
+import { BASE_CURRENCY } from "@/utils/fx";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { ImagePickerSuccessResult } from "expo-image-picker";
@@ -48,8 +49,9 @@ export default function CreateGroupScreen() {
     name: "",
     avatar: null as ImagePickerSuccessResult | null,
     category: GroupCategory.GENERAL as string,
-    // Free users are pinned to PHP; Pro users default to their preferred currency.
-    currency: isPro ? user.defaultCurrency : "PHP"
+    // Every group starts in the app's home currency. Pro users can change it
+    // here; for free users the selection is locked, pinning them to PHP.
+    currency: BASE_CURRENCY
   });
   const [formErrors, setFormErrors] = useState({
     name: ""
@@ -251,7 +253,9 @@ export default function CreateGroupScreen() {
               <SelectField
                 onPress={() => setCategorySheetOpen(true)}
                 leading={
-                  <CategoryIcon icon={groupCategoryMeta(values.category).icon} />
+                  <CategoryIcon
+                    icon={groupCategoryMeta(values.category).icon}
+                  />
                 }
               >
                 <Text className="text-lg" numberOfLines={1}>

@@ -63,7 +63,7 @@ import { PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
-import { useConvertedTotal } from "@/utils/fx";
+import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import {
   Stack,
@@ -155,11 +155,7 @@ export default function FriendDetailScreen() {
   const autoOpenHandledRef = useRef(false);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const {
-    details: userDetails,
-    defaultCurrency,
-    settlementView
-  } = states.user();
+  const { details: userDetails, settlementView } = states.user();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
@@ -396,7 +392,7 @@ export default function FriendDetailScreen() {
       }
       setPendingAction(null);
       await fetchAll(false);
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -454,10 +450,10 @@ export default function FriendDetailScreen() {
   // Mirrors the hero card it fades in from, so it converts on the same terms —
   // the two are briefly on screen together, and a "Net" that disagreed with the
   // card above it would read as a bug.
-  const compactNet = useConvertedTotal(netBalance, defaultCurrency);
+  const compactNet = useConvertedTotal(netBalance, BASE_CURRENCY);
 
-  const compactCollect = useConvertedTotal(toCollect, defaultCurrency);
-  const compactPay = useConvertedTotal(toPay, defaultCurrency);
+  const compactCollect = useConvertedTotal(toCollect, BASE_CURRENCY);
+  const compactPay = useConvertedTotal(toPay, BASE_CURRENCY);
 
   const COMPACT_THRESHOLD = 290;
   const compactOpacity = scrollY.interpolate({
@@ -679,7 +675,7 @@ export default function FriendDetailScreen() {
                       <NetBalanceDisplay
                         isLoading={loading}
                         items={netBalance}
-                        currency={defaultCurrency}
+                        currency={BASE_CURRENCY}
                         subtitle="To Collect minus To Pay with this friend, per currency"
                       />
 
@@ -700,8 +696,8 @@ export default function FriendDetailScreen() {
                             label="To Collect"
                             subtitle="Owed to you by this friend, per currency"
                             type="receive"
-                            primaryCurrency={defaultCurrency}
-                            convertTo={defaultCurrency}
+                            primaryCurrency={BASE_CURRENCY}
+                            convertTo={BASE_CURRENCY}
                             totalLabel="Total to collect"
                           />
                         </VStack>
@@ -719,8 +715,8 @@ export default function FriendDetailScreen() {
                             label="To Pay"
                             subtitle="You owe this friend, per currency"
                             type="pay"
-                            primaryCurrency={defaultCurrency}
-                            convertTo={defaultCurrency}
+                            primaryCurrency={BASE_CURRENCY}
+                            convertTo={BASE_CURRENCY}
                             totalLabel="Total to pay"
                           />
                         </VStack>
@@ -772,17 +768,11 @@ export default function FriendDetailScreen() {
                 userId={userDetails.id}
                 friendId={friendId}
                 friendName={decodedName}
-                defaultCurrency={defaultCurrency}
               />
             )}
 
             {activeTab === "Info" && friendId && (
-              <FriendInfoTab
-                friendId={friendId}
-                name={decodedName}
-                email={decodedEmail}
-                avatar={decodedAvatar}
-              />
+              <FriendInfoTab friendId={friendId} email={decodedEmail} />
             )}
 
             {activeTab === "Settlements" && (
@@ -1022,7 +1012,7 @@ export default function FriendDetailScreen() {
                   }`}
                 >
                   {compactNet.convertedCurrencies.length > 0 ? "≈ " : ""}
-                  {formatAmount(compactNet.total, defaultCurrency)}
+                  {formatAmount(compactNet.total, BASE_CURRENCY)}
                 </Text>
               </VStack>
               <Text className="text-secondary-200">|</Text>
@@ -1035,7 +1025,7 @@ export default function FriendDetailScreen() {
                 </Text>
                 <Text bold className="text-lg" numberOfLines={1}>
                   {compactCollect.convertedCurrencies.length > 0 ? "≈ " : ""}
-                  {formatAmount(compactCollect.total, defaultCurrency)}
+                  {formatAmount(compactCollect.total, BASE_CURRENCY)}
                 </Text>
               </VStack>
               <Text className="text-secondary-200">|</Text>
@@ -1048,7 +1038,7 @@ export default function FriendDetailScreen() {
                 </Text>
                 <Text bold className="text-lg text-error-400" numberOfLines={1}>
                   {compactPay.convertedCurrencies.length > 0 ? "≈ " : ""}
-                  {formatAmount(compactPay.total, defaultCurrency)}
+                  {formatAmount(compactPay.total, BASE_CURRENCY)}
                 </Text>
               </VStack>
             </HStack>

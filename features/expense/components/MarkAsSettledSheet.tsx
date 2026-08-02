@@ -22,7 +22,6 @@ import { formatDate } from "@/utils/formatDate";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
-import { useColorScheme } from "react-native";
 import { formatAmount } from "../utils/formatAmount";
 import SettlementBreakdown from "./SettlementBreakdown";
 import SettlementSheetHeader from "./SettlementSheetHeader";
@@ -49,7 +48,6 @@ export default function MarkAsSettledSheet({
   const { details: userDetails } = states.user();
   const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
-  const colorScheme = useColorScheme() ?? "light";
 
   if (!payment) {
     return null;

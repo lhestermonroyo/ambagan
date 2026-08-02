@@ -18,7 +18,7 @@ import states from "@/states";
 import { FriendSummary } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
-import { getRate, useFxRates } from "@/utils/fx";
+import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Search } from "lucide-react-native";
@@ -50,7 +50,7 @@ export default function FriendsScreen() {
   const [mainTab, setMainTab] = useState<MainTab>("balances");
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
 
-  const { details: userDetails, defaultCurrency } = states.user();
+  const { details: userDetails } = states.user();
   const fx = useFxRates();
   const router = useRouter();
 
@@ -167,7 +167,7 @@ export default function FriendsScreen() {
   const balanceList = useMemo(() => {
     const netOf = (friend: FriendSummary) =>
       friend.balances.reduce((sum, balance) => {
-        const rate = getRate(fx, balance.currency, defaultCurrency);
+        const rate = getRate(fx, balance.currency, BASE_CURRENCY);
         return rate === null ? sum : sum + balance.amount * rate;
       }, 0);
 
@@ -181,7 +181,7 @@ export default function FriendsScreen() {
           ? friends.filter((f) => net(f) < 0)
           : friends;
     return [...filtered].sort((a, b) => Math.abs(net(b)) - Math.abs(net(a)));
-  }, [friends, balanceFilter, fx, defaultCurrency]);
+  }, [friends, balanceFilter, fx]);
 
   const favoriteContacts = useMemo(
     () => allContacts.filter((u) => favoriteIds.has(u.id)),
