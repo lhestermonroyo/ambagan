@@ -54,7 +54,6 @@ import states from "@/states";
 import {
   Book,
   PersonalBookTotal,
-  PersonalCategoryTotal,
   PersonalExpense
 } from "@/types/books";
 import { EmptyType } from "@/types/general";
@@ -122,59 +121,22 @@ const categoryFilterLabel = (value: string) =>
 
 // Move `amount` of `currency` between the paid/pending buckets of a
 // PersonalBookTotal[] — the optimistic math behind flipping an expense's status.
-// The combined per-currency total is unchanged; only the split moves. The
-// expense's `category` bucket is shifted in step so the budget card's segmented
-// bar tracks the toggle too.
+// The combined per-currency total is unchanged; only the split moves.
 const moveTotalsBucket = (
   totals: PersonalBookTotal[],
   currency: string,
   amount: number,
   from: "paid" | "pending",
-  to: "paid" | "pending",
-  category?: string
+  to: "paid" | "pending"
 ): PersonalBookTotal[] => {
   if (from === to) return totals;
   let found = false;
   const next = totals.map((t) => {
     if (t.currency !== currency) return t;
     found = true;
-    return {
-      ...t,
-      [from]: t[from] - amount,
-      [to]: t[to] + amount,
-      byCategory: moveCategoryBucket(t.byCategory, category, amount, from, to)
-    };
+    return { ...t, [from]: t[from] - amount, [to]: t[to] + amount };
   });
-  if (!found) {
-    next.push({
-      currency,
-      paid: 0,
-      pending: 0,
-      [to]: amount,
-      byCategory: moveCategoryBucket([], category, amount, from, to)
-    });
-  }
-  return next;
-};
-
-// The per-category half of moveTotalsBucket. Left untouched when the caller
-// has no category (or the totals predate the breakdown) — the next refetch
-// fills it in rather than us inventing a slice.
-const moveCategoryBucket = (
-  byCategory: PersonalCategoryTotal[] | undefined,
-  category: string | undefined,
-  amount: number,
-  from: "paid" | "pending",
-  to: "paid" | "pending"
-): PersonalCategoryTotal[] | undefined => {
-  if (!byCategory || !category) return byCategory;
-  let found = false;
-  const next = byCategory.map((c) => {
-    if (c.category !== category) return c;
-    found = true;
-    return { ...c, [from]: c[from] - amount, [to]: c[to] + amount };
-  });
-  if (!found) next.push({ category, paid: 0, pending: 0, [to]: amount });
+  if (!found) next.push({ currency, paid: 0, pending: 0, [to]: amount });
   return next;
 };
 
@@ -389,27 +351,13 @@ export default function BookDetailScreen() {
       // card tracks the toggle live.
       const from = status === "paid" ? "pending" : "paid";
       setTotals((prev) =>
-        moveTotalsBucket(
-          prev,
-          expense.currency,
-          expense.amount,
-          from,
-          status,
-          expense.category
-        )
+        moveTotalsBucket(prev, expense.currency, expense.amount, from, status)
       );
       // Same shift for the budget card, but only when the expense actually
       // falls in the month the card is measuring.
       if (isInCurrentMonth(expense.expense_date || expense.created_at)) {
         setMonthTotals((prev) =>
-          moveTotalsBucket(
-            prev,
-            expense.currency,
-            expense.amount,
-            from,
-            status,
-            expense.category
-          )
+          moveTotalsBucket(prev, expense.currency, expense.amount, from, status)
         );
       }
     };
@@ -435,8 +383,7 @@ export default function BookDetailScreen() {
                 expense.currency,
                 expense.amount,
                 expense.status,
-                next,
-                expense.category
+                next
               )
             );
           })

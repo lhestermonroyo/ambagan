@@ -3,7 +3,6 @@ import {
   PersonalExpense,
   PersonalExpenseStatus
 } from "@/types/books";
-import { ExpenseCategory } from "@/types/expenses";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import { isUniqueViolation, supabase } from "@/utils/supabase";
@@ -386,46 +385,19 @@ function sumByCurrencyAndStatus(
     amount: number;
     currency: string;
     status?: string;
-    category?: string;
   }[]
 ): PersonalBookTotal[] {
-  const byCurrency = new Map<
-    string,
-    {
-      paid: number;
-      pending: number;
-      categories: Map<string, { paid: number; pending: number }>;
-    }
-  >();
+  const byCurrency = new Map<string, { paid: number; pending: number }>();
   for (const row of rows) {
     const currency = row.currency || "PHP";
-    const entry = byCurrency.get(currency) ?? {
-      paid: 0,
-      pending: 0,
-      categories: new Map()
-    };
-    const category = row.category || ExpenseCategory.OTHER;
-    const catEntry = entry.categories.get(category) ?? { paid: 0, pending: 0 };
-    if (row.status === "pending") {
-      entry.pending += row.amount;
-      catEntry.pending += row.amount;
-    } else {
-      entry.paid += row.amount;
-      catEntry.paid += row.amount;
-    }
-    entry.categories.set(category, catEntry);
+    const entry = byCurrency.get(currency) ?? { paid: 0, pending: 0 };
+    if (row.status === "pending") entry.pending += row.amount;
+    else entry.paid += row.amount;
     byCurrency.set(currency, entry);
   }
 
   return Array.from(byCurrency.entries())
-    .map(([currency, v]) => ({
-      currency,
-      paid: v.paid,
-      pending: v.pending,
-      byCategory: Array.from(v.categories.entries())
-        .map(([category, c]) => ({ category, paid: c.paid, pending: c.pending }))
-        .sort((a, b) => b.paid - a.paid)
-    }))
+    .map(([currency, v]) => ({ currency, paid: v.paid, pending: v.pending }))
     .sort((a, b) => b.paid + b.pending - (a.paid + a.pending));
 }
 
