@@ -15,6 +15,7 @@ import UpgradeSheet from "@/components/UpgradeSheet";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
+import { Divider } from "@/components/ui/divider";
 import { Fab } from "@/components/ui/fab";
 import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
@@ -922,11 +923,13 @@ export default function BookDetailScreen() {
                 )}
 
                 {/* No budget to hang them off — Paid (settled) and Pending
-                    (upcoming/unpaid) stand on their own, each per currency. */}
+                    (upcoming/unpaid) share one card, split by a rule. Same
+                    two-column shape as the budget card's footer, so the book
+                    reads the same whether or not a cap is set. */}
                 {!hasBudget && (
-                  <VStack className="mx-4 gap-y-2">
-                    <HStack className="gap-x-3">
-                      <VStack className="flex-1 p-4 rounded-xl bg-secondary-100 gap-y-1">
+                  <VStack className="mx-4 p-4 rounded-xl bg-secondary-100">
+                    <HStack className="items-stretch">
+                      <VStack className="flex-1 gap-y-1 pr-3">
                         <Text
                           bold
                           className="text-sm text-secondary-950 uppercase"
@@ -942,7 +945,8 @@ export default function BookDetailScreen() {
                           fitAmount
                         />
                       </VStack>
-                      <VStack className="flex-1 p-4 rounded-xl bg-secondary-100 gap-y-1">
+                      <Divider orientation="vertical" className="mx-4" />
+                      <VStack className="flex-1 gap-y-1 pl-3">
                         <Text
                           bold
                           className="text-sm text-secondary-950 uppercase"
