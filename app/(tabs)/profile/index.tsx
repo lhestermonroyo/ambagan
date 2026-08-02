@@ -148,7 +148,9 @@ export default function ProfileScreen() {
             ),
             label: "Settlement View",
             description: "Choose full or compact settlement rows",
-            value: <Text className="text-lg">{settlementViewLabel}</Text>,
+            value: (
+              <Text className="text-lg font-medium">{settlementViewLabel}</Text>
+            ),
             onPress: () => setSettlementViewOpen(true)
           },
           {
@@ -159,7 +161,7 @@ export default function ProfileScreen() {
             ),
             label: "Overview Hero",
             description: "Open on net balance or personal spending",
-            value: <Text className="text-lg">{heroViewLabel}</Text>,
+            value: <Text className="text-lg font-medium">{heroViewLabel}</Text>,
             onPress: () => setHeroViewOpen(true)
           }
         ]
