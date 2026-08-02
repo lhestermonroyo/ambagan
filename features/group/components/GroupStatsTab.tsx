@@ -1,13 +1,17 @@
-import CategoryIcon from "@/components/CategoryIcon";
+import ApproxRateNote from "@/components/ApproxRateNote";
+import CategoryGauge from "@/components/CategoryGauge";
+import CurrencyCountButton from "@/components/CurrencyCountButton";
 import FormButton from "@/components/FormButton";
 import UpgradeSheet from "@/components/UpgradeSheet";
-import { Box } from "@/components/ui/box";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { expenseCategoryMeta } from "@/features/expense/components/CategorySheet";
+import {
+  expenseCategoryColor,
+  expenseCategoryMeta
+} from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
   CustomDateRange,
@@ -24,7 +28,12 @@ import services from "@/services";
 import states from "@/states";
 import { groupByCurrency } from "@/utils/currency";
 import { exportGroupSettlementsAsCsv } from "@/utils/exportCsv";
-import { BASE_CURRENCY } from "@/utils/fx";
+import {
+  BASE_CURRENCY,
+  isConverted,
+  useConverter,
+  useForeignCurrencies
+} from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { ChevronDown, Download } from "lucide-react-native";
 import { useMemo, useState } from "react";
@@ -77,58 +86,103 @@ export default function GroupStatsTab({
   // personal "Your Activity" card and the group Member Breakdown below.
   const { splits, loading: splitsLoading } = useMemberSplits(filteredExpenses);
 
-  const totalSpendingsByCurrency = useMemo(
-    () => groupByCurrency(filteredExpenses),
+  // Drafts aren't posted spending yet, so nothing on this tab counts them. This
+  // used to be applied per-card, which let the spending hero include drafts
+  // while the category split below it didn't — the two never reconciled.
+  const posted = useMemo(
+    () => filteredExpenses.filter((e) => !e.is_draft),
     [filteredExpenses]
   );
 
-  // Count + average, scoped to the primary currency so the average stays a
-  // meaningful figure (averaging across currencies would be nonsense). Kept
-  // consistent with the Total Group Spendings hero, which also leads with the
-  // primary-currency total.
-  const primaryStats = useMemo(() => {
-    const inCurrency = filteredExpenses.filter(
-      (e) => e.currency === primaryCurrency
-    );
-    const count = inCurrency.length;
-    const total = inCurrency.reduce((sum, e) => sum + e.amount, 0);
-    return { count, average: count > 0 ? total / count : 0 };
-  }, [filteredExpenses, primaryCurrency]);
-
-  // Biggest expenses in range. Scoped to the primary currency too — ranking a
-  // ¥5,000 expense above a ₱4,000 one by raw amount would be misleading. Drafts
-  // are excluded (they aren't real posted spending yet).
-  const topExpenses = useMemo(
+  // Per-currency totals behind the card's "+N" chip. Primary currency leads —
+  // it's the one the gauge and every stat under it are expressed in. These stay
+  // EXACT and unconverted: they're the working behind the converted figures.
+  const totalSpendingsByCurrency = useMemo(
     () =>
-      filteredExpenses
-        .filter((e) => !e.is_draft && e.currency === primaryCurrency)
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 5),
-    [filteredExpenses, primaryCurrency]
+      groupByCurrency(posted).sort((a, b) => {
+        if (a.currency === primaryCurrency) return -1;
+        if (b.currency === primaryCurrency) return 1;
+        return b.amount - a.amount;
+      }),
+    [posted, primaryCurrency]
   );
 
-  // Spending grouped by category (primary currency, drafts excluded), largest
-  // first, with each slice's share of the total. Falls back to "other" for any
-  // legacy/unset row so the total always reconciles with the spending hero.
-  const categoryBreakdown = useMemo(() => {
-    const byCategory = new Map<string, number>();
-    let total = 0;
-    filteredExpenses
-      .filter((e) => !e.is_draft && e.currency === primaryCurrency)
-      .forEach((e) => {
-        const key = e.category || "other";
-        byCategory.set(key, (byCategory.get(key) ?? 0) + e.amount);
-        total += e.amount;
-      });
+  // Every figure on this tab is expressed in the group's own currency, with
+  // foreign spend converted in at display time — a ¥ expense in a PHP group is
+  // still that group's money and has to count. Anything we hold no rate for is
+  // left out entirely rather than counted as zero, so a total is understated
+  // rather than wrong.
+  const convert = useConverter(primaryCurrency);
+  const convertedCurrencies = useForeignCurrencies(posted, primaryCurrency);
+  const approx = convertedCurrencies.length > 0;
 
-    return Array.from(byCategory.entries())
-      .map(([category, amount]) => ({
-        category,
-        amount,
-        pct: total > 0 ? (amount / total) * 100 : 0
+  // Count + average across every currency, converted so the average stays a
+  // single meaningful figure. Count is of expenses actually priced, so it can't
+  // disagree with the average's denominator.
+  const primaryStats = useMemo(() => {
+    let count = 0;
+    let total = 0;
+    for (const e of posted) {
+      const value = convert(e.amount, e.currency);
+      if (value === null) continue;
+      count += 1;
+      total += value;
+    }
+    return { count, average: count > 0 ? total / count : 0 };
+  }, [posted, convert]);
+
+  // Biggest expenses in range. RANKED by converted value so a ¥5,000 expense
+  // sorts correctly against a ₱4,000 one — but each row still renders in its own
+  // currency, so the number on screen stays exact and only the ordering relies
+  // on a rate.
+  const topExpenses = useMemo(
+    () =>
+      posted
+        .filter((e) => convert(e.amount, e.currency) !== null)
+        .sort(
+          (a, b) =>
+            (convert(b.amount, b.currency) ?? 0) -
+            (convert(a.amount, a.currency) ?? 0)
+        )
+        .slice(0, 5),
+    [posted, convert]
+  );
+
+  // Paid spend grouped by category, largest first, ready for the gauge — plus
+  // the total it's measured against. Amounts are converted into the group
+  // currency (a meter has to be a single number); the percentages are unaffected
+  // by that, being shares of the same converted total. Falls back to "other" for
+  // any legacy/unset row so the slices always sum back to that total.
+  const spending = useMemo(() => {
+    const byCategory = new Map<string, { amount: number; approx: boolean }>();
+    let total = 0;
+    posted.forEach((e) => {
+      const value = convert(e.amount, e.currency);
+      if (value === null) return;
+      const key = e.category || "other";
+      const entry = byCategory.get(key) ?? { amount: 0, approx: false };
+      entry.amount += value;
+      // Tracked per category, not once for the tab: a transport slice paid for
+      // entirely in pesos is exact, and saying "≈" on it because the food slice
+      // had yen in it makes the whole legend look estimated.
+      entry.approx ||= isConverted(e.amount, e.currency, primaryCurrency);
+      byCategory.set(key, entry);
+      total += value;
+    });
+
+    const slices = Array.from(byCategory.entries())
+      .map(([category, entry]) => ({
+        key: category,
+        label: expenseCategoryMeta(category).label,
+        color: expenseCategoryColor(category),
+        amount: entry.amount,
+        approx: entry.approx,
+        pct: total > 0 ? (entry.amount / total) * 100 : 0
       }))
       .sort((a, b) => b.amount - a.amount);
-  }, [filteredExpenses, primaryCurrency]);
+
+    return { slices, total };
+  }, [posted, convert, primaryCurrency]);
 
   const handleExport = async () => {
     if (!isPro) {
@@ -231,13 +285,43 @@ export default function GroupStatsTab({
 
           {statsView === "Group" && (
             <>
-              {/* Total Group Spendings */}
+              {/* Total Group Spendings — the gauge carries both the headline
+                  figure and the category split, so this one card answers "how
+                  much" and "on what" instead of the two competing for the same
+                  space. The per-currency chip stays alongside it: the gauge is
+                  scoped to the primary currency, so a mixed-currency group
+                  needs the exact per-currency figures one tap away. */}
               <Card className="rounded-xl bg-secondary-100">
                 <VStack className="gap-y-4">
-                  <SpendingHero
-                    items={totalSpendingsByCurrency}
-                    primaryCurrency={primaryCurrency}
+                  <HStack className="items-center justify-between">
+                    <Text bold className="text-secondary-950 uppercase text-sm">
+                      Total Group Spendings
+                    </Text>
+                    <HStack className="items-center gap-x-2">
+                      <Text className="text-sm text-secondary-950">
+                        {primaryCurrency}
+                      </Text>
+                      {/* Opens in convertTo mode: the gauge above shows one
+                          converted figure, so the sheet has to show the exact
+                          per-currency amounts, what each is worth in the group
+                          currency, and a total that adds up to the gauge. */}
+                      <CurrencyCountButton
+                        items={totalSpendingsByCurrency}
+                        title="Total Group Spendings"
+                        subtitle="Total, by currency"
+                        convertTo={primaryCurrency}
+                        totalLabel="Total spent"
+                      />
+                    </HStack>
+                  </HStack>
+
+                  <CategoryGauge
+                    slices={spending.slices}
+                    total={spending.total}
+                    currency={primaryCurrency}
+                    approx={approx}
                   />
+
                   <Divider />
                   <HStack className="items-stretch">
                     <VStack className="flex-1 gap-y-1">
@@ -253,7 +337,13 @@ export default function GroupStatsTab({
                       <Text className="text-sm text-secondary-950 uppercase">
                         Avg / Expense
                       </Text>
-                      <Text bold className="text-lg">
+                      <Text
+                        bold
+                        className="text-lg"
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        {approx ? "≈ " : ""}
                         {formatAmount(primaryStats.average, primaryCurrency)}
                       </Text>
                     </VStack>
@@ -282,7 +372,9 @@ export default function GroupStatsTab({
                         Top Expenses
                       </Text>
                       <Text className="text-sm text-secondary-950">
-                        Biggest expenses in this range.
+                        {approx
+                          ? "Biggest expenses in this range, ranked across currencies."
+                          : "Biggest expenses in this range."}
                       </Text>
                     </VStack>
                     <VStack className="gap-y-3">
@@ -329,54 +421,6 @@ export default function GroupStatsTab({
                 </Card>
               )}
 
-              {/* Spending by Category */}
-              {categoryBreakdown.length > 0 && (
-                <Card className="rounded-xl bg-secondary-100">
-                  <VStack className="gap-y-4">
-                    <VStack>
-                      <Text
-                        bold
-                        className="text-secondary-950 uppercase text-sm"
-                      >
-                        Spending by Category
-                      </Text>
-                      <Text className="text-sm text-secondary-950">
-                        Where the money went in this range.
-                      </Text>
-                    </VStack>
-                    <VStack className="gap-y-4">
-                      {categoryBreakdown.map((row) => (
-                        <VStack key={row.category} className="gap-y-2">
-                          <HStack className="items-center gap-x-3">
-                            <CategoryIcon
-                              icon={expenseCategoryMeta(row.category).icon}
-                            />
-                            <Text
-                              className="flex-1 text-base"
-                              numberOfLines={1}
-                            >
-                              {expenseCategoryMeta(row.category).label}
-                            </Text>
-                            <Text className="text-sm text-secondary-950">
-                              {row.pct.toFixed(0)}%
-                            </Text>
-                            <Text className="text-lg font-medium">
-                              {formatAmount(row.amount, primaryCurrency)}
-                            </Text>
-                          </HStack>
-                          <Box className="h-1.5 rounded-full bg-secondary-200 overflow-hidden">
-                            <Box
-                              className="h-full rounded-full bg-primary-500"
-                              style={{ width: `${Math.max(2, row.pct)}%` }}
-                            />
-                          </Box>
-                        </VStack>
-                      ))}
-                    </VStack>
-                  </VStack>
-                </Card>
-              )}
-
               {/* Export */}
               <VStack className="gap-y-4">
                 <VStack className="gap-y-2">
@@ -405,46 +449,13 @@ export default function GroupStatsTab({
               </VStack>
             </>
           )}
+
+          {/* One note for the whole tab — both views convert the same way, and
+              it renders nothing when the group is single-currency, so the common
+              case is untouched. */}
+          <ApproxRateNote currencies={convertedCurrencies} className="px-1" />
         </VStack>
       </VStack>
     </>
   );
 }
-
-function SpendingHero({
-  items,
-  primaryCurrency = "PHP"
-}: {
-  items: { currency: string; amount: number }[];
-  primaryCurrency?: string;
-}) {
-  const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
-  );
-  const [primary, ...secondary] = sorted;
-  const primaryAmount = primary?.amount ?? 0;
-
-  return (
-    <VStack className="gap-y-2">
-      <Text bold className="text-secondary-950 uppercase text-sm">
-        Total Group Spendings
-      </Text>
-      <HStack className="items-end gap-x-2">
-        <Text bold className="text-3xl">
-          {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
-        </Text>
-        <HStack className="items-center gap-x-1 pb-1">
-          <Text className="text-secondary-950 text-base">
-            {primary?.currency ?? primaryCurrency}
-          </Text>
-          {secondary.length > 0 && (
-            <Text className="text-secondary-950 text-sm">
-              +{secondary.length} more
-            </Text>
-          )}
-        </HStack>
-      </HStack>
-    </VStack>
-  );
-}
-

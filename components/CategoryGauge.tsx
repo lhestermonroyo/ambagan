@@ -14,6 +14,13 @@ export type GaugeSlice = {
   color: string;
   amount: number;
   pct: number;
+  /**
+   * Marks THIS slice's amount as converted, independently of the total. A
+   * category paid for entirely in the gauge's own currency is an exact figure
+   * and must print as one, even when the category beside it folded in yen.
+   * Falls back to the gauge-wide `approx` when unset.
+   */
+  approx?: boolean;
 };
 
 /** Tick count across the whole arc, and the only real lever on how heavy the
@@ -43,11 +50,16 @@ const TICK_WIDTH = (Math.PI / TICKS) * R_INNER - TICK_GAP;
  * Where the money went, as a semi-circle meter: one tick per ~2% of spend, colored
  * by category, with the total in the middle and a labelled legend underneath.
  *
- * This is the home for the category story — it used to be crammed into the
- * budget card's 2px progress bar, where six categories produced six unlabelled
- * slivers and a legend that wrapped onto three lines. A meter that owns its own
- * card can show the same split at a size where each slice is actually readable,
- * and the legend can afford to carry both the share and the amount.
+ * Shared by the book Stats tab and both views of the group Stats tab — same
+ * question in all three, so it gets the same answer.
+ *
+ * This is the home for the category story, which had two bad homes before it: a
+ * 2px sliver of the book budget card's progress bar, where six categories were
+ * six unlabelled slivers under a legend that wrapped onto three lines; and a
+ * standalone "Spending by Category" card on the group tabs, a stack of one bar
+ * per category that spent a full screen saying what this arc says at a glance.
+ * Folding it into the total's own card shows the split at a size where each
+ * slice is readable, and the legend can still carry both share and amount.
  *
  * Ticks rather than a smooth arc on purpose: a continuous ring renders a 2%
  * category as a hairline that reads as a border artifact, while the smallest
@@ -69,7 +81,9 @@ export default function CategoryGauge({
   total: number;
   currency: string;
   label?: string;
-  /** Marks the centre figure and legend amounts as converted. */
+  /** Marks the centre figure as converted — it spans every slice, so one
+   *  converted category makes the total approximate. Legend rows take their own
+   *  {@link GaugeSlice.approx} first and only fall back to this. */
   approx?: boolean;
 }) {
   const colorScheme = useColorScheme() ?? "light";
@@ -192,7 +206,7 @@ export default function CategoryGauge({
                 {slice.pct.toFixed(0)}%
               </Text>
               <Text className="font-medium">
-                {approx ? "≈ " : ""}
+                {(slice.approx ?? approx) ? "≈ " : ""}
                 {formatAmount(slice.amount, currency)}
               </Text>
             </HStack>

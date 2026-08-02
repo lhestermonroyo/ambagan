@@ -22,7 +22,10 @@ export type CurrencyAmount = {
   /**
    * Optional second figure for the same currency, shown beneath `amount` —
    * e.g. pending spend under paid spend. Needs `secondaryLabel` to render.
-   * Ignored in `convertTo` mode, where the second line is the conversion.
+   * Survives `convertTo` mode, where it sits between the amount and its
+   * conversion: it's a different slice of the same currency, not a restatement
+   * of `amount`, so folding rates in is no reason to drop it. Only `amount`
+   * feeds the converted total.
    */
   secondaryAmount?: number;
 };
@@ -107,9 +110,7 @@ export default function CurrencyBreakdownSheet({
             }) => {
               const amountClass = amount < 0 && "text-error-400";
               const showSecondary =
-                !convertTo &&
-                !!secondaryLabel &&
-                secondaryAmount !== undefined;
+                !!secondaryLabel && secondaryAmount !== undefined;
 
               return (
                 <HStack className="items-center justify-between p-4">

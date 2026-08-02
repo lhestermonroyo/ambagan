@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { cacheService } from "./cacheService";
 import { tables } from "./constants";
 import { supabase } from "./supabase";
@@ -269,6 +269,68 @@ export function useConvertedTotal(
       }
     }
     return { total, convertedCurrencies };
+  }, [items, to, table]);
+}
+
+/**
+ * Prices one amount into `to`, or null when its currency has no rate. Null means
+ * "can't be priced": callers must leave that money OUT of a converted figure
+ * rather than counting it as zero, so a total is understated rather than wrong.
+ *
+ * The per-item counterpart to {@link useConvertedTotal}, for the stats screens
+ * that convert while grouping (by category, by member) and so can't hand over a
+ * flat list. Stable as long as the rates are, so it can be a memo dependency.
+ */
+export function useConverter(
+  to: string
+): (amount: number, currency: string) => number | null {
+  const table = useFxRates();
+  return useCallback(
+    (amount, currency) => {
+      const rate = getRate(table, currency || BASE_CURRENCY, to);
+      return rate === null ? null : amount * rate;
+    },
+    [table, to]
+  );
+}
+
+/**
+ * Whether pricing this money into `to` will actually change it — non-zero, in
+ * another currency. This is the rule for a SINGLE figure's "≈": a total is only
+ * approximate if something converted moved it, so a PHP-only category sitting
+ * beside a yen one must still print an exact amount.
+ *
+ * Says nothing about whether a rate exists: callers apply this after they've
+ * priced the item, where a missing rate has already dropped it from the figure
+ * and so can't have made it approximate either.
+ */
+export function isConverted(
+  amount: number,
+  currency: string,
+  to: string
+): boolean {
+  return amount !== 0 && (currency || BASE_CURRENCY) !== to;
+}
+
+/**
+ * The foreign currencies in `items` that actually contributed to a figure
+ * converted into `to` — i.e. money {@link isConverted} counts, that we also hold
+ * a rate for. Drives which vintage an {@link ApproxRateNote} quotes; an empty
+ * result means nothing was converted and the single-currency case stays clean.
+ */
+export function useForeignCurrencies(
+  items: { currency: string; amount: number }[],
+  to: string
+): string[] {
+  const table = useFxRates();
+  return useMemo(() => {
+    const seen = new Set<string>();
+    for (const item of items) {
+      if (!isConverted(item.amount, item.currency, to)) continue;
+      const currency = item.currency || BASE_CURRENCY;
+      if (getRate(table, currency, to) !== null) seen.add(currency);
+    }
+    return Array.from(seen);
   }, [items, to, table]);
 }
 

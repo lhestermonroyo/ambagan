@@ -25,9 +25,10 @@ import { Linking } from "react-native";
  * happened, even on a single foreign currency, or the disclosure has no route
  * to the screen (see CurrencyCountButton).
  *
- * The Stats tab keeps a tab-level note because its chip opens a plain
- * per-currency sheet rather than a converting one, so nothing downstream would
- * carry the caption.
+ * The Stats tabs keep a tab-level note as well, even though their chip does open
+ * a converting sheet: most of what they convert has no chip of its own — the
+ * group's You view, the member breakdown, the averages — so the sheet's own copy
+ * of this caption only covers the one card it hangs off.
  *
  * Renders nothing when nothing was converted, so a single-currency book never
  * sees it.

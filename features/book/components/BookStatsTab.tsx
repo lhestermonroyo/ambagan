@@ -1,4 +1,5 @@
 import ApproxRateNote from "@/components/ApproxRateNote";
+import CategoryGauge from "@/components/CategoryGauge";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -8,7 +9,6 @@ import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import CategoryGauge from "@/features/book/components/CategoryGauge";
 import {
   expenseCategoryColor,
   expenseCategoryMeta
@@ -24,7 +24,7 @@ import DateRangeSheet, {
 import services from "@/services";
 import { PersonalExpense } from "@/types/books";
 import { EmptyType } from "@/types/general";
-import { getRate, useFxRates } from "@/utils/fx";
+import { getRate, isConverted, useFxRates } from "@/utils/fx";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { ChevronDown } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -166,34 +166,50 @@ export default function BookStatsTab({
   // unaffected by that, being shares of the same converted total. Falls back to
   // "general" for any unset row.
   const spending = useMemo(() => {
-    const byCategory = new Map<string, number>();
+    const byCategory = new Map<string, { amount: number; approx: boolean }>();
     let paidTotal = 0;
     let pendingTotal = 0;
+    // Each figure is only approximate if the money behind THAT figure was
+    // converted — a peso-only category, or a pending list with no foreign bills
+    // in it, is exact even when the rest of the tab isn't.
+    let paidApprox = false;
+    let pendingApprox = false;
 
     for (const expense of filtered) {
       const value = inBookCurrency(expense);
       if (value === null) continue;
+      const converted = isConverted(
+        expense.amount,
+        expense.currency,
+        primaryCurrency
+      );
       if (expense.status === "pending") {
         pendingTotal += value;
+        pendingApprox ||= converted;
         continue;
       }
       const key = expense.category || "general";
-      byCategory.set(key, (byCategory.get(key) ?? 0) + value);
+      const entry = byCategory.get(key) ?? { amount: 0, approx: false };
+      entry.amount += value;
+      entry.approx ||= converted;
+      byCategory.set(key, entry);
       paidTotal += value;
+      paidApprox ||= converted;
     }
 
     const slices = Array.from(byCategory.entries())
-      .map(([category, amount]) => ({
+      .map(([category, entry]) => ({
         key: category,
         label: expenseCategoryMeta(category).label,
         color: expenseCategoryColor(category),
-        amount,
-        pct: paidTotal > 0 ? (amount / paidTotal) * 100 : 0
+        amount: entry.amount,
+        approx: entry.approx,
+        pct: paidTotal > 0 ? (entry.amount / paidTotal) * 100 : 0
       }))
       .sort((a, b) => b.amount - a.amount);
 
-    return { slices, paidTotal, pendingTotal };
-  }, [filtered, inBookCurrency]);
+    return { slices, paidTotal, pendingTotal, paidApprox, pendingApprox };
+  }, [filtered, inBookCurrency, primaryCurrency]);
 
   if (loading) {
     return (
@@ -263,6 +279,12 @@ export default function BookStatsTab({
                     <Text className="text-sm text-secondary-950">
                       {primaryCurrency}
                     </Text>
+                    {/* Opens in convertTo mode: the gauge above shows one
+                        converted figure, so the sheet has to show the exact
+                        per-currency amounts, what each is worth in the book
+                        currency, and a total that adds up to the gauge. Pending
+                        rides along per row but stays out of that total, which is
+                        paid spend only — same as the gauge. */}
                     <CurrencyCountButton
                       items={totalsByCurrency.map((t) => ({
                         currency: t.currency,
@@ -272,6 +294,8 @@ export default function BookStatsTab({
                       title="Total Spent"
                       subtitle="Paid, by currency"
                       secondaryLabel="pending"
+                      convertTo={primaryCurrency}
+                      totalLabel="Total paid"
                     />
                   </HStack>
                 </HStack>
@@ -280,7 +304,7 @@ export default function BookStatsTab({
                   slices={spending.slices}
                   total={spending.paidTotal}
                   currency={primaryCurrency}
-                  approx={convertedCurrencies.length > 0}
+                  approx={spending.paidApprox}
                 />
 
                 <Divider />
@@ -295,7 +319,7 @@ export default function BookStatsTab({
                       numberOfLines={1}
                       adjustsFontSizeToFit
                     >
-                      {convertedCurrencies.length > 0 ? "≈ " : ""}
+                      {spending.pendingApprox ? "≈ " : ""}
                       {formatAmount(spending.pendingTotal, primaryCurrency)}
                     </Text>
                   </VStack>
@@ -343,10 +367,7 @@ export default function BookStatsTab({
                   </VStack>
                   <VStack className="gap-y-3">
                     {topExpenses.map((expense, index) => (
-                      <HStack
-                        key={expense.id}
-                        className="items-center gap-x-3"
-                      >
+                      <HStack key={expense.id} className="items-center gap-x-3">
                         <Text className="w-4 text-sm text-secondary-950">
                           {index + 1}
                         </Text>
@@ -378,4 +399,3 @@ export default function BookStatsTab({
     </>
   );
 }
-

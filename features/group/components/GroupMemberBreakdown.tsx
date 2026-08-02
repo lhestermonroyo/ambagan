@@ -7,6 +7,7 @@ import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { ExpensePreview, MemberSplit } from "@/types/expenses";
 import { UserPreview } from "@/types/user";
+import { isConverted, useConverter } from "@/utils/fx";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useMemo } from "react";
 
@@ -15,6 +16,10 @@ type MemberRow = {
   paid: number;
   share: number;
   net: number;
+  /** Whether THIS member's figures folded in a foreign currency. Per row, not
+   *  per card: in a mostly-peso group only the one member who paid for the yen
+   *  dinner is showing an estimate. */
+  approx: boolean;
 };
 
 export default function GroupMemberBreakdown({
@@ -32,23 +37,25 @@ export default function GroupMemberBreakdown({
   userId: string;
   primaryCurrency?: string;
 }) {
+  const convert = useConverter(primaryCurrency);
+
   // Only finalized expenses have splits; drafts carry an amount but no shares.
   const finalized = useMemo(
     () => expenses.filter((e) => !e.is_draft),
     [expenses],
   );
 
-  // Per-member paid vs. share, scoped to the primary currency. Amounts in other
-  // currencies are excluded here to keep each member's net meaningful — mixing
-  // currencies into one figure would be misleading. (Free-tier groups are
-  // PHP-only, so this only trims the rare multi-currency traveler group.)
+  // Per-member paid vs. share, with foreign amounts converted into the group's
+  // currency so a member who only ever fronted yen still shows up here with a
+  // real net. Anything we hold no rate for is left out rather than counted as
+  // zero — an understated row beats a wrong one.
   const rows = useMemo<MemberRow[]>(() => {
     const map = new Map<string, MemberRow>();
 
     const ensure = (member: UserPreview) => {
       let row = map.get(member.id);
       if (!row) {
-        row = { member, paid: 0, share: 0, net: 0 };
+        row = { member, paid: 0, share: 0, net: 0, approx: false };
         map.set(member.id, row);
       }
       return row;
@@ -56,21 +63,27 @@ export default function GroupMemberBreakdown({
 
     finalized.forEach((expense) => {
       expense.payer_list.forEach((p) => {
-        if (p.currency !== primaryCurrency) return;
-        ensure(p.payer).paid += p.amount;
+        const value = convert(p.amount, p.currency);
+        if (value === null) return;
+        const row = ensure(p.payer);
+        row.paid += value;
+        row.approx ||= isConverted(p.amount, p.currency, primaryCurrency);
       });
     });
 
     splits.forEach((split) => {
-      if (split.currency !== primaryCurrency) return;
-      ensure(split.member).share += split.amount;
+      const value = convert(split.amount, split.currency);
+      if (value === null) return;
+      const row = ensure(split.member);
+      row.share += value;
+      row.approx ||= isConverted(split.amount, split.currency, primaryCurrency);
     });
 
     return Array.from(map.values())
       .map((row) => ({ ...row, net: row.paid - row.share }))
       .filter((row) => row.paid > 0 || row.share > 0)
       .sort((a, b) => b.paid - a.paid);
-  }, [finalized, splits, primaryCurrency]);
+  }, [finalized, splits, convert, primaryCurrency]);
 
   const totalPaid = useMemo(
     () => rows.reduce((sum, row) => sum + row.paid, 0),
@@ -103,6 +116,9 @@ export default function GroupMemberBreakdown({
                   ? Math.max(2, Math.round((row.paid / totalPaid) * 100))
                   : 0;
               const netColor = row.net < 0 && "text-error-400";
+              // All three of this row's figures come from the same money, so
+              // they're approximate together or not at all.
+              const approxMark = row.approx ? "≈ " : "";
 
               return (
                 <VStack key={row.member.id} className="gap-y-2">
@@ -116,7 +132,9 @@ export default function GroupMemberBreakdown({
                     <VStack className="flex-1">
                       <Text numberOfLines={1}>{name}</Text>
                       <Text className="text-sm text-secondary-950">
-                        Paid {formatAmount(row.paid, primaryCurrency)} · Share{" "}
+                        Paid {approxMark}
+                        {formatAmount(row.paid, primaryCurrency)} · Share{" "}
+                        {approxMark}
                         {formatAmount(row.share, primaryCurrency)}
                       </Text>
                     </VStack>
@@ -124,7 +142,12 @@ export default function GroupMemberBreakdown({
                       <Text className="text-xs text-secondary-950 uppercase">
                         Net
                       </Text>
-                      <Text className={cn("text-lg font-medium", netColor)}>
+                      <Text
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        className={cn("text-lg font-medium", netColor)}
+                      >
+                        {approxMark}
                         {formatAmount(row.net, primaryCurrency)}
                       </Text>
                     </VStack>
