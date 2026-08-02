@@ -14,13 +14,19 @@ interface CurrencyCountButtonProps {
   subtitle?: string;
   /** Caption for each item's `secondaryAmount` in the sheet (e.g. "pending"). */
   secondaryLabel?: string;
+  /** Shows each row converted into this currency, plus a total. See
+   *  {@link CurrencyBreakdownSheet}'s `convertTo`. */
+  convertTo?: string;
+  totalLabel?: string;
 }
 
 export default function CurrencyCountButton({
   items,
   title,
   subtitle,
-  secondaryLabel
+  secondaryLabel,
+  convertTo,
+  totalLabel
 }: CurrencyCountButtonProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const secondary = items.slice(1);
@@ -45,6 +51,8 @@ export default function CurrencyCountButton({
         subtitle={subtitle}
         items={items}
         secondaryLabel={secondaryLabel}
+        convertTo={convertTo}
+        totalLabel={totalLabel}
       />
     </>
   );

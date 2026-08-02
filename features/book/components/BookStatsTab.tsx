@@ -1,14 +1,14 @@
-import CategoryIcon from "@/components/CategoryIcon";
+import ApproxRateNote from "@/components/ApproxRateNote";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
-import { Box } from "@/components/ui/box";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import CategoryGauge from "@/features/book/components/CategoryGauge";
 import {
   expenseCategoryColor,
   expenseCategoryMeta
@@ -29,7 +29,6 @@ import { getPrimaryHex } from "@/utils/getColorHex";
 import { ChevronDown } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
-import ApproxRateNote from "./ApproxRateNote";
 
 export default function BookStatsTab({
   bookId,
@@ -95,10 +94,16 @@ export default function BookStatsTab({
       else entry.paid += e.amount;
       byCurrency.set(currency, entry);
     });
+    // Book currency leads — it's the one every converted figure on this tab is
+    // expressed in — then the rest by size.
     return Array.from(byCurrency.entries())
       .map(([currency, v]) => ({ currency, paid: v.paid, pending: v.pending }))
-      .sort((a, b) => b.paid + b.pending - (a.paid + a.pending));
-  }, [filtered]);
+      .sort((a, b) => {
+        if (a.currency === primaryCurrency) return -1;
+        if (b.currency === primaryCurrency) return 1;
+        return b.paid + b.pending - (a.paid + a.pending);
+      });
+  }, [filtered, primaryCurrency]);
 
   // Value of an expense in the book's own currency, or null when its currency
   // has no rate. Null means "can't be priced" and the expense is left out of the
@@ -155,30 +160,39 @@ export default function BookStatsTab({
     [filtered, inBookCurrency]
   );
 
-  // Spending grouped by category (paid only), largest first, with each slice's
-  // share of the total. Amounts are converted into the book currency; the
-  // percentages are unaffected by that since they're a share of the same total.
-  // Falls back to "general" for any unset row.
-  const categoryBreakdown = useMemo(() => {
+  // Paid spend grouped by category, largest first, ready for the gauge — plus
+  // the paid and pending totals it sits between. Amounts are converted into the
+  // book currency (a meter has to be a single number); the percentages are
+  // unaffected by that, being shares of the same converted total. Falls back to
+  // "general" for any unset row.
+  const spending = useMemo(() => {
     const byCategory = new Map<string, number>();
-    let total = 0;
-    filtered
-      .filter((e) => e.status !== "pending")
-      .forEach((e) => {
-        const value = inBookCurrency(e);
-        if (value === null) return;
-        const key = e.category || "general";
-        byCategory.set(key, (byCategory.get(key) ?? 0) + value);
-        total += value;
-      });
+    let paidTotal = 0;
+    let pendingTotal = 0;
 
-    return Array.from(byCategory.entries())
+    for (const expense of filtered) {
+      const value = inBookCurrency(expense);
+      if (value === null) continue;
+      if (expense.status === "pending") {
+        pendingTotal += value;
+        continue;
+      }
+      const key = expense.category || "general";
+      byCategory.set(key, (byCategory.get(key) ?? 0) + value);
+      paidTotal += value;
+    }
+
+    const slices = Array.from(byCategory.entries())
       .map(([category, amount]) => ({
-        category,
+        key: category,
+        label: expenseCategoryMeta(category).label,
+        color: expenseCategoryColor(category),
         amount,
-        pct: total > 0 ? (amount / total) * 100 : 0
+        pct: paidTotal > 0 ? (amount / paidTotal) * 100 : 0
       }))
       .sort((a, b) => b.amount - a.amount);
+
+    return { slices, paidTotal, pendingTotal };
   }, [filtered, inBookCurrency]);
 
   if (loading) {
@@ -233,15 +247,59 @@ export default function BookStatsTab({
           />
         ) : (
           <VStack className="px-4 gap-y-4">
-            {/* Total spent */}
+            {/* Total spent — the gauge carries both the headline figure and
+                the category split, so this one card answers "how much" and
+                "on what" without the two competing for the same space. The
+                per-currency chip stays alongside it: the gauge is converted
+                and approximate by necessity, and the exact per-currency
+                figures have to stay one tap away. */}
             <Card className="rounded-xl bg-secondary-100">
               <VStack className="gap-y-4">
-                <SpendingHero
-                  items={totalsByCurrency}
-                  primaryCurrency={primaryCurrency}
+                <HStack className="items-center justify-between">
+                  <Text bold className="text-secondary-950 uppercase text-sm">
+                    Total Spent
+                  </Text>
+                  <HStack className="items-center gap-x-2">
+                    <Text className="text-sm text-secondary-950">
+                      {primaryCurrency}
+                    </Text>
+                    <CurrencyCountButton
+                      items={totalsByCurrency.map((t) => ({
+                        currency: t.currency,
+                        amount: t.paid,
+                        secondaryAmount: t.pending
+                      }))}
+                      title="Total Spent"
+                      subtitle="Paid, by currency"
+                      secondaryLabel="pending"
+                    />
+                  </HStack>
+                </HStack>
+
+                <CategoryGauge
+                  slices={spending.slices}
+                  total={spending.paidTotal}
+                  currency={primaryCurrency}
+                  approx={convertedCurrencies.length > 0}
                 />
+
                 <Divider />
                 <HStack className="items-stretch">
+                  <VStack className="flex-1 gap-y-1">
+                    <Text className="text-sm text-secondary-950 uppercase">
+                      Pending
+                    </Text>
+                    <Text
+                      bold
+                      className="text-lg"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {convertedCurrencies.length > 0 ? "≈ " : ""}
+                      {formatAmount(spending.pendingTotal, primaryCurrency)}
+                    </Text>
+                  </VStack>
+                  <Divider orientation="vertical" className="mx-3" />
                   <VStack className="flex-1 gap-y-1">
                     <Text className="text-sm text-secondary-950 uppercase">
                       Expenses
@@ -250,12 +308,17 @@ export default function BookStatsTab({
                       {primaryStats.count}
                     </Text>
                   </VStack>
-                  <Divider orientation="vertical" className="mx-4" />
+                  <Divider orientation="vertical" className="mx-3" />
                   <VStack className="flex-1 gap-y-1">
                     <Text className="text-sm text-secondary-950 uppercase">
-                      Avg / Expense
+                      Avg
                     </Text>
-                    <Text bold className="text-lg">
+                    <Text
+                      bold
+                      className="text-lg"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
                       {convertedCurrencies.length > 0 ? "≈ " : ""}
                       {formatAmount(primaryStats.average, primaryCurrency)}
                     </Text>
@@ -306,54 +369,6 @@ export default function BookStatsTab({
               </Card>
             )}
 
-            {/* Spending by Category */}
-            {categoryBreakdown.length > 0 && (
-              <Card className="rounded-xl bg-secondary-100">
-                <VStack className="gap-y-4">
-                  <VStack>
-                    <Text bold className="text-secondary-950 uppercase text-sm">
-                      Spending by Category
-                    </Text>
-                    <Text className="text-sm text-secondary-950">
-                      Where the money went in this range.
-                    </Text>
-                  </VStack>
-                  <VStack className="gap-y-4">
-                    {categoryBreakdown.map((row) => (
-                      <VStack key={row.category} className="gap-y-2">
-                        <HStack className="items-center gap-x-3">
-                          <CategoryIcon
-                            icon={expenseCategoryMeta(row.category).icon}
-                          />
-                          <Text className="flex-1 text-base" numberOfLines={1}>
-                            {expenseCategoryMeta(row.category).label}
-                          </Text>
-                          <Text className="text-sm text-secondary-950">
-                            {row.pct.toFixed(0)}%
-                          </Text>
-                          <Text className="text-lg font-medium">
-                            {convertedCurrencies.length > 0 ? "≈ " : ""}
-                            {formatAmount(row.amount, primaryCurrency)}
-                          </Text>
-                        </HStack>
-                        {/* Same category color the budget card's bar and
-                            legend use, so the two surfaces agree. */}
-                        <Box className="h-1.5 rounded-full bg-secondary-200 overflow-hidden">
-                          <Box
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${Math.max(2, row.pct)}%`,
-                              backgroundColor: expenseCategoryColor(row.category)
-                            }}
-                          />
-                        </Box>
-                      </VStack>
-                    ))}
-                  </VStack>
-                </VStack>
-              </Card>
-            )}
-
             {/* One note for the whole tab — renders nothing when the book is
                 single-currency, so the common case is untouched. */}
             <ApproxRateNote currencies={convertedCurrencies} className="px-1" />
@@ -364,55 +379,3 @@ export default function BookStatsTab({
   );
 }
 
-function SpendingHero({
-  items,
-  primaryCurrency = "PHP"
-}: {
-  items: { currency: string; paid: number; pending: number }[];
-  primaryCurrency?: string;
-}) {
-  const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
-  );
-  const [primary] = sorted;
-  const currency = primary?.currency ?? primaryCurrency;
-
-  // Paid leads, pending rides along as the second line of each sheet row, so
-  // both figures the hero shows stay reachable for the other currencies.
-  const breakdown = sorted.map((t) => ({
-    currency: t.currency,
-    amount: t.paid,
-    secondaryAmount: t.pending
-  }));
-
-  return (
-    <VStack className="gap-y-2">
-      <Text bold className="text-secondary-950 uppercase text-sm">
-        Total Spent
-      </Text>
-      <HStack className="items-end justify-between">
-        <VStack className="gap-y-0.5">
-          <Text className="text-secondary-950 text-xs uppercase">Paid</Text>
-          <Text bold className="text-3xl">
-            {formatAmount(primary?.paid ?? 0, currency)}
-          </Text>
-        </VStack>
-        <VStack className="items-end gap-y-0.5">
-          <Text className="text-secondary-950 text-xs uppercase">Pending</Text>
-          <Text bold className="text-xl">
-            {formatAmount(primary?.pending ?? 0, currency)}
-          </Text>
-        </VStack>
-      </HStack>
-      <HStack className="items-center gap-x-2">
-        <Text className="text-secondary-950 text-sm">{currency}</Text>
-        <CurrencyCountButton
-          items={breakdown}
-          title="Total Spent"
-          subtitle="Paid, by currency"
-          secondaryLabel="pending"
-        />
-      </HStack>
-    </VStack>
-  );
-}

@@ -17,7 +17,9 @@ import { Linking } from "react-native";
  * Shared rather than inlined per surface for one specific reason — the link is a
  * licence condition of the free ExchangeRate-API endpoint, not decoration. A new
  * screen that starts converting money has to be unable to forget it, so the
- * caption and the attribution ship as one unit.
+ * caption and the attribution ship as one unit. It lives in components/ rather
+ * than beside the book screens because CurrencyBreakdownSheet needs it too, and
+ * a shared component can't reach into features/.
  *
  * Renders nothing when nothing was converted, so a single-currency book never
  * sees it.

@@ -1,3 +1,4 @@
+import ApproxRateNote from "@/components/ApproxRateNote";
 import { type CurrencyAmount } from "@/components/CurrencyBreakdownSheet";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import { Box } from "@/components/ui/box";
@@ -5,36 +6,33 @@ import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import ApproxRateNote from "@/features/book/components/ApproxRateNote";
-import {
-  expenseCategoryColor,
-  expenseCategoryLabel
-} from "@/features/expense/components/CategorySheet";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { Book, PersonalBookTotal } from "@/types/books";
 import { getRate, useFxRates } from "@/utils/fx";
 import { useMemo } from "react";
 
-/** Categories shown individually in the legend; the rest fold into "Others". */
-const LEGEND_LIMIT = 5;
-
-/** Neutral swatch for the "Others" bucket and the pending segment. */
-const NEUTRAL_COLOR = "#94A3B8";
-
 /**
  * Progress against a book's spending cap, in the book's own currency. Spend in
  * any OTHER currency is folded in at an approximate rate (see utils/fx) so a
  * mixed PHP/JPY trip book can't report a ¥42,000 month as 0% of budget used —
  * this is the one place in the app that converts, because a budget bar has to
- * be a single number. Every converted figure is marked "≈" and captioned with
- * the rate vintage; money that must be exact (balances, settlements, the
+ * be a single number. Money that must be exact (balances, settlements, the
  * Paid/Pending stats below) stays split per-currency and is never converted.
  *
- * Paid spend fills the bar, split into one colored segment per spending
- * category (largest first) with a legend underneath; pending (upcoming/unpaid)
- * bills are drawn as a neutral segment stacked on top, so an about-to-be-blown
- * budget is visible before the money actually leaves.
+ * The mixed-currency disclosure is deliberately ONE chip and ONE caption. An
+ * earlier version spelled out what was included, what it converted to and what
+ * had no rate as three more full-width rows, in the same label/value grammar as
+ * the budget's own numbers — which left nothing on the card reading as the
+ * answer. The working now lives in the sheet behind the chip, where it can add
+ * up to the headline figure properly; only the rate vintage stays on the card,
+ * because the feed's attribution is a licence condition and can't hide a tap
+ * away.
+ *
+ * The bar itself is a plain paid run plus a neutral pending segment stacked on
+ * top, so an about-to-be-blown budget is visible before the money leaves.
+ * Category colors are NOT here — that story is the Stats tab's gauge, which has
+ * the room to label it.
  *
  * When paid/pending breakdowns are passed in, the card also carries the book's
  * total spent stats in a divided-off footer.
@@ -64,101 +62,59 @@ export default function BookBudgetCard({
   // move together.
   const fx = useFxRates();
 
-  const { paid, pending, byCategory, converted, convertedTotal, unconverted } =
+  const { paid, pending, rows, convertedCurrencies, hasUncounted } =
     useMemo(() => {
-      const own = totals.find((t) => t.currency === currency);
-      let paid = own?.paid ?? 0;
-      let pending = own?.pending ?? 0;
-      let convertedTotal = 0;
+      let paid = 0;
+      let pending = 0;
+      const convertedCurrencies: string[] = [];
+      let hasUncounted = false;
 
-      // Paid spend only — the bar's colored run is money already out.
-      const categories = new Map<string, number>();
-      for (const c of own?.byCategory ?? []) {
-        if (c.paid > 0) categories.set(c.category, c.paid);
-      }
-
-      // Everything in another currency is folded in at an approximate rate, so
-      // a ¥42,000 month can't render as 0% of a PHP budget. Both lists keep the
-      // ORIGINAL amounts — the sheet shows what was actually spent, not a
-      // converted figure dressed up as exact.
-      const converted: CurrencyAmount[] = [];
-      const unconverted: CurrencyAmount[] = [];
+      // One row per currency with paid spend, so the sheet behind the chip adds
+      // up to exactly the headline figure. Pending is left out of it on purpose
+      // — the headline is paid spend, and pending's own per-currency split is a
+      // tap away in the Pending stat below.
+      const priced: { row: CurrencyAmount; value: number }[] = [];
 
       for (const t of totals) {
-        if (t.currency === currency) continue;
-        const gross = t.paid + t.pending;
-        if (gross <= 0) continue;
-
         const rate = getRate(fx, t.currency, currency);
-        // No rate for this currency — leave the money out of the bar entirely
-        // and disclose it separately. Dropping it silently would under-report.
+
+        // No rate for this currency — it can't join the bar. Surfaced rather
+        // than silently dropped: it still gets a row (marked "Not counted" by
+        // the sheet) and raises the flag for the caption below.
         if (rate === null) {
-          unconverted.push({
-            currency: t.currency,
-            amount: gross,
-            secondaryAmount: t.pending
-          });
+          if (t.paid > 0) {
+            priced.push({ row: { currency: t.currency, amount: t.paid }, value: -1 });
+            hasUncounted = true;
+          }
           continue;
         }
 
         paid += t.paid * rate;
         pending += t.pending * rate;
-        convertedTotal += gross * rate;
-        converted.push({
-          currency: t.currency,
-          amount: gross,
-          secondaryAmount: t.pending
-        });
 
-        for (const c of t.byCategory ?? []) {
-          if (c.paid > 0) {
-            categories.set(
-              c.category,
-              (categories.get(c.category) ?? 0) + c.paid * rate
-            );
-          }
+        if (t.currency !== currency && (t.paid > 0 || t.pending > 0)) {
+          convertedCurrencies.push(t.currency);
+        }
+        if (t.paid > 0) {
+          priced.push({
+            row: { currency: t.currency, amount: t.paid },
+            value: t.paid * rate
+          });
         }
       }
 
-      return {
-        paid,
-        pending,
-        convertedTotal,
-        converted: converted.sort((a, b) => b.amount - a.amount),
-        unconverted: unconverted.sort((a, b) => b.amount - a.amount),
-        byCategory: Array.from(categories.entries())
-          .map(([category, paid]) => ({ category, paid }))
-          .sort((a, b) => b.paid - a.paid)
-      };
-    }, [totals, currency, fx]);
+      // The book's own currency leads — it's the one the budget is set in —
+      // then the rest by how much they actually contributed.
+      const rows = priced
+        .sort((a, b) => {
+          if (a.row.currency === currency) return -1;
+          if (b.row.currency === currency) return 1;
+          return b.value - a.value;
+        })
+        .map((p) => p.row);
 
-  // Top categories keep their own color; the tail folds into one neutral
-  // "Others" slice so a 10-category book doesn't produce a 10-row legend.
-  const slices = useMemo(() => {
-    const head = byCategory.slice(0, LEGEND_LIMIT).map((c) => ({
-      key: c.category,
-      label: expenseCategoryLabel(c.category),
-      color: expenseCategoryColor(c.category),
-      amount: c.paid
-    }));
-    const tail = byCategory.slice(LEGEND_LIMIT);
-    // Anything paid but not attributed to a category also lands in "Others" —
-    // cached snapshots predating the per-category breakdown contribute to
-    // `paid` with no categories at all, and without this the bar under-fills.
-    const uncategorized =
-      paid - byCategory.reduce((sum, c) => sum + c.paid, 0);
-    const others =
-      tail.reduce((sum, c) => sum + c.paid, 0) + Math.max(uncategorized, 0);
-    if (others > 0.01) {
-      head.push({
-        key: "__others",
-        label: "Others",
-        color: NEUTRAL_COLOR,
-        amount: others
-      });
-    }
-    return head;
-  }, [byCategory, paid]);
+      return { paid, pending, rows, convertedCurrencies, hasUncounted };
+    }, [totals, currency, fx]);
 
   if (budget == null || budget <= 0) return null;
 
@@ -170,6 +126,7 @@ export default function BookBudgetCard({
 
   const paidPct = Math.min((paid / budget) * 100, 100);
   const pendingPct = Math.min((atRisk / budget) * 100, 100 - paidPct);
+  const isApprox = convertedCurrencies.length > 0;
 
   return (
     <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-4">
@@ -183,46 +140,42 @@ export default function BookBudgetCard({
       </HStack>
 
       <VStack className="gap-y-2">
-        <HStack className="items-end justify-between">
-          <Text
-            bold
-            className="text-2xl"
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            {converted.length > 0 ? "≈ " : ""}
-            {formatAmount(paid, currency)}
-          </Text>
+        {/* The chip rides with the headline rather than getting a row of its
+            own: it exists to answer "why is there a ≈ on this number", and
+            that question is asked where the number is. It hides itself on a
+            single-currency book, so the common case is one clean line. */}
+        <HStack className="items-end justify-between gap-x-2">
+          <HStack className="items-center gap-x-2 flex-shrink">
+            <Text
+              bold
+              className="text-2xl"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {isApprox ? "≈ " : ""}
+              {formatAmount(paid, currency)}
+            </Text>
+            <CurrencyCountButton
+              items={rows}
+              title="Spend by currency"
+              subtitle={`Counted toward this ${isMonthly ? "month's" : ""} budget`}
+              convertTo={currency}
+              totalLabel="Total spent"
+            />
+          </HStack>
           <Text className="text-secondary-950">
             of {formatAmount(budget, currency)}
           </Text>
         </HStack>
 
-        {/* Paid fills the bar as one segment per category; pending stacks after
-            it in neutral gray. Over budget the segments still carry their own
-            colors — the bar just runs full and the copy below turns red, which
-            keeps "where the money went" readable in the state you most want to
-            read it. Books cached before per-category totals existed fall back
-            to a single primary-colored run. */}
+        {/* Paid fills the bar, pending stacks after it in neutral gray. Over
+            budget the run turns red and the copy below follows. */}
         <Box className="h-2 rounded-full bg-secondary-200 overflow-hidden">
           <HStack className="h-full">
-            {slices.length > 0 ? (
-              slices.map((s) => (
-                <Box
-                  key={s.key}
-                  className="h-full"
-                  style={{
-                    width: `${(s.amount / paid) * paidPct}%`,
-                    backgroundColor: s.color
-                  }}
-                />
-              ))
-            ) : (
-              <Box
-                className={`h-full ${isOver ? "bg-error-600" : "bg-primary-500"}`}
-                style={{ width: `${paidPct}%` }}
-              />
-            )}
+            <Box
+              className={`h-full ${isOver ? "bg-error-600" : "bg-primary-500"}`}
+              style={{ width: `${paidPct}%` }}
+            />
             {pendingPct > 0 && (
               <Box
                 className="h-full bg-secondary-400"
@@ -245,95 +198,24 @@ export default function BookBudgetCard({
           </Text>
         </HStack>
 
-        {/* What the bar folded in from other currencies, and at what vintage.
-            A single currency is named outright (its original amount + the
-            converted figure is the whole story); several open the standard
-            breakdown sheet, which lists what was actually spent in each. The
-            rate date matters as much as the "approximate" — it tells someone
-            two years from now exactly how much to trust the number. */}
-        {converted.length > 0 && (
-          <VStack className="gap-y-0.5">
-            <HStack className="items-center justify-between gap-x-2">
-              <Text className="text-sm text-secondary-950 flex-shrink">
-                {converted.length === 1
-                  ? `Includes ${formatAmount(converted[0].amount, converted[0].currency)}`
-                  : `Includes ${converted.length} other currencies`}
-              </Text>
-              <HStack className="items-center gap-x-2">
-                <Text
-                  className="text-sm text-secondary-950"
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
-                  ≈ {formatAmount(convertedTotal, currency)}
-                </Text>
-                <CurrencyCountButton
-                  items={converted}
-                  title="Converted into your budget"
-                  subtitle={`Spent outside ${currency}, shown as entered`}
-                  secondaryLabel="pending"
-                />
-              </HStack>
-            </HStack>
-            <ApproxRateNote currencies={converted.map((c) => c.currency)} />
-          </VStack>
-        )}
+        {/* The rate vintage matters as much as the "approximate" — it tells
+            someone two years from now how much to trust the number — and the
+            attribution link is a licence condition of the rate feed, so this
+            one caption stays on the card even though the detail moved into the
+            sheet. Renders nothing on a single-currency book. */}
+        <ApproxRateNote currencies={convertedCurrencies} />
 
-        {/* Currencies with no rate at all can't join the bar, so they're called
-            out separately rather than silently dropped. */}
-        {unconverted.length > 0 && (
-          <HStack className="items-center justify-between gap-x-2">
-            <Text className="text-sm text-secondary-950 flex-shrink">
-              Not counted
-            </Text>
-            <HStack className="items-center gap-x-2">
-              <Text
-                className="text-sm text-secondary-950"
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {formatAmount(unconverted[0].amount, unconverted[0].currency)}
-              </Text>
-              <CurrencyCountButton
-                items={unconverted}
-                title="Not counted in budget"
-                subtitle="No conversion rate available for these"
-                secondaryLabel="pending"
-              />
-            </HStack>
-          </HStack>
-        )}
-
-        {/* The pending figure itself lives in the Pending card below, so only
-            the part that card can't tell you stays here: that those bills are
-            enough to blow this budget. */}
-        {atRisk > 0 && pending > remaining && !isOver && (
-          <Text className="text-sm text-secondary-950">
-            Pending bills are enough to go over budget.
+        {/* Two states that the bar itself can't show. Both are exceptions, so
+            they're styled as flags rather than as another pair of body rows. */}
+        {hasUncounted && (
+          <Text className="text-xs text-warning-700">
+            Some spend has no conversion rate and isn&apos;t counted here.
           </Text>
         )}
-
-        {/* Which color is which category — the bar's own segment widths carry
-            the weighting. Wraps, so a long label never squeezes the next
-            entry. */}
-        {slices.length > 0 && (
-          <HStack className="flex-wrap items-center gap-x-4 gap-y-1 pt-1">
-            {slices.map((s) => (
-              <HStack key={s.key} className="items-center gap-x-1.5">
-                <Box
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: s.color }}
-                />
-                <Text className="text-sm text-secondary-950">{s.label}</Text>
-              </HStack>
-            ))}
-            {atRisk > 0 && (
-              <HStack className="items-center gap-x-1.5">
-                <Box className="w-2 h-2 rounded-full bg-secondary-400" />
-                <Text className="text-sm text-secondary-950">Pending</Text>
-              </HStack>
-            )}
-          </HStack>
+        {atRisk > 0 && pending > remaining && !isOver && (
+          <Text className="text-xs text-warning-700">
+            Pending bills are enough to go over budget.
+          </Text>
         )}
       </VStack>
 
