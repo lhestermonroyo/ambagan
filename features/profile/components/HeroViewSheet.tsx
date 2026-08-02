@@ -36,10 +36,11 @@ export default function HeroViewSheet({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  if (!isOpen) return null;
-
   const { heroView, setHeroView } = states.user();
   const toast = useAppToast();
+
+  if (!heroView) return null;
+
   const colorScheme = useColorScheme() ?? "light";
 
   const options: {

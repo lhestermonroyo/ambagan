@@ -61,7 +61,7 @@ export default function LinkedGroupSheet({
               form's group picker. */}
           <HStack className="gap-x-2">
             <FormButton
-              text="Save"
+              text="Save Changes"
               className="flex-1"
               onPress={() => {
                 onSelect(selected === NONE ? null : selected);
@@ -76,7 +76,7 @@ export default function LinkedGroupSheet({
         <HStack className="items-center pt-4 px-4">
           <Icon as="arrow-back-ios" className="text-secondary-950" />
           <Text bold className="text-xl">
-            Link to a group
+            Link to a Group
           </Text>
         </HStack>
       </Pressable>
