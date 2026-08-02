@@ -22,6 +22,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import BookItem from "@/features/book/components/BookItem";
 import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
+import PersonalSpendingCard from "@/features/book/components/PersonalSpendingCard";
 import ExpenseDestinationSheet from "@/features/expense/components/ExpenseDestinationSheet";
 import NetBalanceDisplay from "@/features/expense/components/NetBalanceDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
@@ -32,7 +33,7 @@ import GroupItem from "@/features/group/components/GroupItem";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
-import { Book, PersonalBookTotal, PersonalExpense } from "@/types/books";
+import { Book, PersonalExpense, PersonalOverview } from "@/types/books";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { useConvertedTotal } from "@/utils/fx";
@@ -46,7 +47,6 @@ import { Stack, useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import {
   Bell,
   BellDot,
-  ChevronRight,
   CircleQuestionMark,
   HousePlus,
   ListPlus,
@@ -85,7 +85,8 @@ export default function HomeScreen() {
   const [personalExpenses, setPersonalExpenses] = useState<PersonalExpense[]>(
     []
   );
-  const [personalTotals, setPersonalTotals] = useState<PersonalBookTotal[]>([]);
+  const [personalOverview, setPersonalOverview] =
+    useState<PersonalOverview | null>(null);
   const [addChooserOpen, setAddChooserOpen] = useState(false);
   const [stats, setStats] = useState<{
     toPay: { currency: string; amount: number }[];
@@ -162,22 +163,6 @@ export default function HomeScreen() {
   );
   const compactPay = useConvertedTotal(displayStats.toPay, defaultCurrency);
 
-  // This-month personal spending, primary currency first (then others). Always
-  // shows at least the default currency at 0 so the card is a stable entry point
-  // into Books even before the user logs anything.
-  const displayPersonal = useMemo(() => {
-    if (personalTotals.length === 0) {
-      return [{ currency: defaultCurrency, paid: 0, pending: 0 }];
-    }
-    return [...personalTotals].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-  }, [personalTotals, defaultCurrency]);
-
   // The hero card is ~250pt tall; start the fade partway through so the compact
   // bar is fully in by the time the hero is gone. `contentInsetAdjustmentBehavior`
   // seeds scrollY negative at rest, which only delays the fade — never triggers
@@ -232,9 +217,8 @@ export default function HomeScreen() {
     }
 
     try {
-      const totals =
-        await services.bookExpense.getPersonalMonthlyTotals(userId);
-      setPersonalTotals(totals);
+      const overview = await services.bookExpense.getPersonalOverview(userId);
+      setPersonalOverview(overview);
     } catch (error) {
       console.error("Failed to fetch personal spending:", error);
     } finally {
@@ -502,6 +486,7 @@ export default function HomeScreen() {
     router.push("/scan" as any);
   }, [ensureOnline, router]);
 
+  const handleOpenBooks = useCallback(() => router.push("/books"), [router]);
   const handleOpenHelp = useCallback(
     () => router.push("/profile/help-center"),
     [router]
@@ -696,46 +681,12 @@ export default function HomeScreen() {
             {/* Personal spending — a distinct card in the white body (kept out of
               the purple net-balance hero so it never reads as money owed). Taps
               through to the Books tab. */}
-            <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-2">
-              <HStack className="items-center justify-between">
-                <Text className="text-sm text-secondary-950/70 font-medium uppercase flex-1">
-                  Personal Spending · This Month
-                </Text>
-                <Pressable
-                  onPress={() => router.push("/books")}
-                  accessibilityLabel="Open Books"
-                >
-                  <ChevronRight color="#fff" />
-                </Pressable>
-              </HStack>
-              <Pressable onPress={() => router.push("/books")}>
-                {loading.personal ? (
-                  <Text bold className="text-3xl text-white">
-                    —
-                  </Text>
-                ) : (
-                  displayPersonal.map((t, i) => (
-                    <VStack key={t.currency} className="gap-y-0.5">
-                      <Text
-                        bold
-                        className={
-                          i === 0
-                            ? "text-3xl text-primary-400"
-                            : "text-lg text-white/70"
-                        }
-                      >
-                        {formatAmount(t.paid, t.currency)}
-                      </Text>
-                      {t.pending > 0 && (
-                        <Text className="text-sm text-white/70">
-                          {formatAmount(t.pending, t.currency)} pending
-                        </Text>
-                      )}
-                    </VStack>
-                  ))
-                )}
-              </Pressable>
-            </VStack>
+            <PersonalSpendingCard
+              overview={personalOverview}
+              isLoading={loading.personal}
+              defaultCurrency={defaultCurrency}
+              onPress={handleOpenBooks}
+            />
 
             <VStack className="gap-y-2">
               <HStack className="items-center justify-between px-4">

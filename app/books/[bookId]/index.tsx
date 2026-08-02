@@ -39,6 +39,7 @@ import PersonalStatusFilterSheet, {
 } from "@/features/book/components/PersonalStatusFilterSheet";
 import CategorySheet from "@/features/expense/components/CategorySheet";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
+import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
   CustomDateRange,
   DateRangeOption,
@@ -51,17 +52,15 @@ import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
-import {
-  Book,
-  PersonalBookTotal,
-  PersonalExpense
-} from "@/types/books";
+import { Book, PersonalBookTotal, PersonalExpense } from "@/types/books";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { CategoryOption, expenseCategories } from "@/utils/constants";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
+import { useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
+import { format, parseISO } from "date-fns";
 import {
   Stack,
   useFocusEffect,
@@ -83,9 +82,9 @@ import {
   Trash2,
   X
 } from "lucide-react-native";
-import { format, parseISO } from "date-fns";
 import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   LayoutAnimation,
   Platform,
   RefreshControl,
@@ -210,6 +209,9 @@ export default function BookDetailScreen() {
     null
   );
   const fetchedAllRef = useRef(false);
+
+  // Drives the compact sticky stats bar's fade-in, mirroring group details.
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const hasActiveFilters =
     expenseSearch.trim().length > 0 ||
@@ -596,6 +598,43 @@ export default function BookDetailScreen() {
   // totals live inside that card or as their own pair of cards.
   const hasBudget = !!book?.budget && book.budget > 0;
 
+  // Compact sticky stats — the same numbers the cards above show, converted on
+  // the same terms so the bar can never disagree with what it fades in from.
+  // The budget column measures the budget's own window (this month for a
+  // 'monthly' cap, the whole book for a 'total' one); Paid/Pending are
+  // book-wide, matching the cards.
+  const budgetWindowPaid = useMemo(
+    () =>
+      (book?.budget_period === "total" ? totals : monthTotals).map((t) => ({
+        currency: t.currency,
+        amount: t.paid
+      })),
+    [book?.budget_period, totals, monthTotals]
+  );
+  const compactBudgetSpent = useConvertedTotal(
+    budgetWindowPaid,
+    primaryCurrency
+  );
+  const compactPaid = useConvertedTotal(paidByCurrency, primaryCurrency);
+  const compactPending = useConvertedTotal(pendingByCurrency, primaryCurrency);
+
+  const budgetRemaining = (book?.budget ?? 0) - compactBudgetSpent.total;
+  const isOverBudget = budgetRemaining < 0;
+
+  // Roughly the height of the book header + tabs + the stats card the bar
+  // stands in for — the budget card is the taller of the two.
+  const COMPACT_THRESHOLD = hasBudget ? 320 : 230;
+  const compactOpacity = scrollY.interpolate({
+    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
+    outputRange: [0, 1],
+    extrapolate: "clamp"
+  });
+  const compactTranslateY = scrollY.interpolate({
+    inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
+    outputRange: [-16, 0],
+    extrapolate: "clamp"
+  });
+
   const renderAndroidActions = () => {
     if (loading) return undefined;
 
@@ -815,6 +854,11 @@ export default function BookDetailScreen() {
         <LoadingWrapper isLoading={loading} skeleton={<ExpenseListSkeleton />}>
           <ScrollView
             className="flex-1"
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: false }
+            )}
+            scrollEventThrottle={16}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -921,7 +965,7 @@ export default function BookDetailScreen() {
                 {/* Recurring-expenses entry card — taps through to the standalone
                     /recurring route, mirroring the group detail Expenses tab. */}
                 <Pressable
-                  className="mx-4 bg-background-50 rounded-lg p-4 data-[hover=true]:bg-background-100 data-[active=true]:bg-background-100"
+                  className="mx-4 bg-secondary-100 rounded-lg p-4 data-[hover=true]:bg-secondary-200 data-[active=true]:bg-secondary-200"
                   onPress={handleOpenRecurring}
                 >
                   <HStack className="items-start gap-x-2">
@@ -1161,6 +1205,9 @@ export default function BookDetailScreen() {
                           onLoadMore={loadMore}
                         />
                       )}
+                      {/* Clears the floating "+" so the last row stays
+                          tappable — same gap as the group Settlements tab. */}
+                      <Box className="h-16" />
                     </>
                   )}
                 />
@@ -1174,6 +1221,80 @@ export default function BookDetailScreen() {
             {tab === "Book Info" && book && <BookInfoTab book={book} />}
           </ScrollView>
         </LoadingWrapper>
+
+        {/* Compact sticky stats — Expenses tab only. Pinned just under the
+            native header as an absolute overlay that fades in once the budget /
+            Paid-Pending cards scroll away. Like group details, it animates only
+            opacity + translateY (never height) and stays non-interactive, so it
+            never reflows the list and scroll/touches pass through. */}
+        {tab === "Expenses" && !loading && (
+          <Animated.View
+            pointerEvents="none"
+            className="absolute top-0 left-0 right-0 bg-background-0"
+            style={{
+              opacity: compactOpacity,
+              transform: [{ translateY: compactTranslateY }],
+              borderBottomWidth: 1,
+              borderBottomColor: "rgba(0,0,0,0.06)"
+            }}
+          >
+            <HStack className="px-6 py-3 gap-x-4 items-center justify-center">
+              {/* Only books with a cap get this column — the other two then
+                  split the row between them. */}
+              {hasBudget && (
+                <>
+                  <VStack className="items-center flex-1">
+                    <Text
+                      className="text-secondary-950 text-sm uppercase tracking-widest"
+                      numberOfLines={1}
+                    >
+                      {isOverBudget ? "Over" : "Left"}
+                    </Text>
+                    <Text
+                      bold
+                      className={`text-lg ${isOverBudget ? "text-error-400" : ""}`}
+                      numberOfLines={1}
+                    >
+                      {compactBudgetSpent.convertedCurrencies.length > 0
+                        ? "≈ "
+                        : ""}
+                      {formatAmount(
+                        Math.abs(budgetRemaining),
+                        book?.currency ?? primaryCurrency
+                      )}
+                    </Text>
+                  </VStack>
+                  <Text className="text-secondary-200">|</Text>
+                </>
+              )}
+              <VStack className="items-center flex-1">
+                <Text
+                  className="text-secondary-950 text-sm uppercase tracking-widest"
+                  numberOfLines={1}
+                >
+                  Paid
+                </Text>
+                <Text bold className="text-lg" numberOfLines={1}>
+                  {compactPaid.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactPaid.total, primaryCurrency)}
+                </Text>
+              </VStack>
+              <Text className="text-secondary-200">|</Text>
+              <VStack className="items-center flex-1">
+                <Text
+                  className="text-secondary-950 text-sm uppercase tracking-widest"
+                  numberOfLines={1}
+                >
+                  Pending
+                </Text>
+                <Text bold className="text-lg" numberOfLines={1}>
+                  {compactPending.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactPending.total, primaryCurrency)}
+                </Text>
+              </VStack>
+            </HStack>
+          </Animated.View>
+        )}
       </InnerLayout>
 
       <CategorySheet

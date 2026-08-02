@@ -940,7 +940,7 @@ export default function GroupDetailsScreen() {
             {tab === "Expenses" && (
               <VStack className="pb-2 gap-y-4">
                 <Pressable
-                  className="mx-4 bg-background-50 rounded-lg p-4 data-[hover=true]:bg-background-100 data-[active=true]:bg-background-100"
+                  className="mx-4 bg-secondary-100 rounded-lg p-4 data-[hover=true]:bg-secondary-200 data-[active=true]:bg-secondary-200"
                   onPress={handleOpenRecurring}
                 >
                   <HStack className="items-start gap-x-2">

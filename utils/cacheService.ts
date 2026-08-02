@@ -1,3 +1,4 @@
+import { PersonalOverview } from "@/types/books";
 import { getDb } from "./offlineDb";
 
 export const cacheService = {
@@ -344,9 +345,16 @@ export const cacheService = {
     return { count: row.count, dayKey: row.day_key };
   },
 
-  // The Overview "Personal spending · This month" per-currency totals, as last
-  // read from the server — served offline so the card shows the last value.
-  async savePersonalMonthly(userId: string, data: any[]): Promise<void> {
+  // The Overview personal-spending card's whole payload — this month, last
+  // month to date, and budget usage — as last read from the server, so the card
+  // shows its last value offline. The table name predates the card carrying
+  // more than a monthly total; a row written by an older build holds a bare
+  // totals array, which getPersonalOverview below discards rather than
+  // half-reads.
+  async savePersonalOverview(
+    userId: string,
+    data: PersonalOverview
+  ): Promise<void> {
     const db = await getDb();
     await db.runAsync(
       "INSERT OR REPLACE INTO cache_personal_monthly (user_id, data, cached_at) VALUES (?, ?, ?)",
@@ -354,13 +362,20 @@ export const cacheService = {
     );
   },
 
-  async getPersonalMonthly(userId: string): Promise<any[] | null> {
+  async getPersonalOverview(userId: string): Promise<PersonalOverview | null> {
     const db = await getDb();
     const row = await db.getFirstAsync<{ data: string }>(
       "SELECT data FROM cache_personal_monthly WHERE user_id = ?",
       [userId]
     );
-    return row ? JSON.parse(row.data) : null;
+    if (!row) return null;
+    const parsed = JSON.parse(row.data);
+    // Legacy shape (a PersonalBookTotal[]) — no comparison or budgets in it, so
+    // there's nothing to salvage; the next successful fetch overwrites it.
+    if (!parsed || Array.isArray(parsed) || !Array.isArray(parsed.thisMonth)) {
+      return null;
+    }
+    return parsed as PersonalOverview;
   },
 
   /** FX rates are global, so this is a single-row table (see utils/fx.ts). */

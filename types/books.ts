@@ -109,6 +109,46 @@ export type PersonalRecurring = {
   is_active: boolean;
 };
 
+/**
+ * One budgeted book's spend against its cap, as the Overview's budget rollup
+ * needs it. Spend is the budget's OWN window — this month for a `monthly` book,
+ * all-time for a `total` one — and stays per-currency here: converting it is a
+ * display decision (see BookBudgetCard), and the rollup makes the same one with
+ * the same rates rather than being handed a pre-folded number.
+ */
+export type PersonalBudgetUsage = {
+  bookId: string;
+  name: string;
+  /** The currency the budget is set in. */
+  currency: string;
+  budget: number;
+  period: BookBudgetPeriod;
+  /** PAID spend in the budget's window, per currency. Pending is excluded, so
+   *  this matches what fills the bar on the book's own budget card. */
+  spent: { currency: string; amount: number }[];
+};
+
+/**
+ * Everything the Overview's personal-spending card shows, in one payload:
+ * this month's spend, the same stretch of last month to compare it against, and
+ * every budgeted book's usage.
+ */
+export type PersonalOverview = {
+  /** This calendar month to date, per currency, paid vs pending. Named for the
+   *  window rather than `current`, which the React Compiler's lint reads as a
+   *  ref access and bails on. */
+  thisMonth: PersonalBookTotal[];
+  /**
+   * LAST month truncated to the same day — month-to-date against month-to-date,
+   * so a comparison made on the 2nd isn't measured against a full month and
+   * doesn't report a 90% drop. Clamped when last month is shorter (Mar 31 has
+   * no counterpart in February).
+   */
+  lastMonth: PersonalBookTotal[];
+  /** Non-archived books with a cap set. Empty when the user budgets nothing. */
+  budgets: PersonalBudgetUsage[];
+};
+
 export type BookState = {
   list: Book[];
   /** True once the book list has been fetched at least once, so consumers can
