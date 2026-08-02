@@ -106,7 +106,7 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const tabs = ["Expenses", "Stats", "Book Info"] as const;
+const tabs = ["Expenses", "Stats", "Info"] as const;
 
 // Move `amount` of `currency` between the paid/pending buckets of a
 // PersonalBookTotal[] — the optimistic math behind flipping an expense's status.
@@ -1217,7 +1217,7 @@ export default function BookDetailScreen() {
               />
             )}
 
-            {tab === "Book Info" && book && <BookInfoTab book={book} />}
+            {tab === "Info" && book && <BookInfoTab book={book} />}
           </ScrollView>
         </LoadingWrapper>
 

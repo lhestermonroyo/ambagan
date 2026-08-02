@@ -101,7 +101,7 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const tabs = ["Settlements", "Expenses", "Stats", "Group Info"] as const;
+const tabs = ["Settlements", "Expenses", "Stats", "Info"] as const;
 
 export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);
@@ -1174,7 +1174,7 @@ export default function GroupDetailsScreen() {
                       <EmptyList
                         type={EmptyType.EXPENSE}
                         content=" This group has no other members yet. Add members from
-                        Group Info → Edit Members to start splitting expenses."
+                        Info → Edit Members to start splitting expenses."
                       />
                     )
                   }
@@ -1182,7 +1182,7 @@ export default function GroupDetailsScreen() {
                 />
               </VStack>
             )}
-            {tab === "Group Info" && <GroupDetailsTab />}
+            {tab === "Info" && <GroupDetailsTab />}
             {tab === "Stats" && groupId && userDetails && (
               <GroupStatsTab
                 groupId={groupId}
