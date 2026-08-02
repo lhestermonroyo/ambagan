@@ -12,6 +12,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import AppearanceSheet from "@/features/profile/components/AppearanceSheet";
+import HeroViewSheet from "@/features/profile/components/HeroViewSheet";
 import NotificationsSheet from "@/features/profile/components/PushNotificationsSheet";
 import SettlementViewSheet from "@/features/profile/components/SettlementViewSheet";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
@@ -29,6 +30,7 @@ import {
   Copyright,
   Crown,
   Eye,
+  LayoutDashboard,
   LayoutList,
   LogOut,
   MonitorCog,
@@ -46,7 +48,8 @@ export default function ProfileScreen() {
     details: userDetails,
     signOut,
     appearanceMode,
-    settlementView
+    settlementView,
+    heroView
   } = states.user();
 
   const router = useRouter();
@@ -55,6 +58,7 @@ export default function ProfileScreen() {
 
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [settlementViewOpen, setSettlementViewOpen] = useState(false);
+  const [heroViewOpen, setHeroViewOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [analyticsUpgradeOpen, setAnalyticsUpgradeOpen] = useState(false);
 
@@ -79,6 +83,8 @@ export default function ProfileScreen() {
       : settlementView === "arrow"
         ? "Arrow"
         : "Full";
+
+  const heroViewLabel = heroView === "personal" ? "Personal" : "Balance";
 
   const isPro = userDetails?.plan === "pro";
 
@@ -144,6 +150,17 @@ export default function ProfileScreen() {
             description: "Choose full or compact settlement rows",
             value: <Text className="text-lg">{settlementViewLabel}</Text>,
             onPress: () => setSettlementViewOpen(true)
+          },
+          {
+            icon: (
+              <LayoutDashboard
+                color={getPrimaryHex("text-primary-400", colorScheme)}
+              />
+            ),
+            label: "Overview Hero",
+            description: "Open on net balance or personal spending",
+            value: <Text className="text-lg">{heroViewLabel}</Text>,
+            onPress: () => setHeroViewOpen(true)
           }
         ]
       },
@@ -181,6 +198,7 @@ export default function ProfileScreen() {
     [
       appearanceLabel,
       settlementViewLabel,
+      heroViewLabel,
       colorScheme,
       handleNotificationsOpen,
       isPro
@@ -342,6 +360,11 @@ export default function ProfileScreen() {
         <SettlementViewSheet
           isOpen={settlementViewOpen}
           onClose={() => setSettlementViewOpen(false)}
+        />
+
+        <HeroViewSheet
+          isOpen={heroViewOpen}
+          onClose={() => setHeroViewOpen(false)}
         />
 
         <NotificationsSheet

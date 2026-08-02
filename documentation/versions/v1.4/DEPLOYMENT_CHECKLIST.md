@@ -74,7 +74,12 @@ All of them are idempotent (`IF [NOT] EXISTS` / `CREATE OR REPLACE` /
   - Health check: `select max(ran_at) from fx_refresh_log_tbl where ok;`
   - The function prunes rows past 180 days, so it stays a few dozen rows.
 
-- [ ] **8. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
+- [ ] **8. [`2026-08-02_hero_view_preference.sql`](../../../migrations/2026-08-02_hero_view_preference.sql)** — `user_preferences_tbl.hero_view`, which page the Overview's hero pager opens on. Independent of the other migrations — order doesn't matter.
+  - `ADD COLUMN IF NOT EXISTS hero_view text NOT NULL DEFAULT 'balance'` + a CHECK for `('balance','personal')`. Existing rows all take the default, which is today's behaviour, so no backfill is needed and an app rollback is inert.
+  - Ends with `NOTIFY pgrst, 'reload schema';` — without it the first preference write hits **PGRST204 "Could not find the 'hero_view' column … in the schema cache"**.
+  - The app normalizes any unrecognised value back to `'balance'` (`user.state.ts`), so the CHECK is a backstop rather than the only guard.
+
+- [ ] **9. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
 
 > [`db.dev.sql`](../../../db.dev.sql) at the repo root is a **reference dump of the
 > `dev` schema, not runnable** (its own header says so). Use it to diff the
@@ -140,6 +145,7 @@ scripts/deploy-functions.sh prod run-recurring
 - [ ] Scan a receipt from both a group and a book.
 - [ ] Offline: create a book expense in airplane mode → "Syncing…" badge → flushes on reconnect.
 - [ ] Book with a budget + expenses in two currencies → the bar folds the foreign spend in, the headline reads `≈`, and the caption shows the **rate date from the table** (not the shipped `2026-08-01` fallback). A stale date here means the app is falling back, i.e. the table or its RLS `SELECT` policy isn't live in `public`.
+- [ ] Profile → **Overview Hero** → pick "Personal Spending", force-quit, relaunch → the Overview opens on the personal page with no visible slide. Switch back to "Net Balance" and confirm it sticks. A PGRST204 toast here means migration A8's `NOTIFY pgrst` never landed.
 
 ---
 

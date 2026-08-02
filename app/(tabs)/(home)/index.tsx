@@ -119,7 +119,13 @@ export default function HomeScreen() {
   );
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
-  const { details: userDetails, session, settlementView } = states.user();
+  const {
+    details: userDetails,
+    session,
+    settlementView,
+    heroView,
+    preferences
+  } = states.user();
   // Use session.user.id as fallback — it's available immediately after login
   // without waiting for fetchDetails to complete
   const userId = userDetails?.id ?? session?.user?.id;
@@ -211,6 +217,26 @@ export default function HomeScreen() {
     },
     [heroPageWidth]
   );
+
+  // Land on the page the user picked in Settings → Overview Hero.
+  //
+  // Latched to fire at most once a mount, and only once preferences have
+  // actually resolved: they load asynchronously, so acting on the store's
+  // "balance" default would restore the wrong page for a personal-first user
+  // and then latch. Jumped rather than animated — an animated restore reads as
+  // the card sliding away from you on every cold start — and skipped entirely
+  // for "balance", which is where the pager already sits.
+  const heroRestoredRef = useRef(false);
+  useEffect(() => {
+    if (heroRestoredRef.current || !preferences || !heroPageWidth) return;
+    heroRestoredRef.current = true;
+    if (heroView !== "personal") return;
+    heroScrollRef.current?.scrollTo({
+      x: HERO_PERSONAL * heroPageWidth,
+      animated: false
+    });
+    setHeroPage(HERO_PERSONAL);
+  }, [preferences, heroView, heroPageWidth]);
 
   // One headline size for both pages. Each page fitting its own figure would
   // let a long spend total step down a size while the net balance stayed
@@ -1069,6 +1095,16 @@ function ActionButton({
   );
 }
 
+/** Stable identity for the no-balance case — useConvertedTotal memoizes on it. */
+const NO_BALANCES: { amount: number; currency: string }[] = [];
+
+/**
+ * Overview's friend card. Like FriendRow on the Friends tab, this is a SUMMARY
+ * of where you stand with someone, so mixed currencies fold into one figure in
+ * the base currency and are marked "≈" (see utils/fx) — showing only the first
+ * balance would print one slice of the answer as if it were the whole of it.
+ * The per-currency working is one tap away on the friend detail screen.
+ */
 const FriendCard = React.memo(function FriendCard({
   item,
   router
@@ -1077,8 +1113,15 @@ const FriendCard = React.memo(function FriendCard({
   router: ReturnType<typeof useRouter>;
 }) {
   const { friend, balances } = item;
-  const [primary] = balances;
-  const isNegative = (primary?.amount ?? 0) < 0;
+  const { total, convertedCurrencies } = useConvertedTotal(
+    balances ?? NO_BALANCES,
+    BASE_CURRENCY
+  );
+  const hasBalance = (balances?.length ?? 0) > 0;
+  const isNegative = total < 0;
+  const amountText = `${convertedCurrencies.length > 0 ? "≈ " : ""}${
+    isNegative ? "-" : ""
+  }${formatAmount(Math.abs(total), BASE_CURRENCY)}`;
   const name = `${friend.first_name} ${friend.last_name}`;
 
   const handlePress = useCallback(() => {
@@ -1108,7 +1151,7 @@ const FriendCard = React.memo(function FriendCard({
               <Text className="text-lg" numberOfLines={1}>
                 {name}
               </Text>
-              {primary && (
+              {hasBalance && (
                 <Text
                   className={cn(
                     "text-lg font-medium",
@@ -1116,8 +1159,7 @@ const FriendCard = React.memo(function FriendCard({
                   )}
                   numberOfLines={1}
                 >
-                  {isNegative ? "-" : ""}
-                  {formatAmount(Math.abs(primary.amount), primary.currency)}
+                  {amountText}
                 </Text>
               )}
             </VStack>

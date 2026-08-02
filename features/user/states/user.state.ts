@@ -13,6 +13,7 @@ import {
 } from "@/features/user/services/preferences.service";
 import {
   AppearanceMode,
+  HeroView,
   SettlementView,
   UserPreferences,
   UserState
@@ -38,6 +39,9 @@ const NOTIF_ALL_OFF = Object.fromEntries(
 const isAnyNotifEnabled = (prefs: UserPreferences) =>
   Object.keys(NOTIF_ALL_ON).some((k) => prefs[k as keyof UserPreferences]);
 
+const normalizeHeroView = (view: HeroView | null | undefined): HeroView =>
+  view === "personal" ? "personal" : "balance";
+
 const USER_STATE = create<UserState>((set, get) => ({
   loading: true,
   routeIntent: "splash",
@@ -50,6 +54,7 @@ const USER_STATE = create<UserState>((set, get) => ({
   // with below. An existing user's stored preference always wins over this.
   appearanceMode: "dark",
   settlementView: "full",
+  heroView: "balance",
   notificationsEnabled: true,
 
   signOut: () => {
@@ -58,6 +63,7 @@ const USER_STATE = create<UserState>((set, get) => ({
       details: null,
       preferences: null,
       settlementView: "full",
+      heroView: "balance",
       // Reset the routing intent so a stale "tabs"/"splash" from the previous
       // account can't survive into the next login and mis-route index.tsx.
       routeIntent: "login"
@@ -117,6 +123,21 @@ const USER_STATE = create<UserState>((set, get) => ({
     }
   },
 
+  setHeroView: async (view: HeroView) => {
+    const { details } = get();
+    if (!details?.id) return;
+    // Purely visual, so apply it immediately and let it sync. Offline → queue
+    // the change (flushed on reconnect) instead of failing the DB write.
+    set({ heroView: view });
+    if (await offlineQueue.isOnline()) {
+      await updatePreferencesInDB(details.id, { hero_view: view });
+    } else {
+      await offlineQueue.queueUpdatePreferences(details.id, {
+        hero_view: view
+      });
+    }
+  },
+
   setNotificationsEnabled: async (enabled: boolean) => {
     const { details } = get();
     if (!details?.id) return;
@@ -137,6 +158,9 @@ const USER_STATE = create<UserState>((set, get) => ({
       }),
       ...(prefs.settlement_view !== undefined && {
         settlementView: prefs.settlement_view
+      }),
+      ...(prefs.hero_view !== undefined && {
+        heroView: prefs.hero_view
       })
     });
   },
@@ -161,6 +185,7 @@ const USER_STATE = create<UserState>((set, get) => ({
         prefs = await createPreferences(userId, {
           appearance: "dark",
           settlement_view: "full",
+          hero_view: "balance",
           ...NOTIF_ALL_ON
         });
       }
@@ -173,13 +198,23 @@ const USER_STATE = create<UserState>((set, get) => ({
           (pending?.settlement_view as SettlementView) ??
           prefs.settlement_view ??
           "full",
+        // Anything unrecognised falls back to the balance page rather than
+        // being trusted — an older build reading a value added later would
+        // otherwise land the pager on a page it can't render.
+        heroView: normalizeHeroView(
+          (pending?.hero_view as HeroView) ?? prefs.hero_view
+        ),
         notificationsEnabled: isAnyNotifEnabled(prefs)
       });
     } catch (error) {
-      // Offline / failed load — still apply a pending appearance change so the
-      // theme the user picked offline persists across the restart.
+      // Offline / failed load — still apply the pending changes that decide
+      // what the app looks like on this launch, so a choice made offline
+      // persists across the restart.
       if (pending?.appearance) {
         set({ appearanceMode: pending.appearance as AppearanceMode });
+      }
+      if (pending?.hero_view) {
+        set({ heroView: normalizeHeroView(pending.hero_view as HeroView) });
       }
       console.error("Error loading preferences:", error);
     }

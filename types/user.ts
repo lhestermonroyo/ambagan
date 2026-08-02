@@ -4,6 +4,13 @@ export type AppearanceMode = "light" | "dark" | "system";
 
 export type SettlementView = "full" | "compact" | "arrow";
 
+/**
+ * Which page of the Overview's hero pager opens by default — the group net
+ * balance, or month-to-date personal spending. Both pages stay one swipe away
+ * either way; this only decides where a launch lands.
+ */
+export type HeroView = "balance" | "personal";
+
 export type UserPreferences = {
   id: string;
   user_id: string;
@@ -13,6 +20,7 @@ export type UserPreferences = {
   default_currency: string;
   appearance: AppearanceMode;
   settlement_view: SettlementView;
+  hero_view: HeroView;
   notif_settlement_request: boolean;
   notif_settlement_approved: boolean;
   notif_settlement_rejected: boolean;
@@ -41,10 +49,12 @@ export type UserState = {
   oauthName: { firstName: string; lastName: string } | null;
   appearanceMode: AppearanceMode;
   settlementView: SettlementView;
+  heroView: HeroView;
   notificationsEnabled: boolean;
   signOut: () => void;
   setAppearanceMode: (mode: AppearanceMode) => Promise<void>;
   setSettlementView: (view: SettlementView) => Promise<void>;
+  setHeroView: (view: HeroView) => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   updatePreferences: (
     prefs: Partial<Omit<UserPreferences, "id" | "user_id" | "updated_at">>
