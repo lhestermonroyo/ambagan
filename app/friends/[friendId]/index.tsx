@@ -1,5 +1,4 @@
 import AppAvatar from "@/components/AppAvatar";
-import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -27,6 +26,7 @@ import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
+import NetBalanceDisplay from "@/features/expense/components/NetBalanceDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementGroupCard from "@/features/expense/components/SettlementGroupCard";
@@ -63,8 +63,8 @@ import { PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
+import { useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import {
   Stack,
   useFocusEffect,
@@ -451,38 +451,13 @@ export default function FriendDetailScreen() {
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const primaryNet = useMemo(() => {
-    const sorted = [...netBalance].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [netBalance, defaultCurrency]);
+  // Mirrors the hero card it fades in from, so it converts on the same terms —
+  // the two are briefly on screen together, and a "Net" that disagreed with the
+  // card above it would read as a bug.
+  const compactNet = useConvertedTotal(netBalance, defaultCurrency);
 
-  const primaryCollect = useMemo(() => {
-    const sorted = [...toCollect].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [toCollect, defaultCurrency]);
-
-  const primaryPay = useMemo(() => {
-    const sorted = [...toPay].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [toPay, defaultCurrency]);
+  const compactCollect = useConvertedTotal(toCollect, defaultCurrency);
+  const compactPay = useConvertedTotal(toPay, defaultCurrency);
 
   const COMPACT_THRESHOLD = 290;
   const compactOpacity = scrollY.interpolate({
@@ -701,10 +676,11 @@ export default function FriendDetailScreen() {
                   <Card className="rounded-xl bg-secondary-100">
                     <VStack className="gap-y-4">
                       {/* Net Balance Hero */}
-                      <NetBalanceHero
+                      <NetBalanceDisplay
                         isLoading={loading}
                         items={netBalance}
-                        primaryCurrency={defaultCurrency}
+                        currency={defaultCurrency}
+                        subtitle="To Collect minus To Pay with this friend, per currency"
                       />
 
                       <Divider />
@@ -722,8 +698,11 @@ export default function FriendDetailScreen() {
                             isLoading={loading}
                             items={toCollect}
                             label="To Collect"
+                            subtitle="Owed to you by this friend, per currency"
                             type="receive"
                             primaryCurrency={defaultCurrency}
+                            convertTo={defaultCurrency}
+                            totalLabel="Total to collect"
                           />
                         </VStack>
                         <Divider orientation="vertical" className="mx-4" />
@@ -738,8 +717,11 @@ export default function FriendDetailScreen() {
                             isLoading={loading}
                             items={toPay}
                             label="To Pay"
+                            subtitle="You owe this friend, per currency"
                             type="pay"
                             primaryCurrency={defaultCurrency}
+                            convertTo={defaultCurrency}
+                            totalLabel="Total to pay"
                           />
                         </VStack>
                       </HStack>
@@ -1036,10 +1018,11 @@ export default function FriendDetailScreen() {
                 <Text
                   bold
                   className={`text-lg ${
-                    primaryNet.amount < 0 ? "text-error-400" : ""
+                    compactNet.total < 0 ? "text-error-400" : ""
                   }`}
                 >
-                  {formatAmount(primaryNet.amount, primaryNet.currency)}
+                  {compactNet.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactNet.total, defaultCurrency)}
                 </Text>
               </VStack>
               <Text className="text-secondary-200">|</Text>
@@ -1050,8 +1033,9 @@ export default function FriendDetailScreen() {
                 >
                   Collect
                 </Text>
-                <Text bold className="text-lg">
-                  {formatAmount(primaryCollect.amount, primaryCollect.currency)}
+                <Text bold className="text-lg" numberOfLines={1}>
+                  {compactCollect.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactCollect.total, defaultCurrency)}
                 </Text>
               </VStack>
               <Text className="text-secondary-200">|</Text>
@@ -1062,8 +1046,9 @@ export default function FriendDetailScreen() {
                 >
                   Pay
                 </Text>
-                <Text bold className="text-lg text-error-400">
-                  {formatAmount(primaryPay.amount, primaryPay.currency)}
+                <Text bold className="text-lg text-error-400" numberOfLines={1}>
+                  {compactPay.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactPay.total, defaultCurrency)}
                 </Text>
               </VStack>
             </HStack>
@@ -1136,51 +1121,5 @@ export default function FriendDetailScreen() {
         </ModalContent>
       </Modal>
     </>
-  );
-}
-
-function NetBalanceHero({
-  items,
-  isLoading,
-  primaryCurrency = "PHP"
-}: {
-  items: { currency: string; amount: number }[];
-  isLoading: boolean;
-  primaryCurrency?: string;
-}) {
-  const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
-  );
-  const [primary] = sorted;
-  const primaryAmount = primary?.amount ?? 0;
-  const amountColor = primaryAmount < 0 && "text-error-400";
-
-  return (
-    <VStack className="gap-y-2">
-      <Text bold className="text-sm text-secondary-950 uppercase">
-        Net Balance
-      </Text>
-      {isLoading ? (
-        <Text bold className="text-3xl">
-          —
-        </Text>
-      ) : (
-        <HStack className="items-end gap-x-2">
-          <Text bold className={cn("text-3xl", amountColor)}>
-            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
-          </Text>
-          <HStack className="items-center gap-x-1 pb-1">
-            <Text className="text-secondary-950 text-base">
-              {primary?.currency ?? primaryCurrency}
-            </Text>
-            <CurrencyCountButton
-              items={sorted}
-              title="Net Balance"
-              subtitle="To Collect minus To Pay, per currency"
-            />
-          </HStack>
-        </HStack>
-      )}
-    </VStack>
   );
 }

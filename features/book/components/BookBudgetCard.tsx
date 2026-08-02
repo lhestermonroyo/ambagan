@@ -1,4 +1,3 @@
-import ApproxRateNote from "@/components/ApproxRateNote";
 import { type CurrencyAmount } from "@/components/CurrencyBreakdownSheet";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import { Box } from "@/components/ui/box";
@@ -120,28 +119,6 @@ export default function BookBudgetCard({
 
       return { paid, pending, rows, convertedCurrencies, hasUncounted };
     }, [totals, currency, fx]);
-
-  // The footer's stats are book-wide while the bar covers only the budget's
-  // window, so a currency can be converted down there and absent up here (last
-  // month's yen on a monthly budget). The card keeps ONE rate caption, so it has
-  // to be told about both sets or it would quote a vintage for figures it didn't
-  // cover.
-  const noteCurrencies = useMemo(() => {
-    const seen = new Set(convertedCurrencies);
-    for (const item of [
-      ...(paidByCurrency ?? []),
-      ...(pendingByCurrency ?? [])
-    ]) {
-      if (
-        item.currency !== currency &&
-        item.amount !== 0 &&
-        getRate(fx, item.currency, currency) !== null
-      ) {
-        seen.add(item.currency);
-      }
-    }
-    return Array.from(seen);
-  }, [convertedCurrencies, paidByCurrency, pendingByCurrency, currency, fx]);
 
   if (budget == null || budget <= 0) return null;
 
@@ -277,15 +254,6 @@ export default function BookBudgetCard({
           </HStack>
         </VStack>
       )}
-
-      {/* The rate vintage matters as much as the "approximate" — it tells
-          someone two years from now how much to trust the number — and the
-          attribution link is a licence condition of the rate feed, so this one
-          caption stays on the card even though the working moved into the
-          sheets. It closes the card rather than sitting under the bar because
-          it now covers the footer's converted totals too. Renders nothing on a
-          single-currency book. */}
-      <ApproxRateNote currencies={noteCurrencies} />
     </VStack>
   );
 }

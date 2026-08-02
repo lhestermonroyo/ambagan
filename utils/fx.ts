@@ -1,19 +1,26 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { cacheService } from "./cacheService";
 import { tables } from "./constants";
 import { supabase } from "./supabase";
 
 /**
- * Indicative FX rates, used ONLY to render mixed-currency spend against a single
- * budget (see BookBudgetCard). Deliberately approximate, with three rules:
+ * Indicative FX rates, used to render mixed-currency money as a single figure —
+ * spend against one budget, and the balance summaries (net, To Collect, To Pay)
+ * on home, group and friend. Deliberately approximate, with three rules:
  *
  *   * Conversion happens at DISPLAY time only. A stored expense always keeps the
  *     currency and amount it was entered in, so a refreshed rate re-prices every
  *     historical book at once and no migration is ever needed.
  *   * Anything showing a converted figure MUST mark it approximate and cite
- *     {@link FxTable.asOf} — an unlabelled converted number reads as exact.
- *   * Money that must be exact — group balances, settlements, per-currency
- *     totals — is never converted. Those stay split by currency.
+ *     {@link FxTable.asOf} — an unlabelled converted number reads as exact. In
+ *     practice that means an "≈" on the figure and the rate note one tap away
+ *     in its breakdown sheet, which is why the chip that opens that sheet stays
+ *     visible whenever a conversion happened (see CurrencyCountButton).
+ *   * A SUMMARY may convert; money that gets ACTED ON may not. Individual
+ *     settlement rows stay in the currency they'll be paid in, because a ¥10,000
+ *     debt is not settleable in pesos at our rate. The summaries above it are
+ *     abstractions nobody pays directly, so folding them is safe — and the exact
+ *     per-currency working is always behind the chip.
  *
  * Rates come from `fx_rates_tbl`, refreshed weekly by the `refresh-fx-rates`
  * Edge Function (pg_cron). The client reads that table, caches it in SQLite so
@@ -210,6 +217,40 @@ export async function loadFxRates(): Promise<void> {
   } finally {
     inFlight = null;
   }
+}
+
+/**
+ * Sum of `items` expressed in `to`, plus the foreign currencies that actually
+ * contributed. That second half is not a convenience: it decides whether the
+ * caller may print a bare number or must say "≈", and which vintage its rate
+ * note quotes. Anything with no rate is left out rather than counted as zero,
+ * so a total is always understated rather than wrong — callers that can say so
+ * on screen should.
+ *
+ * Returns a zero total and no currencies when `to` is undefined, so a component
+ * can call it unconditionally and decide afterwards whether to convert at all.
+ */
+export function useConvertedTotal(
+  items: { currency: string; amount: number }[],
+  to?: string
+): { total: number; convertedCurrencies: string[] } {
+  const table = useFxRates();
+  return useMemo(() => {
+    if (!to) return { total: 0, convertedCurrencies: [] };
+    let total = 0;
+    const convertedCurrencies: string[] = [];
+    for (const item of items) {
+      const rate = getRate(table, item.currency, to);
+      if (rate === null) continue;
+      total += item.amount * rate;
+      // A zero balance in another currency is converted, but converting it
+      // changed nothing — it must not be what makes a figure "approximate".
+      if (item.currency !== to && item.amount !== 0) {
+        convertedCurrencies.push(item.currency);
+      }
+    }
+    return { total, convertedCurrencies };
+  }, [items, to, table]);
 }
 
 /**

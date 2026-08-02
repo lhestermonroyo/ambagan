@@ -38,20 +38,33 @@ export default function CurrencyCountButton({
   // headline one happened to be zero, which is exactly the case the chip
   // exists for. A row survives if EITHER figure has money in it, so a currency
   // that's all pending keeps its place.
-  const secondary = items
-    .slice(1)
-    .filter((item) => item.amount !== 0 || (item.secondaryAmount ?? 0) !== 0);
+  const hasMoney = (item: CurrencyAmount) =>
+    item.amount !== 0 || (item.secondaryAmount ?? 0) !== 0;
+
+  const secondary = items.slice(1).filter(hasMoney);
+
+  // In convertTo mode the count answers a different question — not "what else
+  // is there" but "what got folded into this number" — so the head counts too
+  // when it is itself foreign. That case is otherwise a chipless "≈ ₱383,700"
+  // on a wallet holding nothing but yen, with no route to the rate vintage and
+  // attribution that live in the sheet.
+  const folded =
+    convertTo &&
+    items[0] &&
+    items[0].currency !== convertTo &&
+    hasMoney(items[0])
+      ? 1
+      : 0;
+  const count = secondary.length + folded;
 
   // Nothing else to show — on an all-zero stat this is what removes the chip.
-  if (secondary.length === 0) return null;
+  if (count === 0) return null;
 
   return (
     <>
       <Pressable onPress={() => setSheetOpen(true)}>
         <HStack className="rounded-xl px-2 py-0.5 items-center gap-x-0.5 bg-primary-500">
-          <Text className="text-xs text-white font-semibold">
-            +{secondary.length}
-          </Text>
+          <Text className="text-xs text-white font-semibold">+{count}</Text>
           <ChevronRight size={12} color="#fff" />
         </HStack>
       </Pressable>

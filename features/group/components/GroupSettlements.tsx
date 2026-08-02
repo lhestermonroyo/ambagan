@@ -1,4 +1,3 @@
-import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -17,12 +16,12 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import MarkAsSettledSheet from "@/features/expense/components/MarkAsSettledSheet";
+import NetBalanceDisplay from "@/features/expense/components/NetBalanceDisplay";
 import RequestSettledSheet from "@/features/expense/components/RequestSettledSheet";
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementGroupCard from "@/features/expense/components/SettlementGroupCard";
 import SettlementItem from "@/features/expense/components/SettlementItem";
-import { formatAmount } from "@/features/expense/utils/formatAmount";
 import {
   groupByDate,
   groupByExpenseId
@@ -50,7 +49,6 @@ import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect } from "expo-router";
 import {
   CalendarRange,
@@ -438,10 +436,11 @@ export default function GroupSettlements({
         <VStack className="px-4">
           <Card className="rounded-xl bg-secondary-100">
             <VStack className="gap-y-4">
-              <NetBalanceHero
+              <NetBalanceDisplay
                 isLoading={loading}
                 items={netBalance}
-                primaryCurrency={defaultCurrency}
+                currency={defaultCurrency}
+                subtitle="To Collect minus To Pay in this group, per currency"
               />
 
               <Divider />
@@ -458,8 +457,11 @@ export default function GroupSettlements({
                     isLoading={loading}
                     items={yourToCollectTotalByCurrency}
                     label="To Collect"
+                    subtitle="Owed to you in this group, per currency"
                     type="receive"
                     primaryCurrency={defaultCurrency}
+                    convertTo={defaultCurrency}
+                    totalLabel="Total to collect"
                   />
                 </VStack>
                 <Divider orientation="vertical" className="mx-4" />
@@ -474,8 +476,11 @@ export default function GroupSettlements({
                     isLoading={loading}
                     items={yourTotalUnpaidByCurrency}
                     label="To Pay"
+                    subtitle="You owe in this group, per currency"
                     type="pay"
                     primaryCurrency={defaultCurrency}
+                    convertTo={defaultCurrency}
+                    totalLabel="Total to pay"
                   />
                 </VStack>
               </HStack>
@@ -740,51 +745,5 @@ export default function GroupSettlements({
         />
       )}
     </Fragment>
-  );
-}
-
-function NetBalanceHero({
-  items,
-  isLoading,
-  primaryCurrency = "PHP"
-}: {
-  items: { currency: string; amount: number }[];
-  isLoading: boolean;
-  primaryCurrency?: string;
-}) {
-  const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
-  );
-  const [primary] = sorted;
-  const primaryAmount = primary?.amount ?? 0;
-  const amountColor = primaryAmount < 0 && "text-error-400";
-
-  return (
-    <VStack className="gap-y-2">
-      <Text bold className="text-sm text-secondary-950 uppercase">
-        Net Balance
-      </Text>
-      {isLoading ? (
-        <Text bold className="text-3xl">
-          —
-        </Text>
-      ) : (
-        <HStack className="items-end gap-x-2">
-          <Text bold className={cn("text-3xl", amountColor)}>
-            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
-          </Text>
-          <HStack className="items-center gap-x-1 pb-1">
-            <Text className="text-secondary-950 text-base">
-              {primary?.currency ?? primaryCurrency}
-            </Text>
-            <CurrencyCountButton
-              items={sorted}
-              title="Net Balance"
-              subtitle="To Collect minus To Pay, per currency"
-            />
-          </HStack>
-        </HStack>
-      )}
-    </VStack>
   );
 }

@@ -18,6 +18,7 @@ import states from "@/states";
 import { FriendSummary } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
+import { getRate, useFxRates } from "@/utils/fx";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Search } from "lucide-react-native";
@@ -49,7 +50,8 @@ export default function FriendsScreen() {
   const [mainTab, setMainTab] = useState<MainTab>("balances");
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
 
-  const { details: userDetails } = states.user();
+  const { details: userDetails, defaultCurrency } = states.user();
+  const fx = useFxRates();
   const router = useRouter();
 
   const { favoriteIds, favoriteUsers, loadFavorites, handleToggleFavorite } =
@@ -158,19 +160,28 @@ export default function FriendsScreen() {
     return allContacts.filter((u) => matchesQuery(u, q));
   }, [isSearchActive, searchInput, allContacts]);
 
+  // Filter and sort on the SAME converted net the row prints, not on the first
+  // currency — otherwise a friend you owe on balance can sit under "To collect"
+  // because their peso line happens to be positive. Currencies with no rate are
+  // skipped, matching useConvertedTotal.
   const balanceList = useMemo(() => {
+    const netOf = (friend: FriendSummary) =>
+      friend.balances.reduce((sum, balance) => {
+        const rate = getRate(fx, balance.currency, defaultCurrency);
+        return rate === null ? sum : sum + balance.amount * rate;
+      }, 0);
+
+    const nets = new Map(friends.map((f) => [f.friend.id, netOf(f)]));
+    const net = (f: FriendSummary) => nets.get(f.friend.id) ?? 0;
+
     const filtered =
       balanceFilter === "collect"
-        ? friends.filter((f) => (f.balances[0]?.amount ?? 0) > 0)
+        ? friends.filter((f) => net(f) > 0)
         : balanceFilter === "pay"
-          ? friends.filter((f) => (f.balances[0]?.amount ?? 0) < 0)
+          ? friends.filter((f) => net(f) < 0)
           : friends;
-    return [...filtered].sort(
-      (a, b) =>
-        Math.abs(b.balances[0]?.amount ?? 0) -
-        Math.abs(a.balances[0]?.amount ?? 0)
-    );
-  }, [friends, balanceFilter]);
+    return [...filtered].sort((a, b) => Math.abs(net(b)) - Math.abs(net(a)));
+  }, [friends, balanceFilter, fx, defaultCurrency]);
 
   const favoriteContacts = useMemo(
     () => allContacts.filter((u) => favoriteIds.has(u.id)),

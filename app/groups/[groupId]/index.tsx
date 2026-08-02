@@ -50,6 +50,7 @@ import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
+import { useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
 import {
@@ -183,38 +184,13 @@ export default function GroupDetailsScreen() {
     });
   }, [compactToCollect, compactToPay]);
 
-  const primaryCompactNet = useMemo(() => {
-    const sorted = [...compactNetBalance].sort((a, b) =>
-      a.currency === primaryCurrency
-        ? -1
-        : b.currency === primaryCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: primaryCurrency, amount: 0 };
-  }, [compactNetBalance, primaryCurrency]);
+  // Mirrors the Settlements-tab hero it fades in from, so it converts on the
+  // same terms — a "Net" that disagreed with the card above it would read as a
+  // bug.
+  const compactNet = useConvertedTotal(compactNetBalance, primaryCurrency);
 
-  const primaryCompactCollect = useMemo(() => {
-    const sorted = [...compactToCollect].sort((a, b) =>
-      a.currency === primaryCurrency
-        ? -1
-        : b.currency === primaryCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: primaryCurrency, amount: 0 };
-  }, [compactToCollect, primaryCurrency]);
-
-  const primaryCompactPay = useMemo(() => {
-    const sorted = [...compactToPay].sort((a, b) =>
-      a.currency === primaryCurrency
-        ? -1
-        : b.currency === primaryCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: primaryCurrency, amount: 0 };
-  }, [compactToPay, primaryCurrency]);
+  const compactCollect = useConvertedTotal(compactToCollect, primaryCurrency);
+  const compactPay = useConvertedTotal(compactToPay, primaryCurrency);
 
   const COMPACT_THRESHOLD = 280;
   const compactOpacity = scrollY.interpolate({
@@ -1193,13 +1169,11 @@ export default function GroupDetailsScreen() {
                 <Text
                   bold
                   className={`text-lg ${
-                    primaryCompactNet.amount < 0 ? "text-error-400" : ""
+                    compactNet.total < 0 ? "text-error-400" : ""
                   }`}
                 >
-                  {formatAmount(
-                    primaryCompactNet.amount,
-                    primaryCompactNet.currency
-                  )}
+                  {compactNet.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactNet.total, primaryCurrency)}
                 </Text>
               </VStack>
               <Text className="text-secondary-200">|</Text>
@@ -1210,11 +1184,9 @@ export default function GroupDetailsScreen() {
                 >
                   Collect
                 </Text>
-                <Text bold className="text-lg">
-                  {formatAmount(
-                    primaryCompactCollect.amount,
-                    primaryCompactCollect.currency
-                  )}
+                <Text bold className="text-lg" numberOfLines={1}>
+                  {compactCollect.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactCollect.total, primaryCurrency)}
                 </Text>
               </VStack>
               <Text className="text-secondary-200">|</Text>
@@ -1225,11 +1197,9 @@ export default function GroupDetailsScreen() {
                 >
                   Pay
                 </Text>
-                <Text bold className="text-lg text-error-400">
-                  {formatAmount(
-                    primaryCompactPay.amount,
-                    primaryCompactPay.currency
-                  )}
+                <Text bold className="text-lg text-error-400" numberOfLines={1}>
+                  {compactPay.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactPay.total, primaryCurrency)}
                 </Text>
               </VStack>
             </HStack>

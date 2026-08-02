@@ -23,6 +23,7 @@ import { VStack } from "@/components/ui/vstack";
 import BookItem from "@/features/book/components/BookItem";
 import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
 import ExpenseDestinationSheet from "@/features/expense/components/ExpenseDestinationSheet";
+import NetBalanceDisplay from "@/features/expense/components/NetBalanceDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
@@ -34,6 +35,7 @@ import states from "@/states";
 import { Book, PersonalBookTotal, PersonalExpense } from "@/types/books";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
+import { useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { prefetchGroupDetails } from "@/utils/offlinePrefetch";
 import { addRecentUsers } from "@/utils/recentUsers";
@@ -149,38 +151,16 @@ export default function HomeScreen() {
   // native header — once the full hero card has scrolled out of view.
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const primaryNet = useMemo(() => {
-    const sorted = [...netBalance].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [netBalance, defaultCurrency]);
-
-  const primaryReceive = useMemo(() => {
-    const sorted = [...displayStats.toReceive].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [displayStats.toReceive, defaultCurrency]);
-
-  const primaryPay = useMemo(() => {
-    const sorted = [...displayStats.toPay].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [displayStats.toPay, defaultCurrency]);
+  // The compact bar mirrors the hero, so all three figures convert on the same
+  // terms — the two are on screen together mid-scroll, and a bar that disagreed
+  // with the card it fades in from would read as a bug. It has no chip of its
+  // own; the hero a scroll away is where the working lives.
+  const compactNet = useConvertedTotal(netBalance, defaultCurrency);
+  const compactReceive = useConvertedTotal(
+    displayStats.toReceive,
+    defaultCurrency
+  );
+  const compactPay = useConvertedTotal(displayStats.toPay, defaultCurrency);
 
   // This-month personal spending, primary currency first (then others). Always
   // shows at least the default currency at 0 so the card is a stable entry point
@@ -650,13 +630,16 @@ export default function HomeScreen() {
         >
           <VStack className="gap-y-4 bg-background-0 flex-1">
             <Box className="bg-primary-400">
-              <VStack className="p-4 gap-y-6">
+              <VStack className="p-4 pt-6 gap-y-6">
                 <VStack className="gap-y-4">
                   {/* Net Balance Hero */}
-                  <NetBalanceRow
+                  <NetBalanceDisplay
                     isLoading={loading.stats}
                     items={netBalance}
-                    primaryCurrency={defaultCurrency}
+                    currency={defaultCurrency}
+                    tone="onColor"
+                    size="lg"
+                    subtitle="To Collect minus To Pay, per currency, across all groups"
                   />
 
                   <Divider className="bg-white/20" />
@@ -912,7 +895,8 @@ export default function HomeScreen() {
                 Net
               </Text>
               <Text bold className="text-white text-lg">
-                {formatAmount(primaryNet.amount, primaryNet.currency)}
+                {compactNet.convertedCurrencies.length > 0 ? "≈ " : ""}
+                {formatAmount(compactNet.total, defaultCurrency)}
               </Text>
             </VStack>
             <Text className="text-white/20">|</Text>
@@ -923,8 +907,9 @@ export default function HomeScreen() {
               >
                 Collect
               </Text>
-              <Text bold className="text-white text-lg">
-                {formatAmount(primaryReceive.amount, primaryReceive.currency)}
+              <Text bold className="text-white text-lg" numberOfLines={1}>
+                {compactReceive.convertedCurrencies.length > 0 ? "≈ " : ""}
+                {formatAmount(compactReceive.total, defaultCurrency)}
               </Text>
             </VStack>
             <Text className="text-white/20">|</Text>
@@ -935,8 +920,9 @@ export default function HomeScreen() {
               >
                 Pay
               </Text>
-              <Text bold className="text-white text-lg">
-                {formatAmount(primaryPay.amount, primaryPay.currency)}
+              <Text bold className="text-white text-lg" numberOfLines={1}>
+                {compactPay.convertedCurrencies.length > 0 ? "≈ " : ""}
+                {formatAmount(compactPay.total, defaultCurrency)}
               </Text>
             </VStack>
           </HStack>
@@ -1094,7 +1080,9 @@ function StatItem({
   type,
   items,
   isLoading,
-  primaryCurrency
+  // Defaulted rather than optional at the point of use: an undefined target
+  // makes useConvertedTotal return zero, which would read as "you're square".
+  primaryCurrency = "PHP"
 }: {
   type: "RECEIVE" | "PAY";
   items: { currency: string; amount: number }[];
@@ -1115,13 +1103,21 @@ function StatItem({
       ),
     [items, primaryCurrency]
   );
-  const [primary] = sorted;
-  const primaryAmount = primary?.amount ?? 0;
+
+  // Folded to one figure like the net balance above it: a stat that showed only
+  // its peso slice while the chip hid the yen read as the whole answer. The
+  // exact per-currency working is one tap behind the chip, and each settlement
+  // row below still stands in the currency it will be paid in.
+  const { total, convertedCurrencies } = useConvertedTotal(
+    items,
+    primaryCurrency
+  );
+  const amountText = `${convertedCurrencies.length > 0 ? "≈ " : ""}${formatAmount(total, primaryCurrency)}`;
 
   return (
     <VStack className="flex-1 gap-y-2">
       <HStack className="items-center gap-x-2">
-        <SettlementAvatar isPayer={isReceive} light />
+        <SettlementAvatar size="sm" isPayer={isReceive} light />
         <Text className="text-white text-sm uppercase">{label}</Text>
       </HStack>
       {isLoading ? (
@@ -1130,67 +1126,24 @@ function StatItem({
         </Text>
       ) : (
         <HStack className="items-center gap-x-2">
-          <Text bold className="text-2xl text-white">
-            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
+          <Text
+            bold
+            className={cn("text-white flex-shrink text-xl")}
+            numberOfLines={1}
+          >
+            {amountText}
           </Text>
           <CurrencyCountButton
             items={sorted}
             title={label}
-            subtitle="Breakdown by currency"
+            subtitle={
+              isReceive
+                ? "Owed to you across all groups, per currency"
+                : "You owe across all groups, per currency"
+            }
+            convertTo={primaryCurrency}
+            totalLabel={isReceive ? "Total to collect" : "Total to pay"}
           />
-        </HStack>
-      )}
-    </VStack>
-  );
-}
-
-function NetBalanceRow({
-  items,
-  isLoading,
-  primaryCurrency = "PHP"
-}: {
-  items: { currency: string; amount: number }[];
-  isLoading: boolean;
-  primaryCurrency?: string;
-}) {
-  const sorted = useMemo(
-    () =>
-      [...items].sort((a, b) =>
-        a.currency === primaryCurrency
-          ? -1
-          : b.currency === primaryCurrency
-            ? 1
-            : 0
-      ),
-    [items, primaryCurrency]
-  );
-  const [primary] = sorted;
-  const primaryAmount = primary?.amount ?? 0;
-
-  return (
-    <VStack className="gap-y-2">
-      <Text bold className="text-sm text-white uppercase">
-        Net Balance
-      </Text>
-      {isLoading ? (
-        <Text bold className="text-4xl text-white">
-          —
-        </Text>
-      ) : (
-        <HStack className="items-end gap-x-2">
-          <Text bold className="text-4xl text-white">
-            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
-          </Text>
-          <HStack className="items-center gap-x-1 pb-1">
-            <Text className="text-white/70 text-base">
-              {primary?.currency ?? primaryCurrency}
-            </Text>
-            <CurrencyCountButton
-              items={sorted}
-              title="Net Balance"
-              subtitle="To Collect minus To Pay, per currency"
-            />
-          </HStack>
         </HStack>
       )}
     </VStack>
