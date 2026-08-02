@@ -39,6 +39,12 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       cached_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS cache_group_contacts (
+      user_id TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      cached_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS cache_user_stats (
       user_id TEXT PRIMARY KEY,
       data TEXT NOT NULL,

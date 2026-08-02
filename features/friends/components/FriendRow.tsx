@@ -44,7 +44,9 @@ const FriendRow = React.memo(function FriendRow({
   onPress: (user: UserPreview) => void;
   onToggleFavorite: (user: UserPreview) => void;
 }) {
-  if (!user || !balances) return null;
+  // Only `user` is required. A pure contact row is rendered WITHOUT `balances`
+  // (see the Contacts tab) — guarding on it here blanked every balance-less row.
+  if (!user) return null;
 
   const colorScheme = useColorScheme() ?? "light";
   const { total, convertedCurrencies } = useConvertedTotal(
@@ -66,7 +68,11 @@ const FriendRow = React.memo(function FriendRow({
   return (
     <PressableListItem className="p-4" onPress={handlePress}>
       <HStack className="gap-x-3 items-center">
-        <AppAvatar name={user.first_name} uri={user.avatar || undefined} />
+        <AppAvatar
+          name={user.first_name}
+          uri={user.avatar || undefined}
+          isPlaceholder={user.is_placeholder}
+        />
         <VStack className="flex-1">
           <Text className="text-lg">
             {user.first_name} {user.last_name}

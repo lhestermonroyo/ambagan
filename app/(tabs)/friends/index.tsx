@@ -44,6 +44,7 @@ export default function FriendsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [recentFriends, setRecentFriends] = useState<UserPreview[]>([]);
+  const [groupContacts, setGroupContacts] = useState<UserPreview[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchVisible, setSearchVisible] = useState(false);
   const [initialized, setInitialized] = useState(false);
@@ -63,6 +64,7 @@ export default function FriendsScreen() {
       fetchFriends(initialized);
       loadFavorites();
       loadRecentFriends();
+      loadGroupContacts();
     }, [userDetails?.id, initialized])
   );
 
@@ -94,12 +96,23 @@ export default function FriendsScreen() {
     }
   };
 
+  const loadGroupContacts = async () => {
+    if (!userDetails?.id) return;
+    try {
+      const data = await services.friend.getGroupContacts(userDetails.id);
+      setGroupContacts(data);
+    } catch (error) {
+      console.error("Failed to load group contacts:", error);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
       fetchFriends(true),
       loadFavorites(),
-      loadRecentFriends()
+      loadRecentFriends(),
+      loadGroupContacts()
     ]);
     setRefreshing(false);
   };
@@ -132,19 +145,23 @@ export default function FriendsScreen() {
     return map;
   }, [friends]);
 
-  // The full people directory: favorites + people we have balances with +
-  // recent contacts, de-duplicated (favorites kept first).
+  // The full people directory: favorites + people we have balances with + every
+  // co-member across our groups + recent contacts, de-duplicated (favorites
+  // first). The group roster comes from the server, so the directory survives a
+  // reinstall and includes people we didn't add ourselves (invite link, another
+  // admin) — the local `recentFriends` list alone missed all of those.
   const allContacts = useMemo(() => {
     const map = new Map<string, UserPreview>();
     [
       ...favoriteUsers,
       ...friends.map((f) => f.friend),
+      ...groupContacts,
       ...recentFriends
     ].forEach((u) => {
       if (u.id !== userDetails?.id && !map.has(u.id)) map.set(u.id, u);
     });
     return Array.from(map.values());
-  }, [favoriteUsers, friends, recentFriends, userDetails?.id]);
+  }, [favoriteUsers, friends, groupContacts, recentFriends, userDetails?.id]);
 
   const matchesQuery = (u: UserPreview, q: string) =>
     `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||

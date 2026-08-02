@@ -100,6 +100,23 @@ export const cacheService = {
     return row ? JSON.parse(row.data) : null;
   },
 
+  async saveGroupContacts(userId: string, data: any[]): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_group_contacts (user_id, data, cached_at) VALUES (?, ?, ?)",
+      [userId, JSON.stringify(data), Date.now()]
+    );
+  },
+
+  async getGroupContacts(userId: string): Promise<any[] | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{ data: string }>(
+      "SELECT data FROM cache_group_contacts WHERE user_id = ?",
+      [userId]
+    );
+    return row ? JSON.parse(row.data) : null;
+  },
+
   async saveStats(userId: string, data: any): Promise<void> {
     const db = await getDb();
     await db.runAsync(
