@@ -116,7 +116,7 @@ export default function PersonalSpendingCard({
               it doesn't know instead, and drops the bands it can't fill. */}
           {!overview ? (
             <VStack className="gap-y-1">
-              <Text bold className="text-3xl">
+              <Text bold className="text-2xl">
                 —
               </Text>
               <Text className="text-sm text-secondary-950">
@@ -131,7 +131,7 @@ export default function PersonalSpendingCard({
                 <HStack className="items-center gap-x-2">
                   <Text
                     bold
-                    className="text-3xl flex-shrink"
+                    className="text-2xl flex-shrink"
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >
