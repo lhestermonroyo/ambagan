@@ -1,11 +1,8 @@
 import CurrencyCountButton from "@/components/CurrencyCountButton";
-import { HStack } from "@/components/ui/hstack";
-import { Text } from "@/components/ui/text";
-import { VStack } from "@/components/ui/vstack";
+import HeroAmount from "@/components/HeroAmount";
 import { getRate, useConvertedTotal, useFxRates } from "@/utils/fx";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useMemo } from "react";
-import { amountTextSize } from "../utils/amountTextSize";
+import { AmountTextSize, amountTextSize } from "../utils/amountTextSize";
 import { formatAmount } from "../utils/formatAmount";
 
 /**
@@ -30,7 +27,8 @@ export default function NetBalanceDisplay({
   isLoading = false,
   tone = "default",
   size = "md",
-  subtitle = "To Collect minus To Pay, per currency"
+  subtitle = "To Collect minus To Pay, per currency",
+  amountSize
 }: {
   items: { currency: string; amount: number }[];
   /** Target currency for the headline — the user's default. */
@@ -40,6 +38,12 @@ export default function NetBalanceDisplay({
   tone?: "default" | "onColor";
   size?: "md" | "lg";
   subtitle?: string;
+  /**
+   * Overrides the size this would fit for itself. Only the Overview passes it,
+   * where the headline has to match the personal-spending page it swaps with
+   * rather than fill its own box (see smallerAmountSize).
+   */
+  amountSize?: AmountTextSize;
 }) {
   const fx = useFxRates();
   const { total, convertedCurrencies } = useConvertedTotal(items, currency);
@@ -60,16 +64,14 @@ export default function NetBalanceDisplay({
   );
 
   const onColor = tone === "onColor";
-  const amountSize = size === "lg" ? "text-4xl" : "text-3xl";
+  const baseSize = size === "lg" ? "text-4xl" : "text-3xl";
   const amountText = `${convertedCurrencies.length > 0 ? "≈ " : ""}${formatAmount(total, currency)}`;
   // The headline shares its row with the currency code and the chip, so the
   // budget is the rest of the line rather than the screen — "lg" is the
   // full-width hero, "md" the narrower group and friend cards.
-  const fittedSize = amountTextSize(
-    amountSize,
-    amountText,
-    size === "lg" ? 13 : 12
-  );
+  const fittedSize =
+    amountSize ??
+    amountTextSize(baseSize, amountText, size === "lg" ? HERO_MAX_CHARS : 12);
   // On the colored hero everything is white — a red negative would fight the
   // fill, and the sign already reads from the minus.
   const amountColor = onColor
@@ -79,48 +81,30 @@ export default function NetBalanceDisplay({
       : undefined;
 
   return (
-    <VStack className="gap-y-2">
-      <Text
-        bold
-        className={cn(
-          "text-sm uppercase",
-          onColor ? "text-white" : "text-secondary-950"
-        )}
-      >
-        Net Balance
-      </Text>
-      {isLoading ? (
-        <Text bold className={cn(amountSize, onColor && "text-white")}>
-          —
-        </Text>
-      ) : (
-        <HStack className="items-end gap-x-2">
-          <Text
-            bold
-            className={cn(fittedSize, amountColor, "flex-shrink")}
-            numberOfLines={1}
-          >
-            {amountText}
-          </Text>
-          <HStack className="items-center gap-x-1 pb-1">
-            <Text
-              className={cn(
-                "text-base",
-                onColor ? "text-white/70" : "text-secondary-950"
-              )}
-            >
-              {currency}
-            </Text>
-            <CurrencyCountButton
-              items={sorted}
-              title="Net Balance"
-              subtitle={subtitle}
-              convertTo={currency}
-              totalLabel="Net balance"
-            />
-          </HStack>
-        </HStack>
-      )}
-    </VStack>
+    <HeroAmount
+      label="Net Balance"
+      amountText={amountText}
+      amountSize={fittedSize}
+      currency={currency}
+      isLoading={isLoading}
+      tone={tone}
+      amountClassName={amountColor}
+      chip={
+        <CurrencyCountButton
+          items={sorted}
+          title="Net Balance"
+          subtitle={subtitle}
+          convertTo={currency}
+          totalLabel="Net balance"
+        />
+      }
+    />
   );
 }
+
+/**
+ * Characters the full-bleed hero headline holds at `text-4xl`. Exported so a
+ * caller computing a shared size across pages fits them on the same terms this
+ * does.
+ */
+export const HERO_MAX_CHARS = 13;

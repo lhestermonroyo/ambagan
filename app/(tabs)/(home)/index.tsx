@@ -1,6 +1,7 @@
 import AppAvatar from "@/components/AppAvatar";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
+import HeroColumn from "@/components/HeroColumn";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import {
@@ -22,12 +23,19 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import BookItem from "@/features/book/components/BookItem";
 import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
-import PersonalSpendingCard from "@/features/book/components/PersonalSpendingCard";
+import PersonalSpendingPane, {
+  usePersonalSpendSummary
+} from "@/features/book/components/PersonalSpendingPane";
 import ExpenseDestinationSheet from "@/features/expense/components/ExpenseDestinationSheet";
-import NetBalanceDisplay from "@/features/expense/components/NetBalanceDisplay";
+import NetBalanceDisplay, {
+  HERO_MAX_CHARS
+} from "@/features/expense/components/NetBalanceDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
-import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementItem from "@/features/expense/components/SettlementItem";
+import {
+  amountTextSize,
+  smallerAmountSize
+} from "@/features/expense/utils/amountTextSize";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
@@ -45,8 +53,12 @@ import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import * as Notifications from "expo-notifications";
 import { Stack, useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import {
+  BanknoteArrowDown,
+  BanknoteArrowUp,
   Bell,
   BellDot,
+  ChevronLeft,
+  ChevronRight,
   CircleQuestionMark,
   HousePlus,
   ListPlus,
@@ -64,12 +76,19 @@ import React, {
 import {
   Animated,
   InteractionManager,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   RefreshControl,
-  useColorScheme
+  useColorScheme,
+  useWindowDimensions
 } from "react-native";
 
 const SETTLEMENT_REMINDER_ID = "daily-settlement-reminder";
+
+/** Hero pages, in swipe order. */
+const HERO_SHARED = 0;
+const HERO_PERSONAL = 1;
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState({
@@ -157,6 +176,55 @@ export default function HomeScreen() {
     BASE_CURRENCY
   );
   const compactPay = useConvertedTotal(displayStats.toPay, BASE_CURRENCY);
+
+  // Personal spending is the hero's second page, and the compact bar mirrors
+  // whichever page is showing — so these figures are derived here rather than
+  // left inside the page, on the same terms it renders them.
+  const personalSummary = usePersonalSpendSummary(personalOverview);
+
+  const { width: heroPageWidth } = useWindowDimensions();
+  const heroScrollX = useRef(new Animated.Value(0)).current;
+  const heroScrollRef = useRef<ScrollView>(null);
+  // Which page the compact bar should mirror. Settled on momentum end rather
+  // than tracked through the drag: the bar is a summary, and one that swapped
+  // its labels halfway through a swipe would flicker. The dots below follow
+  // scrollX directly, so the gesture still gets live feedback.
+  const [heroPage, setHeroPage] = useState(HERO_SHARED);
+  const handleHeroScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const page = Math.round(e.nativeEvent.contentOffset.x / heroPageWidth);
+      setHeroPage(page === HERO_PERSONAL ? HERO_PERSONAL : HERO_SHARED);
+    },
+    [heroPageWidth]
+  );
+  // Arrow taps set the page themselves rather than waiting for the scroll they
+  // start: an animated scrollTo raises onMomentumScrollEnd on iOS but not
+  // dependably on Android, which would leave the compact bar mirroring the page
+  // you just left. Landing there twice is a no-op.
+  const goToHeroPage = useCallback(
+    (page: number) => {
+      heroScrollRef.current?.scrollTo({
+        x: page * heroPageWidth,
+        animated: true
+      });
+      setHeroPage(page);
+    },
+    [heroPageWidth]
+  );
+
+  // One headline size for both pages. Each page fitting its own figure would
+  // let a long spend total step down a size while the net balance stayed
+  // text-4xl, and the purple block would change height mid-swipe — the whole
+  // reason the two pages share HeroAmount/HeroColumn in the first place.
+  const netAmountText = `${compactNet.convertedCurrencies.length > 0 ? "≈ " : ""}${formatAmount(compactNet.total, BASE_CURRENCY)}`;
+  const heroAmountSize = useMemo(
+    () =>
+      smallerAmountSize(
+        amountTextSize("text-4xl", netAmountText, HERO_MAX_CHARS),
+        amountTextSize("text-4xl", personalSummary.amountText, HERO_MAX_CHARS)
+      ),
+    [netAmountText, personalSummary.amountText]
+  );
 
   // The hero card is ~250pt tall; start the fade partway through so the compact
   // bar is fully in by the time the hero is gone. `contentInsetAdjustmentBehavior`
@@ -610,45 +678,97 @@ export default function HomeScreen() {
         >
           <VStack className="gap-y-4 bg-background-0 flex-1">
             <Box className="bg-primary-400">
-              <VStack className="p-4 pt-6 gap-y-6">
-                <VStack className="gap-y-4">
-                  {/* Net Balance Hero */}
-                  <NetBalanceDisplay
-                    isLoading={loading.stats}
-                    items={netBalance}
-                    currency={BASE_CURRENCY}
-                    tone="onColor"
-                    size="lg"
-                    subtitle="To Collect minus To Pay, per currency, across all groups"
+              <VStack className="py-4 gap-y-6">
+                {/* Two answers to "where do I stand" — what the groups owe and
+                  what I've spent on myself — swapped in one slot rather than
+                  stacked, because they're different kinds of number and reading
+                  them together invites a reconciliation that doesn't exist. The
+                  pages share HeroAmount/HeroColumn so they can't differ in
+                  height, which is what makes the swap read as one card. */}
+                <VStack className="gap-y-6">
+                  <Animated.ScrollView
+                    ref={heroScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    // The outer list runs "automatic" so the native header can
+                    // inset it; left unset here iOS would apply the same to the
+                    // pager and knock every page off its stop by the safe-area
+                    // inset the moment the device is in landscape.
+                    contentInsetAdjustmentBehavior="never"
+                    automaticallyAdjustContentInsets={false}
+                    onScroll={Animated.event(
+                      [{ nativeEvent: { contentOffset: { x: heroScrollX } } }],
+                      // JS-driven because the dots interpolate `width`, which
+                      // the native animated module can't touch — and matching
+                      // the vertical scrollY above, which drives the compact bar
+                      // the same way.
+                      { useNativeDriver: false }
+                    )}
+                    scrollEventThrottle={16}
+                    onMomentumScrollEnd={handleHeroScrollEnd}
+                  >
+                    <VStack
+                      style={{ width: heroPageWidth }}
+                      className="px-4 gap-y-4"
+                    >
+                      <NetBalanceDisplay
+                        isLoading={loading.stats}
+                        items={netBalance}
+                        currency={BASE_CURRENCY}
+                        tone="onColor"
+                        size="lg"
+                        amountSize={heroAmountSize}
+                        subtitle="To Collect minus To Pay, per currency, across all groups"
+                      />
+
+                      <Divider className="bg-white/20" />
+
+                      <HStack className="items-stretch">
+                        <StatItem
+                          type="RECEIVE"
+                          isLoading={loading.stats}
+                          items={displayStats.toReceive}
+                          primaryCurrency={BASE_CURRENCY}
+                        />
+                        <Divider
+                          orientation="vertical"
+                          className="mx-4 bg-white/20"
+                        />
+                        <StatItem
+                          type="PAY"
+                          isLoading={loading.stats}
+                          items={displayStats.toPay}
+                          primaryCurrency={BASE_CURRENCY}
+                        />
+                      </HStack>
+                    </VStack>
+
+                    <Box style={{ width: heroPageWidth }} className="px-4">
+                      <PersonalSpendingPane
+                        overview={personalOverview}
+                        isLoading={loading.personal}
+                        amountSize={heroAmountSize}
+                        onPress={handleOpenBooks}
+                      />
+                    </Box>
+                  </Animated.ScrollView>
+
+                  <HeroPageControls
+                    scrollX={heroScrollX}
+                    pageWidth={heroPageWidth}
+                    count={2}
+                    activePage={heroPage}
+                    onGoToPage={goToHeroPage}
+                    prevLabel="Show net balance"
+                    nextLabel="Show personal spending"
                   />
-
-                  <Divider className="bg-white/20" />
-
-                  {/* Stat Columns */}
-                  <HStack className="items-stretch">
-                    <StatItem
-                      type="RECEIVE"
-                      isLoading={loading.stats}
-                      items={displayStats.toReceive}
-                      primaryCurrency={BASE_CURRENCY}
-                    />
-                    <Divider
-                      orientation="vertical"
-                      className="mx-4 bg-white/20"
-                    />
-                    <StatItem
-                      type="PAY"
-                      isLoading={loading.stats}
-                      items={displayStats.toPay}
-                      primaryCurrency={BASE_CURRENCY}
-                    />
-                  </HStack>
                 </VStack>
 
                 {/* Action Buttons stay live for instant entry — the expense
                   flows below handle the still-loading case by skeletoning
                   their own group / payer fields rather than blocking here. */}
-                <HStack className="gap-x-2 justify-center">
+                <HStack className="px-4 gap-x-2 justify-center">
                   <ActionButton
                     icon={<ListPlus size={24} color="#fff" />}
                     label={`Add\n\Expense`}
@@ -672,15 +792,6 @@ export default function HomeScreen() {
                 </HStack>
               </VStack>
             </Box>
-
-            {/* Personal spending — a distinct card in the white body (kept out of
-              the purple net-balance hero so it never reads as money owed). Taps
-              through to the Books tab. */}
-            <PersonalSpendingCard
-              overview={personalOverview}
-              isLoading={loading.personal}
-              onPress={handleOpenBooks}
-            />
 
             <VStack className="gap-y-2">
               <HStack className="items-center justify-between px-4">
@@ -820,9 +931,11 @@ export default function HomeScreen() {
           </VStack>
         </ScrollView>
 
-        {/* Compact net-balance bar — pinned just under the native header, fades
-          in as the hero card scrolls away. Purely informational, so it stays
-          non-interactive and lets scroll/touches pass through to the list. */}
+        {/* Compact hero bar — pinned just under the native header, fades in as
+          the hero scrolls away. It mirrors whichever hero page was left showing,
+          so scrolling away from personal spending doesn't silently hand back a
+          net balance. Purely informational, so it stays non-interactive and lets
+          scroll/touches pass through to the list. */}
         <Animated.View
           pointerEvents="none"
           className="absolute top-0 left-0 right-0 bg-primary-400"
@@ -832,44 +945,38 @@ export default function HomeScreen() {
           }}
         >
           <HStack className="px-6 py-3 gap-x-4 items-center justify-center">
-            <VStack className="items-center flex-1">
-              <Text
-                className="text-white/70 text-sm uppercase tracking-widest"
-                numberOfLines={1}
-              >
-                Net
-              </Text>
-              <Text bold className="text-white text-lg">
-                {compactNet.convertedCurrencies.length > 0 ? "≈ " : ""}
-                {formatAmount(compactNet.total, BASE_CURRENCY)}
-              </Text>
-            </VStack>
-            <Text className="text-white/20">|</Text>
-            <VStack className="items-center flex-1">
-              <Text
-                className="text-white/70 text-sm uppercase tracking-widest"
-                numberOfLines={1}
-              >
-                Collect
-              </Text>
-              <Text bold className="text-white text-lg" numberOfLines={1}>
-                {compactReceive.convertedCurrencies.length > 0 ? "≈ " : ""}
-                {formatAmount(compactReceive.total, BASE_CURRENCY)}
-              </Text>
-            </VStack>
-            <Text className="text-white/20">|</Text>
-            <VStack className="items-center flex-1">
-              <Text
-                className="text-white/70 text-sm uppercase tracking-widest"
-                numberOfLines={1}
-              >
-                Pay
-              </Text>
-              <Text bold className="text-white text-lg" numberOfLines={1}>
-                {compactPay.convertedCurrencies.length > 0 ? "≈ " : ""}
-                {formatAmount(compactPay.total, BASE_CURRENCY)}
-              </Text>
-            </VStack>
+            {heroPage === HERO_PERSONAL ? (
+              <>
+                <CompactStat label="Spent" value={personalSummary.amountText} />
+                <CompactDivider />
+                <CompactStat
+                  label="vs Last"
+                  value={personalSummary.trend.value}
+                />
+                <CompactDivider />
+                <CompactStat
+                  label="Over"
+                  value={personalSummary.budget.value}
+                />
+              </>
+            ) : (
+              <>
+                <CompactStat
+                  label="Net"
+                  value={`${compactNet.convertedCurrencies.length > 0 ? "≈ " : ""}${formatAmount(compactNet.total, BASE_CURRENCY)}`}
+                />
+                <CompactDivider />
+                <CompactStat
+                  label="Collect"
+                  value={`${compactReceive.convertedCurrencies.length > 0 ? "≈ " : ""}${formatAmount(compactReceive.total, BASE_CURRENCY)}`}
+                />
+                <CompactDivider />
+                <CompactStat
+                  label="Pay"
+                  value={`${compactPay.convertedCurrencies.length > 0 ? "≈ " : ""}${formatAmount(compactPay.total, BASE_CURRENCY)}`}
+                />
+              </>
+            )}
           </HStack>
         </Animated.View>
       </Box>
@@ -1021,6 +1128,174 @@ const FriendCard = React.memo(function FriendCard({
   );
 });
 
+/**
+ * Which hero page is showing, and how to get to the other one.
+ *
+ * Two dots is barely an indicator, so the row also has to advertise that a
+ * second page exists at all: the active dot stretches into a pill rather than
+ * just brightening, and the arrow that flanks it names the move outright for
+ * anyone who'd never think to swipe a card. Both are driven by scrollX so they
+ * track the drag itself, not the page state that settles after it.
+ *
+ * Both arrow slots are always laid out — hiding one outright would shift the
+ * dots sideways every time the page changed, which is exactly the jitter the
+ * shared pane skeleton exists to avoid.
+ */
+function HeroPageControls({
+  scrollX,
+  pageWidth,
+  count,
+  activePage,
+  onGoToPage,
+  prevLabel,
+  nextLabel
+}: {
+  scrollX: Animated.Value;
+  pageWidth: number;
+  count: number;
+  activePage: number;
+  onGoToPage: (page: number) => void;
+  /** Spoken for the back arrow — what the previous page holds, not "previous". */
+  prevLabel: string;
+  nextLabel: string;
+}) {
+  const lastPage = count - 1;
+
+  return (
+    <HStack className="px-4 gap-x-1.5 items-center justify-center">
+      <HeroPageArrow
+        direction="prev"
+        label={prevLabel}
+        disabled={activePage === 0}
+        onPress={() => onGoToPage(Math.max(activePage - 1, 0))}
+        // Fades in as soon as there's a page behind you, and back out as you
+        // return to the first.
+        opacity={scrollX.interpolate({
+          inputRange: [0, pageWidth],
+          outputRange: [0, 1],
+          extrapolate: "clamp"
+        })}
+      />
+
+      <HStack
+        className="flex-1 gap-x-1.5 items-center justify-center"
+        accessibilityRole="tablist"
+        accessibilityLabel={`Hero page ${activePage + 1} of ${count}`}
+      >
+        {Array.from({ length: count }).map((_, i) => {
+          // Neighbouring pages only — a dot is at rest unless the swipe is
+          // to or from it.
+          const inputRange = [
+            (i - 1) * pageWidth,
+            i * pageWidth,
+            (i + 1) * pageWidth
+          ];
+          return (
+            <Animated.View
+              key={i}
+              className="h-1.5 rounded-full bg-white"
+              style={{
+                width: scrollX.interpolate({
+                  inputRange,
+                  outputRange: [6, 18, 6],
+                  extrapolate: "clamp"
+                }),
+                opacity: scrollX.interpolate({
+                  inputRange,
+                  outputRange: [0.35, 1, 0.35],
+                  extrapolate: "clamp"
+                })
+              }}
+            />
+          );
+        })}
+      </HStack>
+
+      <HeroPageArrow
+        direction="next"
+        label={nextLabel}
+        disabled={activePage === lastPage}
+        onPress={() => onGoToPage(Math.min(activePage + 1, lastPage))}
+        opacity={scrollX.interpolate({
+          inputRange: [(lastPage - 1) * pageWidth, lastPage * pageWidth],
+          outputRange: [1, 0],
+          extrapolate: "clamp"
+        })}
+      />
+    </HStack>
+  );
+}
+
+/**
+ * One page-turn arrow. Faded out rather than unmounted so the dots stay put,
+ * which means it also has to stop taking touches at the end of the row it no
+ * longer belongs to — hence pointerEvents and the accessibility flag tracking
+ * `disabled` rather than the animation.
+ */
+function HeroPageArrow({
+  direction,
+  label,
+  disabled,
+  onPress,
+  opacity
+}: {
+  direction: "prev" | "next";
+  label: string;
+  disabled: boolean;
+  onPress: () => void;
+  opacity: Animated.AnimatedInterpolation<number>;
+}) {
+  const Icon = direction === "prev" ? ChevronLeft : ChevronRight;
+
+  return (
+    <Animated.View style={{ opacity }} pointerEvents={disabled ? "none" : "auto"}>
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityElementsHidden={disabled}
+        importantForAccessibility={disabled ? "no-hide-descendants" : "auto"}
+        // Small target, so the touch area is padded out past the glyph rather
+        // than the glyph grown to meet it.
+        hitSlop={12}
+      >
+        {({ pressed }) => (
+          <Box
+            className={cn(
+              "p-1.5 rounded-full",
+              pressed ? "bg-white/40" : "bg-white/20"
+            )}
+          >
+            <Icon size={16} color="#fff" />
+          </Box>
+        )}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+/** One cell of the compact bar the hero fades into. */
+function CompactStat({ label, value }: { label: string; value: string }) {
+  return (
+    <VStack className="items-center flex-1">
+      <Text
+        className="text-white/70 text-sm uppercase tracking-widest"
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+      <Text bold className="text-white text-lg" numberOfLines={1}>
+        {value}
+      </Text>
+    </VStack>
+  );
+}
+
+function CompactDivider() {
+  return <Text className="text-white/20">|</Text>;
+}
+
 function StatItem({
   type,
   items,
@@ -1059,38 +1334,27 @@ function StatItem({
   );
   const amountText = `${convertedCurrencies.length > 0 ? "≈ " : ""}${formatAmount(total, primaryCurrency)}`;
 
+  const Icon = isReceive ? BanknoteArrowUp : BanknoteArrowDown;
+
   return (
-    <VStack className="flex-1 gap-y-2">
-      <HStack className="items-center gap-x-2">
-        <SettlementAvatar size="sm" isPayer={isReceive} light />
-        <Text className="text-white text-sm uppercase">{label}</Text>
-      </HStack>
-      {isLoading ? (
-        <Text bold className="text-2xl text-white">
-          —
-        </Text>
-      ) : (
-        <HStack className="items-center gap-x-2">
-          <Text
-            bold
-            className={cn("text-white flex-shrink text-xl")}
-            numberOfLines={1}
-          >
-            {amountText}
-          </Text>
-          <CurrencyCountButton
-            items={sorted}
-            title={label}
-            subtitle={
-              isReceive
-                ? "Owed to you across all groups, per currency"
-                : "You owe across all groups, per currency"
-            }
-            convertTo={primaryCurrency}
-            totalLabel={isReceive ? "Total to collect" : "Total to pay"}
-          />
-        </HStack>
-      )}
-    </VStack>
+    <HeroColumn
+      icon={<Icon size={14} color="#fff" />}
+      label={label}
+      valueText={amountText}
+      isLoading={isLoading}
+      chip={
+        <CurrencyCountButton
+          items={sorted}
+          title={label}
+          subtitle={
+            isReceive
+              ? "Owed to you across all groups, per currency"
+              : "You owe across all groups, per currency"
+          }
+          convertTo={primaryCurrency}
+          totalLabel={isReceive ? "Total to collect" : "Total to pay"}
+        />
+      }
+    />
   );
 }

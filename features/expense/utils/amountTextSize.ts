@@ -38,3 +38,18 @@ export function amountTextSize(
   const steps = Math.ceil(over / CHARS_PER_STEP);
   return SCALE[Math.min(start + steps, SCALE.length - 1)];
 }
+
+/**
+ * The smaller of two fitted sizes.
+ *
+ * For headlines that must agree on height rather than each fit its own box —
+ * the Overview's two hero pages swap in the same slot, so a ₱15,558.51 that
+ * still fits `text-4xl` next to a ₱120,340.00 that stepped down would make the
+ * purple block change height mid-swipe.
+ */
+export function smallerAmountSize(
+  a: AmountTextSize,
+  b: AmountTextSize
+): AmountTextSize {
+  return SCALE.indexOf(a) >= SCALE.indexOf(b) ? a : b;
+}
