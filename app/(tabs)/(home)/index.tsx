@@ -711,7 +711,7 @@ export default function HomeScreen() {
                   them together invites a reconciliation that doesn't exist. The
                   pages share HeroAmount/HeroColumn so they can't differ in
                   height, which is what makes the swap read as one card. */}
-                <VStack className="gap-y-6">
+                <VStack className="gap-y-4">
                   <Animated.ScrollView
                     ref={heroScrollRef}
                     horizontal
@@ -1290,7 +1290,10 @@ function HeroPageArrow({
   const Icon = direction === "prev" ? ChevronLeft : ChevronRight;
 
   return (
-    <Animated.View style={{ opacity }} pointerEvents={disabled ? "none" : "auto"}>
+    <Animated.View
+      style={{ opacity }}
+      pointerEvents={disabled ? "none" : "auto"}
+    >
       <Pressable
         onPress={onPress}
         disabled={disabled}
