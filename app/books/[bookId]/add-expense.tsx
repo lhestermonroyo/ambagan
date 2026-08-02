@@ -61,8 +61,6 @@ import { ImagePickerSuccessResult } from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   CalendarDays,
-  CheckCircle2,
-  Clock,
   Paperclip,
   Repeat,
   Trash2
@@ -288,7 +286,6 @@ export default function AddPersonalExpenseScreen() {
           if (
             expense.category !== ExpenseCategory.GENERAL ||
             !isToday(new Date(expense.expense_date)) ||
-            expense.status !== "paid" ||
             !!expense.proof_of_payment
           ) {
             setOptionsExpanded(true);
@@ -624,23 +621,7 @@ export default function AddPersonalExpenseScreen() {
       icon: (color) => <CalendarDays size={16} color={color} />,
       onPress: () => setDateSheetOpen(true)
     },
-    // Status and Repeat mirror the visibility rules of their full fields below.
-    ...(!recurrence
-      ? [
-          {
-            key: "status",
-            label: status === "paid" ? "Paid" : "Pending",
-            isDefault: status === "paid",
-            icon: (color: string) =>
-              status === "paid" ? (
-                <CheckCircle2 size={16} color={color} />
-              ) : (
-                <Clock size={16} color={color} />
-              ),
-            onPress: () => setStatusSheetOpen(true)
-          }
-        ]
-      : []),
+    // Repeat mirrors the visibility rule of its full field below.
     ...(!isEdit
       ? [
           {
@@ -845,6 +826,31 @@ export default function AddPersonalExpenseScreen() {
               errorMessage={descriptionError}
             />
 
+            {/* Status — paid vs an upcoming/unpaid bill. Never collapsed: it's
+                the field that decides whether this expense counts as spent or
+                still owed, so it sits with amount/description rather than
+                behind a chip. Hidden while a recurrence is set: a series has no
+                single status, and each materialized occurrence starts Paid. */}
+            {!recurrence && (
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>Status</FormControlLabelText>
+                </FormControlLabel>
+                <SelectField
+                  onPress={() => setStatusSheetOpen(true)}
+                  leading={
+                    <Icon
+                      as={status === "paid" ? "check-circle" : "schedule"}
+                      className="text-secondary-950"
+                      size={22}
+                    />
+                  }
+                >
+                  <Text className="text-lg capitalize">{status}</Text>
+                </SelectField>
+              </FormControl>
+            )}
+
             {/* Book — the destination. Never collapsed: picking the wrong book
                 is the one mistake this form can't walk back. Read-only whenever
                 the book is fixed (added from a book screen, or editing an
@@ -934,29 +940,6 @@ export default function AddPersonalExpenseScreen() {
                   </SelectField>
                 </FormControl>
               </HStack>
-
-              {/* Status — paid vs an upcoming/unpaid bill. Hidden while a
-                  recurrence is set: a series has no single status, and each
-                  materialized occurrence starts Paid. */}
-              {!recurrence && (
-                <FormControl size="md">
-                  <FormControlLabel>
-                    <FormControlLabelText>Status</FormControlLabelText>
-                  </FormControlLabel>
-                  <SelectField
-                    onPress={() => setStatusSheetOpen(true)}
-                    leading={
-                      <Icon
-                        as={status === "paid" ? "check-circle" : "schedule"}
-                        className="text-secondary-950"
-                        size={22}
-                      />
-                    }
-                  >
-                    <Text className="text-lg capitalize">{status}</Text>
-                  </SelectField>
-                </FormControl>
-              )}
 
               {/* Repeat — Pro-only, ADD mode only. A recurrence turns this into
                   a server-side series (the same cron that posts group recurring

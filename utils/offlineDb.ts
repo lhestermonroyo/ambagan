@@ -116,6 +116,13 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       data TEXT NOT NULL,
       cached_at INTEGER NOT NULL
     );
+
+    -- FX rates are global, not per-user, so this holds exactly one row.
+    CREATE TABLE IF NOT EXISTS cache_fx_rates (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      data TEXT NOT NULL,
+      cached_at INTEGER NOT NULL
+    );
   `);
 
   await migratePendingQueue(_db);

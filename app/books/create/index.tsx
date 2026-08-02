@@ -4,7 +4,6 @@ import { CurrencySelectionSheet } from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
 import SelectField from "@/components/SelectField";
-import { Text } from "@/components/ui/text";
 import {
   FormControl,
   FormControlError,
@@ -15,7 +14,9 @@ import {
   FormControlLabelText
 } from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
+import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
+import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import UploadAvatar from "@/components/UploadAvatar";
@@ -30,6 +31,7 @@ import { BookBudgetPeriod } from "@/types/books";
 import { GroupCategory } from "@/types/groups";
 import { categories, currencies } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -250,7 +252,9 @@ export default function CreateBookScreen() {
               <SelectField
                 onPress={() => setCategorySheetOpen(true)}
                 leading={
-                  <CategoryIcon icon={groupCategoryMeta(values.category).icon} />
+                  <CategoryIcon
+                    icon={groupCategoryMeta(values.category).icon}
+                  />
                 }
               >
                 <Text className="text-lg" numberOfLines={1}>
@@ -304,8 +308,9 @@ export default function CreateBookScreen() {
               ) : (
                 <FormControlHelper>
                   <FormControlHelperText>
-                    Only expenses in {values.currency} count toward this budget.
-                    Leave blank for no budget.
+                    Expenses in other currencies count too, converted to{" "}
+                    {values.currency} at an approximate rate. Leave blank for no
+                    budget.
                   </FormControlHelperText>
                 </FormControlHelper>
               )}
@@ -319,19 +324,42 @@ export default function CreateBookScreen() {
                 </FormControlLabel>
                 <HStack className="gap-x-2">
                   {budgetPeriods.map((period) => (
-                    <FormButton
+                    <Pressable
                       key={period.value}
-                      size="sm"
-                      variant={
+                      className={cn(
+                        "flex-1 py-3 rounded-lg border items-center",
                         values.budgetPeriod === period.value
-                          ? "solid"
-                          : "outline"
-                      }
-                      text={period.label}
+                          ? "border-primary-200 bg-primary-50"
+                          : "border-background-200"
+                      )}
                       onPress={() =>
                         setValues({ ...values, budgetPeriod: period.value })
                       }
-                    />
+                    >
+                      <Text
+                        bold={values.budgetPeriod === period.value}
+                        className={cn(
+                          values.budgetPeriod === period.value
+                            ? "text-primary-400"
+                            : ""
+                        )}
+                      >
+                        {period.label}
+                      </Text>
+                    </Pressable>
+                    // <FormButton
+                    //   key={period.value}
+                    //   size="sm"
+                    //   variant={
+                    //     values.budgetPeriod === period.value
+                    //       ? "solid"
+                    //       : "outline"
+                    //   }
+                    //   text={period.label}
+                    //   onPress={() =>
+                    //     setValues({ ...values, budgetPeriod: period.value })
+                    //   }
+                    // />
                   ))}
                 </HStack>
                 <FormControlHelper>

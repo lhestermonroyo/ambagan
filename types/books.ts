@@ -21,8 +21,9 @@ export type Book = {
   avatar: string | null;
   currency: string;
   /** Optional spending cap, in the book's own {@link Book.currency}. Null = no
-   *  budget set. Only expenses in the book currency count against it — a mixed
-   *  PHP/JPY trip book never converts one into the other. */
+   *  budget set. Expenses in another currency count against it too, converted at
+   *  an approximate rate (utils/fx) purely for this display — the expense itself
+   *  always keeps the currency it was entered in. */
   budget: number | null;
   /** How {@link Book.budget} is measured. Meaningless when `budget` is null. */
   budget_period: BookBudgetPeriod;

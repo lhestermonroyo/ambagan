@@ -62,7 +62,19 @@ All of them are idempotent (`IF [NOT] EXISTS` / `CREATE OR REPLACE` /
   - Ends with `NOTIFY pgrst, 'reload schema';`. Without it the app hits **PGRST204 "Could not find the 'budget_period' column … in the schema cache"** on book create until PostgREST catches up on its own. (Exactly what happened on dev.)
   - Applied to `dev` 2026-08-01.
 
-- [ ] **6. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
+- [ ] **6. [`2026-08-01_fx_rates.sql`](../../../migrations/2026-08-01_fx_rates.sql)** — `fx_rates_tbl`, the indicative FX rates behind the budget card's mixed-currency bar. Independent of the other migrations (no FKs, no dependencies) — order doesn't matter.
+  - Creates the table + RLS (`SELECT` for `authenticated`, and **deliberately no write policy at all** — only the service role writes, so a leaked anon key can't poison rates) + seeds 14 currencies from a real 2026-08-01 feed snapshot.
+  - `ON CONFLICT DO NOTHING` on the seed, so re-running never clobbers a fresher rate the cron has written.
+  - Pairs with the `refresh-fx-rates` function (§B) and its cron (§C). **All three are needed** — the table alone just serves the ageing seed.
+  - Applied to `dev` 2026-08-01.
+
+- [ ] **7. [`2026-08-01_fx_refresh_log.sql`](../../../migrations/2026-08-01_fx_refresh_log.sql)** — `fx_refresh_log_tbl`, one row per `refresh-fx-rates` run. Depends on nothing; deploy the function (§B) after it so the first run can log.
+  - RLS enabled with **no policies at all** — the app never reads it and the function writes as the service role, so an empty policy set means no client key can see it.
+  - Exists because the refresh otherwise fails silently: `cron.job_run_details` only reports whether the SQL ran, `net._http_response` is pruned within hours, and the app degrades quietly to stale rates.
+  - Health check: `select max(ran_at) from fx_refresh_log_tbl where ok;`
+  - The function prunes rows past 180 days, so it stays a few dozen rows.
+
+- [ ] **8. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
 
 > [`db.dev.sql`](../../../db.dev.sql) at the repo root is a **reference dump of the
 > `dev` schema, not runnable** (its own header says so). Use it to diff the
@@ -82,6 +94,7 @@ scripts/deploy-functions.sh prod run-recurring
 
 - [ ] **`run-recurring`** — **required for v1.4.** Rewritten to process **two** template kinds per invocation: group (`recurring_expenses_tbl` → `expenses_tbl` + payers + splits + notifications) and personal (`personal_recurring_tbl` → `personal_expenses_tbl`, a single insert per period, no splits/notifications). Adds `generatePersonalOccurrence`, `processPersonalTemplate`, and `isCreatorPro` (lapsed Pro creators are **skipped, not deleted**, so a series resumes on renewal). Deploy **after** migration A2 lands the unique index.
 - [ ] **`send-push`** — no behavior change, but prod is still running the pre-refactor code. The shared-handler refactor (`_shared/*.ts` + thin `index.ts` entrypoints) redeploys prod on next push; behavior is identical. Deploy for parity.
+- [ ] **`refresh-fx-rates`** — **new in v1.4.** Weekly refresh of `fx_rates_tbl` from `open.er-api.com` (no API key). Deploy **after** migration A6 creates the table. Needs no new secrets — `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are injected. `refresh-fx-rates-dev` is already deployed and cronned on dev.
 - [ ] **`scan-receipt`** — same parity note. **(verify)** that prod is on the Claude Haiku 4.5 implementation (it was swapped from Gemini) and not stale — v1.4 adds scan-receipt to the books/personal flow, so prod needs the current handler.
 
 ---
@@ -89,6 +102,10 @@ scripts/deploy-functions.sh prod run-recurring
 ## C. Cron & secrets
 
 - [ ] **No new cron job is needed for personal recurring.** The existing prod `run-recurring` hourly job (:00) drives both group and personal templates in the same invocation. The dev job (`run-recurring-dev-hourly`, :30) is already live and stays as-is.
+- [ ] **One NEW cron job is needed: `refresh-fx-rates-weekly`.** Mondays 03:10 UTC (11:10 Manila), hitting the **non-suffixed** prod function URL. Weekly is deliberate — it drives an approximate budget indicator, not a settlement, and the function is idempotent so a missed week is a no-op. Ready-to-paste SQL is in the migration's trailing comment block (fill in the project ref).
+  - **Invoke it once by hand before scheduling.** `pg_net` is async, so the real HTTP status lands in `net._http_response`, **not** in `cron.job_run_details` — a job that 401s on the Vault key reports `succeeded` every week and fails silently. Want `200 {"ok":true,"updated":14}`.
+  - Sharpest post-deploy check: if `fx_rates_tbl.as_of` still reads the seed date `2026-08-01`, the function has never successfully written.
+  - After the first run, confirm the log caught it: `select ran_at, ok, status, updated_count, rejected from fx_refresh_log_tbl order by ran_at desc limit 5;` — expect `ok = true`, `status = 'ok'`, `updated_count = 14`. From then on, `select max(ran_at) from fx_refresh_log_tbl where ok;` is the one-query health check.
 - [ ] **(verify) Vault `service_role_key`.** The prod cron authenticates with the Vault secret and it **must hold the new `sb_secret_…` key, not the legacy `eyJ…` JWT** — the legacy one returns 401. If the key was rolled at any point during v1.4, re-set it. Confirm by checking the last `cron.job_run_details` rows return 200.
 - [ ] **(verify) `ANTHROPIC_API_KEY`.** Supabase function secrets are project-level, so prod and dev share it — if scan-receipt works in dev it's set. Confirm it's still present before relying on prod scan.
 
@@ -122,6 +139,7 @@ scripts/deploy-functions.sh prod run-recurring
 - [ ] Existing prod groups still read as PHP and their totals are unchanged.
 - [ ] Scan a receipt from both a group and a book.
 - [ ] Offline: create a book expense in airplane mode → "Syncing…" badge → flushes on reconnect.
+- [ ] Book with a budget + expenses in two currencies → the bar folds the foreign spend in, the headline reads `≈`, and the caption shows the **rate date from the table** (not the shipped `2026-08-01` fallback). A stale date here means the app is falling back, i.e. the table or its RLS `SELECT` policy isn't live in `public`.
 
 ---
 

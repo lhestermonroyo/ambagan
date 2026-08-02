@@ -361,5 +361,31 @@ export const cacheService = {
       [userId]
     );
     return row ? JSON.parse(row.data) : null;
+  },
+
+  /** FX rates are global, so this is a single-row table (see utils/fx.ts). */
+  async saveFxRates(data: {
+    rates: Record<string, number>;
+    asOfByCurrency: Record<string, string>;
+    asOf: string;
+  }): Promise<void> {
+    const db = await getDb();
+    await db.runAsync(
+      "INSERT OR REPLACE INTO cache_fx_rates (id, data, cached_at) VALUES (1, ?, ?)",
+      [JSON.stringify(data), Date.now()]
+    );
+  },
+
+  async getFxRates(): Promise<{
+    rates: Record<string, number>;
+    /** Absent in caches written before per-currency dates existed. */
+    asOfByCurrency: Record<string, string>;
+    asOf: string;
+  } | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{ data: string }>(
+      "SELECT data FROM cache_fx_rates WHERE id = 1"
+    );
+    return row ? JSON.parse(row.data) : null;
   }
 };

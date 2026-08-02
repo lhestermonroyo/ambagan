@@ -24,10 +24,12 @@ import DateRangeSheet, {
 import services from "@/services";
 import { PersonalExpense } from "@/types/books";
 import { EmptyType } from "@/types/general";
+import { getRate, useFxRates } from "@/utils/fx";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { ChevronDown } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
+import ApproxRateNote from "./ApproxRateNote";
 
 export default function BookStatsTab({
   bookId,
@@ -37,6 +39,9 @@ export default function BookStatsTab({
   primaryCurrency?: string;
 }) {
   const colorScheme = useColorScheme() ?? "light";
+  // Re-renders when a rate refresh lands, keeping the converted figures and the
+  // vintage in the rate note in step.
+  const fx = useFxRates();
 
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState<PersonalExpense[]>([]);
@@ -95,42 +100,76 @@ export default function BookStatsTab({
       .sort((a, b) => b.paid + b.pending - (a.paid + a.pending));
   }, [filtered]);
 
-  // Count + average, scoped to the primary currency so the average stays a
-  // meaningful figure (averaging across currencies would be nonsense).
-  const primaryStats = useMemo(() => {
-    const inCurrency = filtered.filter((e) => e.currency === primaryCurrency);
-    const count = inCurrency.length;
-    const total = inCurrency.reduce((sum, e) => sum + e.amount, 0);
-    return { count, average: count > 0 ? total / count : 0 };
-  }, [filtered, primaryCurrency]);
+  // Value of an expense in the book's own currency, or null when its currency
+  // has no rate. Null means "can't be priced" and the expense is left out of the
+  // converted figures entirely — counting it as zero would quietly under-report.
+  const inBookCurrency = useCallback(
+    (e: PersonalExpense): number | null => {
+      const rate = getRate(fx, e.currency || "PHP", primaryCurrency);
+      return rate === null ? null : e.amount * rate;
+    },
+    [fx, primaryCurrency]
+  );
 
-  // Biggest expenses in range, scoped to the primary currency AND to paid
-  // spend (pending bills aren't money out yet) — ranking a ¥5,000 expense above
-  // a ₱4,000 one by raw amount would be misleading.
+  // Which foreign currencies actually contributed to the converted figures —
+  // drives the rate note, and tells the copy below whether to say "≈" at all.
+  const convertedCurrencies = useMemo(() => {
+    const seen = new Set<string>();
+    for (const e of filtered) {
+      const currency = e.currency || "PHP";
+      if (
+        currency !== primaryCurrency &&
+        getRate(fx, currency, primaryCurrency)
+      ) {
+        seen.add(currency);
+      }
+    }
+    return Array.from(seen);
+  }, [filtered, primaryCurrency, fx]);
+
+  // Count + average across every currency, converted so the average stays a
+  // single meaningful figure. Count is of expenses actually priced, so it can't
+  // disagree with the average's denominator.
+  const primaryStats = useMemo(() => {
+    let count = 0;
+    let total = 0;
+    for (const e of filtered) {
+      const value = inBookCurrency(e);
+      if (value === null) continue;
+      count += 1;
+      total += value;
+    }
+    return { count, average: count > 0 ? total / count : 0 };
+  }, [filtered, inBookCurrency]);
+
+  // Biggest paid expenses in range (pending bills aren't money out yet). RANKED
+  // by converted value so a ¥5,000 expense sorts correctly against a ₱4,000 one
+  // — but each row still renders in its own currency, so the number on screen
+  // stays exact and only the ordering relies on a rate.
   const topExpenses = useMemo(
     () =>
       filtered
-        .filter(
-          (e) => e.currency === primaryCurrency && e.status !== "pending"
-        )
-        .sort((a, b) => b.amount - a.amount)
+        .filter((e) => e.status !== "pending" && inBookCurrency(e) !== null)
+        .sort((a, b) => (inBookCurrency(b) ?? 0) - (inBookCurrency(a) ?? 0))
         .slice(0, 5),
-    [filtered, primaryCurrency]
+    [filtered, inBookCurrency]
   );
 
-  // Spending grouped by category (primary currency, paid only), largest first,
-  // with each slice's share of the total. Pending bills are excluded so this
-  // reflects where money actually went. Falls back to "general" for any unset
-  // row.
+  // Spending grouped by category (paid only), largest first, with each slice's
+  // share of the total. Amounts are converted into the book currency; the
+  // percentages are unaffected by that since they're a share of the same total.
+  // Falls back to "general" for any unset row.
   const categoryBreakdown = useMemo(() => {
     const byCategory = new Map<string, number>();
     let total = 0;
     filtered
-      .filter((e) => e.currency === primaryCurrency && e.status !== "pending")
+      .filter((e) => e.status !== "pending")
       .forEach((e) => {
+        const value = inBookCurrency(e);
+        if (value === null) return;
         const key = e.category || "general";
-        byCategory.set(key, (byCategory.get(key) ?? 0) + e.amount);
-        total += e.amount;
+        byCategory.set(key, (byCategory.get(key) ?? 0) + value);
+        total += value;
       });
 
     return Array.from(byCategory.entries())
@@ -140,7 +179,7 @@ export default function BookStatsTab({
         pct: total > 0 ? (amount / total) * 100 : 0
       }))
       .sort((a, b) => b.amount - a.amount);
-  }, [filtered, primaryCurrency]);
+  }, [filtered, inBookCurrency]);
 
   if (loading) {
     return (
@@ -217,6 +256,7 @@ export default function BookStatsTab({
                       Avg / Expense
                     </Text>
                     <Text bold className="text-lg">
+                      {convertedCurrencies.length > 0 ? "≈ " : ""}
                       {formatAmount(primaryStats.average, primaryCurrency)}
                     </Text>
                   </VStack>
@@ -233,7 +273,9 @@ export default function BookStatsTab({
                       Top Expenses
                     </Text>
                     <Text className="text-sm text-secondary-950">
-                      Biggest expenses in this range.
+                      {convertedCurrencies.length > 0
+                        ? "Biggest expenses in this range, ranked across currencies."
+                        : "Biggest expenses in this range."}
                     </Text>
                   </VStack>
                   <VStack className="gap-y-3">
@@ -290,6 +332,7 @@ export default function BookStatsTab({
                             {row.pct.toFixed(0)}%
                           </Text>
                           <Text className="text-lg font-medium">
+                            {convertedCurrencies.length > 0 ? "≈ " : ""}
                             {formatAmount(row.amount, primaryCurrency)}
                           </Text>
                         </HStack>
@@ -310,6 +353,10 @@ export default function BookStatsTab({
                 </VStack>
               </Card>
             )}
+
+            {/* One note for the whole tab — renders nothing when the book is
+                single-currency, so the common case is untouched. */}
+            <ApproxRateNote currencies={convertedCurrencies} className="px-1" />
           </VStack>
         )}
       </VStack>

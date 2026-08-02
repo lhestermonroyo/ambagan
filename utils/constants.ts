@@ -46,7 +46,11 @@ export const tables = {
   PERSONAL_BOOKS_TBL: "personal_books_tbl",
   PERSONAL_EXPENSES_TBL: "personal_expenses_tbl",
   PERSONAL_RECURRING_TBL: "personal_recurring_tbl",
-  PERSONAL_EXPENSE_CREATION_LOG_TBL: "personal_expense_creation_log_tbl"
+  PERSONAL_EXPENSE_CREATION_LOG_TBL: "personal_expense_creation_log_tbl",
+
+  // Indicative FX rates, refreshed weekly by the refresh-fx-rates Edge
+  // Function. Read-only to the app (see utils/fx.ts).
+  FX_RATES_TBL: "fx_rates_tbl"
 };
 
 // apply signs to all currencies

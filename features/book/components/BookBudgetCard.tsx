@@ -1,8 +1,11 @@
+import { type CurrencyAmount } from "@/components/CurrencyBreakdownSheet";
+import CurrencyCountButton from "@/components/CurrencyCountButton";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import ApproxRateNote from "@/features/book/components/ApproxRateNote";
 import {
   expenseCategoryColor,
   expenseCategoryLabel
@@ -10,6 +13,7 @@ import {
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { Book, PersonalBookTotal } from "@/types/books";
+import { getRate, useFxRates } from "@/utils/fx";
 import { useMemo } from "react";
 
 /** Categories shown individually in the legend; the rest fold into "Others". */
@@ -19,9 +23,13 @@ const LEGEND_LIMIT = 5;
 const NEUTRAL_COLOR = "#94A3B8";
 
 /**
- * Progress against a book's spending cap. Only expenses in the book's OWN
- * currency count — a mixed PHP/JPY trip book never converts one into the other,
- * matching how the Stats tab scopes its figures to the primary currency.
+ * Progress against a book's spending cap, in the book's own currency. Spend in
+ * any OTHER currency is folded in at an approximate rate (see utils/fx) so a
+ * mixed PHP/JPY trip book can't report a ¥42,000 month as 0% of budget used —
+ * this is the one place in the app that converts, because a budget bar has to
+ * be a single number. Every converted figure is marked "≈" and captioned with
+ * the rate vintage; money that must be exact (balances, settlements, the
+ * Paid/Pending stats below) stays split per-currency and is never converted.
  *
  * Paid spend fills the bar, split into one colored segment per spending
  * category (largest first) with a legend underneath; pending (upcoming/unpaid)
@@ -52,18 +60,77 @@ export default function BookBudgetCard({
   const budget = book.budget;
   const currency = book.currency;
   const isMonthly = book.budget_period !== "total";
+  // Re-renders when a rate refresh lands, so the bar and its vintage caption
+  // move together.
+  const fx = useFxRates();
 
-  const { paid, pending, byCategory } = useMemo(() => {
-    const entry = totals.find((t) => t.currency === currency);
-    return {
-      paid: entry?.paid ?? 0,
-      pending: entry?.pending ?? 0,
+  const { paid, pending, byCategory, converted, convertedTotal, unconverted } =
+    useMemo(() => {
+      const own = totals.find((t) => t.currency === currency);
+      let paid = own?.paid ?? 0;
+      let pending = own?.pending ?? 0;
+      let convertedTotal = 0;
+
       // Paid spend only — the bar's colored run is money already out.
-      byCategory: (entry?.byCategory ?? [])
-        .filter((c) => c.paid > 0)
-        .sort((a, b) => b.paid - a.paid)
-    };
-  }, [totals, currency]);
+      const categories = new Map<string, number>();
+      for (const c of own?.byCategory ?? []) {
+        if (c.paid > 0) categories.set(c.category, c.paid);
+      }
+
+      // Everything in another currency is folded in at an approximate rate, so
+      // a ¥42,000 month can't render as 0% of a PHP budget. Both lists keep the
+      // ORIGINAL amounts — the sheet shows what was actually spent, not a
+      // converted figure dressed up as exact.
+      const converted: CurrencyAmount[] = [];
+      const unconverted: CurrencyAmount[] = [];
+
+      for (const t of totals) {
+        if (t.currency === currency) continue;
+        const gross = t.paid + t.pending;
+        if (gross <= 0) continue;
+
+        const rate = getRate(fx, t.currency, currency);
+        // No rate for this currency — leave the money out of the bar entirely
+        // and disclose it separately. Dropping it silently would under-report.
+        if (rate === null) {
+          unconverted.push({
+            currency: t.currency,
+            amount: gross,
+            secondaryAmount: t.pending
+          });
+          continue;
+        }
+
+        paid += t.paid * rate;
+        pending += t.pending * rate;
+        convertedTotal += gross * rate;
+        converted.push({
+          currency: t.currency,
+          amount: gross,
+          secondaryAmount: t.pending
+        });
+
+        for (const c of t.byCategory ?? []) {
+          if (c.paid > 0) {
+            categories.set(
+              c.category,
+              (categories.get(c.category) ?? 0) + c.paid * rate
+            );
+          }
+        }
+      }
+
+      return {
+        paid,
+        pending,
+        convertedTotal,
+        converted: converted.sort((a, b) => b.amount - a.amount),
+        unconverted: unconverted.sort((a, b) => b.amount - a.amount),
+        byCategory: Array.from(categories.entries())
+          .map(([category, paid]) => ({ category, paid }))
+          .sort((a, b) => b.paid - a.paid)
+      };
+    }, [totals, currency, fx]);
 
   // Top categories keep their own color; the tail folds into one neutral
   // "Others" slice so a 10-category book doesn't produce a 10-row legend.
@@ -75,16 +142,23 @@ export default function BookBudgetCard({
       amount: c.paid
     }));
     const tail = byCategory.slice(LEGEND_LIMIT);
-    if (tail.length > 0) {
+    // Anything paid but not attributed to a category also lands in "Others" —
+    // cached snapshots predating the per-category breakdown contribute to
+    // `paid` with no categories at all, and without this the bar under-fills.
+    const uncategorized =
+      paid - byCategory.reduce((sum, c) => sum + c.paid, 0);
+    const others =
+      tail.reduce((sum, c) => sum + c.paid, 0) + Math.max(uncategorized, 0);
+    if (others > 0.01) {
       head.push({
         key: "__others",
         label: "Others",
         color: NEUTRAL_COLOR,
-        amount: tail.reduce((sum, c) => sum + c.paid, 0)
+        amount: others
       });
     }
     return head;
-  }, [byCategory]);
+  }, [byCategory, paid]);
 
   if (budget == null || budget <= 0) return null;
 
@@ -116,6 +190,7 @@ export default function BookBudgetCard({
             numberOfLines={1}
             adjustsFontSizeToFit
           >
+            {converted.length > 0 ? "≈ " : ""}
             {formatAmount(paid, currency)}
           </Text>
           <Text className="text-secondary-950">
@@ -169,6 +244,65 @@ export default function BookBudgetCard({
             {Math.round((paid / budget) * 100)}%
           </Text>
         </HStack>
+
+        {/* What the bar folded in from other currencies, and at what vintage.
+            A single currency is named outright (its original amount + the
+            converted figure is the whole story); several open the standard
+            breakdown sheet, which lists what was actually spent in each. The
+            rate date matters as much as the "approximate" — it tells someone
+            two years from now exactly how much to trust the number. */}
+        {converted.length > 0 && (
+          <VStack className="gap-y-0.5">
+            <HStack className="items-center justify-between gap-x-2">
+              <Text className="text-sm text-secondary-950 flex-shrink">
+                {converted.length === 1
+                  ? `Includes ${formatAmount(converted[0].amount, converted[0].currency)}`
+                  : `Includes ${converted.length} other currencies`}
+              </Text>
+              <HStack className="items-center gap-x-2">
+                <Text
+                  className="text-sm text-secondary-950"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  ≈ {formatAmount(convertedTotal, currency)}
+                </Text>
+                <CurrencyCountButton
+                  items={converted}
+                  title="Converted into your budget"
+                  subtitle={`Spent outside ${currency}, shown as entered`}
+                  secondaryLabel="pending"
+                />
+              </HStack>
+            </HStack>
+            <ApproxRateNote currencies={converted.map((c) => c.currency)} />
+          </VStack>
+        )}
+
+        {/* Currencies with no rate at all can't join the bar, so they're called
+            out separately rather than silently dropped. */}
+        {unconverted.length > 0 && (
+          <HStack className="items-center justify-between gap-x-2">
+            <Text className="text-sm text-secondary-950 flex-shrink">
+              Not counted
+            </Text>
+            <HStack className="items-center gap-x-2">
+              <Text
+                className="text-sm text-secondary-950"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {formatAmount(unconverted[0].amount, unconverted[0].currency)}
+              </Text>
+              <CurrencyCountButton
+                items={unconverted}
+                title="Not counted in budget"
+                subtitle="No conversion rate available for these"
+                secondaryLabel="pending"
+              />
+            </HStack>
+          </HStack>
+        )}
 
         {/* The pending figure itself lives in the Pending card below, so only
             the part that card can't tell you stays here: that those bills are

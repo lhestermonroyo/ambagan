@@ -189,8 +189,8 @@ export function BookFieldSkeleton() {
 }
 
 // Mirrors the whole personal expense form — amount (currency + input),
-// description, book, and the collapsed More options chip row — for edit mode,
-// where every field is hydrated from the expense being loaded.
+// description, status, book, and the collapsed More options chip row — for edit
+// mode, where every field is hydrated from the expense being loaded.
 export function PersonalExpenseFormSkeleton() {
   const scheme = useColorScheme() ?? "light";
   const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
@@ -213,6 +213,26 @@ export function PersonalExpenseFormSkeleton() {
       <View style={{ gap: 8 }}>
         <Bone w={80} h={12} color={color} />
         <Bone w="100%" h={80} radius={8} color={color} />
+      </View>
+
+      {/* Status: label + bordered select row with a leading icon */}
+      <View style={{ gap: 8 }}>
+        <Bone w={44} h={12} color={color} />
+        <View
+          style={{
+            height: 56,
+            borderWidth: 1,
+            borderColor: color,
+            borderRadius: 8,
+            paddingHorizontal: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12
+          }}
+        >
+          <Bone w={22} h={22} radius={999} color={color} />
+          <Bone w="30%" h={16} color={color} />
+        </View>
       </View>
 
       <BookFieldBones color={color} />
