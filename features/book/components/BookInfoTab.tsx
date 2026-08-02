@@ -3,15 +3,23 @@ import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
+import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { Book } from "@/types/books";
 import { categories, currencies } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
+import { getPrimaryHex } from "@/utils/getColorHex";
+import { useRouter } from "expo-router";
+import { ChevronRight } from "lucide-react-native";
 import React, { Fragment, useMemo } from "react";
+import { useColorScheme } from "react-native";
 
 export default function BookInfoTab({ book }: { book: Book }) {
+  const router = useRouter();
+  const colorScheme = useColorScheme() ?? "light";
+
   const category = useMemo(
     () => categories.find((c) => c.value === book.category) ?? null,
     [book.category]
@@ -59,6 +67,33 @@ export default function BookInfoTab({ book }: { book: Book }) {
               </Text>
             }
           />
+          {book.group_id && (
+            <>
+              <RowDivider />
+              <DetailRow
+                label="Linked group"
+                value={
+                  <Pressable
+                    onPress={() => router.push(`/groups/${book.group_id}`)}
+                  >
+                    <HStack className="items-center gap-x-2">
+                      {/* The group name comes from a join that returns null once
+                          the owner leaves the group — the link is still real, we
+                          just can't name it, so say so rather than showing
+                          nothing. */}
+                      <Text className="text-sm">
+                        {book.linked_group?.name ?? "View group"}
+                      </Text>
+                      <ChevronRight
+                        size={16}
+                        color={getPrimaryHex("text-primary-500", colorScheme)}
+                      />
+                    </HStack>
+                  </Pressable>
+                }
+              />
+            </>
+          )}
           {book.budget != null && (
             <>
               <RowDivider />

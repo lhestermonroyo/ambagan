@@ -9,6 +9,7 @@ import {
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import CombinedSpendSection from "@/features/group/components/CombinedSpendSection";
 import { ExpensePreview, MemberSplit } from "@/types/expenses";
 import { isConverted, useConverter } from "@/utils/fx";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
@@ -31,6 +32,10 @@ export default function GroupPersonalStats({
   splits,
   loading,
   userId,
+  groupId,
+  groupCategory,
+  cutoff,
+  until,
   primaryCurrency = "PHP"
 }: {
   /** Already date-range-filtered expenses from the Stats tab. */
@@ -39,6 +44,13 @@ export default function GroupPersonalStats({
   splits: MemberSplit[];
   loading: boolean;
   userId: string;
+  groupId: string;
+  /** Drives the combined total's wording ("Trip total" vs "Household total"). */
+  groupCategory?: string;
+  /** The Stats tab's active range, so the linked book's half of the roll-up is
+   *  measured over exactly the same window as the group's half. */
+  cutoff: Date | null;
+  until: Date | null;
   primaryCurrency?: string;
 }) {
   const convert = useConverter(primaryCurrency);
@@ -209,6 +221,19 @@ export default function GroupPersonalStats({
             </Text>
           </VStack>
         </HStack>
+
+        {/* Your share here + your own book's spending = what this trip/household
+            actually cost you. Renders a link CTA until a book is attached. */}
+        <CombinedSpendSection
+          groupId={groupId}
+          groupCategory={groupCategory}
+          targetCurrency={primaryCurrency}
+          yourShare={yourShare}
+          shareApprox={shareApprox}
+          shareLoading={loading}
+          cutoff={cutoff}
+          until={until}
+        />
       </VStack>
     </Card>
   );

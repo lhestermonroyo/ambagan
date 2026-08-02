@@ -9,7 +9,40 @@ import { ImagePickerSuccessResult } from "expo-image-picker";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
-const BOOK_SELECT = `id, created_at, user_id, name, category, avatar, currency, budget, budget_period, archived, group_id`;
+// The group embed is hinted with the FK constraint name so PostgREST can't pick
+// a different relationship if another books→groups link is ever added. It
+// resolves to null both when the book is unlinked AND when the owner has since
+// left the group (groups_tbl RLS hides it) — callers must treat a set `group_id`
+// with a null `linked_group` as "linked, but not readable", not as unlinked.
+const BOOK_SELECT = `id, created_at, user_id, name, category, avatar, currency, budget, budget_period, archived, group_id, linked_group:${tables.GROUPS_TBL}!personal_books_tbl_group_id_fkey(id, name, avatar, currency, category)`;
+
+export const LINKED_GROUP_CONFLICT_MESSAGE =
+  "You already have a book linked to this group. Unlink it first, or pick a different group.";
+
+export const NOT_GROUP_MEMBER_MESSAGE =
+  "You can only link a book to a group you're a member of.";
+
+/**
+ * True for the `personal_books_user_group_uniq` collision — the one-book-per-
+ * group rule. Checked by constraint name because a plain 23505 on this table
+ * could equally be a replayed offline insert on the primary key, which callers
+ * deliberately swallow as a no-op.
+ */
+const isLinkedGroupConflict = (error: unknown): boolean =>
+  isUniqueViolation(error) &&
+  typeof (error as { message?: string })?.message === "string" &&
+  (error as { message: string }).message.includes(
+    "personal_books_user_group_uniq"
+  );
+
+/** True for the `enforce_book_group_membership` trigger's check_violation. */
+const isNotGroupMember = (error: unknown): boolean =>
+  !!error &&
+  typeof error === "object" &&
+  typeof (error as { message?: string }).message === "string" &&
+  (error as { message: string }).message.includes(
+    "not a member of"
+  );
 
 export const saveBook = async ({
   name,
@@ -18,6 +51,7 @@ export const saveBook = async ({
   currency,
   budget,
   budget_period,
+  group_id,
   user_id,
   id
 }: {
@@ -28,6 +62,8 @@ export const saveBook = async ({
   /** Null = no budget on this book. */
   budget?: number | null;
   budget_period?: BookBudgetPeriod;
+  /** Group to roll this book up with. Null/omitted = standalone. */
+  group_id?: string | null;
   user_id: string;
   /** Optional pre-generated id — used so offline-queued books keep a stable id on sync. */
   id?: string;
@@ -62,13 +98,26 @@ export const saveBook = async ({
       avatar: avatarUrl,
       currency: currency || "PHP",
       budget: budget ?? null,
-      budget_period: budget_period ?? "monthly"
+      budget_period: budget_period ?? "monthly",
+      group_id: group_id ?? null
     }
   ]);
 
   // A book has no child rows, so an offline sync retry that already committed
   // the row hits a unique violation on the pinned id — treat that as an
   // idempotent no-op (the book already exists) rather than a failure.
+  //
+  // A unique violation can ALSO mean the group link collided (one book per user
+  // per group), which is a genuine conflict rather than a replayed write — tell
+  // those apart by the constraint name before swallowing it.
+  if (error && isLinkedGroupConflict(error)) {
+    throw new Error(LINKED_GROUP_CONFLICT_MESSAGE);
+  }
+
+  if (error && isNotGroupMember(error)) {
+    throw new Error(NOT_GROUP_MEMBER_MESSAGE);
+  }
+
   if (error && !isUniqueViolation(error)) {
     throw error;
   }
@@ -88,6 +137,8 @@ export const updateBook = async (
     /** Null clears the budget; undefined leaves it untouched. */
     budget?: number | null;
     budget_period?: BookBudgetPeriod;
+    /** Null unlinks the book from its group; undefined leaves it untouched. */
+    group_id?: string | null;
     avatar: ImagePickerSuccessResult | null;
   }
 ) => {
@@ -102,6 +153,7 @@ export const updateBook = async (
         currency: payload.currency,
         budget: payload.budget ?? null,
         budget_period: payload.budget_period ?? "monthly",
+        group_id: payload.group_id ?? null,
         avatar: null
       });
     }
@@ -114,7 +166,8 @@ export const updateBook = async (
     throw new Error("User not authenticated");
   }
 
-  const { name, category, currency, budget, budget_period, avatar } = payload;
+  const { name, category, currency, budget, budget_period, group_id, avatar } =
+    payload;
 
   let avatarUrl: string | null = null;
 
@@ -137,6 +190,11 @@ export const updateBook = async (
   if (budget_period !== undefined) {
     updateData.budget_period = budget_period;
   }
+  // Same convention as budget: `undefined` means "not edited here", an explicit
+  // null unlinks the book from its group.
+  if (group_id !== undefined) {
+    updateData.group_id = group_id;
+  }
 
   // Owner-only RLS keeps this scoped to the current user's own book.
   const { error } = await supabase
@@ -145,9 +203,85 @@ export const updateBook = async (
     .eq("id", bookId)
     .eq("user_id", user.data.user.id);
 
+  if (isLinkedGroupConflict(error)) throw new Error(LINKED_GROUP_CONFLICT_MESSAGE);
+  if (isNotGroupMember(error)) throw new Error(NOT_GROUP_MEMBER_MESSAGE);
   if (error) throw error;
 
   return { message: "Book updated successfully" };
+};
+
+/**
+ * Point a book at a group, or unlink it with `null`. The focused mutation behind
+ * the group Stats "Link a book" CTA — `updateBook` would need the book's whole
+ * name/category/currency payload just to change this one column.
+ *
+ * ONLINE ONLY: the roll-up it enables can't be computed offline anyway (the
+ * group half needs the member splits), so queueing the link would leave the user
+ * staring at an unchanged card with no explanation.
+ */
+export const linkBookToGroup = async (
+  bookId: string,
+  groupId: string | null
+) => {
+  if (!(await offlineQueue.isOnline())) {
+    throw new Error(
+      "Linking a book to a group needs an internet connection. Please try again when you're back online."
+    );
+  }
+
+  const user = await supabase.auth.getUser();
+  if (!user.data.user) throw new Error("User not authenticated");
+
+  const { error } = await supabase
+    .from(tables.PERSONAL_BOOKS_TBL)
+    .update({ group_id: groupId })
+    .eq("id", bookId)
+    .eq("user_id", user.data.user.id);
+
+  if (isLinkedGroupConflict(error)) throw new Error(LINKED_GROUP_CONFLICT_MESSAGE);
+  if (isNotGroupMember(error)) throw new Error(NOT_GROUP_MEMBER_MESSAGE);
+  if (error) throw error;
+
+  return {
+    message: groupId ? "Book linked to group" : "Book unlinked from group"
+  };
+};
+
+/**
+ * The current user's book for a group, or null when they haven't linked one.
+ * At most one row can match — `personal_books_user_group_uniq` guarantees it —
+ * so this is the group Stats card's find step before it offers to link.
+ *
+ * Archived books still count: archiving hides a book from the list, it doesn't
+ * erase the spending that already happened on the trip.
+ */
+export const getBookByGroupId = async (
+  groupId: string
+): Promise<Book | null> => {
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error("User not authenticated");
+
+    const { data, error } = await supabase
+      .from(tables.PERSONAL_BOOKS_TBL)
+      .select(BOOK_SELECT)
+      .eq("group_id", groupId)
+      .eq("user_id", user.data.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return data ? ({ ...(data as any), expense_count: 0 } as Book) : null;
+  } catch {
+    // Offline — the cached active list carries group_id, so the link itself
+    // still resolves even though the roll-up's group half won't.
+    const uid = states.user.getState().details?.id;
+    if (!uid) return null;
+    const list = (await cacheService
+      .getBooksList(uid)
+      .catch(() => null)) as Book[] | null;
+    return list?.find((b) => b.group_id === groupId) ?? null;
+  }
 };
 
 export const deleteBook = async (bookId: string) => {
@@ -268,15 +402,24 @@ export const getBookById = async (bookId: string): Promise<Book> => {
     const user = await supabase.auth.getUser();
     if (!user.data.user) throw new Error("User not authenticated");
 
+    // The count is embedded the same way the list queries do it. It used to be
+    // hardcoded to 0 here, which meant Book Info's "Expenses" row reset to zero
+    // the moment the detail fetch resolved over the value carried in from the
+    // books list — and never moved again as expenses were added.
     const { data, error } = await supabase
       .from(tables.PERSONAL_BOOKS_TBL)
-      .select(BOOK_SELECT)
+      .select(`${BOOK_SELECT}, expenses:${tables.PERSONAL_EXPENSES_TBL}(count)`)
       .eq("id", bookId)
       .single();
 
     if (error) throw error;
 
-    return { ...(data as any), expense_count: 0 } as Book;
+    const { expenses, ...book } = data as any;
+
+    return {
+      ...book,
+      expense_count: (expenses as any[])?.[0]?.count ?? 0
+    } as Book;
   } catch (error) {
     // Offline — the cached book detail (or active list) carries the meta.
     const detail = await cacheService.getBookDetail(bookId);

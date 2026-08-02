@@ -1,4 +1,5 @@
 import AmountInput from "@/components/AmountInput";
+import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
 import { CurrencySelectionSheet } from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
@@ -20,6 +21,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import UploadAvatar from "@/components/UploadAvatar";
+import LinkedGroupSheet from "@/features/book/components/LinkedGroupSheet";
 import CategorySheet, {
   groupCategoryMeta
 } from "@/features/expense/components/CategorySheet";
@@ -28,7 +30,7 @@ import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
 import { BookBudgetPeriod } from "@/types/books";
-import { GroupCategory } from "@/types/groups";
+import { Group, GroupCategory } from "@/types/groups";
 import { categories, currencies } from "@/utils/constants";
 import { BASE_CURRENCY } from "@/utils/fx";
 import * as offlineQueue from "@/utils/offlineQueue";
@@ -64,11 +66,15 @@ export default function CreateBookScreen() {
     currency: BASE_CURRENCY,
     // Budget is optional and free for everyone. Empty string = no budget set.
     budget: "",
-    budgetPeriod: "monthly" as BookBudgetPeriod
+    budgetPeriod: "monthly" as BookBudgetPeriod,
+    // Optional roll-up link to a group. Free for everyone — no Pro gate.
+    groupId: null as string | null
   });
   const [formErrors, setFormErrors] = useState({ name: "", budget: "" });
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [groupSheetOpen, setGroupSheetOpen] = useState(false);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const router = useRouter();
@@ -89,7 +95,8 @@ export default function CreateBookScreen() {
           category: book.category,
           currency: book.currency,
           budget: book.budget != null ? String(book.budget) : "",
-          budgetPeriod: book.budget_period ?? "monthly"
+          budgetPeriod: book.budget_period ?? "monthly",
+          groupId: book.group_id
         }));
       })
       .catch(() => {
@@ -105,6 +112,26 @@ export default function CreateBookScreen() {
       active = false;
     };
   }, [bookId]);
+
+  // The user's groups, for the linked-group picker. Fetched here rather than read
+  // from the groups state so the field works on a cold start straight into the
+  // book form (deep link, or a user who never opened the Groups tab).
+  useEffect(() => {
+    if (!userDetails?.id) return;
+    let active = true;
+    services.group
+      .getGroupsByUserId(userDetails.id)
+      .then((data: Group[]) => active && setGroups(data))
+      .catch(() => active && setGroups([]));
+    return () => {
+      active = false;
+    };
+  }, [userDetails?.id]);
+
+  const linkedGroup = useMemo(
+    () => groups.find((g) => g.id === values.groupId) ?? null,
+    [groups, values.groupId]
+  );
 
   const currencyMeta = useMemo(
     () => currencies.find((c) => c.value === values.currency),
@@ -140,6 +167,7 @@ export default function CreateBookScreen() {
         currency: values.currency,
         budget: parsedBudget,
         budgetPeriod: values.budgetPeriod,
+        groupId: values.groupId,
         userId: userDetails.id
       });
       await offlineQueue.queueCreateBook(
@@ -150,6 +178,7 @@ export default function CreateBookScreen() {
           currency: values.currency,
           budget: parsedBudget,
           budget_period: values.budgetPeriod,
+          group_id: values.groupId,
           avatar: null,
           user_id: userDetails.id
         },
@@ -174,6 +203,7 @@ export default function CreateBookScreen() {
           currency: values.currency,
           budget: parsedBudget,
           budget_period: values.budgetPeriod,
+          group_id: values.groupId,
           avatar: values.avatar
         });
         toast({
@@ -189,6 +219,7 @@ export default function CreateBookScreen() {
           currency: values.currency,
           budget: parsedBudget,
           budget_period: values.budgetPeriod,
+          group_id: values.groupId,
           avatar: values.avatar,
           user_id: userDetails.id
         });
@@ -201,9 +232,17 @@ export default function CreateBookScreen() {
       }
     } catch (error) {
       console.error("Error saving book:", error);
+      // The group-link failures (already linked / not a member) carry a message
+      // the user can actually act on, so don't bury them under the generic copy.
+      const message =
+        error instanceof Error &&
+        (error.message === services.book.LINKED_GROUP_CONFLICT_MESSAGE ||
+          error.message === services.book.NOT_GROUP_MEMBER_MESSAGE)
+          ? error.message
+          : "An error occurred. Please try again.";
       toast({
         title: isEdit ? "Update Failed" : "Book Creation Failed",
-        description: "An error occurred. Please try again.",
+        description: message,
         type: "error"
       });
     } finally {
@@ -282,6 +321,39 @@ export default function CreateBookScreen() {
                 <FormControlHelperText>
                   New expenses in this book default to this currency. You can
                   still change it per expense.
+                </FormControlHelperText>
+              </FormControlHelper>
+            </FormControl>
+
+            {/* Optional roll-up link to a group. Free for everyone — no Pro
+                gate: it's the main reason a group-only user ever starts a book. */}
+            <FormControl size="md">
+              <FormControlLabel>
+                <FormControlLabelText>
+                  Linked group (optional)
+                </FormControlLabelText>
+              </FormControlLabel>
+              <SelectField
+                onPress={() => setGroupSheetOpen(true)}
+                leading={
+                  linkedGroup ? (
+                    <AppAvatar
+                      size="xs"
+                      name={linkedGroup.name}
+                      uri={linkedGroup.avatar || ""}
+                    />
+                  ) : undefined
+                }
+              >
+                <Text className="text-lg" numberOfLines={1}>
+                  {linkedGroup?.name ?? "Not linked"}
+                </Text>
+              </SelectField>
+              <FormControlHelper>
+                <FormControlHelperText>
+                  Adds your share of that group&apos;s expenses to this
+                  book&apos;s total, so you can see what a trip or a month really
+                  cost you. Your personal expenses stay private.
                 </FormControlHelperText>
               </FormControlHelper>
             </FormControl>
@@ -390,6 +462,14 @@ export default function CreateBookScreen() {
         currency={values.currency}
         onClose={() => setCurrencySheetOpen(false)}
         onCurrencyChange={(value) => setValues({ ...values, currency: value })}
+      />
+
+      <LinkedGroupSheet
+        isOpen={groupSheetOpen}
+        onClose={() => setGroupSheetOpen(false)}
+        groups={groups}
+        selectedGroupId={values.groupId}
+        onSelect={(groupId) => setValues({ ...values, groupId })}
       />
 
       <UpgradeSheet

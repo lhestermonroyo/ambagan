@@ -21,6 +21,10 @@ import DateRangeSheet, {
   getDateRangeBounds,
   isWithinRange
 } from "@/features/group/components/DateRangeSheet";
+import {
+  combinedTotalLabel,
+  useLinkedGroupShare
+} from "@/features/group/hooks/useCombinedSpend";
 import services from "@/services";
 import { PersonalExpense } from "@/types/books";
 import { EmptyType } from "@/types/general";
@@ -32,10 +36,17 @@ import { useColorScheme } from "react-native";
 
 export default function BookStatsTab({
   bookId,
-  primaryCurrency = "PHP"
+  primaryCurrency = "PHP",
+  linkedGroupId,
+  linkedGroupName,
+  linkedGroupCategory
 }: {
   bookId: string;
   primaryCurrency?: string;
+  /** Set when this book is linked to a group — turns on the combined card. */
+  linkedGroupId?: string | null;
+  linkedGroupName?: string | null;
+  linkedGroupCategory?: string;
 }) {
   const colorScheme = useColorScheme() ?? "light";
   // Re-renders when a rate refresh lands, keeping the converted figures and the
@@ -211,6 +222,16 @@ export default function BookStatsTab({
     return { slices, paidTotal, pendingTotal, paidApprox, pendingApprox };
   }, [filtered, inBookCurrency, primaryCurrency]);
 
+  // The group half of the roll-up, when this book is linked. Expressed in the
+  // BOOK's currency here — the mirror of the group Stats tab, which does the
+  // same sum in the group's currency.
+  const { share, loading: shareLoading } = useLinkedGroupShare(
+    linkedGroupId,
+    cutoff,
+    until,
+    primaryCurrency
+  );
+
   if (loading) {
     return (
       <VStack className="pt-2">
@@ -350,6 +371,76 @@ export default function BookStatsTab({
                 </HStack>
               </VStack>
             </Card>
+
+            {/* Combined with the linked group — the mirror of the card on that
+                group's Stats tab, in the BOOK's currency instead of the group's.
+                Same rule as there: two lines that visibly sum, never one blended
+                figure, so a double-logged expense stays findable. */}
+            {linkedGroupId && (
+              <Card className="rounded-xl bg-secondary-100">
+                <VStack className="gap-y-4">
+                  <VStack>
+                    <Text bold className="text-secondary-950 uppercase text-sm">
+                      {combinedTotalLabel(linkedGroupCategory)}
+                    </Text>
+                    <Text className="text-sm text-secondary-950">
+                      This book plus your share of{" "}
+                      {linkedGroupName ?? "the linked group"}.
+                    </Text>
+                  </VStack>
+
+                  <VStack className="gap-y-2">
+                    <HStack className="items-center justify-between gap-x-3">
+                      <Text
+                        className="text-sm text-secondary-950 flex-1"
+                        numberOfLines={1}
+                      >
+                        This book (paid)
+                      </Text>
+                      <Text numberOfLines={1} adjustsFontSizeToFit>
+                        {spending.paidApprox ? "≈ " : ""}
+                        {formatAmount(spending.paidTotal, primaryCurrency)}
+                      </Text>
+                    </HStack>
+                    <HStack className="items-center justify-between gap-x-3">
+                      <Text
+                        className="text-sm text-secondary-950 flex-1"
+                        numberOfLines={1}
+                      >
+                        Your share (group)
+                      </Text>
+                      <Text numberOfLines={1} adjustsFontSizeToFit>
+                        {shareLoading
+                          ? "—"
+                          : `${share.approx ? "≈ " : ""}${formatAmount(share.amount, primaryCurrency)}`}
+                      </Text>
+                    </HStack>
+                    <Divider />
+                    <HStack className="items-center justify-between">
+                      <Text bold>{combinedTotalLabel(linkedGroupCategory)}</Text>
+                      <Text
+                        bold
+                        className="text-lg"
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        {shareLoading
+                          ? "—"
+                          : `${spending.paidApprox || share.approx ? "≈ " : ""}${formatAmount(
+                              spending.paidTotal + share.amount,
+                              primaryCurrency
+                            )}`}
+                      </Text>
+                    </HStack>
+                  </VStack>
+
+                  <Text className="text-sm text-secondary-950">
+                    Your share is what you consumed, not what you fronted — money
+                    you paid for others nets out when the group settles.
+                  </Text>
+                </VStack>
+              </Card>
+            )}
 
             {/* Top Expenses */}
             {topExpenses.length > 0 && (

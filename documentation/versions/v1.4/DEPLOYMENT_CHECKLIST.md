@@ -79,7 +79,14 @@ All of them are idempotent (`IF [NOT] EXISTS` / `CREATE OR REPLACE` /
   - Ends with `NOTIFY pgrst, 'reload schema';` — without it the first preference write hits **PGRST204 "Could not find the 'hero_view' column … in the schema cache"**.
   - The app normalizes any unrecognised value back to `'balance'` (`user.state.ts`), so the CHECK is a backstop rather than the only guard.
 
-- [ ] **9. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
+- [ ] **9. [`2026-08-02_book_group_link.sql`](../../../migrations/2026-08-02_book_group_link.sql)** — activates the book↔group roll-up ("what did this trip cost me"). Depends on step 1, which created `personal_books_tbl.group_id` but left it unused.
+  - Adds the partial unique index `personal_books_user_group_uniq (user_id, group_id) WHERE group_id IS NOT NULL` — one linked book per user per group — and the `enforce_book_group_membership` BEFORE INSERT/UPDATE trigger.
+  - The trigger resolves `group_members_tbl` from **`TG_TABLE_SCHEMA`**, *not* via `public.is_group_member()`. That helper is `SET search_path = public`, so in the `dev` schema it would check prod membership; the same reasoning as `log_personal_expense_creation()` in step 1. Nothing to change when targeting prod — it resolves to `public` there on its own.
+  - No RLS changes. `personal_books_owner` staying owner-only is what keeps the personal half of the roll-up private from other group members; do not relax it.
+  - No backfill: every existing book has `group_id IS NULL` and is unaffected. An app rollback is inert — the column simply goes unread again.
+  - **(verify)** after applying, run `NOTIFY pgrst, 'reload schema';` — the book queries now embed `groups_tbl` via the `personal_books_tbl_group_id_fkey` hint, and a stale schema cache surfaces as **PGRST200** on every book fetch.
+
+- [ ] **10. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
 
 > [`db.dev.sql`](../../../db.dev.sql) at the repo root is a **reference dump of the
 > `dev` schema, not runnable** (its own header says so). Use it to diff the

@@ -279,6 +279,10 @@ export default function GroupStatsTab({
               splits={splits}
               loading={splitsLoading}
               userId={userId}
+              groupId={groupId}
+              groupCategory={groupDetails?.category}
+              cutoff={cutoff}
+              until={until}
               primaryCurrency={primaryCurrency}
             />
           )}

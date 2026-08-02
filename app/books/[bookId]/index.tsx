@@ -1208,7 +1208,13 @@ export default function BookDetailScreen() {
             )}
 
             {tab === "Stats" && bookId && (
-              <BookStatsTab bookId={bookId} primaryCurrency={primaryCurrency} />
+              <BookStatsTab
+                bookId={bookId}
+                primaryCurrency={primaryCurrency}
+                linkedGroupId={book?.group_id}
+                linkedGroupName={book?.linked_group?.name}
+                linkedGroupCategory={book?.linked_group?.category}
+              />
             )}
 
             {tab === "Book Info" && book && <BookInfoTab book={book} />}

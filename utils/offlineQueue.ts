@@ -205,6 +205,8 @@ export type CreateBookArgs = {
   currency: string;
   budget: number | null;
   budget_period: BookBudgetPeriod;
+  /** Group to roll the book up with. Null = standalone. */
+  group_id: string | null;
   avatar: null;
   user_id: string;
   id?: string;
@@ -222,6 +224,8 @@ export type UpdateBookArgs = {
   currency: string;
   budget: number | null;
   budget_period: BookBudgetPeriod;
+  /** Group to roll the book up with. Null = standalone. */
+  group_id: string | null;
   avatar: null;
 };
 
@@ -1887,10 +1891,17 @@ async function updateBookOptimistic(
     currency: string;
     budget: number | null;
     budget_period: BookBudgetPeriod;
+    group_id: string | null;
   }
 ) {
+  // `linked_group` is cleared alongside `group_id`: the cached copy names the
+  // OLD group, and showing that name against a new (or absent) link until the
+  // next fetch would read as the edit having silently failed. The surfaces all
+  // fall back to a generic label when the id is set but the preview isn't.
   const apply = (b: Book) =>
-    b.id === bookId ? { ...b, ...patch, pending: true } : b;
+    b.id === bookId
+      ? { ...b, ...patch, linked_group: null, pending: true }
+      : b;
 
   states.book.setState((prev) => ({
     ...prev,
@@ -2127,6 +2138,7 @@ export function buildOptimisticBook(params: {
   currency: string;
   budget?: number | null;
   budgetPeriod?: BookBudgetPeriod;
+  groupId?: string | null;
   userId: string;
 }): Book {
   return {
@@ -2140,7 +2152,7 @@ export function buildOptimisticBook(params: {
     budget: params.budget ?? null,
     budget_period: params.budgetPeriod ?? "monthly",
     archived: false,
-    group_id: null,
+    group_id: params.groupId ?? null,
     expense_count: 0,
     pending: true
   };
@@ -2202,7 +2214,8 @@ export async function queueUpdateBook(
     category: args.category,
     currency: args.currency,
     budget: args.budget,
-    budget_period: args.budget_period
+    budget_period: args.budget_period,
+    group_id: args.group_id
   });
 }
 

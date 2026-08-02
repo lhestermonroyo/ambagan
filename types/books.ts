@@ -8,6 +8,20 @@
 export type BookBudgetPeriod = "monthly" | "total";
 
 /**
+ * Just enough of the linked group to render it on a book surface — name it, show
+ * its avatar, and know which currency its side of the roll-up is expressed in.
+ */
+export type LinkedGroupPreview = {
+  id: string;
+  name: string;
+  avatar: string | null;
+  currency: string;
+  /** Group category — drives the combined total's wording ("Trip total" vs
+   *  "Household total"). See combinedTotalLabel in useCombinedSpend. */
+  category: string;
+};
+
+/**
  * A "book" is a standalone personal-expense ledger owned by a single user
  * (e.g. "Daily", "Japan Trip", "Groceries"). Unlike a group it has no members,
  * splits, or settlements — it just holds the owner's personal expenses.
@@ -28,8 +42,14 @@ export type Book = {
   /** How {@link Book.budget} is measured. Meaningless when `budget` is null. */
   budget_period: BookBudgetPeriod;
   archived: boolean;
-  /** Forward-compat (v1: unused) — future group→book roll-up link. */
+  /** The group this book rolls up with, or null for a standalone book. A user
+   *  has at most ONE book per group (partial unique index). Purely a DISPLAY
+   *  link: it lets the app add "my share of the group" and "my personal spend"
+   *  into one trip/household total, and never touches splits or settlements. */
   group_id: string | null;
+  /** The linked group's meta, joined in by the book queries so the book surfaces
+   *  can name it without a second fetch. Null/absent when unlinked. */
+  linked_group?: LinkedGroupPreview | null;
   /** Count of personal expenses in this book (computed on list queries). */
   expense_count: number;
   /** True for a book created offline and not yet synced to the server. */
