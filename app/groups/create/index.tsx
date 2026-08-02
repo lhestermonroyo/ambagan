@@ -279,8 +279,7 @@ export default function CreateGroupScreen() {
               </SelectField>
               <FormControlHelper>
                 <FormControlHelperText>
-                  New expenses in this group default to this currency. You can
-                  still change it per expense.
+                  Default for new expenses. Changeable per expense.
                 </FormControlHelperText>
               </FormControlHelper>
             </FormControl>
@@ -333,8 +332,8 @@ export default function CreateGroupScreen() {
                     tab === "members" ? (
                       <VStack className="p-4 justify-center items-center">
                         <Text className="text-sm text-secondary-950 text-center">
-                          No members added yet. Click "Add Member" to include
-                          members in your group.
+                          No members yet. Tap &quot;Add Member&quot; to include
+                          them.
                         </Text>
                       </VStack>
                     ) : (

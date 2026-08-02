@@ -386,13 +386,12 @@ export default function SplitSelection({
         {includedCount === 1 &&
           (payerOnly ? (
             <Text className="text-error-500 text-sm mt-2">
-              This person also paid for the expense, so there&apos;s nothing to
-              settle. Include someone else to split with.
+              They also paid, so there&apos;s nothing to settle. Include someone
+              else.
             </Text>
           ) : (
             <Text className="text-secondary-950 text-sm mt-2">
-              Only 1 member is included in this split — they&apos;ll cover the
-              full amount.
+              Only 1 member included — they cover the full amount.
             </Text>
           ))}
       </Box>

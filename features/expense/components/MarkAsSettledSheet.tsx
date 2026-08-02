@@ -193,8 +193,7 @@ export default function MarkAsSettledSheet({
               onSelect={(result) => setValues({ ...values, receipt: result })}
             />
             <Text className="text-secondary-950 text-sm">
-              Proof could be a photo of receipt, screenshot of online payment,
-              or any document that shows the expense details.
+              A receipt photo, payment screenshot, or any proof of the payment.
             </Text>
           </VStack>
         </VStack>

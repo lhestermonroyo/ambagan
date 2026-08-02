@@ -53,8 +53,7 @@ export default function GroupSelection({
             <VStack>
               <Text className="text-lg">No group created yet.</Text>
               <Text className="text-secondary-950 text-sm">
-                Group is required to add expenses. Create a group to start
-                adding expenses and sharing with friends.
+                Expenses need a group. Create one to get started.
               </Text>
             </VStack>
           </VStack>

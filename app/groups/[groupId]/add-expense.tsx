@@ -975,8 +975,8 @@ export default function AddExpenseScreen() {
                 className="text-primary-400"
               />
               <Text className="text-center">
-                You are not part of any group yet. Please join or create a group
-                to be able to add an expense.
+                You&apos;re not in a group yet. Join or create one to add an
+                expense.
               </Text>
               <FormButton
                 text="Create Group"
@@ -1380,8 +1380,7 @@ export default function AddExpenseScreen() {
                 </SelectField>
                 {recurrence && (
                   <Text className="text-sm text-secondary-950 mt-1">
-                    This creates a recurring series — the first expense posts
-                    now, the rest post automatically.
+                    First expense posts now, the rest automatically.
                   </Text>
                 )}
               </FormControl>
@@ -1394,8 +1393,8 @@ export default function AddExpenseScreen() {
                   onSelect={setProofOfPayment}
                 />
                 <Text className="text-secondary-950 text-sm">
-                  Proof could be a photo of receipt, screenshot of online
-                  payment, or any document that shows the expense details.
+                  A receipt photo, payment screenshot, or any proof of the
+                  expense.
                 </Text>
               </VStack>
             </ExpenseOptions>

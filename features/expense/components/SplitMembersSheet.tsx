@@ -95,8 +95,7 @@ export default function SplitMembersSheet({
         </HStack>
       </Pressable>
       <Text className="text-sm text-secondary-950 px-4 pb-4">
-        Pick who shares this expense. Unchecked members are excluded from the
-        split.
+        Pick who shares this expense. Unchecked members are left out.
       </Text>
 
       <HStack className="items-center px-4 pb-4">

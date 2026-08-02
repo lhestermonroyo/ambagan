@@ -251,8 +251,7 @@ export default function EditGroupScreen() {
                 </SelectField>
                 <FormControlHelper>
                   <FormControlHelperText>
-                    New expenses in this group default to this currency. Existing
-                    expenses keep the currency they were logged in.
+                    Default for new expenses. Existing ones keep theirs.
                   </FormControlHelperText>
                 </FormControlHelper>
               </FormControl>

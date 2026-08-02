@@ -47,8 +47,7 @@ export const CurrencySelectionSheet = ({
       {disabled && (
         <VStack className="px-4">
           <Text className="text-sm text-secondary-950">
-            You're offline — changing your default currency needs an internet
-            connection.
+            You're offline — changing this needs a connection.
           </Text>
         </VStack>
       )}

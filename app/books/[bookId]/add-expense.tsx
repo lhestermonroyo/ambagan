@@ -694,8 +694,7 @@ export default function AddPersonalExpenseScreen() {
               className="text-primary-400"
             />
             <Text className="text-center">
-              You don&apos;t have a book yet. Create one to start tracking your
-              personal expenses.
+              No book yet. Create one to start tracking your spending.
             </Text>
             <FormButton
               text="Create Book"
@@ -964,8 +963,7 @@ export default function AddPersonalExpenseScreen() {
                   </SelectField>
                   {recurrence && (
                     <Text className="text-sm text-secondary-950 mt-1">
-                      This creates a recurring series — the first expense posts
-                      now, the rest post automatically.
+                      First expense posts now, the rest automatically.
                     </Text>
                   )}
                 </FormControl>
@@ -985,8 +983,8 @@ export default function AddPersonalExpenseScreen() {
                   onSelect={setProofOfPayment}
                 />
                 <Text className="text-secondary-950 text-sm">
-                  Proof could be a photo of a receipt, a payment screenshot, or
-                  any document that shows the expense details.
+                  A receipt photo, payment screenshot, or any proof of the
+                  expense.
                 </Text>
               </VStack>
             </ExpenseOptions>

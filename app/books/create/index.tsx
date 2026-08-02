@@ -319,8 +319,7 @@ export default function CreateBookScreen() {
               </SelectField>
               <FormControlHelper>
                 <FormControlHelperText>
-                  New expenses in this book default to this currency. You can
-                  still change it per expense.
+                  Default for new expenses. Changeable per expense.
                 </FormControlHelperText>
               </FormControlHelper>
             </FormControl>
@@ -351,9 +350,8 @@ export default function CreateBookScreen() {
               </SelectField>
               <FormControlHelper>
                 <FormControlHelperText>
-                  Adds your share of that group&apos;s expenses to this
-                  book&apos;s total, so you can see what a trip or a month really
-                  cost you. Your personal expenses stay private.
+                  Adds your share of the group&apos;s expenses to this
+                  book&apos;s total. Your personal expenses stay private.
                 </FormControlHelperText>
               </FormControlHelper>
             </FormControl>
@@ -382,9 +380,8 @@ export default function CreateBookScreen() {
               ) : (
                 <FormControlHelper>
                   <FormControlHelperText>
-                    Expenses in other currencies count too, converted to{" "}
-                    {values.currency} at an approximate rate. Leave blank for no
-                    budget.
+                    Other currencies convert to {values.currency} at an
+                    approximate rate. Leave blank for no budget.
                   </FormControlHelperText>
                 </FormControlHelper>
               )}
@@ -439,8 +436,8 @@ export default function CreateBookScreen() {
                 <FormControlHelper>
                   <FormControlHelperText>
                     {values.budgetPeriod === "monthly"
-                      ? "Starts over on the 1st of each month — best for ongoing books like Daily or Groceries."
-                      : "One cap for the whole book, never reset — best for a finite book like a trip."}
+                      ? "Resets on the 1st — best for ongoing books."
+                      : "One cap for the whole book — best for trips."}
                   </FormControlHelperText>
                 </FormControlHelper>
               </FormControl>

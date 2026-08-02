@@ -81,9 +81,8 @@ export default function LinkedGroupSheet({
         </HStack>
       </Pressable>
       <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
-        Adds your share of that group&apos;s expenses to this book&apos;s total,
-        so you can see what a trip or a month really cost you. Your personal
-        expenses stay private — no one else in the group can see them.
+        Adds your share of the group&apos;s expenses to this book&apos;s total.
+        Your personal expenses stay private.
       </Text>
 
       <RadioGroup

@@ -149,7 +149,7 @@ export default function RecurrenceSheet({
         </HStack>
       </Pressable>
       <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
-        Set up a recurring expense that automatically posts on a schedule.
+        Post this expense automatically on a schedule.
       </Text>
 
       <ScrollView className="flex-1 px-4">
@@ -226,7 +226,7 @@ export default function RecurrenceSheet({
               </Text>
             </SelectField>
             <Text className="text-sm text-secondary-950 mt-1">
-              If today or earlier, the first expense posts immediately.
+              Today or earlier posts the first one now.
             </Text>
           </FormControl>
 
@@ -287,7 +287,7 @@ export default function RecurrenceSheet({
               keyboardType="number-pad"
               value={countText}
               onChangeText={setCountText}
-              helperText="The series stops after this many occurrences."
+              helperText="Stops after this many occurrences."
             />
           )}
         </VStack>
