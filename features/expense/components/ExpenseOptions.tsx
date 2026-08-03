@@ -1,5 +1,6 @@
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
+import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
@@ -10,6 +11,10 @@ import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { ReactNode } from "react";
 import { ScrollView, useColorScheme } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+
+// The lane the pinned toggle occupies over the trailing edge of the collapsed
+// chip row: the 16px screen gutter + the 36px button + a little breathing room.
+const TOGGLE_LANE_WIDTH = 64;
 
 export type ExpenseOptionChip = {
   key: string;
@@ -94,51 +99,73 @@ export default function ExpenseOptions({
   onToggle: () => void;
   children: ReactNode;
 }) {
+  const toggle = (
+    <Pressable
+      onPress={onToggle}
+      accessibilityRole="button"
+      aria-label={expanded ? "Hide more options" : "Show more options"}
+    >
+      {({ pressed }) => (
+        <HStack
+          className={cn(
+            "h-9 w-9 items-center justify-center rounded-full border border-background-200",
+            pressed && "opacity-50"
+          )}
+        >
+          <Icon
+            as={expanded ? "expand-less" : "expand-more"}
+            size={22}
+            className="text-secondary-950"
+          />
+        </HStack>
+      )}
+    </Pressable>
+  );
+
   return (
     <VStack className="gap-y-4">
-      <HStack className="items-center gap-x-4">
-        {expanded ? (
+      {expanded ? (
+        <HStack className="items-center gap-x-4">
           <HStack className="flex-1 items-center gap-x-4">
             <Text bold className="text-sm uppercase text-secondary-950">
               More options
             </Text>
             <Divider className="border-secondary-100 flex-1" />
           </HStack>
-        ) : (
+          {toggle}
+        </HStack>
+      ) : (
+        // The chip row breaks out of the form's 16px gutter (every screen using
+        // this wraps it in `px-4`) so a long row runs off the screen edge
+        // instead of being cut short inside it — the usual signal that there is
+        // more to scroll to. The leading inset is re-applied on the content so
+        // the first chip still lines up with the fields above, and the toggle is
+        // pinned over the trailing edge on the screen background, with the
+        // content padded so the last chip clears it at rest.
+        <Box className="-mx-4 min-h-9">
           <ScrollView
             horizontal
-            className="flex-1"
             showsHorizontalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+            contentContainerStyle={{
+              gap: 8,
+              paddingLeft: 16,
+              paddingRight: TOGGLE_LANE_WIDTH
+            }}
           >
             {chips.map((chip) => (
               <OptionChip key={chip.key} chip={chip} />
             ))}
           </ScrollView>
-        )}
 
-        <Pressable
-          onPress={onToggle}
-          accessibilityRole="button"
-          aria-label={expanded ? "Hide more options" : "Show more options"}
-        >
-          {({ pressed }) => (
-            <HStack
-              className={cn(
-                "h-9 w-9 items-center justify-center rounded-full border border-background-200",
-                pressed && "opacity-50"
-              )}
-            >
-              <Icon
-                as={expanded ? "expand-less" : "expand-more"}
-                size={22}
-                className="text-secondary-950"
-              />
-            </HStack>
-          )}
-        </Pressable>
-      </HStack>
+          <HStack
+            className="absolute right-0 top-0 bottom-0 items-center justify-end pr-4 bg-background-0"
+            style={{ width: TOGGLE_LANE_WIDTH }}
+          >
+            {toggle}
+          </HStack>
+        </Box>
+      )}
 
       {expanded && (
         <Animated.View
