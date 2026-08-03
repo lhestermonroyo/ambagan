@@ -400,7 +400,7 @@ export default function CreateBookScreen() {
                       className={cn(
                         "flex-1 py-3 rounded-lg border items-center",
                         values.budgetPeriod === period.value
-                          ? "border-primary-200 bg-primary-50"
+                          ? "border-primary-200 bg-primary-0"
                           : "border-background-200"
                       )}
                       onPress={() =>
@@ -411,7 +411,7 @@ export default function CreateBookScreen() {
                         bold={values.budgetPeriod === period.value}
                         className={cn(
                           values.budgetPeriod === period.value
-                            ? "text-primary-400"
+                            ? "text-primary-500"
                             : ""
                         )}
                       >

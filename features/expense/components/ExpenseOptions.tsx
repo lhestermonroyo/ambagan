@@ -31,10 +31,7 @@ export type ExpenseOptionChip = {
 function OptionChip({ chip }: { chip: ExpenseOptionChip }) {
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
   const changed = !chip.isDefault;
-  const color = getPrimaryHex(
-    changed ? "text-primary-600" : "text-primary-500",
-    colorScheme
-  );
+  const color = getPrimaryHex("text-primary-500", colorScheme);
 
   if (!changed) {
     return (
@@ -55,7 +52,7 @@ function OptionChip({ chip }: { chip: ExpenseOptionChip }) {
           className={cn(
             "h-9 px-3 items-center gap-x-1.5 rounded-full border",
             changed
-              ? "border-primary-200 bg-primary-50"
+              ? "border-primary-200 bg-primary-0"
               : "border-background-200 bg-background-0",
             pressed && "opacity-50"
           )}
@@ -66,7 +63,7 @@ function OptionChip({ chip }: { chip: ExpenseOptionChip }) {
             numberOfLines={1}
             className={cn(
               "text-sm max-w-[160px]",
-              changed ? "text-primary-600" : "text-secondary-950"
+              changed ? "text-primary-500" : "text-secondary-950"
             )}
           >
             {chip.label}

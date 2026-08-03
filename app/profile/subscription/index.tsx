@@ -381,7 +381,7 @@ export default function SubscriptionScreen() {
                         <Box
                           className={`rounded-2xl p-4 ${
                             isSelected
-                              ? "bg-primary-0 border border-primary-400"
+                              ? "bg-primary-0 border border-primary-200"
                               : "bg-background-50 border border-background-50"
                           }`}
                         >
@@ -390,7 +390,7 @@ export default function SubscriptionScreen() {
                               <HStack className="items-center gap-x-2">
                                 <Text
                                   bold
-                                  className={`text-lg ${isSelected ? "text-primary-400" : ""}`}
+                                  className={`text-lg ${isSelected ? "text-primary-500" : ""}`}
                                 >
                                   {plan.label}
                                 </Text>
@@ -415,11 +415,11 @@ export default function SubscriptionScreen() {
                             <HStack className="items-center gap-x-4">
                               <Text
                                 bold
-                                className={`text-xl ${isSelected && "text-primary-400"}`}
+                                className={`text-xl ${isSelected ? "text-primary-500" : ""}`}
                               >
                                 {priceLabel}
                                 <Text
-                                  className={`text-sm ${isSelected ? "text-primary-400" : "text-secondary-950"}`}
+                                  className={`text-sm ${isSelected ? "text-primary-500" : "text-secondary-950"}`}
                                 >
                                   {" "}
                                   {plan.fallbackSuffix}
