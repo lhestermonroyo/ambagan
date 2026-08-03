@@ -201,6 +201,7 @@ export enum ExpenseCategory {
   SHOPPING = "shopping",
   BILLS = "bills",
   HEALTH = "health",
+  SAVINGS = "savings",
   OTHER = "other"
 }
 

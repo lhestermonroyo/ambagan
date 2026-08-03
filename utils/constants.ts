@@ -11,6 +11,7 @@ import {
   House,
   LucideIcon,
   PartyPopper,
+  PiggyBank,
   Pill,
   Plane,
   ReceiptText,
@@ -218,7 +219,7 @@ export const expenseCategories: CategoryOption[] = [
     label: "Groceries",
     value: ExpenseCategory.GROCERIES,
     icon: ShoppingCart,
-    color: "#22C55E"
+    color: "#6366F1"
   },
   {
     label: "Transport",
@@ -256,6 +257,20 @@ export const expenseCategories: CategoryOption[] = [
     icon: Pill,
     color: "#06B6D4"
   },
+  // Money set aside rather than consumed. It is deliberately a normal spending
+  // category: the amount leaves the wallet, so it counts against a book's budget
+  // like everything else and needs no special-casing in the totals. Its payoff is
+  // the Stats gauge — with the date range on "All", the savings slice is the
+  // running total set aside across every month the book has existed.
+  {
+    label: "Savings",
+    value: ExpenseCategory.SAVINGS,
+    icon: PiggyBank,
+    color: "#22C55E"
+  },
+  // Keep "Other" last — expenseCategoryMeta() falls back to the final entry for
+  // any unrecognized value (see CategorySheet), so a new category appended here
+  // would silently become that fallback.
   {
     label: "Other",
     value: ExpenseCategory.OTHER,
