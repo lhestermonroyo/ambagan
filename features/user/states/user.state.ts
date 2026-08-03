@@ -50,10 +50,10 @@ const USER_STATE = create<UserState>((set, get) => ({
   details: null,
   oauthName: null,
   preferences: null,
-  // Dark is the app's default theme: it's what the auth/onboarding screens use
+  // Light is the app's default theme: it's what the auth/onboarding screens use
   // before any preference is loaded, and what a new account's row is created
   // with below. An existing user's stored preference always wins over this.
-  appearanceMode: "dark",
+  appearanceMode: "light",
   settlementView: "full",
   heroView: "balance",
   notificationsEnabled: true,
@@ -184,7 +184,7 @@ const USER_STATE = create<UserState>((set, get) => ({
         // the setting back) but nothing reads it, and it defaults to 'PHP' in
         // the schema. See BASE_CURRENCY in utils/fx.
         prefs = await createPreferences(userId, {
-          appearance: "dark",
+          appearance: "light",
           settlement_view: "full",
           hero_view: "balance",
           ...NOTIF_ALL_ON
