@@ -117,6 +117,21 @@ export default function ProfileScreen() {
             label: "Account Settings",
             description: "Manage your account security and preferences",
             onPress: () => router.push("/profile/account-settings")
+          },
+          {
+            icon: (
+              <TrendingUp
+                color={getPrimaryHex("text-primary-400", colorScheme)}
+              />
+            ),
+            label: "Spending Analytics",
+            description:
+              "See where your money goes — by group, by month, by friend",
+            badge: !isPro ? <ProBadge /> : undefined,
+            onPress: () =>
+              isPro
+                ? router.push("/profile/analytics")
+                : setAnalyticsUpgradeOpen(true)
           }
         ]
       },
@@ -169,21 +184,6 @@ export default function ProfileScreen() {
       {
         title: "More",
         items: [
-          {
-            icon: (
-              <TrendingUp
-                color={getPrimaryHex("text-primary-400", colorScheme)}
-              />
-            ),
-            label: "Spending Analytics",
-            description:
-              "See where your money goes — by group, by month, by friend",
-            badge: !isPro ? <ProBadge /> : undefined,
-            onPress: () =>
-              isPro
-                ? router.push("/profile/analytics")
-                : setAnalyticsUpgradeOpen(true)
-          },
           {
             icon: (
               <CircleQuestionMark
