@@ -26,6 +26,9 @@ export type UserPreferences = {
   notif_settlement_rejected: boolean;
   notif_settlement_completed: boolean;
   notif_expense_inclusion: boolean;
+  // Covers both recurring notification types (posted + needs-review) and both
+  // surfaces (group and book) — one switch for "my recurring expenses".
+  notif_recurring_expense: boolean;
   notif_group_join: boolean;
   notif_group_leave: boolean;
   updated_at: string;

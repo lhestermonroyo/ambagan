@@ -11,7 +11,18 @@
 //     membership.
 //   * personal_recurring_tbl (book, Pro) → personal_expenses_tbl. Much simpler:
 //     a personal expense has no payers/splits/settlements, so it's a single
-//     insert per period with no membership reconciliation or notifications.
+//     insert per period with no membership reconciliation.
+//
+// Notifications raised per run:
+//   * expense_inclusion — to each group member pulled into a generated expense
+//     (one per occurrence; unchanged).
+//   * recurring_posted  — to the creator/owner, once per template per run, for
+//     BOTH group and book. Aggregated so a long catch-up (up to MAX_CATCHUP
+//     periods) can't fire dozens of pushes at the same person.
+//   * recurring_review  — to the group creator when an occurrence degrades to a
+//     draft. Also aggregated, and never merged with recurring_posted: a run that
+//     posts some periods and drafts others sends both, because the draft is the
+//     one that needs action.
 //
 // Deploy:   supabase functions deploy run-recurring
 // Secrets:  SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (injected by Supabase),
@@ -48,6 +59,43 @@ function advance(date: Date, frequency: string, interval: number): Date {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const isUniqueViolation = (e: any) =>
   e?.code === "23505" || /duplicate key/i.test(e?.message ?? "");
+
+// --- money formatting (port of features/expense/utils/formatAmount.ts) ------
+// Kept in sync by hand: an Edge Function is bundled on its own and can't import
+// from the app tree. Signs mirror `currencies` in utils/constants.ts.
+const CURRENCY_SIGNS: Record<string, string> = {
+  PHP: "₱",
+  USD: "$",
+  EUR: "€",
+  JPY: "¥",
+  GBP: "£",
+  CNY: "¥",
+  KRW: "₩",
+  SGD: "S$",
+  VND: "₫",
+  THB: "฿",
+  TWD: "NT$",
+  MYR: "RM",
+  IDR: "Rp",
+  INR: "₹"
+};
+
+function formatAmount(amount: number, currency: string): string {
+  let formatted: string;
+  try {
+    formatted = new Intl.NumberFormat("en-PH", {
+      style: "currency",
+      currency,
+      currencyDisplay: "narrowSymbol"
+    }).format(amount);
+  } catch {
+    // Unknown/invalid code — never let notification copy take down a run.
+    return `${currency} ${amount.toFixed(2)}`;
+  }
+  const sign = CURRENCY_SIGNS[currency];
+  if (!sign) return formatted;
+  return formatted.replace(/^(-?)[^\d-]*/, (_m, minus) => `${minus}${sign}`);
+}
 
 // --- split algorithm (port of features/expense/utils/split.util.ts) --------
 function generatePaymentSplits(
@@ -124,13 +172,24 @@ function reconcilePayers(
 }
 
 // --- push (port of send-push internals) ------------------------------------
+// Same NotificationType -> preference column map as send-push.ts; the generator
+// runs as the service role and calls Expo directly rather than round-tripping
+// through that function, so the map has to exist in both places.
+const NOTIF_PREF_KEY: Record<string, string> = {
+  expense_inclusion: "notif_expense_inclusion",
+  recurring_posted: "notif_recurring_expense",
+  recurring_review: "notif_recurring_expense"
+};
+
 async function sendExpoPush(
   admin: SupabaseClient,
   toUserId: string,
   type: string,
   payload: { title: string; body: string; referenceId: string }
 ) {
-  const prefKey = "notif_expense_inclusion";
+  const prefKey = NOTIF_PREF_KEY[type];
+  if (!prefKey) return;
+
   const [{ data: prefs }, { data: tokens }] = await Promise.all([
     admin
       .from("user_preferences_tbl")
@@ -190,24 +249,62 @@ async function notifyAndPush(
   fromUserId: string,
   toUserId: string,
   expenseId: string,
+  type: string,
   title: string,
   body: string
 ) {
   await admin.from("notifications_tbl").insert({
     from_user_id: fromUserId,
     to_user_id: toUserId,
-    type: "expense_inclusion",
+    type,
     reference_id: expenseId
   });
-  await sendExpoPush(admin, toUserId, "expense_inclusion", {
+  await sendExpoPush(admin, toUserId, type, {
     title,
     body,
     referenceId: expenseId
   });
 }
 
+// Recurring notifications are self-addressed (from_user_id === to_user_id): the
+// generator acts on the creator's behalf, and notifications_tbl requires a real
+// from_user. The app renders these without the usual "<name> did X" prefix —
+// see getRecurringMessage in NotificationItem.tsx.
+async function notifyRecurring(
+  admin: SupabaseClient,
+  userId: string,
+  expenseId: string,
+  type: "recurring_posted" | "recurring_review",
+  title: string,
+  body: string
+) {
+  await notifyAndPush(admin, userId, userId, expenseId, type, title, body);
+}
+
+// "<desc> (₱500.00) posted to Barkada." / "<desc> posted 3 times to Barkada —
+// ₱1,500.00 total." `count` is how many periods this run materialized.
+function postedBody(
+  description: string,
+  container: string,
+  amount: number,
+  currency: string,
+  count: number
+): string {
+  const label = container ? ` to ${container}` : "";
+  if (count === 1) {
+    return `"${description}" (${formatAmount(amount, currency)}) posted${label}.`;
+  }
+  return `"${description}" posted ${count} times${label} — ${formatAmount(
+    amount * count,
+    currency
+  )} total.`;
+}
+
 // --- occurrence generation -------------------------------------------------
-type GenResult = "created" | "draft" | "duplicate";
+type GenStatus = "created" | "draft" | "duplicate";
+// The id rides along so the caller can aggregate a run's occurrences into one
+// creator-facing notification pointing at the most recent expense.
+type GenResult = { status: GenStatus; expenseId: string };
 
 async function generateOccurrence(
   admin: SupabaseClient,
@@ -270,7 +367,7 @@ async function generateOccurrence(
   }
 
   // Draft fallback — membership drift made the stored split invalid. Post a
-  // draft the creator can finalize, and ping only them.
+  // draft the creator can finalize; the caller pings only them, once per run.
   if (degrade || !payers) {
     const { error } = await admin.from("expenses_tbl").insert({
       id: expenseId,
@@ -285,16 +382,11 @@ async function generateOccurrence(
       is_draft: true,
       recurring_id: t.id
     });
-    if (error) return isUniqueViolation(error) ? "duplicate" : Promise.reject(error);
-    await notifyAndPush(
-      admin,
-      t.creator_id,
-      t.creator_id,
-      expenseId,
-      "Recurring expense needs review",
-      `"${t.description}" couldn't post automatically — some members left the group. Finalize it to split.`
-    );
-    return "draft";
+    if (error)
+      return isUniqueViolation(error)
+        ? { status: "duplicate", expenseId }
+        : Promise.reject(error);
+    return { status: "draft", expenseId };
   }
 
   const paymentSplits = generatePaymentSplits(payers, memberSplits);
@@ -313,7 +405,9 @@ async function generateOccurrence(
     recurring_id: t.id
   });
   if (expErr)
-    return isUniqueViolation(expErr) ? "duplicate" : Promise.reject(expErr);
+    return isUniqueViolation(expErr)
+      ? { status: "duplicate", expenseId }
+      : Promise.reject(expErr);
 
   const [payersRes, splitsRes, paymentsRes] = await Promise.all([
     admin.from("expense_payers_tbl").insert(
@@ -356,13 +450,14 @@ async function generateOccurrence(
         t.creator_id,
         id,
         expenseId,
+        "expense_inclusion",
         "New Expense",
         `You've been added to "${t.description}"`
       )
     )
   );
 
-  return "created";
+  return { status: "created", expenseId };
 }
 
 // --- personal occurrence generation ----------------------------------------
@@ -374,8 +469,9 @@ async function generatePersonalOccurrence(
   t: any,
   runAt: Date
 ): Promise<GenResult> {
+  const expenseId = crypto.randomUUID();
   const { error } = await admin.from("personal_expenses_tbl").insert({
-    id: crypto.randomUUID(),
+    id: expenseId,
     book_id: t.book_id,
     user_id: t.user_id,
     amount: Number(t.amount),
@@ -385,8 +481,11 @@ async function generatePersonalOccurrence(
     expense_date: runAt.toISOString(),
     recurring_id: t.id
   });
-  if (error) return isUniqueViolation(error) ? "duplicate" : Promise.reject(error);
-  return "created";
+  if (error)
+    return isUniqueViolation(error)
+      ? { status: "duplicate", expenseId }
+      : Promise.reject(error);
+  return { status: "created", expenseId };
 }
 
 // Active-Pro check (mirrors is_user_pro / the group loop's guard). Lapsed
@@ -417,6 +516,8 @@ async function processPersonalTemplate(
   now: Date
 ): Promise<number> {
   let created = 0;
+  // Newest generated expense — what the owner's notification points at.
+  let lastExpenseId: string | null = null;
   let runAt = new Date(t.next_run_at);
   let count: number = t.occurrences_count;
   let active = true;
@@ -425,9 +526,10 @@ async function processPersonalTemplate(
   while (runAt <= now && active && iterations < MAX_CATCHUP) {
     iterations++;
     const result = await generatePersonalOccurrence(admin, t, runAt);
-    if (result === "created") {
+    if (result.status === "created") {
       created++;
       count++;
+      lastExpenseId = result.expenseId;
     }
     // "duplicate" → already generated for this period; still advance.
 
@@ -458,6 +560,36 @@ async function processPersonalTemplate(
       is_active: active
     })
     .eq("id", t.id);
+
+  // A book has no other members, so this is the only signal the owner gets that
+  // money moved. Best-effort: the expenses are already committed, and a push
+  // failure must not look like a generation failure.
+  if (created > 0 && lastExpenseId) {
+    const { data: book } = await admin
+      .from("personal_books_tbl")
+      .select("name")
+      .eq("id", t.book_id)
+      .maybeSingle();
+
+    try {
+      await notifyRecurring(
+        admin,
+        t.user_id,
+        lastExpenseId,
+        "recurring_posted",
+        "Recurring expense posted",
+        postedBody(
+          t.description,
+          (book as { name?: string } | null)?.name ?? "",
+          Number(t.amount),
+          t.currency,
+          created
+        )
+      );
+    } catch (e) {
+      console.error(`Personal notify failed for template ${t.id}:`, e);
+    }
+  }
 
   return created;
 }
@@ -510,16 +642,25 @@ export const handler = async (req: Request): Promise<Response> => {
       let count: number = t.occurrences_count;
       let active = true;
       let iterations = 0;
+      // Per-template tallies for the creator's one notification per run.
+      let createdHere = 0;
+      let draftedHere = 0;
+      let lastCreatedId: string | null = null;
+      let lastDraftId: string | null = null;
 
       while (runAt <= now && active && iterations < MAX_CATCHUP) {
         iterations++;
         const result = await generateOccurrence(admin, t, runAt, currentMembers);
-        if (result === "created") {
+        if (result.status === "created") {
           generated++;
           count++;
-        } else if (result === "draft") {
+          createdHere++;
+          lastCreatedId = result.expenseId;
+        } else if (result.status === "draft") {
           drafts++;
           count++;
+          draftedHere++;
+          lastDraftId = result.expenseId;
         }
         // "duplicate" → already generated for this period; still advance.
 
@@ -550,6 +691,53 @@ export const handler = async (req: Request): Promise<Response> => {
           is_active: active
         })
         .eq("id", t.id);
+
+      // Tell the creator what their series did. Members already got their own
+      // expense_inclusion per occurrence; this is the only message the creator
+      // gets, and the only one at all when they're the sole payer.
+      if (createdHere > 0 || draftedHere > 0) {
+        const { data: group } = await admin
+          .from("groups_tbl")
+          .select("name")
+          .eq("id", t.group_id)
+          .maybeSingle();
+        const groupName = (group as { name?: string } | null)?.name ?? "";
+
+        // Best-effort: the expenses are committed either way, so a push failure
+        // must not fall into the catch below and read as a template failure.
+        try {
+          if (createdHere > 0 && lastCreatedId) {
+            await notifyRecurring(
+              admin,
+              t.creator_id,
+              lastCreatedId,
+              "recurring_posted",
+              "Recurring expense posted",
+              postedBody(
+                t.description,
+                groupName,
+                Number(t.amount),
+                t.currency,
+                createdHere
+              )
+            );
+          }
+          if (draftedHere > 0 && lastDraftId) {
+            await notifyRecurring(
+              admin,
+              t.creator_id,
+              lastDraftId,
+              "recurring_review",
+              "Recurring expense needs review",
+              draftedHere === 1
+                ? `"${t.description}" couldn't post automatically — some members left the group. Finalize it to split.`
+                : `"${t.description}" posted ${draftedHere} drafts — some members left the group. Finalize them to split.`
+            );
+          }
+        } catch (e) {
+          console.error(`Notify failed for template ${t.id}:`, e);
+        }
+      }
     } catch (e) {
       // One bad template must not stop the rest.
       console.error(`Template ${t.id} failed:`, e);

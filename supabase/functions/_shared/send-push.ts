@@ -28,6 +28,10 @@ const NOTIF_PREF_KEY: Record<string, string> = {
   settlement_reverted: "notif_settlement_rejected",
   settlement_completed: "notif_settlement_completed",
   expense_inclusion: "notif_expense_inclusion",
+  // Both recurring types share one toggle — see the migration
+  // 2026-08-02_recurring_notifications.sql for why.
+  recurring_posted: "notif_recurring_expense",
+  recurring_review: "notif_recurring_expense",
   group_join: "notif_group_join",
   group_leave: "notif_group_leave"
 };

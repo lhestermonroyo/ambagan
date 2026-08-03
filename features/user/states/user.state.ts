@@ -28,6 +28,7 @@ const NOTIF_ALL_ON = {
   notif_settlement_rejected: true,
   notif_settlement_completed: true,
   notif_expense_inclusion: true,
+  notif_recurring_expense: true,
   notif_group_join: true,
   notif_group_leave: true
 };

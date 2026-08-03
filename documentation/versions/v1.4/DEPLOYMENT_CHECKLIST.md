@@ -86,7 +86,13 @@ All of them are idempotent (`IF [NOT] EXISTS` / `CREATE OR REPLACE` /
   - No backfill: every existing book has `group_id IS NULL` and is unaffected. An app rollback is inert — the column simply goes unread again.
   - **(verify)** after applying, run `NOTIFY pgrst, 'reload schema';` — the book queries now embed `groups_tbl` via the `personal_books_tbl_group_id_fkey` hint, and a stale schema cache surfaces as **PGRST200** on every book fetch.
 
-- [ ] **10. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
+- [ ] **10. [`2026-08-02_recurring_notifications.sql`](../../../migrations/2026-08-02_recurring_notifications.sql)** — `user_preferences_tbl.notif_recurring_expense`, the push toggle for the new recurring notifications. Independent of the other migrations — order doesn't matter, but it must land **before** the `run-recurring` deploy in §B.
+  - `ADD COLUMN IF NOT EXISTS notif_recurring_expense boolean NOT NULL DEFAULT true`. Existing rows take the default (opt-out, like every other `notif_*` column), so no backfill.
+  - `notifications_tbl.type` is plain `text` with no CHECK, so the two new type values (`recurring_posted`, `recurring_review`) need no DDL.
+  - Ends with `NOTIFY pgrst, 'reload schema';`. This one matters more than usual: until the cache refreshes, the Edge Function's `select('notif_recurring_expense')` fails, which the code reads as "pref off" and **silently drops every recurring push**.
+  - Applied to `dev` 2026-08-03.
+
+- [ ] **11. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
 
 > [`db.dev.sql`](../../../db.dev.sql) at the repo root is a **reference dump of the
 > `dev` schema, not runnable** (its own header says so). Use it to diff the
@@ -104,8 +110,9 @@ scripts/deploy-functions.sh prod             # all prod functions
 scripts/deploy-functions.sh prod run-recurring
 ```
 
-- [ ] **`run-recurring`** — **required for v1.4.** Rewritten to process **two** template kinds per invocation: group (`recurring_expenses_tbl` → `expenses_tbl` + payers + splits + notifications) and personal (`personal_recurring_tbl` → `personal_expenses_tbl`, a single insert per period, no splits/notifications). Adds `generatePersonalOccurrence`, `processPersonalTemplate`, and `isCreatorPro` (lapsed Pro creators are **skipped, not deleted**, so a series resumes on renewal). Deploy **after** migration A2 lands the unique index.
-- [ ] **`send-push`** — no behavior change, but prod is still running the pre-refactor code. The shared-handler refactor (`_shared/*.ts` + thin `index.ts` entrypoints) redeploys prod on next push; behavior is identical. Deploy for parity.
+- [ ] **`run-recurring`** — **required for v1.4.** Rewritten to process **two** template kinds per invocation: group (`recurring_expenses_tbl` → `expenses_tbl` + payers + splits + notifications) and personal (`personal_recurring_tbl` → `personal_expenses_tbl`, a single insert per period, no splits). Adds `generatePersonalOccurrence`, `processPersonalTemplate`, and `isCreatorPro` (lapsed Pro creators are **skipped, not deleted**, so a series resumes on renewal). Deploy **after** migration A2 lands the unique index.
+  - Also raises the new **recurring notifications**: `recurring_posted` to the creator/owner for both group and book, and `recurring_review` (replacing the mis-typed `expense_inclusion` the draft case borrowed) when a group occurrence degrades to a draft. Both are aggregated to **one notification per template per run**, so a catch-up over many periods can't fire dozens of pushes. Deploy **after** migration A10, or the pref lookup fails and every recurring push is dropped — the in-app rows still get written, so it reads as "push is broken" rather than a schema problem. `run-recurring-dev` is already deployed on dev (2026-08-03).
+- [ ] **`send-push`** — **now a real change, not just parity:** its `NOTIF_PREF_KEY` map gains `recurring_posted` / `recurring_review` → `notif_recurring_expense`. Prod is also still running the pre-refactor code (`_shared/*.ts` + thin `index.ts` entrypoints), which this deploy picks up.
 - [ ] **`refresh-fx-rates`** — **new in v1.4.** Weekly refresh of `fx_rates_tbl` from `open.er-api.com` (no API key). Deploy **after** migration A6 creates the table. Needs no new secrets — `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are injected. `refresh-fx-rates-dev` is already deployed and cronned on dev.
 - [ ] **`scan-receipt`** — same parity note. **(verify)** that prod is on the Claude Haiku 4.5 implementation (it was swapped from Gemini) and not stale — v1.4 adds scan-receipt to the books/personal flow, so prod needs the current handler.
 
@@ -147,6 +154,7 @@ scripts/deploy-functions.sh prod run-recurring
 - [ ] Free account hits the **5 personal expenses/day** cap and the counter is independent of the group expense cap.
 - [ ] Pro account: create a personal recurring template in a book → confirm `next_run_at` is set, then confirm the next hourly cron run materializes exactly one `personal_expenses_tbl` row (and does **not** double-post across two runs).
 - [ ] Group recurring still posts correctly — the same function now handles both paths, so re-test the group side after deploying.
+- [ ] **Recurring notifications, both surfaces.** After a cron run that posts a group occurrence and a book occurrence: the creator/owner gets one `recurring_posted` push each (not one per member, not one per period), the in-app row renders with the repeat glyph and **no "<your name>" prefix**, and tapping it opens the group expense / the book expense form respectively. Toggle Profile → Push Notifications → **Recurring Expenses** off and confirm the next run inserts the in-app row but sends no push.
 - [ ] Create a group with a non-PHP currency as Pro → new expenses seed to it and the group's net-balance hero + Stats tab display it. Free account: picker stays locked at PHP.
 - [ ] Existing prod groups still read as PHP and their totals are unchanged.
 - [ ] Scan a receipt from both a group and a book.
@@ -162,3 +170,4 @@ scripts/deploy-functions.sh prod run-recurring
 - **The personal tables are unreferenced by the group domain**, so leaving them in place after an app rollback is inert (nothing writes to them without the new client).
 - **The one destructive statement** is the `user_preferences_tbl` `DROP COLUMN app_mode / monthly_budget` in A1 — a no-op in prod, since those columns only ever existed in `dev`. Confirm that before running if you're unsure.
 - **`run-recurring` can be rolled back independently** of the migrations (redeploy the previous version); the personal indexes it relies on are harmless on their own.
+- **Rolling back the *app* while `run-recurring` stays deployed** leaves older clients receiving `recurring_posted` / `recurring_review` rows they don't know: they render as the generic "… sent you a notification" and tapping them toasts "No longer available" (`getNotificationRoute` returns null for unknown types). Ugly but harmless — no crash, and the expenses themselves are unaffected. Roll the function back too if that's user-visible for long.
