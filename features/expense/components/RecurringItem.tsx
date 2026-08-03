@@ -42,13 +42,11 @@ export type RecurringItemDetails = {
  */
 export default function RecurringItem({
   details,
-  onPress,
-  showChevron = true
+  onPress
 }: {
   details: RecurringItemDetails;
   onPress: () => void;
   /** Hide the trailing affordance when the row doesn't navigate anywhere. */
-  showChevron?: boolean;
 }) {
   const scheduleText = `${recurrenceSummary({
     frequency: details.frequency as RecurrenceFrequency,
@@ -91,9 +89,6 @@ export default function RecurringItem({
                   {details.is_active ? "Active" : "Paused"}
                 </BadgeText>
               </Badge>
-              {showChevron && (
-                <Icon as="chevron-right" className="text-secondary-950" />
-              )}
             </HStack>
           </HStack>
         </HStack>

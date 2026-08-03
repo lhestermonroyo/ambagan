@@ -71,7 +71,6 @@ export default function BookRecurring({
           key={item.id}
           details={item}
           onPress={() => handlePress(item)}
-          showChevron={false}
         />
       ))}
       <Box className="h-16" />
