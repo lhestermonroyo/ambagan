@@ -65,7 +65,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Is Ambagan free to use?",
         answer:
-          "Yes. The core features are free — add up to 5 expenses per day, track balances, split bills, and settle up with friends at no cost. A Pro subscription is available (starting at ₱99 for 2 weeks) for unlimited daily expenses, draft expenses, recurring expenses, CSV export, spending analytics, multi-currency support, and more."
+          "Yes. The core features are free — add up to 5 group expenses and 5 personal expenses per day, track balances, split bills, settle up with friends, and keep personal books with budgets at no cost. A Pro subscription is available (starting at ₱99 for 2 weeks) for unlimited daily expenses, draft expenses, recurring expenses, Spending Analytics, CSV export, multi-currency support, and more."
+      },
+      {
+        question: "What's the difference between Groups and Books?",
+        answer:
+          "Groups are for money shared with other people — you split a bill, everyone sees it, and balances are settled between you. Books are for money that's only yours: personal expenses nobody else can see, with optional budgets. Both live in their own tab, and the home Overview covers both — the Net Balance page for what you owe and are owed, and the Personal Spending page for your own spending. A book can also be linked to a group so you can see what a trip cost you in total."
       },
       {
         question: "What does the Net Balance on the home screen mean?",
@@ -91,6 +96,11 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "Can I add members after a group is created?",
         answer:
           "Yes — the group admin can. Open the group, go to the Members section in the Group Details tab, and tap Edit Members to add or remove people. Only the admin sees the Edit Members option; other members can leave on their own but can't change the roster."
+      },
+      {
+        question: "Can a group be in a different currency?",
+        answer:
+          "Yes, with Pro. Pick the group's currency when you create it, or change it later in Edit Group — a Japan trip can sit in JPY while your household group stays in PHP. The group's currency is the default for new expenses in it and the currency its balances and Stats tab are shown in. On the free plan the picker stays locked to Philippine Peso (PHP)."
       },
       {
         question: "Why can't I remove a member from the group?",
@@ -186,7 +196,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Can I use different currencies?",
         answer:
-          "Multi-currency is a Pro feature. With Pro, each expense can be set to a different currency — useful for travel groups — and you can set a default currency in Profile → Default Currency. Free expenses are in Philippine Peso (PHP)."
+          "Multi-currency is a Pro feature. With Pro, each group and book has its own currency — set it when you create or edit one — which becomes the default for new expenses there, and any single expense can still be switched to another currency. That's what makes a JPY trip group sit next to a PHP household book. Free groups, books, and expenses are in Philippine Peso (PHP)."
+      },
+      {
+        question: "Where are the category, date, and receipt fields?",
+        answer:
+          "The Add Expense screen keeps the essentials up front and collapses everything that already has a sensible default into a row of chips — Category, Date, Repeat, and the receipt upload. Tap a chip to jump straight to that field, or tap the chevron at the end of the row to expand them all under More options. Chips you've changed fill in with colour, so one glance shows what isn't on its default. When you edit an expense that already differs from the defaults, the options open for you automatically."
       },
       {
         question: "How are members shown in the expense detail?",
@@ -212,6 +227,87 @@ const FAQ_SECTIONS: FAQSection[] = [
         question: "How do I pause, resume, or delete a recurring expense?",
         answer:
           "Open the group, tap the ⋯ menu in the top-right, and choose Recurring Expenses. There you'll see each series with its next run date. Toggle a series to pause or resume it, or delete it to stop future occurrences. Deleting a series never removes expenses it already created. If someone leaves the group and their share can no longer be split, that occurrence is posted as a draft for you to review instead."
+      }
+    ]
+  },
+  {
+    title: "Books & Personal Expenses",
+    items: [
+      {
+        question: "What are Books?",
+        answer:
+          "Books are where you track the spending that isn't split with anyone — your own coffee, groceries, rent, or a trip's personal extras. Open the Books tab and create a book (e.g. Daily, Japan Trip, Household), then log personal expenses inside it. A book belongs to you alone: nobody can be added to it, and no group member can see what's in it. Groups are for shared bills; books are for the rest of your money."
+      },
+      {
+        question: "How do I create a book?",
+        answer:
+          "Go to the Books tab and tap the + button in the top-right corner. Enter a name (e.g. Daily or Japan Trip), pick a category and an optional cover photo, then set anything else you need: a currency (Pro), a budget, and a group to link it to. Tap Create. There's no limit on how many books you can have, on either plan."
+      },
+      {
+        question: "How do I add a personal expense?",
+        answer:
+          "Two ways. From the home screen, tap Add Expense and choose 'Personal expense' — the form opens on your most recent book, and you can switch books from the Book row. Or open a book from the Books tab and tap Add Expense inside it. Enter the amount and a description and you're done; category, date, status, currency, and a receipt photo are all optional."
+      },
+      {
+        question: "Can anyone else see my personal expenses?",
+        answer:
+          "No. Books and everything in them are private to your account. They are never shared with a group, and linking a book to a group doesn't expose it either — group members only ever see group expenses."
+      },
+      {
+        question:
+          "How many personal expenses can I add per day on the free plan?",
+        answer:
+          "Free accounts can add up to 5 personal expenses per day. That's a separate allowance from the 5 group expenses per day, so on the free plan you get both. Each counter resets at midnight. Pro removes both limits."
+      },
+      {
+        question: "What do Paid and Pending mean on a personal expense?",
+        answer:
+          "Paid means the money is already out. Pending is an upcoming or unpaid bill you want logged early. Tap the status pill on an expense to flip between the two, or set it in the Status row on the form. In a book you can filter the list by All, Pending, or Paid. Spending totals and budget bars lead with paid spend, and show pending separately so you can see what's still coming."
+      },
+      {
+        question: "How do I set a budget for a book?",
+        answer:
+          "Budgets are free for everyone. When creating or editing a book, enter an amount in Budget (optional), then choose whether it resets Every month — best for ongoing books like Daily or Household — or stays a single cap for the whole book, which suits trips. The book then shows a budget bar: a filled run for paid spend, a grey segment for pending, and how much is left or how far over you are. It also warns you when your pending bills alone would push you over. Leave the budget blank to turn it off."
+      },
+      {
+        question: "Can a book use a different currency?",
+        answer:
+          "A book's currency is a Pro feature. With Pro you can set it when creating or editing the book — it becomes the default for new expenses in that book, and each expense can still be switched to another currency. Free books are in Philippine Peso (PHP)."
+      },
+      {
+        question: "Why do some totals show a ≈ sign?",
+        answer:
+          "≈ means the figure mixes currencies and part of it was converted at an approximate rate. A budget bar, a spending total, or the Overview's personal spending has to be a single number, so foreign spend is folded in using indicative rates that Ambagan refreshes weekly. Tap the currency chip next to any ≈ figure to see the exact amount per currency, what each one converts to, and the date of the rates used. Money you actually act on — balances and settlements — is never converted; it stays in the currency it will be paid in. If a currency has no rate available it's left out of the total, and the card tells you so instead of quietly dropping it."
+      },
+      {
+        question: "What does linking a book to a group do?",
+        answer:
+          "It answers 'what did this trip actually cost me'. Pick a group under 'Linked group (optional)' when creating or editing a book, and Ambagan adds your share of that group's expenses to the book's total — always shown as two lines that visibly add up (this book, plus your share of the group), never one blended figure. Your personal expenses stay private, and nothing about the book is shown to the group. You can link one book per group, and your share means what you consumed, not what you fronted for others."
+      },
+      {
+        question: "Where do I see the combined total for a trip?",
+        answer:
+          "Both sides show it. In the book, open the Stats tab and look for the Trip/Household/Combined total card. In the group, open the Stats tab and switch to the You view — if no book is linked yet, that card offers 'Link a personal book'. The group side totals in the group's currency, the book side in the book's."
+      },
+      {
+        question: "Can a personal expense repeat automatically?",
+        answer:
+          "Yes, with Pro. On the personal Add Expense screen, tap the Repeat row and choose a frequency (daily, weekly, or monthly), a start date, and an optional end. Ambagan then posts that expense into the book on schedule — even if the app is closed — and notifies you. To manage a series, open the book's Expenses tab and tap the Recurring expenses card, where you can pause, resume, or delete any series. Deleting a series never removes the expenses it already created."
+      },
+      {
+        question: "What does a book's Stats tab show?",
+        answer:
+          "Total Spent for the selected date range as a category gauge — one headline figure plus where the money actually went — with pending, the expense count, and your average expense underneath, followed by the expenses themselves. Use the date range pill at the top to change the period and the currency chip to see exact per-currency amounts. If the book is linked to a group, the combined total card sits here too."
+      },
+      {
+        question: "Can I scan a receipt into a book?",
+        answer:
+          "Yes. Tap Scan Receipt on the home screen and choose 'Personal expense' when asked what you're adding, or tap Scan Receipt inside a book. Ambagan reads the amount, description, and date and fills them into the personal Add Expense form for you to check and save."
+      },
+      {
+        question: "How do I archive or delete a book?",
+        answer:
+          "Swipe left on a book in the Books tab, or open the book and use the ⋯ menu in the top-right. Archiving hides the book while keeping everything in it — switch to the Archived filter to find it and restore it. Deleting is permanent and removes the book together with all of its expenses, so archive instead if you might want the history later."
       }
     ]
   },
@@ -306,7 +402,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What notifications will I receive?",
         answer:
-          "You can receive alerts for settlement requests, approvals, rejections, completions, new expense inclusions, and group member changes. You can also enable a daily reminder that nudges you at 9 AM when you have unpaid settlements. Each type can be toggled individually in Profile → Push Notifications."
+          "You can receive alerts for settlement requests, approvals, rejections, completions, new expense inclusions, group member changes, and recurring expenses that post automatically. You can also enable a daily reminder that nudges you at 9 AM when you have unpaid settlements. Each type can be toggled individually in Profile → Push Notifications."
+      },
+      {
+        question: "Will I be notified when a recurring expense posts?",
+        answer:
+          "Yes. When Ambagan posts an occurrence of one of your recurring series — in a group or in a book — you get a notification saying it was added, with a tap-through to the expense. If a group occurrence can't be split (for example a member left the group), it's posted as a draft instead and you're notified to review it. Notifications are grouped into one per series per run, so a series catching up on several missed periods can't flood you. Turn them off in Profile → Push Notifications → Recurring Expenses."
       },
       {
         question: "How are notifications organised?",
@@ -347,7 +448,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is the Pro plan?",
         answer:
-          "Pro is a subscription that removes the daily expense limit and unlocks premium features: unlimited expenses per day, draft expenses (log now, split later), CSV export, spending analytics, multi-currency expenses, and a custom default currency. Plans start at ₱99 for 2 weeks, ₱149/month, or ₱799/year. Push notifications are free for everyone."
+          "Pro is a subscription that removes the daily expense limits and unlocks premium features: unlimited group and personal expenses per day, draft expenses (log now, split later), recurring expenses in both groups and books, Spending Analytics, CSV export, and multi-currency groups, books, and expenses. Plans start at ₱99 for 2 weeks, ₱149/month, or ₱799/year. Books, budgets, linked books, and push notifications are free for everyone."
+      },
+      {
+        question: "What is Spending Analytics?",
+        answer:
+          "Spending Analytics is a Pro screen at Profile → Spending Analytics that pulls your whole spending picture into one place for a date range you choose. It shows your total spend, where it went by group and book, a trend chart over time, who you spend with most, and how much you fronted for others versus your own share. Use the All / Groups / Personal toggle at the top to look at both halves of the app together or one at a time."
       },
       {
         question: "How do I upgrade to Pro?",
@@ -357,7 +463,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How many expenses can I add per day on the free plan?",
         answer:
-          "Free users can add up to 5 expenses per day, counted across all your groups combined. The counter resets at midnight. Upgrade to Pro (from ₱99) for unlimited daily expenses."
+          "Free users can add up to 5 group expenses per day, counted across all your groups combined, plus a separate 5 personal expenses per day across your books. Both counters reset at midnight. Upgrade to Pro (from ₱99) for unlimited daily expenses."
       },
       {
         question: "How do I export settlements to CSV?",
@@ -383,7 +489,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Which features work offline and which need a connection?",
         answer:
-          "You can keep using most of Ambagan without a connection, and actions you take offline sync automatically when you're back online. Works offline: viewing your groups, expenses, settlements, friends, and notifications from your last synced data; adding, editing, and deleting expenses (attached receipts sync on reconnect); saving an expense as a draft; creating a group and editing its name or category; archiving or restoring a group; adding or removing members if you're the admin; adding or removing favorites; changing the app appearance and settlement view; toggling the daily reminder; and sharing an invite link or downloading a group QR code. Needs a connection: settling up (request, approve, reject, or mark as settled); finalizing a draft; setting up or managing a recurring expense (pause, resume, or delete a series); joining a group or scanning a QR to join; scanning a receipt; resetting a group's invite link; leaving or permanently deleting a group; uploading a profile or group photo; editing your profile or account and changing your password; changing your default currency or notification preferences; and signing out. If you try something that needs a connection while offline, Ambagan shows a short message instead of leaving you stuck.",
+          "You can keep using most of Ambagan without a connection, and actions you take offline sync automatically when you're back online. Works offline: viewing your groups, books, expenses, settlements, friends, and notifications from your last synced data; adding, editing, and deleting expenses (attached receipts sync on reconnect); adding, editing, and deleting personal expenses in a book; marking a personal expense as paid or pending; saving an expense as a draft; creating a group and editing its name or category; creating a book and editing its name, category, budget, or linked group; archiving or restoring a group or a book; adding or removing members if you're the admin; adding or removing favorites; changing the app appearance and settlement view; toggling the daily reminder; and sharing an invite link or downloading a group QR code. Needs a connection: settling up (request, approve, reject, or mark as settled); finalizing a draft; setting up or managing a recurring expense (pause, resume, or delete a series); joining a group or scanning a QR to join; scanning a receipt; resetting a group's invite link; leaving a group or permanently deleting a group or book; opening Spending Analytics; uploading a profile, group, or book photo; editing your profile or account and changing your password; changing your notification preferences; and signing out. If you try something that needs a connection while offline, Ambagan shows a short message instead of leaving you stuck.",
         content: <OfflineFeatureList />
       },
       {
@@ -394,7 +500,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Do my offline changes really get saved?",
         answer:
-          "Yes. Expenses, group edits, member changes, and favorites you make offline are queued on your device and marked with a 'Syncing…' badge. As soon as you reconnect — or reopen the app while online — Ambagan sends them to the server in order and clears the badge. The queue survives closing and reopening the app, so nothing is lost if you stay offline for a while."
+          "Yes. Expenses, personal expenses and book edits, group edits, member changes, and favorites you make offline are queued on your device and marked with a 'Syncing…' badge. As soon as you reconnect — or reopen the app while online — Ambagan sends them to the server in order and clears the badge. The queue survives closing and reopening the app, so nothing is lost if you stay offline for a while."
       }
     ]
   },
@@ -402,9 +508,14 @@ const FAQ_SECTIONS: FAQSection[] = [
     title: "Account & Settings",
     items: [
       {
-        question: "How do I change my default currency?",
+        question: "How do I change the currency I track in?",
         answer:
-          "Default currency is a Pro feature. After upgrading, go to Profile → Default Currency and select your preferred currency — it will be pre-selected when you create new expenses. Free accounts use Philippine Peso (PHP)."
+          "Currency is set per group and per book rather than once for your whole account, so a JPY trip and a PHP household budget can live side by side. Choose it when you create a group or book, or change it later in Edit — it's a Pro feature, and free accounts stay in Philippine Peso (PHP). Totals that span several groups or books (the home Overview, Friends, Spending Analytics) are shown in PHP with a ≈ when a conversion was involved."
+      },
+      {
+        question: "What is the Overview Hero setting?",
+        answer:
+          "The purple card at the top of the home screen has two pages — Net Balance (what your groups owe you and what you owe them) and Personal Spending (this month's own spending, its trend versus last month, and how many budgets are over). Both are always one swipe or arrow tap apart; Profile → Overview Hero just picks which one the home screen opens on, and the choice sticks between launches."
       },
       {
         question: "How do I change the app appearance?",
@@ -453,11 +564,15 @@ const FAQ_SECTIONS: FAQSection[] = [
 // behaviour (queue-and-sync vs. connection-required). Also mirrored in prose in
 // the item's `answer` string so Help Center search can still find it.
 const OFFLINE_CAPABLE: string[] = [
-  "View groups, expenses, settlements, friends, and notifications (last synced data)",
+  "View groups, books, expenses, settlements, friends, and notifications (last synced data)",
   "Add, edit, and delete expenses — attached receipts sync on reconnect",
+  "Add, edit, and delete personal expenses in a book",
+  "Mark a personal expense as paid or pending",
   "Save an expense as a draft",
   "Create a group and edit its name or category",
+  "Create a book and edit its name, category, budget, or linked group",
   "Archive or restore a group",
+  "Archive or restore a book",
   "Add or remove members (group admin)",
   "Add or remove favorites",
   "Change app appearance (theme) and settlement view",
@@ -472,8 +587,9 @@ const OFFLINE_BLOCKED: string[] = [
   "Join a group or scan a QR code to join",
   "Scan a receipt (the receipt reader needs a connection)",
   "Reset a group's invite link or change its expiration",
-  "Leave a group, or permanently delete a group",
-  "Upload a profile photo or group cover photo",
+  "Leave a group, or permanently delete a group or book",
+  "Open Spending Analytics",
+  "Upload a profile photo, group cover photo, or book cover photo",
   "Edit your profile or account, or change your password",
   "Change your default currency or notification preferences",
   "Sign out"
