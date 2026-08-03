@@ -946,10 +946,12 @@ export default function AddPersonalExpenseScreen() {
                   <SelectField
                     onPress={handleOpenRecurrence}
                     leading={
-                      <Icon
-                        as="event-repeat"
-                        className="text-secondary-950"
+                      <Repeat
                         size={22}
+                        color={getSecondaryHex(
+                          "text-secondary-950",
+                          colorScheme
+                        )}
                       />
                     }
                   >

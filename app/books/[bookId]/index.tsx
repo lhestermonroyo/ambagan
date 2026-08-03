@@ -79,6 +79,7 @@ import {
   ListPlus,
   Pencil,
   Plus,
+  Repeat,
   ScanLine,
   Search,
   Tag,
@@ -962,7 +963,10 @@ export default function BookDetailScreen() {
                   onPress={handleOpenRecurring}
                 >
                   <HStack className="items-start gap-x-2">
-                    <Icon as="repeat" className="text-primary-500" />
+                    <Repeat
+                      size={24}
+                      color={getPrimaryHex("text-primary-500", colorScheme)}
+                    />
                     <HStack className="flex-1 items-center">
                       <VStack className="flex-1">
                         <HStack className="items-center gap-x-2">

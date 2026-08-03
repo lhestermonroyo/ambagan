@@ -12,7 +12,10 @@ import {
   recurrenceSummary
 } from "@/features/expense/utils/recurrence.util";
 import { RecurrenceEndType, RecurrenceFrequency } from "@/types/expenses";
+import { getSecondaryHex } from "@/utils/getColorHex";
 import { format } from "date-fns";
+import { Repeat } from "lucide-react-native";
+import { useColorScheme } from "react-native";
 
 /**
  * The card fields shared by a group {@link import("@/types/expenses").RecurringExpense}
@@ -48,6 +51,7 @@ export default function RecurringItem({
   onPress: () => void;
   /** Hide the trailing affordance when the row doesn't navigate anywhere. */
 }) {
+  const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
   const scheduleText = `${recurrenceSummary({
     frequency: details.frequency as RecurrenceFrequency,
     repeat_interval: details.repeat_interval
@@ -99,7 +103,10 @@ export default function RecurringItem({
       </VStack>
       <VStack className="gap-y-1">
         <HStack className="items-center gap-x-2">
-          <Icon as="repeat" size={16} className="text-secondary-950" />
+          <Repeat
+            size={16}
+            color={getSecondaryHex("text-secondary-950", colorScheme)}
+          />
           <Text className="text-sm text-secondary-950 flex-1">
             {scheduleText}
           </Text>
