@@ -279,7 +279,7 @@ export default function CreateGroupScreen() {
               </SelectField>
               <FormControlHelper>
                 <FormControlHelperText>
-                  Default for new expenses. Changeable per expense.
+                  New expenses start in it, and totals convert to it.
                 </FormControlHelperText>
               </FormControlHelper>
             </FormControl>

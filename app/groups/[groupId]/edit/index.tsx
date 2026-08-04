@@ -251,7 +251,8 @@ export default function EditGroupScreen() {
                 </SelectField>
                 <FormControlHelper>
                   <FormControlHelperText>
-                    Default for new expenses. Existing ones keep theirs.
+                    New expenses start in it, and totals convert to it. Existing
+                    expenses keep theirs.
                   </FormControlHelperText>
                 </FormControlHelper>
               </FormControl>

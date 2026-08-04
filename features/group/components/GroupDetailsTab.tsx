@@ -55,8 +55,12 @@ export default function GroupDetailsTab() {
     <Fragment>
       <VStack className="gap-y-6 px-4">
         <Box className="bg-secondary-100 rounded-xl overflow-hidden">
+          {/* Not "Default currency": it seeds new expenses, but it's also what
+              Stats and the settlement totals convert into, so calling it a
+              default understates it — the same undersell the create form's
+              helper text carried. */}
           <DetailRow
-            label="Default currency"
+            label="Currency"
             value={
               <Text>
                 {currency ? currency.subtitle : (details.currency ?? "PHP")} (

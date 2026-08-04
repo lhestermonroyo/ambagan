@@ -381,8 +381,7 @@ export default function CreateBookScreen() {
               </SelectField>
               <FormControlHelper>
                 <FormControlHelperText>
-                  Budget, totals, and stats are shown in this currency. Spending
-                  in others converts to it at an approximate rate.
+                  Budget, totals, and stats convert to it.
                 </FormControlHelperText>
               </FormControlHelper>
             </FormControl>
@@ -488,8 +487,8 @@ export default function CreateBookScreen() {
                   <FormControlHelper>
                     <FormControlHelperText>
                       {values.defaultExpenseCurrency
-                        ? `New expenses start in ${values.defaultExpenseCurrency} and still count toward your ${values.currency} budget. Changeable per expense.`
-                        : "New expenses start in the book currency. Changeable per expense."}
+                        ? `New expenses start in ${values.defaultExpenseCurrency}, counted toward your ${values.currency} budget.`
+                        : "New expenses start in the book currency."}
                     </FormControlHelperText>
                   </FormControlHelper>
                 </FormControl>
