@@ -14,6 +14,14 @@ import { Radio, RadioGroup, RadioIcon, RadioIndicator } from "./ui/radio";
 import { Text } from "./ui/text";
 import { VStack } from "./ui/vstack";
 
+/**
+ * The `currency` value that stands for "don't pin one — follow the other
+ * setting" when the sheet is given a {@link CurrencySelectionSheet} `sameAs`
+ * option. Empty string rather than null so it can sit in the RadioGroup's
+ * value alongside real currency codes, which never collide with it.
+ */
+export const CURRENCY_SAME_AS = "";
+
 export const CurrencySelectionSheet = ({
   isOpen,
   currency,
@@ -21,7 +29,8 @@ export const CurrencySelectionSheet = ({
   onCurrencyChange,
   title = "Select Currency",
   // Disables selection (e.g. offline, when the change can't be saved to the DB).
-  disabled = false
+  disabled = false,
+  sameAs
 }: {
   isOpen: boolean;
   currency: string;
@@ -29,6 +38,13 @@ export const CurrencySelectionSheet = ({
   onCurrencyChange: (currency: string) => void;
   title?: string;
   disabled?: boolean;
+  /**
+   * Adds a leading "follow the other setting" option above the currency list,
+   * which emits {@link CURRENCY_SAME_AS}. For settings whose real default is
+   * "inherit" rather than a specific currency — pinning a code there would
+   * silently stop tracking the thing it inherits from.
+   */
+  sameAs?: { label: string; subtitle: string };
 }) => {
   return (
     <AppSheet
@@ -63,6 +79,21 @@ export const CurrencySelectionSheet = ({
         <FlatList
           data={currencies}
           keyExtractor={(item) => item.value}
+          // The inherit option leads the list rather than sitting inside it:
+          // it's the default, and it isn't a currency, so it doesn't belong in
+          // the alphabetical run of codes below.
+          ListHeaderComponent={
+            sameAs ? (
+              <Fragment>
+                <CurrencyItem
+                  title={sameAs.label}
+                  subtitle={sameAs.subtitle}
+                  value={CURRENCY_SAME_AS}
+                />
+                <ListDivider />
+              </Fragment>
+            ) : null
+          }
           renderItem={({ item }) => (
             <CurrencyItem
               title={item.label}

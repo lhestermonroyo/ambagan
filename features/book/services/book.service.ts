@@ -14,7 +14,7 @@ import { v4 as uuid } from "uuid";
 // resolves to null both when the book is unlinked AND when the owner has since
 // left the group (groups_tbl RLS hides it) — callers must treat a set `group_id`
 // with a null `linked_group` as "linked, but not readable", not as unlinked.
-const BOOK_SELECT = `id, created_at, user_id, name, category, avatar, currency, budget, budget_period, archived, group_id, linked_group:${tables.GROUPS_TBL}!personal_books_tbl_group_id_fkey(id, name, avatar, currency, category)`;
+const BOOK_SELECT = `id, created_at, user_id, name, category, avatar, currency, default_expense_currency, budget, budget_period, archived, group_id, linked_group:${tables.GROUPS_TBL}!personal_books_tbl_group_id_fkey(id, name, avatar, currency, category)`;
 
 export const LINKED_GROUP_CONFLICT_MESSAGE =
   "You already have a book linked to this group. Unlink it first, or pick a different group.";
@@ -49,6 +49,7 @@ export const saveBook = async ({
   category,
   avatar,
   currency,
+  default_expense_currency,
   budget,
   budget_period,
   group_id,
@@ -58,7 +59,10 @@ export const saveBook = async ({
   name: string;
   category: string;
   avatar: ImagePickerSuccessResult | null;
+  /** The book's reporting currency — budget, totals, and conversions. */
   currency: string;
+  /** What Add Expense prefills. Null/omitted = follow `currency`. */
+  default_expense_currency?: string | null;
   /** Null = no budget on this book. */
   budget?: number | null;
   budget_period?: BookBudgetPeriod;
@@ -97,6 +101,13 @@ export const saveBook = async ({
       category,
       avatar: avatarUrl,
       currency: currency || "PHP",
+      // Stored null when it matches the book's currency: "follow the book" and
+      // "happens to equal the book right now" must not be the same row, or a
+      // later currency edit would leave a stale copy behind.
+      default_expense_currency:
+        default_expense_currency && default_expense_currency !== currency
+          ? default_expense_currency
+          : null,
       budget: budget ?? null,
       budget_period: budget_period ?? "monthly",
       group_id: group_id ?? null
@@ -134,6 +145,8 @@ export const updateBook = async (
     name: string;
     category: string;
     currency: string;
+    /** Null resets Add Expense to follow `currency`; undefined leaves it untouched. */
+    default_expense_currency?: string | null;
     /** Null clears the budget; undefined leaves it untouched. */
     budget?: number | null;
     budget_period?: BookBudgetPeriod;
@@ -151,6 +164,11 @@ export const updateBook = async (
         name: payload.name,
         category: payload.category,
         currency: payload.currency,
+        default_expense_currency:
+          payload.default_expense_currency &&
+          payload.default_expense_currency !== payload.currency
+            ? payload.default_expense_currency
+            : null,
         budget: payload.budget ?? null,
         budget_period: payload.budget_period ?? "monthly",
         group_id: payload.group_id ?? null,
@@ -166,8 +184,16 @@ export const updateBook = async (
     throw new Error("User not authenticated");
   }
 
-  const { name, category, currency, budget, budget_period, group_id, avatar } =
-    payload;
+  const {
+    name,
+    category,
+    currency,
+    default_expense_currency,
+    budget,
+    budget_period,
+    group_id,
+    avatar
+  } = payload;
 
   let avatarUrl: string | null = null;
 
@@ -182,6 +208,15 @@ export const updateBook = async (
   const updateData: Record<string, any> = { name, category, currency };
   if (avatarUrl) {
     updateData.avatar = avatarUrl;
+  }
+  // Same convention as budget below. Normalized to null when it matches the
+  // book's currency so the column always means "follow the book" rather than
+  // holding a copy that goes stale the next time `currency` is edited.
+  if (default_expense_currency !== undefined) {
+    updateData.default_expense_currency =
+      default_expense_currency && default_expense_currency !== currency
+        ? default_expense_currency
+        : null;
   }
   // `undefined` means "not edited here"; an explicit null clears the budget.
   if (budget !== undefined) {

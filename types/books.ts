@@ -33,7 +33,16 @@ export type Book = {
   name: string;
   category: string;
   avatar: string | null;
+  /** The book's REPORTING currency: the budget cap is set in it, and the budget
+   *  bar, Paid/Pending card, Stats gauge and group roll-up all convert into it.
+   *  It is NOT what Add Expense prefills — see {@link Book.default_expense_currency}. */
   currency: string;
+  /** What Add Expense prefills its currency picker with, and nothing else. Null
+   *  (the common case) = follow {@link Book.currency}, so an edit to the book's
+   *  currency carries over instead of leaving a frozen copy behind. Set it to
+   *  split the two: a Japan Trip budgeted and reported in PHP, entered in JPY.
+   *  Resolve it with `bookEntryCurrency()` rather than reading it raw. */
+  default_expense_currency: string | null;
   /** Optional spending cap, in the book's own {@link Book.currency}. Null = no
    *  budget set. Expenses in another currency count against it too, converted at
    *  an approximate rate (utils/fx) purely for this display — the expense itself

@@ -203,6 +203,8 @@ export type CreateBookArgs = {
   name: string;
   category: string;
   currency: string;
+  /** What Add Expense prefills. Null = follow `currency`. */
+  default_expense_currency: string | null;
   budget: number | null;
   budget_period: BookBudgetPeriod;
   /** Group to roll the book up with. Null = standalone. */
@@ -222,6 +224,8 @@ export type UpdateBookArgs = {
   name: string;
   category: string;
   currency: string;
+  /** What Add Expense prefills. Null = follow `currency`. */
+  default_expense_currency: string | null;
   budget: number | null;
   budget_period: BookBudgetPeriod;
   /** Group to roll the book up with. Null = standalone. */
@@ -1889,6 +1893,7 @@ async function updateBookOptimistic(
     name: string;
     category: string;
     currency: string;
+    default_expense_currency: string | null;
     budget: number | null;
     budget_period: BookBudgetPeriod;
     group_id: string | null;
@@ -2136,6 +2141,7 @@ export function buildOptimisticBook(params: {
   name: string;
   category: string;
   currency: string;
+  defaultExpenseCurrency?: string | null;
   budget?: number | null;
   budgetPeriod?: BookBudgetPeriod;
   groupId?: string | null;
@@ -2149,6 +2155,13 @@ export function buildOptimisticBook(params: {
     category: params.category,
     avatar: null,
     currency: params.currency,
+    // Normalized the same way the service does before it hits the DB, so the
+    // optimistic row and the synced one agree on what "follow the book" is.
+    default_expense_currency:
+      params.defaultExpenseCurrency &&
+      params.defaultExpenseCurrency !== params.currency
+        ? params.defaultExpenseCurrency
+        : null,
     budget: params.budget ?? null,
     budget_period: params.budgetPeriod ?? "monthly",
     archived: false,
@@ -2213,6 +2226,7 @@ export async function queueUpdateBook(
     name: args.name,
     category: args.category,
     currency: args.currency,
+    default_expense_currency: args.default_expense_currency,
     budget: args.budget,
     budget_period: args.budget_period,
     group_id: args.group_id

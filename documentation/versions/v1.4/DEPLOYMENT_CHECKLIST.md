@@ -92,7 +92,15 @@ All of them are idempotent (`IF [NOT] EXISTS` / `CREATE OR REPLACE` /
   - Ends with `NOTIFY pgrst, 'reload schema';`. This one matters more than usual: until the cache refreshes, the Edge Function's `select('notif_recurring_expense')` fails, which the code reads as "pref off" and **silently drops every recurring push**.
   - Applied to `dev` 2026-08-03.
 
-- [ ] **11. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
+- [ ] **11. [`2026-08-04_book_default_expense_currency.sql`](../../../migrations/2026-08-04_book_default_expense_currency.sql)** — `personal_books_tbl.default_expense_currency`, splitting the book's one currency into its two jobs. Depends on step 1.
+  - `ADD COLUMN IF NOT EXISTS default_expense_currency text` — **nullable with no DEFAULT**, because NULL is a meaningful value here ("follow the book's `currency`") rather than a missing one. A default that copied the book's currency would freeze a snapshot that then drifts when `currency` is edited.
+  - `currency` keeps its existing meaning (budget cap, budget bar, Paid/Pending card, Stats gauge, group roll-up all convert **into** it). The new column feeds **only** what Add Expense / Scan / the recurring template prefill.
+  - Adds `personal_books_default_expense_currency_chk` → `NULL OR ~ '^[A-Z]{3}$'`. A shape check, not an enum, so adding a currency to the app never needs a migration.
+  - No backfill: every existing row stays NULL, which is exactly the pre-migration behaviour. An app rollback is inert — the column simply goes unread.
+  - Ends with `NOTIFY pgrst, 'reload schema';`. Without it, book create/update hits **PGRST204 "Could not find the 'default_expense_currency' column … in the schema cache"**, and `BOOK_SELECT` (which now names the column) fails on **every** book read — so this one breaks the Books tab outright, not just writes.
+  - ⚠️ **Not yet applied to `dev`.** Run it there (the file's `search_path` already targets `dev`) before testing the Books tab on a dev build.
+
+- [ ] **12. (verify) FK sanity.** The new personal tables are created with unqualified `REFERENCES`, so prod gets `public → public` FKs naturally. No [`scripts/sync-dev-fks.sql`](../../../scripts/sync-dev-fks.sql) pass is needed for prod. If a nested `.select()` embed 404s with `PGRST200` after the migration, run `NOTIFY pgrst, 'reload schema';`.
 
 > [`db.dev.sql`](../../../db.dev.sql) at the repo root is a **reference dump of the
 > `dev` schema, not runnable** (its own header says so). Use it to diff the
@@ -157,6 +165,8 @@ scripts/deploy-functions.sh prod run-recurring
 - [ ] **Recurring notifications, both surfaces.** After a cron run that posts a group occurrence and a book occurrence: the creator/owner gets one `recurring_posted` push each (not one per member, not one per period), the in-app row renders with the repeat glyph and **no "<your name>" prefix**, and tapping it opens the group expense / the book expense form respectively. Toggle Profile → Push Notifications → **Recurring Expenses** off and confirm the next run inserts the in-app row but sends no push.
 - [ ] Create a group with a non-PHP currency as Pro → new expenses seed to it and the group's net-balance hero + Stats tab display it. Free account: picker stays locked at PHP.
 - [ ] Existing prod groups still read as PHP and their totals are unchanged.
+- [ ] **Split book currencies (Pro).** Create a book with **Book currency = PHP** and **Default for new expenses = JPY** → Add Expense opens on JPY, the saved expense keeps JPY, and the budget bar / Paid / Pending still headline in PHP with the `≈` chip. Then edit the book's currency to SGD and confirm the entry default **stays** JPY (it's pinned) — whereas a book left on "Same as book currency" follows the change. Free account: the second field isn't shown at all.
+- [ ] Existing prod books (all `default_expense_currency IS NULL`) still open Add Expense in the book's own currency — unchanged behaviour.
 - [ ] Scan a receipt from both a group and a book.
 - [ ] Offline: create a book expense in airplane mode → "Syncing…" badge → flushes on reconnect.
 - [ ] Book with a budget + expenses in two currencies → the bar folds the foreign spend in, the headline reads `≈`, and the caption shows the **rate date from the table** (not the shipped `2026-08-01` fallback). A stale date here means the app is falling back, i.e. the table or its RLS `SELECT` policy isn't live in `public`.

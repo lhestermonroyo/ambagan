@@ -1,9 +1,13 @@
 import AmountInput from "@/components/AmountInput";
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
-import { CurrencySelectionSheet } from "@/components/CurrencySelection";
+import {
+  CURRENCY_SAME_AS,
+  CurrencySelectionSheet
+} from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
+import MoreOptions from "@/components/MoreOptions";
 import SelectField from "@/components/SelectField";
 import {
   FormControl,
@@ -61,9 +65,14 @@ export default function CreateBookScreen() {
     avatar: null as ImagePickerSuccessResult | null,
     defaultAvatar: undefined as string | undefined,
     category: GroupCategory.GENERAL as string,
-    // Every book starts in the app's home currency. Pro users can change it
-    // here; for free users the selection is locked, pinning them to PHP.
+    // The book's REPORTING currency — budget, totals, roll-up. Every book starts
+    // in the app's home currency. Pro users can change it here; for free users
+    // the selection is locked, pinning them to PHP.
     currency: BASE_CURRENCY,
+    // What Add Expense prefills, kept separate so a trip can be budgeted in PHP
+    // and entered in JPY. CURRENCY_SAME_AS (the default) = follow `currency`,
+    // and is stored as null so a later currency edit carries over.
+    defaultExpenseCurrency: CURRENCY_SAME_AS,
     // Budget is optional and free for everyone. Empty string = no budget set.
     budget: "",
     budgetPeriod: "monthly" as BookBudgetPeriod,
@@ -73,9 +82,16 @@ export default function CreateBookScreen() {
   const [formErrors, setFormErrors] = useState({ name: "", budget: "" });
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [entryCurrencySheetOpen, setEntryCurrencySheetOpen] = useState(false);
   const [groupSheetOpen, setGroupSheetOpen] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  // Budget / currencies / linked group collapse behind "More options" — all of
+  // them optional with a working default, so creating starts closed on just the
+  // name. Editing opens the section when the loaded book has actually set one of
+  // them (see the hydrate effect), since collapsed it would hide a setting the
+  // user chose and read as though the book had lost it.
+  const [optionsExpanded, setOptionsExpanded] = useState(false);
 
   const router = useRouter();
   const toast = useAppToast();
@@ -94,10 +110,24 @@ export default function CreateBookScreen() {
           defaultAvatar: book.avatar ?? undefined,
           category: book.category,
           currency: book.currency,
+          defaultExpenseCurrency:
+            book.default_expense_currency ?? CURRENCY_SAME_AS,
           budget: book.budget != null ? String(book.budget) : "",
           budgetPeriod: book.budget_period ?? "monthly",
           groupId: book.group_id
         }));
+        // Anything the user actually set INSIDE the section has to be visible on
+        // open. `currency` is deliberately absent — it sits above the section
+        // now, so a non-PHP book would spring it open for a field already on
+        // screen. budget_period is absent for its own reason: it's meaningless
+        // without a budget, and its default alone shouldn't spring anything.
+        if (
+          book.budget != null ||
+          book.group_id != null ||
+          book.default_expense_currency != null
+        ) {
+          setOptionsExpanded(true);
+        }
       })
       .catch(() => {
         toast({
@@ -139,6 +169,22 @@ export default function CreateBookScreen() {
   );
   const currencyLabel = currencyMeta?.label;
 
+  const entryCurrencyLabel = useMemo(
+    () =>
+      values.defaultExpenseCurrency
+        ? (currencies.find((c) => c.value === values.defaultExpenseCurrency)
+            ?.label ?? values.defaultExpenseCurrency)
+        : "Same as book currency",
+    [values.defaultExpenseCurrency]
+  );
+
+  // The entry-currency field only earns its place once the two can actually
+  // differ — which needs Pro (free users are pinned to PHP on both). Shown to
+  // any Pro user rather than only after the book currency moves off PHP, so a
+  // PHP-budgeted trip abroad — the whole point of the field — is reachable
+  // without first having to change something else.
+  const showEntryCurrency = isPro;
+
   // Blank = no budget (a valid choice). Anything typed has to be a positive
   // number — the DB enforces the same via personal_books_budget_positive_chk.
   const parsedBudget = values.budget.trim() ? parseFloat(values.budget) : null;
@@ -152,9 +198,16 @@ export default function CreateBookScreen() {
           : ""
     };
     setFormErrors(nextErrors);
+    // The budget lives inside "More options", so an error on it has to open the
+    // section — otherwise Create just silently does nothing.
+    if (nextErrors.budget) setOptionsExpanded(true);
     if (nextErrors.name || nextErrors.budget) return;
 
     if (!userDetails?.id) return;
+
+    // The sentinel is a UI value only — null is what "follow the book currency"
+    // is on the wire. Normalized once here so every branch below agrees.
+    const defaultExpenseCurrency = values.defaultExpenseCurrency || null;
 
     // Offline create → queue it (updateBook queues itself inside the service).
     // The cover photo is skipped (no image upload offline).
@@ -165,6 +218,7 @@ export default function CreateBookScreen() {
         name: values.name,
         category: values.category,
         currency: values.currency,
+        defaultExpenseCurrency: defaultExpenseCurrency,
         budget: parsedBudget,
         budgetPeriod: values.budgetPeriod,
         groupId: values.groupId,
@@ -176,6 +230,7 @@ export default function CreateBookScreen() {
           name: values.name,
           category: values.category,
           currency: values.currency,
+          default_expense_currency: defaultExpenseCurrency,
           budget: parsedBudget,
           budget_period: values.budgetPeriod,
           group_id: values.groupId,
@@ -201,6 +256,7 @@ export default function CreateBookScreen() {
           name: values.name,
           category: values.category,
           currency: values.currency,
+          default_expense_currency: defaultExpenseCurrency,
           budget: parsedBudget,
           budget_period: values.budgetPeriod,
           group_id: values.groupId,
@@ -217,6 +273,7 @@ export default function CreateBookScreen() {
           name: values.name,
           category: values.category,
           currency: values.currency,
+          default_expense_currency: defaultExpenseCurrency,
           budget: parsedBudget,
           budget_period: values.budgetPeriod,
           group_id: values.groupId,
@@ -304,9 +361,14 @@ export default function CreateBookScreen() {
               </SelectField>
             </FormControl>
 
+            {/* The book's REPORTING currency. Stays out of "More options" with
+                the name and category: it's what every figure on the book is
+                denominated in, so it's part of what the book IS rather than a
+                setting on it — and it's the field a traveler starting a trip
+                book reaches for first. */}
             <FormControl size="md">
               <FormControlLabel>
-                <FormControlLabelText>Currency</FormControlLabelText>
+                <FormControlLabelText>Book currency</FormControlLabelText>
               </FormControlLabel>
               <SelectField
                 onPress={() =>
@@ -319,129 +381,152 @@ export default function CreateBookScreen() {
               </SelectField>
               <FormControlHelper>
                 <FormControlHelperText>
-                  Default for new expenses. Changeable per expense.
+                  Budget, totals, and stats are shown in this currency. Spending
+                  in others converts to it at an approximate rate.
                 </FormControlHelperText>
               </FormControlHelper>
             </FormControl>
 
-            {/* Optional roll-up link to a group. Free for everyone — no Pro
-                gate: it's the main reason a group-only user ever starts a book. */}
-            <FormControl size="md">
-              <FormControlLabel>
-                <FormControlLabelText>
-                  Linked group (optional)
-                </FormControlLabelText>
-              </FormControlLabel>
-              <SelectField
-                onPress={() => setGroupSheetOpen(true)}
-                leading={
-                  linkedGroup ? (
-                    <AppAvatar
-                      size="xs"
-                      name={linkedGroup.name}
-                      uri={linkedGroup.avatar || ""}
-                    />
-                  ) : undefined
-                }
-              >
-                <Text className="text-lg" numberOfLines={1}>
-                  {linkedGroup?.name ?? "Not linked"}
-                </Text>
-              </SelectField>
-              <FormControlHelper>
-                <FormControlHelperText>
-                  Adds your share of the group&apos;s expenses to this
-                  book&apos;s total. Your personal expenses stay private.
-                </FormControlHelperText>
-              </FormControlHelper>
-            </FormControl>
+            {/* Everything below is optional and has a working default, so a book
+                can be created from a name alone. Budget leads: it's the one most
+                people came here for, and the entry currency below only matters
+                once you're tracking more than one. */}
+            <MoreOptions
+              expanded={optionsExpanded}
+              onToggle={() => setOptionsExpanded((prev) => !prev)}
+            >
+              {/* Optional spending cap. Free for everyone — no Pro gate. */}
+              <FormControl size="md" isInvalid={!!formErrors.budget}>
+                <FormControlLabel>
+                  <FormControlLabelText>Budget (optional)</FormControlLabelText>
+                </FormControlLabel>
+                <AmountInput
+                  placeholder="0.00"
+                  leftAddon={currencyMeta?.sign ?? values.currency}
+                  value={values.budget}
+                  onChangeText={(text) => {
+                    setValues({ ...values, budget: text });
+                    if (formErrors.budget)
+                      setFormErrors((prev) => ({ ...prev, budget: "" }));
+                  }}
+                />
+                {formErrors.budget ? (
+                  <FormControlError>
+                    <FormControlErrorText>
+                      {formErrors.budget}
+                    </FormControlErrorText>
+                  </FormControlError>
+                ) : (
+                  <FormControlHelper>
+                    <FormControlHelperText>
+                      Other currencies convert to {values.currency} at an
+                      approximate rate. Leave blank for no budget.
+                    </FormControlHelperText>
+                  </FormControlHelper>
+                )}
+              </FormControl>
 
-            {/* Optional spending cap. Free for everyone — no Pro gate. */}
-            <FormControl size="md" isInvalid={!!formErrors.budget}>
-              <FormControlLabel>
-                <FormControlLabelText>Budget (optional)</FormControlLabelText>
-              </FormControlLabel>
-              <AmountInput
-                placeholder="0.00"
-                leftAddon={currencyMeta?.sign ?? values.currency}
-                value={values.budget}
-                onChangeText={(text) => {
-                  setValues({ ...values, budget: text });
-                  if (formErrors.budget)
-                    setFormErrors((prev) => ({ ...prev, budget: "" }));
-                }}
-              />
-              {formErrors.budget ? (
-                <FormControlError>
-                  <FormControlErrorText>
-                    {formErrors.budget}
-                  </FormControlErrorText>
-                </FormControlError>
-              ) : (
-                <FormControlHelper>
-                  <FormControlHelperText>
-                    Other currencies convert to {values.currency} at an
-                    approximate rate. Leave blank for no budget.
-                  </FormControlHelperText>
-                </FormControlHelper>
+              {/* Period only matters once a budget is actually set. */}
+              {parsedBudget !== null && (
+                <FormControl size="md">
+                  <FormControlLabel>
+                    <FormControlLabelText>Budget resets</FormControlLabelText>
+                  </FormControlLabel>
+                  <HStack className="gap-x-2">
+                    {budgetPeriods.map((period) => (
+                      <Pressable
+                        key={period.value}
+                        className={cn(
+                          "flex-1 py-3 rounded-lg border items-center",
+                          values.budgetPeriod === period.value
+                            ? "border-primary-200 bg-primary-0"
+                            : "border-background-200"
+                        )}
+                        onPress={() =>
+                          setValues({ ...values, budgetPeriod: period.value })
+                        }
+                      >
+                        <Text
+                          bold={values.budgetPeriod === period.value}
+                          className={cn(
+                            values.budgetPeriod === period.value
+                              ? "text-primary-500"
+                              : ""
+                          )}
+                        >
+                          {period.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </HStack>
+                  <FormControlHelper>
+                    <FormControlHelperText>
+                      {values.budgetPeriod === "monthly"
+                        ? "Resets on the 1st — best for ongoing books."
+                        : "One cap for the whole book — best for trips."}
+                    </FormControlHelperText>
+                  </FormControlHelper>
+                </FormControl>
               )}
-            </FormControl>
 
-            {/* Period only matters once a budget is actually set. */}
-            {parsedBudget !== null && (
+              {/* What Add Expense prefills — separate from the book currency so
+                  a trip can be budgeted in the currency you think in and entered
+                  in the one you're actually spending. Pro-only, since free books
+                  are pinned to PHP on both counts and the field would be inert. */}
+              {showEntryCurrency && (
+                <FormControl size="md">
+                  <FormControlLabel>
+                    <FormControlLabelText>
+                      Default for new expenses
+                    </FormControlLabelText>
+                  </FormControlLabel>
+                  <SelectField onPress={() => setEntryCurrencySheetOpen(true)}>
+                    <Text className="text-lg" numberOfLines={1}>
+                      {entryCurrencyLabel}
+                    </Text>
+                  </SelectField>
+                  <FormControlHelper>
+                    <FormControlHelperText>
+                      {values.defaultExpenseCurrency
+                        ? `New expenses start in ${values.defaultExpenseCurrency} and still count toward your ${values.currency} budget. Changeable per expense.`
+                        : "New expenses start in the book currency. Changeable per expense."}
+                    </FormControlHelperText>
+                  </FormControlHelper>
+                </FormControl>
+              )}
+
+              {/* Optional roll-up link to a group. Free for everyone — no Pro
+                  gate: it's the main reason a group-only user ever starts a book. */}
               <FormControl size="md">
                 <FormControlLabel>
-                  <FormControlLabelText>Budget resets</FormControlLabelText>
+                  <FormControlLabelText>
+                    Linked group (optional)
+                  </FormControlLabelText>
                 </FormControlLabel>
-                <HStack className="gap-x-2">
-                  {budgetPeriods.map((period) => (
-                    <Pressable
-                      key={period.value}
-                      className={cn(
-                        "flex-1 py-3 rounded-lg border items-center",
-                        values.budgetPeriod === period.value
-                          ? "border-primary-200 bg-primary-0"
-                          : "border-background-200"
-                      )}
-                      onPress={() =>
-                        setValues({ ...values, budgetPeriod: period.value })
-                      }
-                    >
-                      <Text
-                        bold={values.budgetPeriod === period.value}
-                        className={cn(
-                          values.budgetPeriod === period.value
-                            ? "text-primary-500"
-                            : ""
-                        )}
-                      >
-                        {period.label}
-                      </Text>
-                    </Pressable>
-                    // <FormButton
-                    //   key={period.value}
-                    //   size="sm"
-                    //   variant={
-                    //     values.budgetPeriod === period.value
-                    //       ? "solid"
-                    //       : "outline"
-                    //   }
-                    //   text={period.label}
-                    //   onPress={() =>
-                    //     setValues({ ...values, budgetPeriod: period.value })
-                    //   }
-                    // />
-                  ))}
-                </HStack>
+                <SelectField
+                  onPress={() => setGroupSheetOpen(true)}
+                  leading={
+                    linkedGroup ? (
+                      <AppAvatar
+                        size="xs"
+                        name={linkedGroup.name}
+                        uri={linkedGroup.avatar || ""}
+                      />
+                    ) : undefined
+                  }
+                >
+                  <Text className="text-lg" numberOfLines={1}>
+                    {linkedGroup?.name ?? "Not linked"}
+                  </Text>
+                </SelectField>
                 <FormControlHelper>
                   <FormControlHelperText>
-                    {values.budgetPeriod === "monthly"
-                      ? "Resets on the 1st — best for ongoing books."
-                      : "One cap for the whole book — best for trips."}
+                    Adds your share of the group&apos;s expenses to this
+                    book&apos;s total. Your personal expenses stay private.
                   </FormControlHelperText>
                 </FormControlHelper>
               </FormControl>
-            )}
+            </MoreOptions>
           </VStack>
         </ScrollView>
       </FormLayout>
@@ -457,8 +542,23 @@ export default function CreateBookScreen() {
       <CurrencySelectionSheet
         isOpen={currencySheetOpen}
         currency={values.currency}
+        title="Book Currency"
         onClose={() => setCurrencySheetOpen(false)}
         onCurrencyChange={(value) => setValues({ ...values, currency: value })}
+      />
+
+      <CurrencySelectionSheet
+        isOpen={entryCurrencySheetOpen}
+        currency={values.defaultExpenseCurrency}
+        title="Default For New Expenses"
+        sameAs={{
+          label: "Same as book currency",
+          subtitle: currencyLabel ?? values.currency
+        }}
+        onClose={() => setEntryCurrencySheetOpen(false)}
+        onCurrencyChange={(value) =>
+          setValues({ ...values, defaultExpenseCurrency: value })
+        }
       />
 
       <LinkedGroupSheet

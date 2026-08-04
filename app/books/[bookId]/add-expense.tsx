@@ -39,6 +39,7 @@ import UpgradeSheet from "@/components/UpgradeSheet";
 import UploadImage from "@/components/UploadImage";
 import BookPickerSheet from "@/features/book/components/BookPickerSheet";
 import PersonalExpenseStatusSheet from "@/features/book/components/PersonalExpenseStatusSheet";
+import { bookEntryCurrency } from "@/features/book/utils/bookCurrency";
 import CategorySheet, {
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
@@ -238,12 +239,14 @@ export default function AddPersonalExpenseScreen() {
     };
   }, [isLocked, bookIdParam]);
 
-  // A scanned currency (Pro) wins; otherwise every expense inherits the selected
-  // book's currency — re-applied whenever the book changes (skipped in edit,
-  // where the expense keeps its own currency).
+  // A scanned currency (Pro) wins; otherwise every expense starts in the book's
+  // ENTRY currency — its `default_expense_currency` when set, and its reporting
+  // currency otherwise (see bookEntryCurrency). Re-applied whenever the book
+  // changes, and skipped in edit, where the expense keeps its own currency.
   useEffect(() => {
     if (isEdit || seed?.currency) return;
-    if (selectedBook) setCurrency(selectedBook.currency);
+    const entry = bookEntryCurrency(selectedBook);
+    if (entry) setCurrency(entry);
   }, [selectedBook?.id]);
 
   // Hydrate the existing expense (edit mode) and the free-tier daily count.

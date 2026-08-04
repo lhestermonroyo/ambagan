@@ -6,6 +6,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { bookEntryCurrency } from "@/features/book/utils/bookCurrency";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { Book } from "@/types/books";
 import { categories, currencies } from "@/utils/constants";
@@ -30,12 +31,23 @@ export default function BookInfoTab({ book }: { book: Book }) {
     [book.currency]
   );
 
+  // Only interesting when it differs from the book's own currency — on every
+  // other book it would restate the row above it.
+  const entryCurrency = useMemo(() => {
+    const resolved = bookEntryCurrency({
+      currency: book.currency,
+      default_expense_currency: book.default_expense_currency
+    });
+    if (!resolved || resolved === book.currency) return null;
+    return currencies.find((c) => c.value === resolved) ?? null;
+  }, [book.default_expense_currency, book.currency]);
+
   return (
     <Fragment>
       <VStack className="gap-y-6 px-4 pb-6">
         <Box className="bg-secondary-100 rounded-xl overflow-hidden">
           <DetailRow
-            label="Currency"
+            label={entryCurrency ? "Book currency" : "Currency"}
             value={
               <Text>
                 {currency ? currency.subtitle : book.currency} (
@@ -43,6 +55,19 @@ export default function BookInfoTab({ book }: { book: Book }) {
               </Text>
             }
           />
+          {entryCurrency && (
+            <>
+              <RowDivider />
+              <DetailRow
+                label="New expenses"
+                value={
+                  <Text>
+                    {entryCurrency.subtitle} ({entryCurrency.sign})
+                  </Text>
+                }
+              />
+            </>
+          )}
           <RowDivider />
           <DetailRow
             label="Category"
