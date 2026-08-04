@@ -483,6 +483,14 @@ export default function HomeScreen() {
       if (!response) return;
 
       setBooks(response.data);
+      // Mirror into book state the same way the Books tab does (first page of
+      // "all"), so screens that never load books themselves — the scanner's
+      // destination check — can tell "no books yet" from "not loaded yet".
+      states.book.setState((prev) => ({
+        ...prev,
+        list: response.data,
+        initialized: true
+      }));
     } catch (error) {
       console.error("Failed to fetch books:", error);
     } finally {

@@ -570,6 +570,17 @@ export default function FriendDetailScreen() {
           ? EmptyType.SETTLEMENT_SETTLED
           : EmptyType.SETTLEMENT_ALL;
 
+  // SETTLEMENT_ALL's default copy says "in this group" — correct on the group
+  // screen it shares the type with, wrong here. Name the friend instead, and
+  // say what produces a settlement, since an empty All tab is usually someone
+  // wondering why nothing showed up. The other tabs' copy is already neutral.
+  const emptyContent =
+    emptyType === EmptyType.SETTLEMENT_ALL
+      ? `No settlements with ${
+          decodedName.split(" ")[0] || "this friend"
+        } yet. They show up once you share a group expense.`
+      : undefined;
+
   const handleItemPress = (item: PaymentPreview) => {
     // Viewing a settlement is allowed offline — the sheet's actions (mark
     // settled / approve / reject / request) guard themselves and toast if the
@@ -936,7 +947,9 @@ export default function FriendDetailScreen() {
                       )}
                       ItemSeparatorComponent={ListDivider}
                       stickySectionHeadersEnabled={true}
-                      ListEmptyComponent={() => <EmptyList type={emptyType} />}
+                      ListEmptyComponent={() => (
+                        <EmptyList type={emptyType} content={emptyContent} />
+                      )}
                       ListFooterComponent={() =>
                         (settlementTab === "Settled" ||
                           settlementTab === "All") &&
@@ -950,7 +963,7 @@ export default function FriendDetailScreen() {
                       }
                     />
                   ) : sections.length === 0 ? (
-                    <EmptyList type={emptyType} />
+                    <EmptyList type={emptyType} content={emptyContent} />
                   ) : (
                     <VStack className="gap-y-3 px-4">
                       {sections.map((section) => (

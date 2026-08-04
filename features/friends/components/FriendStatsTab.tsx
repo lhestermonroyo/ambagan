@@ -228,7 +228,12 @@ export default function FriendStatsTab({
   if (settlements.length === 0) {
     return (
       <VStack className="pt-6">
-        <EmptyList type={EmptyType.SETTLEMENT_ALL} />
+        {/* Same reason as the Settlements tab: the type's default copy names a
+            group, which this screen isn't. */}
+        <EmptyList
+          type={EmptyType.SETTLEMENT_ALL}
+          content="No settlements with this friend yet."
+        />
       </VStack>
     );
   }

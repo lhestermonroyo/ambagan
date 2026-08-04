@@ -49,7 +49,7 @@ export default function StatusBadge({
 
   return (
     <AppBadge
-      className="self-start rounded-full"
+      className="rounded-full"
       text={text}
       action={action}
       size={size}

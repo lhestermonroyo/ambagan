@@ -160,7 +160,7 @@ export default function ScanReceiptView({
       // A locked group/book hands straight off; the generic scanner asks which
       // flow the receipt belongs to first (both seed from the same draft).
       if (isGeneric) {
-        setDestinationOpen(true);
+        routeGenericScan();
       } else {
         goToExpense();
       }
@@ -223,6 +223,48 @@ export default function ScanReceiptView({
     } else {
       router.replace(target);
     }
+  };
+
+  // True only when we *know* the user has none of that kind — an uninitialized
+  // list means "not loaded yet", not "empty", and must never be read as empty
+  // (the Add Expense forms resolve it properly either way).
+  const hasNoneOf = (kind: "group" | "book") => {
+    const { list, initialized } =
+      kind === "group" ? states.group.getState() : states.book.getState();
+    return initialized && list.length === 0;
+  };
+
+  // Where a generic (unlocked) scan goes. Both destinations dead-end into a
+  // "create one first" empty form when the user has nothing of that kind — and
+  // that form drops the draft — so decide here instead of offering a choice
+  // that can't be honored: nothing at all → say so and keep the receipt out of
+  // limbo; exactly one possible → skip the chooser and hand straight off.
+  const routeGenericScan = () => {
+    const noGroups = hasNoneOf("group");
+    const noBooks = hasNoneOf("book");
+
+    if (noGroups && noBooks) {
+      clearScanDraft();
+      toast({
+        title: "Nowhere to add this",
+        description:
+          "Create a group or a personal book first, then scan your receipt again.",
+        type: "warning"
+      });
+      return;
+    }
+
+    if (noGroups) {
+      goToDestination("/books/[bookId]/add-expense");
+      return;
+    }
+
+    if (noBooks) {
+      goToDestination("/groups/[groupId]/add-expense");
+      return;
+    }
+
+    setDestinationOpen(true);
   };
 
   // Route the just-scanned draft to the chosen flow, via the literal
