@@ -13,7 +13,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { getPrimaryHex } from "@/utils/getColorHex";
-import { NotebookPen, Users } from "lucide-react-native";
+import { Home, NotebookPen } from "lucide-react-native";
 import { useColorScheme } from "react-native";
 
 /**
@@ -61,7 +61,7 @@ export default function ExpenseDestinationSheet({
           </VStack>
 
           <Option
-            icon={<Users color={iconColor} />}
+            icon={<Home color={iconColor} />}
             title="Group expense"
             description="Split a bill with people in a group."
             onPress={onSelectGroup}

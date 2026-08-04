@@ -4,6 +4,7 @@ import CategoryIcon from "@/components/CategoryIcon";
 import CurrencySelection from "@/components/CurrencySelection";
 import DailyLimitBadge from "@/components/DailyLimitBadge";
 import DatePickerModal from "@/components/DatePickerModal";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
@@ -52,6 +53,7 @@ import services from "@/services";
 import states from "@/states";
 import { Book, PersonalExpenseStatus } from "@/types/books";
 import { ExpenseCategory, RecurrenceConfig } from "@/types/expenses";
+import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
 import { BASE_CURRENCY } from "@/utils/fx";
@@ -688,14 +690,10 @@ export default function AddPersonalExpenseScreen() {
       <FormLayout title="Add Expense" onBack={() => router.back()} footer={[]}>
         <VStack className="flex-1 p-4">
           <VStack className="items-center justify-center flex-1 gap-y-4">
-            <Icon
-              as="sentiment-dissatisfied"
-              size={64}
-              className="text-primary-400"
+            <EmptyList
+              type={EmptyType.BOOK}
+              content="No book yet. Create one to start tracking your spending."
             />
-            <Text className="text-center">
-              No book yet. Create one to start tracking your spending.
-            </Text>
             <FormButton
               text="Create Book"
               iconEnd={

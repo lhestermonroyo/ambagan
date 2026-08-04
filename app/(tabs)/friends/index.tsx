@@ -359,7 +359,13 @@ export default function FriendsScreen() {
                     ItemSeparatorComponent={ListDivider}
                     ListEmptyComponent={() =>
                       favoriteContacts.length === 0 ? (
-                        <EmptyList type={EmptyType.FRIEND} />
+                        // The FRIEND default is about outstanding settlements,
+                        // which is the Balances tab's concern — an empty
+                        // contacts directory just means no shared groups yet.
+                        <EmptyList
+                          type={EmptyType.FRIEND}
+                          content="No contacts yet. People you share a group with will show up here."
+                        />
                       ) : null
                     }
                   />

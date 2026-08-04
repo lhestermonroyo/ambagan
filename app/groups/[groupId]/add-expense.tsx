@@ -5,6 +5,7 @@ import CategoryIcon from "@/components/CategoryIcon";
 import CurrencySelection from "@/components/CurrencySelection";
 import DailyLimitBadge from "@/components/DailyLimitBadge";
 import DatePickerModal from "@/components/DatePickerModal";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
@@ -52,6 +53,7 @@ import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
 import { ExpenseCategory, RecurrenceConfig } from "@/types/expenses";
+import { EmptyType } from "@/types/general";
 import { Group, Member } from "@/types/groups";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
@@ -969,15 +971,10 @@ export default function AddExpenseScreen() {
         {hasNoGroups ? (
           <VStack className="flex-1 p-4">
             <VStack className="items-center justify-center flex-1 gap-y-4">
-              <Icon
-                as="sentiment-dissatisfied"
-                size={64}
-                className="text-primary-400"
+              <EmptyList
+                type={EmptyType.GROUP}
+                content="You're not in a group yet. Join or create one to add an expense."
               />
-              <Text className="text-center">
-                You&apos;re not in a group yet. Join or create one to add an
-                expense.
-              </Text>
               <FormButton
                 text="Create Group"
                 iconEnd={
