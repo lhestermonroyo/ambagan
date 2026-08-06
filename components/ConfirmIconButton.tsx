@@ -6,6 +6,7 @@ import { Heading } from "./ui/heading";
 import { HStack } from "./ui/hstack";
 import {
   Modal,
+  ModalBackdrop,
   ModalBody,
   ModalContent,
   ModalFooter,
@@ -77,6 +78,7 @@ const ConfirmModal = ({
 }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
+      <ModalBackdrop />
       <ModalContent>
         <ModalHeader>
           <Heading size="lg">{title}</Heading>

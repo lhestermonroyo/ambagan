@@ -15,6 +15,7 @@ import { HStack } from "@/components/ui/hstack";
 import {
   Modal,
   ModalBody,
+  ModalBackdrop,
   ModalContent,
   ModalFooter,
   ModalHeader
@@ -696,6 +697,7 @@ export default function ExpenseDetailsScreen() {
         isOpen={deleteModalOpen}
         onClose={() => !deleting && setDeleteModalOpen(false)}
       >
+        <ModalBackdrop />
         <ModalContent>
           <ModalHeader>
             <Heading size="lg">Delete Expense</Heading>

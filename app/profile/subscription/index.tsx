@@ -9,6 +9,7 @@ import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
+import { SafeAreaView } from "@/components/ui/safe-area-view";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -16,9 +17,11 @@ import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
+import { getPrimaryHex } from "@/utils/getColorHex";
 
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { Crown } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
 import { PurchasesOffering, PurchasesPackage } from "react-native-purchases";
 
@@ -113,6 +116,8 @@ export default function SubscriptionScreen() {
 
   const router = useRouter();
   const toast = useAppToast();
+  const { colorScheme } = useColorScheme();
+  const tintColor = getPrimaryHex("text-primary-600", colorScheme ?? "light");
 
   const isPro = userDetails?.plan === "pro";
 
@@ -277,7 +282,43 @@ export default function SubscriptionScreen() {
   };
 
   return (
-    <InnerLayout title="Subscription" onBack={() => router.back()}>
+    <InnerLayout
+      title="Subscription"
+      onBack={() => router.back()}
+      actions={
+        isPro ? undefined : (
+          <Stack.Toolbar.Button
+            variant="plain"
+            tintColor={tintColor}
+            disabled={purchasing || restoring}
+            accessibilityLabel="Restore purchase"
+            onPress={handleRestore}
+          >
+            {restoring ? "Restoring..." : "Restore"}
+          </Stack.Toolbar.Button>
+        )
+      }
+      androidActions={
+        isPro ? undefined : (
+          <Pressable
+            className="pr-1"
+            disabled={purchasing || restoring}
+            aria-label="Restore purchase"
+            onPress={handleRestore}
+          >
+            <Text
+              className="font-medium"
+              style={{
+                color: tintColor,
+                opacity: purchasing || restoring ? 0.4 : 1
+              }}
+            >
+              {restoring ? "Restoring..." : "Restore"}
+            </Text>
+          </Pressable>
+        )
+      }
+    >
       <ScrollView className="flex-1">
         <VStack className="gap-y-6 p-4 pb-10">
           {/* Pro status card — shown to Pro users */}
@@ -312,48 +353,18 @@ export default function SubscriptionScreen() {
 
           {/* Upgrade header — free users */}
           {!isPro && (
-            <VStack className="gap-y-1">
+            <VStack className="gap-y-1 items-center">
               <HStack className="items-center gap-x-2">
-                <Text bold className="text-xl">
+                <Text bold className="text-3xl">
                   Upgrade to
                 </Text>
-                <ProBadge />
+                <ProBadge size="lg" />
               </HStack>
-              <Text className="text-sm text-secondary-950">
+              <Text className="text-secondary-950">
                 One subscription, all features — cancel anytime.
               </Text>
             </VStack>
           )}
-
-          {/* Feature list */}
-          <VStack className="gap-y-2">
-            <Text bold className="text-2xl">
-              {isPro ? "Your Pro Features" : "What you get"}
-            </Text>
-            <Box className="rounded-2xl overflow-hidden bg-background-50">
-              {FEATURES.map((feature, index) => (
-                <Box key={feature.title}>
-                  <HStack className="gap-x-3 items-start p-4">
-                    <Box className="bg-primary-50 p-2 rounded-full mt-0.5">
-                      <Icon
-                        as={feature.icon as any}
-                        className="text-primary-600"
-                      />
-                    </Box>
-                    <VStack className="flex-1">
-                      <Text bold className="text-base">
-                        {feature.title}
-                      </Text>
-                      <Text className="text-secondary-950 text-sm">
-                        {feature.description}
-                      </Text>
-                    </VStack>
-                  </HStack>
-                  {index < FEATURES.length - 1 && <ListDivider />}
-                </Box>
-              ))}
-            </Box>
-          </VStack>
 
           {/* Plan cards — free users only */}
           {!isPro && (
@@ -439,29 +450,39 @@ export default function SubscriptionScreen() {
             </LoadingWrapper>
           )}
 
-          {/* CTA — free users */}
-          {!isPro && (
-            <VStack className="gap-y-3">
-              <FormButton
-                text={ctaLabel()}
-                loading={purchasing}
-                disabled={purchasing || restoring || loadingOffering}
-                onPress={handleSubscribe}
-              />
-              <FormButton
-                text="Restore Purchase"
-                variant="outline"
-                loading={restoring}
-                disabled={purchasing || restoring}
-                onPress={handleRestore}
-              />
-              <Text className="text-center text-secondary-950 text-sm leading-relaxed">
-                Subscription renews automatically.{"\n"}
-                Cancel anytime via App Store settings.
-              </Text>
-            </VStack>
-          )}
-
+          {/* Feature list */}
+          <VStack className="gap-y-2">
+            <Text bold className="text-2xl">
+              {isPro ? "Your Pro Features" : "What you get"}
+            </Text>
+            <Box className="rounded-2xl overflow-hidden bg-background-50">
+              {FEATURES.map((feature, index) => (
+                <Box key={feature.title}>
+                  <HStack className="gap-x-3 items-start p-4">
+                    <Box className="bg-primary-50 p-2 rounded-full mt-0.5">
+                      <Icon
+                        as={feature.icon as any}
+                        className="text-primary-600"
+                      />
+                    </Box>
+                    <VStack className="flex-1">
+                      <Text bold className="text-base">
+                        {feature.title}
+                      </Text>
+                      <Text className="text-secondary-950 text-sm">
+                        {feature.description}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  {index < FEATURES.length - 1 && <ListDivider />}
+                </Box>
+              ))}
+            </Box>
+          </VStack>
+        </VStack>
+      </ScrollView>
+      <SafeAreaView edges={["bottom"]}>
+        <Box className="p-4">
           {/* CTA — Pro users */}
           {isPro && (
             <FormButton
@@ -471,8 +492,24 @@ export default function SubscriptionScreen() {
               onPress={handleManageSubscription}
             />
           )}
-        </VStack>
-      </ScrollView>
+
+          {!isPro && (
+            <FormButton
+              text={ctaLabel()}
+              loading={purchasing}
+              disabled={purchasing || restoring || loadingOffering}
+              onPress={handleSubscribe}
+            />
+          )}
+        </Box>
+
+        {!isPro && (
+          <Text className="text-center text-secondary-950 text-sm leading-relaxed">
+            Subscription renews automatically.{"\n"}
+            Cancel anytime via App Store settings.
+          </Text>
+        )}
+      </SafeAreaView>
     </InnerLayout>
   );
 }

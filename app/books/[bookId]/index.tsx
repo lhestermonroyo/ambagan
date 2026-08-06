@@ -22,6 +22,7 @@ import { HStack } from "@/components/ui/hstack";
 import {
   Modal,
   ModalBody,
+  ModalBackdrop,
   ModalContent,
   ModalFooter,
   ModalHeader
@@ -1334,6 +1335,7 @@ export default function BookDetailScreen() {
         isOpen={deleteOpen}
         onClose={() => !deleting && setDeleteOpen(false)}
       >
+        <ModalBackdrop />
         <ModalContent>
           <ModalHeader>
             <Heading size="lg">Delete Book</Heading>
