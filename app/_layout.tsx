@@ -517,14 +517,20 @@ export default function RootLayout() {
                 {/* Once inside the app (or auth), the back-swipe must not pop
                     the whole group off the root stack — that's how an accidental
                     swipe was landing the user back on the login screen. All
-                    other root screens keep the native swipe-back. */}
+                    other root screens keep the native swipe-back.
+
+                    animation: "none" — index.tsx `Redirect`s the splash into one
+                    of these groups, and the stack's default simple_push made the
+                    destination slide in after the spinner. These are whole-app
+                    swaps (launch, login, logout), not pushes, so they should
+                    appear instantly. */}
                 <Stack.Screen
                   name="(tabs)"
-                  options={{ gestureEnabled: false }}
+                  options={{ gestureEnabled: false, animation: "none" }}
                 />
                 <Stack.Screen
                   name="(auth)"
-                  options={{ gestureEnabled: false }}
+                  options={{ gestureEnabled: false, animation: "none" }}
                 />
               </Stack>
               <StatusBar style="auto" />
