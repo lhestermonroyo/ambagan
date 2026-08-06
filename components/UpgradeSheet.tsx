@@ -12,49 +12,11 @@ import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { PRO_FEATURES } from "@/constants/proFeatures";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
 import { ArrowRight } from "lucide-react-native";
 import { useColorScheme } from "react-native";
-
-const PRO_FEATURES = [
-  {
-    icon: "bolt",
-    title: "No daily expense limit",
-    description: "Add as many expenses as you need — no daily cap, ever."
-  },
-  {
-    icon: "download",
-    title: "Export settlements as CSV",
-    description: "Download settlements by date range for your records."
-  },
-  {
-    icon: "trending-up",
-    title: "Spending analytics",
-    description: "See where your money goes — by group, by month, by friend."
-  },
-  {
-    icon: "currency-exchange",
-    title: "Multi-currency expenses",
-    description: "Split bills in any currency — PHP, USD, JPY, and more."
-  },
-  {
-    icon: "pending-actions",
-    title: "Draft expenses",
-    description: "Log an expense now and finalize who paid and the split later."
-  },
-  {
-    icon: "event-repeat",
-    title: "Recurring expenses",
-    description:
-      "Auto-post rent, subscriptions, and regular bills on a schedule."
-  },
-  {
-    icon: "star",
-    title: "All future updates included",
-    description: "New Pro features as they ship — yours forever."
-  }
-];
 
 export default function UpgradeSheet({
   isOpen,
@@ -96,7 +58,7 @@ export default function UpgradeSheet({
             </HStack>
             <Text className="text-sm text-secondary-950">
               {description ??
-                "One-time purchase • No subscription • No renewal"}
+                "From ₱99 for 2 weeks • Monthly & yearly • Cancel anytime"}
             </Text>
           </VStack>
 
@@ -105,10 +67,7 @@ export default function UpgradeSheet({
               {PRO_FEATURES.map((feature) => (
                 <HStack key={feature.title} className="gap-x-2 items-start">
                   <Box className="bg-primary-50 p-2 rounded-full mt-0.5">
-                    <Icon
-                      as={feature.icon as any}
-                      className="text-primary-600"
-                    />
+                    <Icon as={feature.icon} className="text-primary-600" />
                   </Box>
                   <VStack className="flex-1">
                     <Text bold className="text-lg">
