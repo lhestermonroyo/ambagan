@@ -21,8 +21,12 @@ import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useRouter } from "expo-router";
 
 import { useEffect, useMemo, useState } from "react";
+import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 
 export default function OnboardingScreen() {
+  // Cold-launch landing screen: holds the native splash until this screen's
+  // first frame is drawn, so the launch never flashes the bare window.
+  useHideSplashOnFirstFrame();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   // Seed the name from a Google/Apple sign-in (if any) so the user doesn't

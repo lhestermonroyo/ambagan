@@ -39,6 +39,7 @@ import {
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
+import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 import services from "@/services";
 import states from "@/states";
 import { Book, PersonalExpense, PersonalOverview } from "@/types/books";
@@ -91,6 +92,10 @@ const HERO_SHARED = 0;
 const HERO_PERSONAL = 1;
 
 export default function HomeScreen() {
+  // Cold-launch landing screen: holds the native splash until this screen's
+  // first frame is drawn, so the launch never flashes the bare window.
+  useHideSplashOnFirstFrame();
+
   const [loading, setLoading] = useState({
     stats: false,
     activities: false,

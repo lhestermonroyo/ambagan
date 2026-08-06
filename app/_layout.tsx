@@ -8,6 +8,7 @@ import "@/global.css";
 import { buildFriendSettlementRoute } from "@/features/notifications/utils/buildFriendSettlementRoute";
 import useAppToast, { ToastProvider } from "@/hooks/use-app-toast";
 import { useBanner } from "@/hooks/useBanner";
+import { hideSplashNow } from "@/hooks/useHideSplash";
 import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
@@ -52,6 +53,17 @@ import {
   withSequence,
   withTiming
 } from "react-native-reanimated";
+
+// Without this, expo hides the splash on its own as soon as the root view has
+// any content — which is the instant RootLayout stops returning null, ~1s
+// before the tab tree finishes mounting. That autohide, not our own hideAsync,
+// was what uncovered the bare window on a cold launch. Opt out here so the only
+// thing that lifts the splash is a landing screen's first painted frame (see
+// useHideSplashOnFirstFrame) or the watchdog below.
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/** Backstop only — see the watchdog effect in RootLayout. */
+const SPLASH_WATCHDOG_MS = 4000;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -132,10 +144,19 @@ export default function RootLayout() {
     );
   }, [appearanceMode]);
 
+  // The splash is normally lifted by whichever landing screen paints first, via
+  // useHideSplashOnFirstFrame — NOT here. Hiding it the moment auth resolved
+  // uncovered the bare window ~1s before the tab tree finished mounting, so a
+  // cold launch read: splash → blank → content.
+  //
+  // This is only the backstop. If we land somewhere that doesn't call the hook
+  // (a deep link into a screen we haven't annotated) or the destination throws
+  // before its first frame, the splash must still come down rather than stick
+  // forever. Generous by design — it should normally never be the one to fire.
   useEffect(() => {
-    if (loaded && !loading) {
-      SplashScreen.hideAsync();
-    }
+    if (!loaded || loading) return;
+    const timer = setTimeout(hideSplashNow, SPLASH_WATCHDOG_MS);
+    return () => clearTimeout(timer);
   }, [loaded, loading]);
 
   useEffect(() => {

@@ -3,6 +3,7 @@ import { Box } from "@/components/ui/box";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 import services from "@/services";
 import states from "@/states";
 import { getErrorHex } from "@/utils/getColorHex";
@@ -18,6 +19,11 @@ import { useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function JoinGroupScreen() {
+  // An invite deep link cold-launches straight here, bypassing app/index — so
+  // this screen has to lift the splash itself or the watchdog would hold it for
+  // the full timeout.
+  useHideSplashOnFirstFrame();
+
   const { token } = useLocalSearchParams<{ token: string }>();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
