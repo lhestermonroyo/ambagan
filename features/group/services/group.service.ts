@@ -610,8 +610,6 @@ export const getStatsByGroupId = async (groupId: string) => {
     .eq("id", groupId)
     .single();
 
-  console.log("data", JSON.stringify(data, null, 2));
-
   if (error) {
     throw error;
   }
