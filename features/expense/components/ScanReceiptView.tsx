@@ -28,17 +28,11 @@ import states from "@/states";
 import { DAILY_EXPENSE_LIMIT, PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import { ImageUp, ReceiptText, X, Zap, ZapOff } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  LayoutChangeEvent,
-  Linking,
-  StyleSheet,
-  useColorScheme
-} from "react-native";
+import { Linking, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Below this we still autofill, but nudge the user to double-check the amount.
@@ -124,9 +118,6 @@ export default function ScanReceiptView({
   // hand-off time in case the scan comes back first.
   const destinationsLoaded = useRef<Promise<void> | null>(null);
   const cameraRef = useRef<CameraView>(null);
-  // Size of the viewfinder window (the band between the black bars), used to
-  // crop the capture down to exactly what the user framed.
-  const viewfinderRef = useRef<{ width: number; height: number } | null>(null);
   const colorScheme = useColorScheme() ?? "light";
   // On the tab this screen stays mounted once visited, so tear the camera down
   // when it's off screen instead of leaving it (and the torch) running.
@@ -294,69 +285,27 @@ export default function ScanReceiptView({
     }
   };
 
-  const handleViewfinderLayout = (event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    viewfinderRef.current = { width, height };
-  };
-
-  // The shutter hands back the full sensor frame, but the preview only shows
-  // the slice that fits the viewfinder window (it fills the window by cropping,
-  // not by letterboxing). Reproduce that same centered crop on the captured
-  // image so the scan sees exactly what the user framed — anything hidden
-  // behind the black bars is dropped rather than sent along.
-  const cropToViewfinder = async (photo: {
-    uri: string;
-    width: number;
-    height: number;
-  }) => {
-    const view = viewfinderRef.current;
-    if (!view?.width || !view?.height || !photo.width || !photo.height) {
-      return photo;
-    }
-
-    // A photo whose orientation doesn't match the preview means the sensor
-    // frame isn't laid out the way we assume; cropping it would cut the wrong
-    // band, so hand the untouched photo through instead.
-    if (view.width > view.height !== photo.width > photo.height) return photo;
-
-    const scale = Math.max(
-      view.width / photo.width,
-      view.height / photo.height
-    );
-    const width = Math.min(photo.width, Math.round(view.width / scale));
-    const height = Math.min(photo.height, Math.round(view.height / scale));
-
-    try {
-      const image = await ImageManipulator.manipulate(photo.uri)
-        .crop({
-          originX: Math.round((photo.width - width) / 2),
-          originY: Math.round((photo.height - height) / 2),
-          width,
-          height
-        })
-        .renderAsync();
-      const cropped = await image.saveAsync({
-        format: SaveFormat.JPEG,
-        compress: 1
-      });
-      return {
-        uri: cropped.uri,
-        width: cropped.width,
-        height: cropped.height
-      };
-    } catch {
-      // Cropping is a refinement, not a requirement — scan the full frame.
-      return photo;
-    }
-  };
-
+  // The capture is handed to the scan exactly as the camera returns it — the
+  // same shape the Photos picker produces, which is the path that reads
+  // reliably. It used to be cropped down to the viewfinder window first, but
+  // that crop is unsafe: `takePictureAsync` reports width/height in *display*
+  // orientation while the file is stored as a sensor-orientation bitmap plus an
+  // EXIF rotation flag, and ImageManipulator crops in stored-bitmap space. A
+  // portrait crop rect then slices the wrong band out of a landscape bitmap and
+  // saveAsync bakes the mistake in, so a perfectly clear receipt reached the
+  // model as an off-centre sliver. Library photos arrive already normalized,
+  // which is why picking one always worked.
+  //
+  // Sending the whole frame costs nothing here: the model reads a receipt fine
+  // with some surroundings in shot, and the frame is downscaled to 1024px wide
+  // before it goes over the wire either way.
   const handleCapture = async () => {
     if (scanning) return;
 
     try {
       const photo = await cameraRef.current?.takePictureAsync({ quality: 1 });
       if (!photo) return;
-      await handleScan(toPickerResult(await cropToViewfinder(photo)));
+      await handleScan(toPickerResult(photo));
     } catch {
       toast({
         title: "Couldn't take photo",
@@ -493,13 +442,11 @@ export default function ScanReceiptView({
           </Box>
 
           {/* The viewfinder: the camera lives in this window rather than behind
-              the whole screen, so the black bars above and below it aren't just
-              dimming — what they cover is outside the frame and gets cropped
-              off the capture (see cropToViewfinder). */}
-          <Box
-            className="flex-1 overflow-hidden bg-black"
-            onLayout={handleViewfinderLayout}
-          >
+              the whole screen, so the receipt has an obvious target to sit in.
+              It's framing guidance only — the capture is scanned whole (see
+              handleCapture), so a receipt that overruns the black bars is still
+              read rather than being silently cut off. */}
+          <Box className="flex-1 overflow-hidden bg-black">
             {isFocused && !scanning && (
               <CameraView
                 ref={cameraRef}
