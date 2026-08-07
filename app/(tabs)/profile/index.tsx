@@ -28,7 +28,6 @@ import {
   Bell,
   CircleQuestionMark,
   Copyright,
-  Crown,
   Eye,
   LayoutDashboard,
   LayoutList,
@@ -41,7 +40,14 @@ import {
   UserLock
 } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import { Pressable, useColorScheme } from "react-native";
+import { Image, Pressable, useColorScheme } from "react-native";
+
+// Same hexagon art the subscription screen uses — pair it to the active scheme
+// so it doesn't fight the chip behind it.
+const PRO_BADGE = {
+  light: require("@/assets/images/pro-light.png"),
+  dark: require("@/assets/images/pro-dark.png")
+};
 
 export default function ProfileScreen() {
   const {
@@ -275,14 +281,13 @@ export default function ProfileScreen() {
                     isPro ? "bg-primary-400" : "bg-warning-400"
                   )}
                 >
-                  <Box className="bg-background-0 rounded-full p-4">
-                    <Crown
-                      size={24}
-                      color={
-                        isPro
-                          ? getPrimaryHex("text-primary-400", colorScheme)
-                          : "#d97706"
+                  <Box className="bg-background-0 rounded-full p-3">
+                    <Image
+                      source={
+                        PRO_BADGE[colorScheme === "dark" ? "dark" : "light"]
                       }
+                      style={{ width: 32, height: 32 }}
+                      resizeMode="contain"
                     />
                   </Box>
                   <VStack className="flex-1">
