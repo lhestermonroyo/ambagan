@@ -20,6 +20,27 @@ export type TourArt = {
   xml: string;
 };
 
+/**
+ * Blob colours for the shape behind each drawing.
+ *
+ * Two hues per slide rather than one at two opacities: stacking a single hue
+ * only ever produces a darker version of itself, which is what made the first
+ * pass look like fog. Neighbouring hues mix where the blobs overlap, and that
+ * third tone is what actually reads as depth.
+ *
+ * These are decorative, so they sit outside the semantic ramps (success/error
+ * carry meaning elsewhere and shouldn't be borrowed for scenery). Values are
+ * Tailwind's, matching the palette the rest of the project is built on.
+ */
+export const BLOB_ACCENTS = {
+  violet: { back: "#8B5CF6", front: "#6366F1" },
+  emerald: { back: "#34D399", front: "#2DD4BF" },
+  sky: { back: "#38BDF8", front: "#6366F1" },
+  amber: { back: "#FBBF24", front: "#FB7185" }
+} as const;
+
+export type BlobAccent = (typeof BLOB_ACCENTS)[keyof typeof BLOB_ACCENTS];
+
 export const ART_BILL_DIVIDED: TourArt = {
   slug: "bill-divided",
   width: 150,
