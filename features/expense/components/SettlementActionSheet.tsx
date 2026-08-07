@@ -50,11 +50,11 @@ function SettlementContent({
   item: PaymentPreview;
   onRefetch: () => void;
 }) {
-  const router = useRouter();
-  const { details: userDetails } = states.user();
-  const { isOnline } = useNetwork();
+  if (!item) return null;
 
-  if (!userDetails) return null;
+  const router = useRouter();
+  const { isOnline } = useNetwork();
+  const { details: userDetails } = states.user();
 
   // The home Recent Activity feed supplies a PaymentPreview (via
   // getPaymentsByUserId), which omits proof_of_payment / notes /
