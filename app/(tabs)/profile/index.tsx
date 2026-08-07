@@ -34,6 +34,7 @@ import {
   LogOut,
   MonitorCog,
   Moon,
+  Sparkles,
   Sun,
   TrendingUp,
   UserCircle,
@@ -190,6 +191,14 @@ export default function ProfileScreen() {
       {
         title: "More",
         items: [
+          {
+            icon: (
+              <Sparkles color={getPrimaryHex("text-primary-400", colorScheme)} />
+            ),
+            label: "How Ambagan works",
+            description: "A quick tour of what you can do in the app",
+            onPress: () => router.push("/feature-tour")
+          },
           {
             icon: (
               <CircleQuestionMark

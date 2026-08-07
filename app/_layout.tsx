@@ -553,6 +553,14 @@ export default function RootLayout() {
                   name="(auth)"
                   options={{ gestureEnabled: false, animation: "none" }}
                 />
+                {/* The first-run feature tour. A modal presentation so the
+                    swipe-down dismiss is native — the tour is always skippable,
+                    and the route marks it seen on the way out whichever way you
+                    leave. */}
+                <Stack.Screen
+                  name="feature-tour"
+                  options={{ presentation: "modal" }}
+                />
               </Stack>
               <StatusBar style="auto" />
               <OfflineSync />
