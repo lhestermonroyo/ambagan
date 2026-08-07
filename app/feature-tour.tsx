@@ -11,6 +11,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
  * A route rather than a component behind a boolean so the native swipe-down
  * dismiss and Android back come for free, and so Profile → How Ambagan works
  * can reopen it later — a tour you can only ever see once is wasted work.
+ *
+ * Headerless on purpose: the root Stack's `headerShown: false` carries over, and
+ * the tour draws its own Skip button. A native header put a second, empty title
+ * bar above artwork that already fills the card.
  */
 export default function FeatureTourScreen() {
   const router = useRouter();

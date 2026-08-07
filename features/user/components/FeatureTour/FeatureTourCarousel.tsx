@@ -1,7 +1,7 @@
 import FormButton from "@/components/FormButton";
+import Icon from "@/components/Icon";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
-import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { getPrimaryHex } from "@/utils/getColorHex";
@@ -71,15 +71,16 @@ export default function FeatureTourCarousel({
 
   return (
     <VStack className="flex-1 bg-background-0">
-      <HStack className="items-center justify-end px-2 pt-2">
-        <Pressable
+      <HStack className="items-center justify-end p-4">
+        <FormButton
+          variant="link"
+          size="md"
+          text="Skip"
+          iconEnd={
+            <Icon as="chevron-right" className="text-primary-400 -ml-2 -mr-1" />
+          }
           onPress={onDone}
-          accessibilityRole="button"
-          accessibilityLabel="Skip the tour"
-          className="px-4 py-3"
-        >
-          <Text className="text-primary-400 font-medium">Skip</Text>
-        </Pressable>
+        />
       </HStack>
 
       <Animated.ScrollView
