@@ -108,7 +108,7 @@ async function resolveDailyCount(userId: string): Promise<number> {
  * fullscreen sheet to customize payers (multiple contributors) and the split
  * (equal / percentage / exact amounts, with member exclusion). Opened from Home
  * (group defaults to the one you most recently joined, changeable) or from a
- * group (that group, locked), and seeds from a Scan Receipt (Beta) hand-off when
+ * group (that group, locked), and seeds from a Scan Receipt hand-off when
  * a scanDraft is waiting. This is the single expense form — it replaced the
  * separate Quick/Custom flows.
  */
@@ -129,7 +129,7 @@ export default function AddExpenseScreen() {
   const { isOnline } = useNetwork();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
-  // Seed from a Scan Receipt (Beta) hand-off if one is waiting. Read once at
+  // Seed from a Scan Receipt hand-off if one is waiting. Read once at
   // mount via a lazy initializer; the draft is cleared in the effect below so a
   // back-out + re-entry starts clean. Scanned currency is only honored for Pro
   // (free = PHP-only) and only when it's a currency we support — see

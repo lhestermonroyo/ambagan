@@ -12,11 +12,17 @@ import services from "@/services";
 import states from "@/states";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import { ImageUp, ReceiptText, X, Zap, ZapOff } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Linking, StyleSheet, useColorScheme } from "react-native";
+import {
+  LayoutChangeEvent,
+  Linking,
+  StyleSheet,
+  useColorScheme
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Below this we still autofill, but nudge the user to double-check the amount.
@@ -61,7 +67,7 @@ type ScanReceiptViewProps = {
 };
 
 /**
- * Scan Receipt (Beta): point the camera at a receipt (or pick one from Photos) →
+ * Scan Receipt: point the camera at a receipt (or pick one from Photos) →
  * read it via the scan-receipt Edge Function → stash the parsed fields + image as
  * a scanDraft → open the Add Expense screen already filled in. Degrades
  * gracefully: an unreadable receipt still opens the form (blank/partial) with a
@@ -84,6 +90,9 @@ export default function ScanReceiptView({
   const [destinationOpen, setDestinationOpen] = useState(false);
   const isGeneric = !groupId && !bookId;
   const cameraRef = useRef<CameraView>(null);
+  // Size of the viewfinder window (the band between the black bars), used to
+  // crop the capture down to exactly what the user framed.
+  const viewfinderRef = useRef<{ width: number; height: number } | null>(null);
   const colorScheme = useColorScheme() ?? "light";
   // On the tab this screen stays mounted once visited, so tear the camera down
   // when it's off screen instead of leaving it (and the torch) running.
@@ -175,13 +184,69 @@ export default function ScanReceiptView({
     }
   };
 
+  const handleViewfinderLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    viewfinderRef.current = { width, height };
+  };
+
+  // The shutter hands back the full sensor frame, but the preview only shows
+  // the slice that fits the viewfinder window (it fills the window by cropping,
+  // not by letterboxing). Reproduce that same centered crop on the captured
+  // image so the scan sees exactly what the user framed — anything hidden
+  // behind the black bars is dropped rather than sent along.
+  const cropToViewfinder = async (photo: {
+    uri: string;
+    width: number;
+    height: number;
+  }) => {
+    const view = viewfinderRef.current;
+    if (!view?.width || !view?.height || !photo.width || !photo.height) {
+      return photo;
+    }
+
+    // A photo whose orientation doesn't match the preview means the sensor
+    // frame isn't laid out the way we assume; cropping it would cut the wrong
+    // band, so hand the untouched photo through instead.
+    if (view.width > view.height !== photo.width > photo.height) return photo;
+
+    const scale = Math.max(
+      view.width / photo.width,
+      view.height / photo.height
+    );
+    const width = Math.min(photo.width, Math.round(view.width / scale));
+    const height = Math.min(photo.height, Math.round(view.height / scale));
+
+    try {
+      const image = await ImageManipulator.manipulate(photo.uri)
+        .crop({
+          originX: Math.round((photo.width - width) / 2),
+          originY: Math.round((photo.height - height) / 2),
+          width,
+          height
+        })
+        .renderAsync();
+      const cropped = await image.saveAsync({
+        format: SaveFormat.JPEG,
+        compress: 1
+      });
+      return {
+        uri: cropped.uri,
+        width: cropped.width,
+        height: cropped.height
+      };
+    } catch {
+      // Cropping is a refinement, not a requirement — scan the full frame.
+      return photo;
+    }
+  };
+
   const handleCapture = async () => {
     if (scanning) return;
 
     try {
       const photo = await cameraRef.current?.takePictureAsync({ quality: 1 });
       if (!photo) return;
-      await handleScan(toPickerResult(photo));
+      await handleScan(toPickerResult(await cropToViewfinder(photo)));
     } catch {
       toast({
         title: "Couldn't take photo",
@@ -332,14 +397,6 @@ export default function ScanReceiptView({
 
   return (
     <Box className="flex-1 bg-black">
-      {isFocused && !scanning && (
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          enableTorch={torch}
-        />
-      )}
       <SafeAreaView style={{ flex: 1 }}>
         <VStack className="flex-1">
           <Box className="p-4">
@@ -351,11 +408,27 @@ export default function ScanReceiptView({
             </Pressable>
           </Box>
 
-          <VStack className="flex-1 items-end justify-end">
-            <Text className="text-white text-center px-8 pb-6 w-full">
-              Point your camera at a receipt, then tap the shutter.
-            </Text>
-          </VStack>
+          {/* The viewfinder: the camera lives in this window rather than behind
+              the whole screen, so the black bars above and below it aren't just
+              dimming — what they cover is outside the frame and gets cropped
+              off the capture (see cropToViewfinder). */}
+          <Box
+            className="flex-1 overflow-hidden bg-black"
+            onLayout={handleViewfinderLayout}
+          >
+            {isFocused && !scanning && (
+              <CameraView
+                ref={cameraRef}
+                style={StyleSheet.absoluteFill}
+                facing="back"
+                enableTorch={torch}
+              />
+            )}
+          </Box>
+
+          <Text className="text-white text-center px-8 pt-6 w-full">
+            Fit the receipt inside the frame, then tap the shutter.
+          </Text>
 
           <HStack className="items-center justify-center gap-x-10 p-6">
             <Pressable
@@ -418,12 +491,13 @@ export default function ScanReceiptView({
       )}
 
       <ExpenseDestinationSheet
-        isOpen={destinationOpen}
+        isOpen={true}
         onClose={handleDestinationClose}
         onSelectGroup={() => goToDestination("/groups/[groupId]/add-expense")}
         onSelectPersonal={() => goToDestination("/books/[bookId]/add-expense")}
         title="Where should this go?"
         subtitle="Add the scanned receipt to a group or a personal book."
+        fullscreen
       />
     </Box>
   );

@@ -24,7 +24,7 @@ import { ImagePickerAsset, ImagePickerSuccessResult } from "expo-image-picker";
 import { v4 as uuid } from "uuid";
 
 /**
- * Scan Receipt (Beta): compress the picked photo, send it to the scan-receipt
+ * Scan Receipt: compress the picked photo, send it to the scan-receipt
  * Edge Function, and return the parsed amount/description/currency/etc. The AI
  * vendor lives behind the Edge Function — this just speaks the normalized
  * contract. Throws on a transport failure so the caller can toast + fall back.

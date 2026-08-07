@@ -2,7 +2,7 @@ import { ImagePickerSuccessResult } from "expo-image-picker";
 import { UserPreview } from "./user";
 
 /**
- * Transient hand-off from Scan Receipt (Beta) to the new-expense form. Carries
+ * Transient hand-off from Scan Receipt to the new-expense form. Carries
  * the fields parsed off the receipt plus the picked image (which doubles as the
  * expense's proof-of-payment). Set right before navigating to new-expense and
  * cleared once the form seeds itself. Kept in the store rather than route params

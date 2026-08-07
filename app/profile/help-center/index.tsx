@@ -317,7 +317,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is Scan Receipt?",
         answer:
-          "Scan Receipt (Beta) lets you photograph a paper receipt and have Ambagan read the amount, description, and date for you, then drop them straight into the Add Expense screen — so you don't have to type them in. It's a faster way to log an expense when you have the receipt in hand."
+          "Scan Receipt lets you photograph a paper receipt and have Ambagan read the amount, description, and date for you, then drop them straight into the Add Expense screen — so you don't have to type them in. It's a faster way to log an expense when you have the receipt in hand."
       },
       {
         question: "How do I scan a receipt?",
@@ -327,7 +327,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Is scanning receipts free?",
         answer:
-          "Yes. Scan Receipt is free for everyone while it's in beta, with no scan limit. The expense it creates still counts toward your 5-per-day limit on the free plan. Free scans read amounts in Philippine Peso (PHP); setting a different currency on a scanned expense is a Pro feature."
+          "Yes. Scan Receipt is free for everyone, with no scan limit. The expense it creates still counts toward your 5-per-day limit on the free plan. Free scans read amounts in Philippine Peso (PHP); setting a different currency on a scanned expense is a Pro feature."
       },
       {
         question: "What if the scan gets a detail wrong?",

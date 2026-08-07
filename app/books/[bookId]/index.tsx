@@ -12,7 +12,6 @@ import ProBadge from "@/components/ProBadge";
 import SearchInput from "@/components/SearchInput";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import UpgradeSheet from "@/components/UpgradeSheet";
-import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
@@ -795,9 +794,6 @@ export default function BookDetailScreen() {
                 >
                   <HStack className="items-center gap-x-2">
                     <Text className="text-base">Scan Receipt</Text>
-                    <Badge size="sm" action="info" variant="solid">
-                      <BadgeText>Beta</BadgeText>
-                    </Badge>
                   </HStack>
                   <ScanLine
                     size={20}

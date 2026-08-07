@@ -1,3 +1,4 @@
+import AppSheet from "@/components/AppSheet";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import PressableListItem from "@/components/PressableListItem";
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/actionsheet";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
+import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { getPrimaryHex } from "@/utils/getColorHex";
@@ -29,7 +31,8 @@ export default function ExpenseDestinationSheet({
   onSelectGroup,
   onSelectPersonal,
   title = "What are you adding?",
-  subtitle
+  subtitle,
+  fullscreen = false
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -37,9 +40,60 @@ export default function ExpenseDestinationSheet({
   onSelectPersonal: () => void;
   title?: string;
   subtitle?: string;
+  /**
+   * Take the whole screen with a back-arrow header instead of the compact
+   * content-height sheet. Used by the post-scan hand-off, where the choice is a
+   * step in the scan flow rather than a quick prompt over the current screen.
+   */
+  fullscreen?: boolean;
 }) {
   const colorScheme = useColorScheme() ?? "light";
   const iconColor = getPrimaryHex("text-primary-500", colorScheme);
+
+  const options = (
+    <>
+      <Option
+        icon={<Home color={iconColor} />}
+        title="Group expense"
+        description="Split a bill with people in a group."
+        onPress={onSelectGroup}
+      />
+      <ListDivider />
+      <Option
+        icon={<NotebookPen color={iconColor} />}
+        title="Personal expense"
+        description="Track your own spending in a book."
+        onPress={onSelectPersonal}
+      />
+    </>
+  );
+
+  if (fullscreen) {
+    return (
+      <AppSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        fullscreen
+        keyboardAvoiding={false}
+      >
+        <Pressable onPress={onClose}>
+          <HStack className="items-center pt-4 px-4">
+            <Icon as="arrow-back-ios" className="text-secondary-950" />
+            <Text bold className="text-xl">
+              {title}
+            </Text>
+          </HStack>
+        </Pressable>
+        {subtitle && (
+          <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
+            {subtitle}
+          </Text>
+        )}
+
+        <VStack className="w-full pt-2">{options}</VStack>
+      </AppSheet>
+    );
+  }
 
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose}>
@@ -60,19 +114,7 @@ export default function ExpenseDestinationSheet({
             )}
           </VStack>
 
-          <Option
-            icon={<Home color={iconColor} />}
-            title="Group expense"
-            description="Split a bill with people in a group."
-            onPress={onSelectGroup}
-          />
-          <ListDivider />
-          <Option
-            icon={<NotebookPen color={iconColor} />}
-            title="Personal expense"
-            description="Track your own spending in a book."
-            onPress={onSelectPersonal}
-          />
+          {options}
         </VStack>
       </ActionsheetContent>
     </Actionsheet>

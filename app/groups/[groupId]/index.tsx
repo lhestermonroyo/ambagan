@@ -790,9 +790,6 @@ export default function GroupDetailsScreen() {
                   >
                     <HStack className="items-center gap-x-2">
                       <Text className="text-base">Scan Receipt</Text>
-                      <Badge size="sm" action="info" variant="solid">
-                        <BadgeText>Beta</BadgeText>
-                      </Badge>
                     </HStack>
                     <ScanLine
                       size={20}

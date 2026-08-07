@@ -114,7 +114,7 @@ export default function AddPersonalExpenseScreen() {
   const toast = useAppToast();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
-  // Seed from a Scan Receipt (Beta) hand-off if one is waiting (ADD mode only).
+  // Seed from a Scan Receipt hand-off if one is waiting (ADD mode only).
   // Read once at mount; the draft is cleared in the effect below so a back-out +
   // re-entry starts clean. Scanned currency is honored only for Pro and only for
   // a supported currency (mirrors the group add-expense flow).
