@@ -1,3 +1,4 @@
+import { computeInitialNextRunAt } from "@/features/expense/utils/recurrence.util";
 import { createNotification } from "@/features/notifications/services/notification.service";
 import states from "@/states";
 import {
@@ -15,7 +16,6 @@ import {
 import { NotificationType } from "@/types/notifications";
 import { cacheService } from "@/utils/cacheService";
 import { splitTypes, tables } from "@/utils/constants";
-import { computeInitialNextRunAt } from "@/features/expense/utils/recurrence.util";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { sendPushNotification } from "@/utils/sendPushNotifications";
 import { edgeFn, isUniqueViolation, supabase } from "@/utils/supabase";
@@ -32,9 +32,12 @@ import { v4 as uuid } from "uuid";
 export const scanReceipt = async (uri: string): Promise<ScanResult> => {
   const imageBase64 = await getCompressedReceiptBase64(uri);
 
-  const { data, error } = await supabase.functions.invoke(edgeFn("scan-receipt"), {
-    body: { imageBase64, mimeType: "image/jpeg" }
-  });
+  const { data, error } = await supabase.functions.invoke(
+    edgeFn("scan-receipt"),
+    {
+      body: { imageBase64, mimeType: "image/jpeg" }
+    }
+  );
 
   if (error) throw error;
 

@@ -48,7 +48,12 @@ import ExpenseOptions, {
   ExpenseOptionChip
 } from "@/features/expense/components/ExpenseOptions";
 import RecurrenceSheet from "@/features/expense/components/RecurrenceSheet";
+import { resolvePersonalDailyCount } from "@/features/expense/utils/dailyLimit";
 import { recurrenceSummary } from "@/features/expense/utils/recurrence.util";
+import {
+  consumeScanDraft,
+  scanDraftFor
+} from "@/features/expense/utils/scanDraft";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
@@ -56,7 +61,6 @@ import states from "@/states";
 import { Book, PersonalExpenseStatus } from "@/types/books";
 import { ExpenseCategory, RecurrenceConfig } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
-import { cacheService } from "@/utils/cacheService";
 import { currencies, PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
 import { BASE_CURRENCY } from "@/utils/fx";
 import { getSecondaryHex } from "@/utils/getColorHex";
@@ -70,33 +74,13 @@ import { useColorScheme } from "react-native";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
-// Local-day key so the cached daily count is compared against the same calendar
-// day the user is in (mirrors the group add-expense flow).
-const dayKey = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-};
-
-/**
- * The user's personal-expense count for today, usable offline. Online: the live
- * server count, cached for later. Offline: the last cached server count for
- * today plus the ADD_PERSONAL_EXPENSE ops queued today — keeping the 5/day free
- * limit enforced without a server round trip.
- */
-async function resolvePersonalDailyCount(userId: string): Promise<number> {
-  if (await offlineQueue.isOnline()) {
-    const count = await services.bookExpense.getDailyPersonalCount(userId);
-    await cacheService.saveDailyPersonalCount(userId, count, dayKey());
-    return count;
-  }
-  const cached = await cacheService.getDailyPersonalCount(userId);
-  const base = cached && cached.dayKey === dayKey() ? cached.count : 0;
-  const queuedToday = await offlineQueue.countPersonalExpensesQueuedToday();
-  return base + queuedToday;
-}
-
 export default function AddPersonalExpenseScreen() {
-  const params = useLocalSearchParams<{ bookId: string; expenseId?: string }>();
+  const params = useLocalSearchParams<{
+    bookId: string;
+    expenseId?: string;
+    scanId?: string;
+    scanStack?: string;
+  }>();
   const bookIdParam = params.bookId;
   // Reached with the literal "[bookId]" segment from Home / Scan (book
   // changeable) or with a real id from a book screen (book locked). Edit always
@@ -105,6 +89,13 @@ export default function AddPersonalExpenseScreen() {
   const expenseId =
     typeof params.expenseId === "string" ? params.expenseId : undefined;
   const isEdit = !!expenseId;
+  // Set when Scan Receipt routed here — identifies the receipt this screen may
+  // seed from, and (with scanStack) how to leave once it's saved.
+  const scanId = params.scanId;
+  // Reached by pushing through the scanner's destination picker, so a plain
+  // back() after saving would land on that picker — dismiss the scan stack
+  // instead. Locked scanners replace themselves and don't set this.
+  const fromScanStack = params.scanStack === "1";
 
   const { details: userDetails } = states.user();
   const { list: bookList } = states.book();
@@ -114,13 +105,16 @@ export default function AddPersonalExpenseScreen() {
   const toast = useAppToast();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
-  // Seed from a Scan Receipt hand-off if one is waiting (ADD mode only).
-  // Read once at mount; the draft is cleared in the effect below so a back-out +
-  // re-entry starts clean. Scanned currency is honored only for Pro and only for
-  // a supported currency (mirrors the group add-expense flow).
+  // Seed from a Scan Receipt hand-off (ADD mode only) — but only the receipt
+  // this screen was routed with, so an Add Expense opened any other way starts
+  // blank even while a scan is still in play. Read once at mount; the draft
+  // outlives the form and is dropped on save (see handleSaved), so backing out
+  // and re-picking a destination re-seeds instead of losing the receipt. Scanned
+  // currency is honored only for Pro and only for a supported currency (mirrors
+  // the group add-expense flow).
   const [seed] = useState(() => {
     if (isEdit) return null;
-    const draft = states.expense.getState().scanDraft;
+    const draft = scanDraftFor(scanId);
     if (!draft) return null;
     const scannedCurrency =
       isPro &&
@@ -307,12 +301,18 @@ export default function AddPersonalExpenseScreen() {
     };
   }, [expenseId]);
 
-  // Consume the scan hand-off once seeded, so backing out + re-entering starts
-  // from a clean form.
-  useEffect(() => {
-    const { scanDraft, clearScanDraft } = states.expense.getState();
-    if (scanDraft) clearScanDraft();
-  }, []);
+  // Leave after a successful save/delete. The scanned receipt has landed, so the
+  // hand-off is done — and when the scanner pushed us here through the
+  // destination picker, back() would only land on that picker, so unwind the
+  // whole scan stack to where it started.
+  const handleSaved = () => {
+    consumeScanDraft(scanId);
+    if (fromScanStack && router.canDismiss()) {
+      router.dismissAll();
+      return;
+    }
+    router.back();
+  };
 
   const handleToggleOptions = () => setOptionsExpanded((prev) => !prev);
 
@@ -384,7 +384,7 @@ export default function AddPersonalExpenseScreen() {
         description: `${recurrenceSummary(recurrence)} — we'll post it for you.`,
         type: "success"
       });
-      router.back();
+      handleSaved();
     } catch (error) {
       console.error("Failed to save personal recurring expense:", error);
       toast({
@@ -498,7 +498,7 @@ export default function AddPersonalExpenseScreen() {
         description: "Your expense will sync when you're back online.",
         type: "info"
       });
-      router.back();
+      handleSaved();
       return;
     }
 
@@ -538,7 +538,7 @@ export default function AddPersonalExpenseScreen() {
           type: "success"
         });
       }
-      router.back();
+      handleSaved();
     } catch (error) {
       console.error("Failed to save personal expense:", error);
       toast({

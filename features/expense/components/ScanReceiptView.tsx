@@ -5,11 +5,27 @@ import { Pressable } from "@/components/ui/pressable";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import ExpenseDestinationSheet from "@/features/expense/components/ExpenseDestinationSheet";
+import UpgradeSheet from "@/components/UpgradeSheet";
+import {
+  resolveDailyCount,
+  resolvePersonalDailyCount
+} from "@/features/expense/utils/dailyLimit";
+import {
+  buildScanDraft,
+  consumeScanDraft,
+  isScanDraftFresh
+} from "@/features/expense/utils/scanDraft";
+import {
+  countScanDestinations,
+  currentScanDestinations,
+  loadScanDestinations,
+  scanFormHref
+} from "@/features/expense/utils/scanDestinations";
 import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
+import { DAILY_EXPENSE_LIMIT, PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
@@ -56,12 +72,16 @@ type ScanReceiptViewProps = {
    */
   bookId?: string;
   /**
-   * Where the scanner is mounted, which decides how it hands off and dismisses:
+   * Where the scanner is mounted, which decides how a LOCKED hand-off leaves the
+   * camera behind:
    * - `tab`: the Scan tab. Pushing the form covers the tab; replacing would
    *   swap out the whole tab navigator this screen lives in.
    * - `pushed`: stacked over the screen that opened it (a group). Replacing
    *   drops the camera from the stack, so backing out of the form returns to
    *   that screen rather than to a live camera.
+   *
+   * The generic (unlocked) flow ignores this and always pushes — see
+   * routeGenericScan for why the camera has to stay underneath.
    */
   presentation: "tab" | "pushed";
 };
@@ -72,6 +92,11 @@ type ScanReceiptViewProps = {
  * a scanDraft → open the Add Expense screen already filled in. Degrades
  * gracefully: an unreadable receipt still opens the form (blank/partial) with a
  * heads-up toast.
+ *
+ * A scan is work the user waited for, so the receipt is treated as theirs to
+ * place: it survives backing out of the form or the destination picker (the pill
+ * below leads back in), and is only dropped once it's saved or they leave the
+ * scanner.
  */
 export default function ScanReceiptView({
   groupId,
@@ -81,14 +106,23 @@ export default function ScanReceiptView({
   const router = useRouter();
   const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
-  const { setScanDraft, clearScanDraft } = states.expense();
+  const { setScanDraft, scanDraft } = states.expense();
+  const { details: userDetails } = states.user();
+  const isPro = userDetails?.plan === "pro";
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [scanning, setScanning] = useState(false);
-  // Post-scan Group/Personal chooser — only for the generic scanner (no group or
-  // book locked in), where the draft could land in either flow.
-  const [destinationOpen, setDestinationOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeDescription, setUpgradeDescription] = useState<
+    string | undefined
+  >();
   const isGeneric = !groupId && !bookId;
+  // Resolves while the user is still framing the receipt, so the post-scan
+  // routing works off real group/book counts instead of "not loaded yet" — the
+  // difference between skipping the picker correctly and dropping someone into a
+  // form for a kind of destination they don't have. Awaited (not assumed) at
+  // hand-off time in case the scan comes back first.
+  const destinationsLoaded = useRef<Promise<void> | null>(null);
   const cameraRef = useRef<CameraView>(null);
   // Size of the viewfinder window (the band between the black bars), used to
   // crop the capture down to exactly what the user framed.
@@ -98,7 +132,7 @@ export default function ScanReceiptView({
   // when it's off screen instead of leaving it (and the torch) running.
   const isFocused = useIsFocused();
 
-  useFocusEffect(useCallback(() => () => setTorch(false), []));
+  useFocusEffect(useCallback(() => () => setTorch(false), [setTorch]));
 
   // App Review guideline 5.1.1(iv): the system permission dialog has to be the
   // first thing the user sees — a custom screen in front of it reads as
@@ -111,15 +145,83 @@ export default function ScanReceiptView({
     }
   }, [permission, requestPermission]);
 
+  // Warm the destination lists while the camera is up. Only the generic scanner
+  // needs them — a locked group/book already knows where the receipt is going.
+  useEffect(() => {
+    if (!isGeneric || !userDetails?.id || destinationsLoaded.current) return;
+    destinationsLoaded.current = loadScanDestinations(userDetails.id).catch(
+      () => {}
+    );
+  }, [isGeneric, userDetails?.id]);
+
   // On the tab this is the only way out, since the tab bar is hidden. Tabs
   // record their history, so back lands on the tab we came from; when pushed,
   // the tab router declines and the parent stack pops to the opener instead.
+  //
+  // This is also where an unplaced receipt is finally dropped: leaving the
+  // scanner is the one unambiguous "I'm done with this scan" — dismissing the
+  // destination picker isn't, and used to throw the scan away on a stray tap.
   const handleClose = () => {
+    consumeScanDraft();
     if (router.canGoBack()) {
       router.back();
       return;
     }
     router.replace("/(tabs)/(home)" as any);
+  };
+
+  /**
+   * Free tier: don't spend a scan the user can't save. Checked at the shutter
+   * rather than at submit, where the OCR round trip and the destination choice
+   * have already been paid for.
+   *
+   * Group and personal expenses are counted against separate buckets, so the
+   * generic scanner blocks only when every destination it could offer is out of
+   * room: a full group bucket doesn't matter to someone who was going to file
+   * this in a book. With nothing to file into yet, it falls back to "both full",
+   * so a new user still gets as far as the picker's create-one prompt.
+   */
+  const dailyLimitReached = async () => {
+    if (isPro || !userDetails?.id) return false;
+
+    if (groupId) {
+      const count = await resolveDailyCount(userDetails.id);
+      if (count < DAILY_EXPENSE_LIMIT) return false;
+      setUpgradeDescription(
+        "You've reached your 5 expenses for today. Upgrade to Pro to keep scanning receipts."
+      );
+    } else if (bookId) {
+      const count = await resolvePersonalDailyCount(userDetails.id);
+      if (count < PERSONAL_EXPENSE_LIMIT) return false;
+      setUpgradeDescription(
+        "You've reached your 5 personal expenses for today. Upgrade to Pro to keep scanning receipts."
+      );
+    } else {
+      await destinationsLoaded.current;
+      const { groups, books } = currentScanDestinations(userDetails.id);
+      const [groupCount, personalCount] = await Promise.all([
+        resolveDailyCount(userDetails.id),
+        resolvePersonalDailyCount(userDetails.id)
+      ]);
+      const groupRoom = groupCount < DAILY_EXPENSE_LIMIT;
+      const personalRoom = personalCount < PERSONAL_EXPENSE_LIMIT;
+
+      const hasSomewhere =
+        groups.length + books.length === 0
+          ? groupRoom || personalRoom
+          : (groups.length > 0 && groupRoom) ||
+            (books.length > 0 && personalRoom);
+      if (hasSomewhere) return false;
+
+      setUpgradeDescription(
+        books.length === 0 && groups.length > 0
+          ? "You've reached your 5 expenses for today. Upgrade to Pro to keep scanning receipts."
+          : "You've used today's expense limit. Upgrade to Pro to keep scanning receipts."
+      );
+    }
+
+    setUpgradeOpen(true);
+    return true;
   };
 
   // Shared by the shutter and the Photos picker: read the image, stash the
@@ -134,7 +236,14 @@ export default function ScanReceiptView({
       return;
     }
 
+    // Under the overlay from here on: the limit check hits the network, and the
+    // shutter would otherwise stay live and re-fire under the user's thumb.
     setScanning(true);
+    if (await dailyLimitReached()) {
+      setScanning(false);
+      return;
+    }
+
     try {
       const scan = await services.expense.scanReceipt(result.assets[0].uri);
 
@@ -157,21 +266,22 @@ export default function ScanReceiptView({
         });
       }
 
-      setScanDraft({
+      const draft = buildScanDraft({
         amount: scan?.amount ?? null,
         description: scan?.description ?? scan?.merchant ?? null,
         currency: scan?.currency ?? null,
         date: scan?.date ?? null,
         proof_of_payment: result
       });
+      setScanDraft(draft);
 
       setScanning(false);
-      // A locked group/book hands straight off; the generic scanner asks which
-      // flow the receipt belongs to first (both seed from the same draft).
+      // A locked group/book hands straight off; the generic scanner works out
+      // where this can go (both seed from the same draft).
       if (isGeneric) {
-        routeGenericScan();
+        await routeGenericScan(draft.scan_id);
       } else {
-        goToExpense();
+        goToExpense(draft.scan_id);
       }
     } catch {
       setScanning(false);
@@ -272,16 +382,15 @@ export default function ScanReceiptView({
     await handleScan(result);
   };
 
-  // The Add Expense screen reads scanDraft on mount. A tab can't be replaced out
-  // from under itself (see `presentation`), so push there; when pushed over a
-  // group, replace so backing out returns to the group, not a live camera.
-  const goToExpense = () => {
+  // The locked hand-off: this scanner already knows the group/book, so it goes
+  // straight to that form. A tab can't be replaced out from under itself (see
+  // `presentation`), so push there; when pushed over a group, replace so backing
+  // out returns to the group, not a live camera.
+  const goToExpense = (scanId: string) => {
     const target = (
       bookId
-        ? `/books/${bookId}/add-expense`
-        : groupId
-          ? `/groups/${groupId}/add-expense`
-          : "/groups/[groupId]/add-expense"
+        ? `/books/${bookId}/add-expense?scanId=${scanId}`
+        : `/groups/${groupId}/add-expense?scanId=${scanId}`
     ) as any;
     if (presentation === "tab") {
       router.push(target);
@@ -290,66 +399,41 @@ export default function ScanReceiptView({
     }
   };
 
-  // True only when we *know* the user has none of that kind — an uninitialized
-  // list means "not loaded yet", not "empty", and must never be read as empty
-  // (the Add Expense forms resolve it properly either way).
-  const hasNoneOf = (kind: "group" | "book") => {
-    const { list, initialized } =
-      kind === "group" ? states.group.getState() : states.book.getState();
-    return initialized && list.length === 0;
-  };
+  /**
+   * Where a generic (unlocked) scan goes. Everything downstream is pushed, never
+   * replaced: the camera stays underneath so backing out of the picker or the
+   * form is a step back through the flow rather than an exit from it, and the
+   * receipt survives the whole way (the form drops it once it's saved).
+   *
+   * The picker is skipped when there's nothing to pick — one possible
+   * destination goes straight to its form. Zero still opens the picker, which is
+   * where "create a group or a book" lives; the receipt waits there instead of
+   * being thrown away with a toast.
+   */
+  const routeGenericScan = async (scanId: string) => {
+    // The prefetch normally settled while the user was framing the shot; a slow
+    // network is the case where waiting here matters, and it's a short wait
+    // against an OCR round trip that just finished.
+    await destinationsLoaded.current;
 
-  // Where a generic (unlocked) scan goes. Both destinations dead-end into a
-  // "create one first" empty form when the user has nothing of that kind — and
-  // that form drops the draft — so decide here instead of offering a choice
-  // that can't be honored: nothing at all → say so and keep the receipt out of
-  // limbo; exactly one possible → skip the chooser and hand straight off.
-  const routeGenericScan = () => {
-    const noGroups = hasNoneOf("group");
-    const noBooks = hasNoneOf("book");
+    const destinations = currentScanDestinations(userDetails?.id);
 
-    if (noGroups && noBooks) {
-      clearScanDraft();
-      toast({
-        title: "Nowhere to add this",
-        description:
-          "Create a group or a personal book first, then scan your receipt again.",
-        type: "warning"
-      });
+    if (countScanDestinations(destinations) === 1) {
+      const only = destinations.groups.length
+        ? { kind: "group" as const, id: destinations.groups[0].id }
+        : { kind: "book" as const, id: destinations.books[0].id };
+      router.push(scanFormHref(only, scanId) as any);
       return;
     }
 
-    if (noGroups) {
-      goToDestination("/books/[bookId]/add-expense");
-      return;
-    }
-
-    if (noBooks) {
-      goToDestination("/groups/[groupId]/add-expense");
-      return;
-    }
-
-    setDestinationOpen(true);
+    router.push(`/scan-receipt/destination?scanId=${scanId}` as any);
   };
 
-  // Route the just-scanned draft to the chosen flow, via the literal
-  // "[groupId]" / "[bookId]" segment so the form defaults (and lets the user
-  // change) the group/book. Same push/replace rule as goToExpense.
-  const goToDestination = (target: string) => {
-    setDestinationOpen(false);
-    if (presentation === "tab") {
-      router.push(target as any);
-    } else {
-      router.replace(target as any);
-    }
-  };
-
-  // Dismissed without choosing — drop the draft so it can't seed a later,
-  // unrelated Add Expense screen, and leave the user on the camera to re-scan.
-  const handleDestinationClose = () => {
-    setDestinationOpen(false);
-    clearScanDraft();
-  };
+  // The receipt is read and waiting but hasn't been placed — the user backed out
+  // of the picker (or the form) without saving it. Offer the way back in rather
+  // than making them scan the same receipt twice.
+  const pendingScanId =
+    isGeneric && isScanDraftFresh(scanDraft) ? scanDraft!.scan_id : null;
 
   // Permission still resolving on first mount, or the system dialog is up —
   // sit behind it rather than showing anything Apple could read as priming.
@@ -426,9 +510,29 @@ export default function ScanReceiptView({
             )}
           </Box>
 
-          <Text className="text-white text-center px-8 pt-6 w-full">
-            Fit the receipt inside the frame, then tap the shutter.
-          </Text>
+          {pendingScanId ? (
+            <Box className="px-6 pt-6">
+              <Pressable
+                onPress={() =>
+                  router.push(
+                    `/scan-receipt/destination?scanId=${pendingScanId}` as any
+                  )
+                }
+                className="rounded-full bg-white/15 px-4 py-3 active:opacity-60"
+              >
+                <HStack className="items-center justify-center gap-x-2">
+                  <ReceiptText size={18} color="#fff" />
+                  <Text bold className="text-sm text-white">
+                    Receipt ready — choose where it goes
+                  </Text>
+                </HStack>
+              </Pressable>
+            </Box>
+          ) : (
+            <Text className="text-white text-center px-8 pt-6 w-full">
+              Fit the receipt inside the frame, then tap the shutter.
+            </Text>
+          )}
 
           <HStack className="items-center justify-center gap-x-10 p-6">
             <Pressable
@@ -490,14 +594,10 @@ export default function ScanReceiptView({
         </Box>
       )}
 
-      <ExpenseDestinationSheet
-        isOpen={true}
-        onClose={handleDestinationClose}
-        onSelectGroup={() => goToDestination("/groups/[groupId]/add-expense")}
-        onSelectPersonal={() => goToDestination("/books/[bookId]/add-expense")}
-        title="Where should this go?"
-        subtitle="Add the scanned receipt to a group or a personal book."
-        fullscreen
+      <UpgradeSheet
+        isOpen={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        description={upgradeDescription}
       />
     </Box>
   );

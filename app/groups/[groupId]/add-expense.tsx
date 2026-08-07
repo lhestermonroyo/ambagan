@@ -39,8 +39,13 @@ import { GroupSelectionActionSheet } from "@/features/expense/components/GroupSe
 import PayerContributionSheet from "@/features/expense/components/PayerContributionSheet";
 import RecurrenceSheet from "@/features/expense/components/RecurrenceSheet";
 import SplitExpenseSheet from "@/features/expense/components/SplitExpenseSheet";
+import { resolveDailyCount } from "@/features/expense/utils/dailyLimit";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { recurrenceSummary } from "@/features/expense/utils/recurrence.util";
+import {
+  consumeScanDraft,
+  scanDraftFor
+} from "@/features/expense/utils/scanDraft";
 import {
   generatePaymentSplits,
   getAmountPerPerson,
@@ -75,33 +80,6 @@ import { useColorScheme } from "react-native";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
-// Local-day key (not a UTC ISO date) so the cached daily count is compared
-// against the same calendar day the user is in.
-const dayKey = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-};
-
-/**
- * The user's expense count for today, usable offline. Online: the live server
- * count, cached for later offline reads. Offline: the last cached server count
- * for today (0 if missing or from another day) plus the ADD_EXPENSE ops queued
- * today — so the free-tier daily limit stays enforced without a server round
- * trip. The two never overlap: queued ops aren't in the cached server count
- * until they sync, at which point the queue is empty again.
- */
-async function resolveDailyCount(userId: string): Promise<number> {
-  if (await offlineQueue.isOnline()) {
-    const count = await services.expense.getDailyExpenseCount(userId);
-    await cacheService.saveDailyExpenseCount(userId, count, dayKey());
-    return count;
-  }
-  const cached = await cacheService.getDailyExpenseCount(userId);
-  const base = cached && cached.dayKey === dayKey() ? cached.count : 0;
-  const queuedToday = await offlineQueue.countExpensesQueuedToday();
-  return base + queuedToday;
-}
-
 /**
  * Add Expense: log an expense in one screen. Defaults to the quick path — paid
  * by you, split evenly, dated today — but the Paid-by and Split rows each open a
@@ -119,6 +97,13 @@ export default function AddExpenseScreen() {
   // Reached with the literal "[groupId]" segment from Home (group changeable)
   // or with a real id from a group screen (group locked).
   const isLocked = !!groupId && groupId !== "[groupId]";
+  // Set when Scan Receipt routed here — identifies the receipt this screen may
+  // seed from, and (with scanStack) how to leave once it's saved.
+  const scanId = params.scanId as string | undefined;
+  // The scanner reached this form by pushing through the destination picker, so
+  // a plain back() after saving would land on the picker. Dismiss the whole scan
+  // stack instead. Locked scanners replace themselves and don't set this.
+  const fromScanStack = params.scanStack === "1";
 
   const { list: groupList, initialized: groupsInitialized } = states.group();
   const { details: currentUser, session } = states.user();
@@ -129,13 +114,16 @@ export default function AddExpenseScreen() {
   const { isOnline } = useNetwork();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
-  // Seed from a Scan Receipt hand-off if one is waiting. Read once at
-  // mount via a lazy initializer; the draft is cleared in the effect below so a
-  // back-out + re-entry starts clean. Scanned currency is only honored for Pro
-  // (free = PHP-only) and only when it's a currency we support — see
+  // Seed from a Scan Receipt hand-off — but only the receipt this screen was
+  // routed with, so an Add Expense opened any other way starts blank even while
+  // a scan is still in play. Read once at mount via a lazy initializer; the
+  // draft outlives the form and is dropped on save (see handleSaved), which is
+  // what makes backing out and re-picking a destination re-seed instead of
+  // losing the receipt. Scanned currency is only honored for Pro (free =
+  // PHP-only) and only when it's a currency we support — see
   // [[project_multicurrency]].
   const [seed] = useState(() => {
-    const draft = states.expense.getState().scanDraft;
+    const draft = scanDraftFor(scanId);
     const scannedCurrency =
       isPro &&
       draft?.currency &&
@@ -213,12 +201,18 @@ export default function AddExpenseScreen() {
   const [optionsExpanded, setOptionsExpanded] = useState(false);
   const handleToggleOptions = () => setOptionsExpanded((prev) => !prev);
 
-  // The scan hand-off has been consumed by the seed initializer above — clear it
-  // so leaving and re-entering this screen doesn't re-seed a stale receipt.
-  useEffect(() => {
-    const { scanDraft, clearScanDraft } = states.expense.getState();
-    if (scanDraft) clearScanDraft();
-  }, []);
+  // Leave after a successful save (online, offline-queued, draft, or recurring).
+  // The scanned receipt has now landed somewhere, so it's done — and when the
+  // scanner pushed us here through the destination picker, back() would only
+  // land on that picker, so unwind the whole scan stack to where it started.
+  const handleSaved = () => {
+    consumeScanDraft(scanId);
+    if (fromScanStack && router.canDismiss()) {
+      router.dismissAll();
+      return;
+    }
+    router.back();
+  };
 
   useEffect(() => {
     if (!isPro && userId) {
@@ -708,7 +702,7 @@ export default function AddExpenseScreen() {
           : "This draft will sync automatically when you're back online.",
         type: "info"
       });
-      router.back();
+      handleSaved();
       return;
     }
 
@@ -731,7 +725,7 @@ export default function AddExpenseScreen() {
         description: "Finalize it later to set who paid and split it.",
         type: "success"
       });
-      router.back();
+      handleSaved();
     } catch {
       toast({
         title: "Draft Save Failed",
@@ -789,7 +783,7 @@ export default function AddExpenseScreen() {
           recurrenceSummary(recurrence) + " — we'll post it for you.",
         type: "success"
       });
-      router.back();
+      handleSaved();
     } catch {
       toast({
         title: "Failed",
@@ -903,7 +897,7 @@ export default function AddExpenseScreen() {
           : "This expense will sync automatically when you're back online.",
         type: "info"
       });
-      router.back();
+      handleSaved();
       return;
     }
 
@@ -950,7 +944,7 @@ export default function AddExpenseScreen() {
       });
       // Origin screens (Home / group) re-init on focus, so backing out refreshes
       // the list without an explicit callback.
-      router.back();
+      handleSaved();
     } catch {
       toast({
         title: "Failed",
