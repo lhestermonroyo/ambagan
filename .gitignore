@@ -51,6 +51,10 @@ GUIDE.md
 MARKETING.md
 CHANGELOG.md
 
-# database schema (kept local; run manually in Supabase)
+# database schema
+# `db.sql` is a local scratch dump. `db.dev.sql` (the dev reference schema) and
+# `/migrations` are TRACKED on purpose: the v1.4 prod deploy runs these files
+# programmatically, DEPLOYMENT_CHECKLIST.md deep-links to them, and keeping them
+# untracked is how a migration that could not apply to a fresh schema shipped
+# unreviewed (see the 2026-08-07 notes in documentation/versions/v1.4/).
 db.sql
-/migrations
