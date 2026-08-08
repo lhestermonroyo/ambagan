@@ -510,7 +510,7 @@ export default function ScanReceiptView({
             <Pressable
               onPress={handleUploadReceipt}
               disabled={scanning}
-              accessibilityLabel="Upload receipt from Photos"
+              accessibilityLabel="Choose from Photos"
               className="h-14 w-14 items-center justify-center rounded-full bg-white/15 active:opacity-50"
             >
               <ImageUp size={24} color="#fff" />

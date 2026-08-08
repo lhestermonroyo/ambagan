@@ -37,16 +37,15 @@ export default function ImagePickerSheet({
   const iconColor = getPrimaryHex("text-primary-400", colorScheme);
   const { allowsEditing = false, aspect, mediaTypes = ["images"] } = options;
 
+  // No permission request here on purpose. `launchImageLibraryAsync` needs none
+  // — iOS presents PHPicker out-of-process and Android 13+ uses the system photo
+  // picker, so neither hands us the library itself. Asking anyway would surface a
+  // prompt we don't need to do the job, which is exactly what App Review
+  // guideline 5.1.1 scrutinises (and what got 1.3.0 rejected). Camera is
+  // different: `launchCameraAsync` genuinely requires access, so that path below
+  // still asks — on user tap, with no screen in front of the system dialog.
   const handlePickFromLibrary = async () => {
     onClose();
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert(
-        "Permission required",
-        "Permission to access the photo library is required."
-      );
-      return;
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes,
       allowsEditing,
