@@ -211,7 +211,7 @@ export default function SettlementItem({
               </HStack>
             </VStack>
             <HStack className="gap-x-2 items-center">
-              <VStack className="items-end">
+              <VStack className="items-end gap-y-1">
                 <Text
                   className={cn(
                     "text-lg font-medium",

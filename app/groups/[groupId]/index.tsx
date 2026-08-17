@@ -4,15 +4,16 @@ import AndroidHeaderMenu, {
 import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
-import ConfirmIconButton from "@/components/ConfirmIconButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
+import ProBadge from "@/components/ProBadge";
 import SearchInput from "@/components/SearchInput";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
@@ -22,12 +23,19 @@ import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { expenseCategoryMeta } from "@/features/expense/components/CategorySheet";
+import CategorySheet, {
+  ALL_CATEGORIES,
+  categoryFilterLabel,
+  categoryFilterOptions,
+  expenseCategoryMeta
+} from "@/features/expense/components/CategorySheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
+  CustomDateRange,
   DateRangeOption,
-  dateRangeLabels,
-  getDateRangeCutoff
+  formatDateRangeLabel,
+  getDateRangeBounds,
+  isWithinRange
 } from "@/features/group/components/DateRangeSheet";
 import DeleteGroupSheet from "@/features/group/components/DeleteGroupSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
@@ -47,6 +55,7 @@ import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
+import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
 import {
@@ -64,9 +73,11 @@ import {
   LogOut,
   Pencil,
   Plus,
+  Repeat,
   ScanLine,
   Search,
   Share2,
+  Tag,
   Trash2,
   X
 } from "lucide-react-native";
@@ -77,10 +88,10 @@ import {
   Modal,
   Platform,
   RefreshControl,
+  SectionList,
   UIManager,
   useColorScheme
 } from "react-native";
-import { SwipeListView } from "react-native-swipe-list-view";
 
 // LayoutAnimation needs to be opted into on old-architecture Android; it's a
 // no-op elsewhere. Guards the row swap when opening/closing expense search.
@@ -91,7 +102,7 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const tabs = ["Settlements", "Expenses", "Stats", "Group Info"] as const;
+const tabs = ["Settlements", "Expenses", "Stats", "Info"] as const;
 
 export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);
@@ -107,16 +118,22 @@ export default function GroupDetailsScreen() {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
 
   // Expenses tab filters, mirroring the Settlements tab: a payer pill that opens
-  // a bottom sheet, plus search + date-range icon buttons. Search matches the
-  // description; the payer filter narrows to expenses the user paid; the date
-  // range clamps on created_at (the field the list groups its date headers by).
+  // a bottom sheet, plus search + category + date-range icon buttons. Search
+  // matches the description; the payer filter narrows to expenses the user paid;
+  // the date range clamps on created_at (the field the list groups its date
+  // headers by).
   const [expenseSearch, setExpenseSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [payerFilter, setPayerFilter] = useState<PayerOption>("All");
   const [payerSheetOpen, setPayerSheetOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>(ALL_CATEGORIES);
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [expenseDateRange, setExpenseDateRange] =
     useState<DateRangeOption>("All");
+  const [expenseCustomRange, setExpenseCustomRange] =
+    useState<CustomDateRange | null>(null);
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const {
     details: groupDetails,
@@ -124,7 +141,14 @@ export default function GroupDetailsScreen() {
     settlementList,
     memberList
   } = states.group();
-  const { details: userDetails, defaultCurrency } = states.user();
+  const { details: userDetails } = states.user();
+
+  const isPro = userDetails?.plan === "pro";
+
+  // This group's own home currency drives which balance line surfaces first (a
+  // JPY trip group shows JPY first). Falls back to the app's home currency
+  // until the group detail loads / for legacy rows.
+  const primaryCurrency = groupDetails?.currency ?? BASE_CURRENCY;
 
   // A split needs at least two people, so expenses are gated until the group
   // has a second member (joined via invite, or added as a phone contact).
@@ -170,38 +194,13 @@ export default function GroupDetailsScreen() {
     });
   }, [compactToCollect, compactToPay]);
 
-  const primaryCompactNet = useMemo(() => {
-    const sorted = [...compactNetBalance].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [compactNetBalance, defaultCurrency]);
+  // Mirrors the Settlements-tab hero it fades in from, so it converts on the
+  // same terms — a "Net" that disagreed with the card above it would read as a
+  // bug.
+  const compactNet = useConvertedTotal(compactNetBalance, primaryCurrency);
 
-  const primaryCompactCollect = useMemo(() => {
-    const sorted = [...compactToCollect].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [compactToCollect, defaultCurrency]);
-
-  const primaryCompactPay = useMemo(() => {
-    const sorted = [...compactToPay].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [compactToPay, defaultCurrency]);
+  const compactCollect = useConvertedTotal(compactToCollect, primaryCurrency);
+  const compactPay = useConvertedTotal(compactToPay, primaryCurrency);
 
   const COMPACT_THRESHOLD = 280;
   const compactOpacity = scrollY.interpolate({
@@ -341,7 +340,7 @@ export default function GroupDetailsScreen() {
         description: "Group has been moved back to your active groups.",
         type: "success"
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to restore group. Please try again.",
@@ -349,34 +348,6 @@ export default function GroupDetailsScreen() {
       });
     } finally {
       setArchiving(false);
-    }
-  };
-
-  const handleDeleteExpense = async (expenseId: string) => {
-    try {
-      const deleteResponse = await services.expense.deleteExpense(
-        expenseId,
-        groupId!
-      );
-
-      if (deleteResponse.success) {
-        toast({
-          title: "Success",
-          description: "Expense deleted successfully",
-          type: "success"
-        });
-        // Refresh the expense list and force the Settlements tab to refetch so
-        // it drops the deleted expense's payments.
-        setSettlementRefreshTrigger((prev) => prev + 1);
-        init(groupId!, true);
-      }
-    } catch (error) {
-      console.log("Error deleting expense:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete expense. Please try again.",
-        type: "error"
-      });
     }
   };
 
@@ -391,14 +362,28 @@ export default function GroupDetailsScreen() {
     router.back();
   };
 
+  // Recurring expenses are Pro. Free users get the upgrade sheet; Pro users go
+  // to the manage screen. Mirrors the personal book detail gating.
+  const handleOpenRecurring = () => {
+    if (!isPro) {
+      setUpgradeOpen(true);
+      return;
+    }
+    router.push(`/groups/${groupId}/recurring`);
+  };
+
   const hasActiveFilters =
     expenseSearch.trim().length > 0 ||
     payerFilter !== "All" ||
+    categoryFilter !== ALL_CATEGORIES ||
     expenseDateRange !== "All";
 
   const filteredExpenseList = useMemo(() => {
     const query = expenseSearch.trim().toLowerCase();
-    const cutoff = getDateRangeCutoff(expenseDateRange);
+    const { start: cutoff, end: until } = getDateRangeBounds(
+      expenseDateRange,
+      expenseCustomRange
+    );
 
     return expenseList.filter((item) => {
       if (query && !item.description?.toLowerCase().includes(query)) {
@@ -410,7 +395,13 @@ export default function GroupDetailsScreen() {
       ) {
         return false;
       }
-      if (cutoff && new Date(item.created_at || 0) < cutoff) {
+      if (
+        categoryFilter !== ALL_CATEGORIES &&
+        item.category !== categoryFilter
+      ) {
+        return false;
+      }
+      if (!isWithinRange(new Date(item.created_at || 0), cutoff, until)) {
         return false;
       }
       return true;
@@ -419,7 +410,9 @@ export default function GroupDetailsScreen() {
     expenseList,
     expenseSearch,
     payerFilter,
+    categoryFilter,
     expenseDateRange,
+    expenseCustomRange,
     userDetails?.id
   ]);
 
@@ -515,7 +508,7 @@ export default function GroupDetailsScreen() {
         type: "success"
       });
       router.replace("/groups");
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to archive group. Please try again.",
@@ -797,9 +790,6 @@ export default function GroupDetailsScreen() {
                   >
                     <HStack className="items-center gap-x-2">
                       <Text className="text-base">Scan Receipt</Text>
-                      <Badge size="sm" action="info" variant="solid">
-                        <BadgeText>Beta</BadgeText>
-                      </Badge>
                     </HStack>
                     <ScanLine
                       size={20}
@@ -965,16 +955,22 @@ export default function GroupDetailsScreen() {
             {tab === "Expenses" && (
               <VStack className="pb-2 gap-y-4">
                 <Pressable
-                  className="mx-4 bg-background-50 rounded-lg p-4 data-[hover=true]:bg-background-100 data-[active=true]:bg-background-100"
-                  onPress={() => router.push(`/groups/${groupId}/recurring`)}
+                  className="mx-4 bg-secondary-100 rounded-lg p-4 data-[hover=true]:bg-secondary-200 data-[active=true]:bg-secondary-200"
+                  onPress={handleOpenRecurring}
                 >
                   <HStack className="items-start gap-x-2">
-                    <Icon as="repeat" className="text-primary-500" />
+                    <Repeat
+                      size={24}
+                      color={getPrimaryHex("text-primary-500", colorScheme)}
+                    />
                     <HStack className="flex-1 items-center">
                       <VStack className="flex-1">
-                        <Text className="text-lg" bold>
-                          Recurring expenses
-                        </Text>
+                        <HStack className="items-center gap-x-2">
+                          <Text className="text-lg" bold>
+                            Recurring expenses
+                          </Text>
+                          {!isPro && <ProBadge />}
+                        </HStack>
                         <Text className="text-sm text-secondary-950">
                           {activeRecurringCount > 0
                             ? `${activeRecurringCount} active series`
@@ -1040,6 +1036,22 @@ export default function GroupDetailsScreen() {
                         <Button
                           variant="link"
                           className="rounded-full"
+                          onPress={() => setCategorySheetOpen(true)}
+                        >
+                          <Tag
+                            color={
+                              categoryFilter !== ALL_CATEGORIES
+                                ? getPrimaryHex("text-primary-400", colorScheme)
+                                : getSecondaryHex(
+                                    "text-secondary-950",
+                                    colorScheme
+                                  )
+                            }
+                          />
+                        </Button>
+                        <Button
+                          variant="link"
+                          className="rounded-full"
                           onPress={() => setDateRangeSheetOpen(true)}
                         >
                           <CalendarRange
@@ -1058,6 +1070,7 @@ export default function GroupDetailsScreen() {
                   )}
 
                   {(expenseDateRange !== "All" ||
+                    categoryFilter !== ALL_CATEGORIES ||
                     (!!expenseSearch && !searchOpen)) && (
                     <HStack className="gap-x-2 px-4 flex-wrap">
                       {!!expenseSearch && !searchOpen && (
@@ -1080,13 +1093,36 @@ export default function GroupDetailsScreen() {
                           />
                         </Pressable>
                       )}
-                      {expenseDateRange !== "All" && (
+                      {categoryFilter !== ALL_CATEGORIES && (
                         <Pressable
-                          onPress={() => setExpenseDateRange("All")}
+                          onPress={() => setCategoryFilter(ALL_CATEGORIES)}
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
                           <Text className="text-sm text-primary-600">
-                            {dateRangeLabels[expenseDateRange]}
+                            {categoryFilterLabel(categoryFilter)}
+                          </Text>
+                          <X
+                            size={12}
+                            color={getPrimaryHex(
+                              "text-primary-600",
+                              colorScheme
+                            )}
+                          />
+                        </Pressable>
+                      )}
+                      {expenseDateRange !== "All" && (
+                        <Pressable
+                          onPress={() => {
+                            setExpenseDateRange("All");
+                            setExpenseCustomRange(null);
+                          }}
+                          className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                        >
+                          <Text className="text-sm text-primary-600">
+                            {formatDateRangeLabel(
+                              expenseDateRange,
+                              expenseCustomRange
+                            )}
                           </Text>
                           <X
                             size={12}
@@ -1100,10 +1136,13 @@ export default function GroupDetailsScreen() {
                     </HStack>
                   )}
                 </VStack>
-                <SwipeListView
+                {/* Plain list — edit/delete live on the expense detail screen,
+                    which gates them per expense. Surfacing them as swipe
+                    actions here meant a settled expense revealed a lone delete
+                    button. */}
+                <SectionList
                   className="flex-1"
                   scrollEnabled={false}
-                  useSectionList
                   sections={formattedExpenseList}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }: { item: ExpensePreview }) => (
@@ -1115,65 +1154,6 @@ export default function GroupDetailsScreen() {
                       }
                     />
                   )}
-                  renderHiddenItem={({ item }, rowMap) => {
-                    const isCreator = item.creator?.id === userDetails?.id;
-                    const isPayer = item.payer_list.some(
-                      (payer) => payer.payer.id === userDetails?.id
-                    );
-
-                    // Mirror the detail screen's guards: only the creator may
-                    // delete a draft; anyone who paid may delete a finalized
-                    // expense. Editing is the creator's alone and only while no
-                    // settlement has moved past "pending".
-                    const deletable = item.is_draft ? isCreator : isPayer;
-                    const editable =
-                      isCreator &&
-                      !item.is_draft &&
-                      !item.has_settlement_progress;
-
-                    if (!deletable && !editable) return null;
-
-                    return (
-                      <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
-                        {editable && (
-                          <Button
-                            variant="solid"
-                            action="primary"
-                            className="rounded-full h-[40] w-[40] p-0"
-                            onPress={() => {
-                              rowMap[item.id]?.closeRow();
-                              router.push(
-                                `/groups/${groupId}/${item.id}/edit` as any
-                              );
-                            }}
-                          >
-                            <Icon
-                              as="edit"
-                              size={20}
-                              className="text-background-0"
-                            />
-                          </Button>
-                        )}
-                        {deletable && (
-                          <ConfirmIconButton
-                            icon="delete"
-                            iconClassName="text-background-0"
-                            variant="solid"
-                            action="negative"
-                            className="rounded-full h-[40] w-[40] p-0"
-                            confirmTitle="Delete Expense"
-                            confirmDescription="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
-                            isDelete
-                            onConfirm={() => {
-                              rowMap[item.id]?.closeRow();
-                              handleDeleteExpense(item.id);
-                            }}
-                          />
-                        )}
-                      </HStack>
-                    );
-                  }}
-                  rightOpenValue={-122}
                   renderSectionHeader={({ section: { title } }) => (
                     <Box className="bg-background-50 px-4 py-2 border-b border-secondary-100">
                       <Text className="text-sm text-secondary-950">
@@ -1187,7 +1167,7 @@ export default function GroupDetailsScreen() {
                     hasActiveFilters ? (
                       <EmptyList
                         type={EmptyType.EXPENSE}
-                        content="No expenses match your filters. Try adjusting your search, payer, or date range."
+                        content="No expenses match your filters. Try adjusting your search, payer, category, or date range."
                       />
                     ) : canAddExpense ? (
                       <EmptyList type={EmptyType.EXPENSE} />
@@ -1195,7 +1175,7 @@ export default function GroupDetailsScreen() {
                       <EmptyList
                         type={EmptyType.EXPENSE}
                         content=" This group has no other members yet. Add members from
-                        Group Info → Edit Members to start splitting expenses."
+                        Info → Edit Members to start splitting expenses."
                       />
                     )
                   }
@@ -1203,7 +1183,7 @@ export default function GroupDetailsScreen() {
                 />
               </VStack>
             )}
-            {tab === "Group Info" && <GroupDetailsTab />}
+            {tab === "Info" && <GroupDetailsTab />}
             {tab === "Stats" && groupId && userDetails && (
               <GroupStatsTab
                 groupId={groupId}
@@ -1241,13 +1221,11 @@ export default function GroupDetailsScreen() {
                 <Text
                   bold
                   className={`text-lg ${
-                    primaryCompactNet.amount < 0 ? "text-error-400" : ""
+                    compactNet.total < 0 ? "text-error-400" : ""
                   }`}
                 >
-                  {formatAmount(
-                    primaryCompactNet.amount,
-                    primaryCompactNet.currency
-                  )}
+                  {compactNet.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactNet.total, primaryCurrency)}
                 </Text>
               </VStack>
               <Text className="text-secondary-200">|</Text>
@@ -1258,11 +1236,9 @@ export default function GroupDetailsScreen() {
                 >
                   Collect
                 </Text>
-                <Text bold className="text-lg">
-                  {formatAmount(
-                    primaryCompactCollect.amount,
-                    primaryCompactCollect.currency
-                  )}
+                <Text bold className="text-lg" numberOfLines={1}>
+                  {compactCollect.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactCollect.total, primaryCurrency)}
                 </Text>
               </VStack>
               <Text className="text-secondary-200">|</Text>
@@ -1273,11 +1249,9 @@ export default function GroupDetailsScreen() {
                 >
                   Pay
                 </Text>
-                <Text bold className="text-lg text-error-400">
-                  {formatAmount(
-                    primaryCompactPay.amount,
-                    primaryCompactPay.currency
-                  )}
+                <Text bold className="text-lg text-error-400" numberOfLines={1}>
+                  {compactPay.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactPay.total, primaryCurrency)}
                 </Text>
               </VStack>
             </HStack>
@@ -1313,11 +1287,27 @@ export default function GroupDetailsScreen() {
         payer={payerFilter}
         onSelect={setPayerFilter}
       />
+      <CategorySheet
+        isOpen={categorySheetOpen}
+        onClose={() => setCategorySheetOpen(false)}
+        category={categoryFilter}
+        onSelect={setCategoryFilter}
+        options={categoryFilterOptions}
+      />
       <DateRangeSheet
         isOpen={dateRangeSheetOpen}
         onClose={() => setDateRangeSheetOpen(false)}
         dateRange={expenseDateRange}
-        onSelect={setExpenseDateRange}
+        customRange={expenseCustomRange}
+        onSelect={(value, custom) => {
+          setExpenseDateRange(value);
+          setExpenseCustomRange(custom ?? null);
+        }}
+      />
+      <UpgradeSheet
+        isOpen={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        description="Recurring expenses are a Pro feature. Upgrade to auto-post monthly rent, subscriptions, and other regular bills on a schedule."
       />
     </Fragment>
   );

@@ -31,7 +31,9 @@ export enum NotificationType {
   SETTLEMENT_COMPLETED = "settlement_completed", // when the payer approves the settlement without request from the member
   EXPENSE_INCLUSION = "expense_inclusion",
   GROUP_JOIN = "group_join",
-  GROUP_LEAVE = "group_leave"
+  GROUP_LEAVE = "group_leave",
+  RECURRING_POSTED = "recurring_posted", // a recurring template auto-posted an expense (group or book)
+  RECURRING_REVIEW = "recurring_review" // a group recurring expense posted as a draft and needs finalizing
 }
 
 /**
@@ -50,4 +52,19 @@ export const SETTLEMENT_NOTIFICATION_TYPES: readonly NotificationType[] = [
 
 export function isSettlementNotification(type: NotificationType): boolean {
   return SETTLEMENT_NOTIFICATION_TYPES.includes(type);
+}
+
+/**
+ * Notification types raised by the recurring generator (`run-recurring`). They
+ * are the only ones a user sends to *themselves*, and their `reference_id` can
+ * point at either a group expense or a personal (book) expense — so both the
+ * rendering and the routing paths have to treat them as their own family.
+ */
+export const RECURRING_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  NotificationType.RECURRING_POSTED,
+  NotificationType.RECURRING_REVIEW
+];
+
+export function isRecurringNotification(type: NotificationType): boolean {
+  return RECURRING_NOTIFICATION_TYPES.includes(type);
 }

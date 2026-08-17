@@ -18,8 +18,27 @@ import {
 } from "@/components/ui/radio";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { CategoryOption, expenseCategories } from "@/utils/constants";
-import { CircleIcon } from "lucide-react-native";
+import {
+  categories,
+  CategoryOption,
+  expenseCategories
+} from "@/utils/constants";
+import { CircleIcon, LayoutGrid } from "lucide-react-native";
+
+/** Filter-only sentinel — no expense ever stores it, so it can share the
+ *  CategorySheet options list with the real categories. */
+export const ALL_CATEGORIES = "all";
+
+/** Options for a category *filter* sheet: the real categories preceded by an
+ *  "All Categories" reset row. */
+export const categoryFilterOptions: CategoryOption[] = [
+  { label: "All Categories", value: ALL_CATEGORIES, icon: LayoutGrid },
+  ...expenseCategories
+];
+
+export const categoryFilterLabel = (value: string) =>
+  categoryFilterOptions.find((c) => c.value === value)?.label ??
+  "All Categories";
 
 /** Full option (label + icon) for a stored category value, falling back to
  *  "Other" for anything unrecognized (e.g. a value from a newer client). */
@@ -31,16 +50,32 @@ export const expenseCategoryMeta = (value: string): CategoryOption =>
 export const expenseCategoryLabel = (value: string): string =>
   expenseCategoryMeta(value).label;
 
+/** Chart/legend color for a stored category value (see CategoryOption.color). */
+export const expenseCategoryColor = (value: string): string =>
+  expenseCategoryMeta(value).color ?? "#94A3B8";
+
+/** Full option (label + icon) for a stored group category value, falling back to
+ *  "Other" for anything unrecognized (e.g. a value from a newer client). */
+export const groupCategoryMeta = (value: string): CategoryOption =>
+  categories.find((c) => c.value === value) ??
+  categories[categories.length - 1];
+
 export default function CategorySheet({
   isOpen,
   onClose,
   category,
-  onSelect
+  onSelect,
+  // Defaults to the expense categories so existing callers stay unchanged;
+  // group/book forms pass their own `categories` set.
+  options = expenseCategories,
+  title = "Category"
 }: {
   isOpen: boolean;
   onClose: () => void;
   category: string;
   onSelect: (v: string) => void;
+  options?: CategoryOption[];
+  title?: string;
 }) {
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose}>
@@ -51,7 +86,7 @@ export default function CategorySheet({
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full gap-y-4">
           <Text bold className="text-xl">
-            Category
+            {title}
           </Text>
           <RadioGroup
             value={category}
@@ -61,7 +96,7 @@ export default function CategorySheet({
             }}
           >
             <FlatList
-              data={expenseCategories}
+              data={options}
               keyExtractor={(item) => item.value}
               scrollEnabled={false}
               renderItem={({ item: option }) => (

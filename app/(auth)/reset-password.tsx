@@ -7,8 +7,12 @@ import AuthLayout from "@/layouts/AuthLayout";
 import services from "@/services";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 
 export default function ResetPasswordScreen() {
+  // Cold-launch landing screen: holds the native splash until this screen's
+  // first frame is drawn, so the launch never flashes the bare window.
+  useHideSplashOnFirstFrame();
   const [values, setValues] = useState({ password: "", confirm: "" });
   const [errors, setErrors] = useState({ password: "", confirm: "" });
   const [showPassword, setShowPassword] = useState(false);

@@ -1,13 +1,16 @@
 import CategoryIcon from "@/components/CategoryIcon";
+import { CurrencySelectionSheet } from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
-import { Button, ButtonText } from "@/components/ui/button";
+import SelectField from "@/components/SelectField";
+import UpgradeSheet from "@/components/UpgradeSheet";
+import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
 import {
   FormControl,
-  FormControlError,
-  FormControlErrorText,
+  FormControlHelper,
+  FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -16,39 +19,55 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadAvatar from "@/components/UploadAvatar";
+import CategorySheet, {
+  groupCategoryMeta
+} from "@/features/expense/components/CategorySheet";
 import MemberItem from "@/features/group/components/MemberItem";
 import MembersSelectionSheet from "@/features/group/components/MembersSelectionSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
+import { GroupCategory } from "@/types/groups";
 import { UserPreview } from "@/types/user";
-import { categories } from "@/utils/constants";
+import { categories, currencies } from "@/utils/constants";
+import { BASE_CURRENCY } from "@/utils/fx";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
 export default function CreateGroupScreen() {
+  const user = states.user();
+  const isPro = user.details?.plan === "pro";
+
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
     name: "",
     avatar: null as ImagePickerSuccessResult | null,
-    category: ""
+    category: GroupCategory.GENERAL as string,
+    // Every group starts in the app's home currency. Pro users can change it
+    // here; for free users the selection is locked, pinning them to PHP.
+    currency: BASE_CURRENCY
   });
   const [formErrors, setFormErrors] = useState({
-    name: "",
-    category: ""
+    name: ""
   }) as any;
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+  const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [openSelectMembers, setOpenSelectMembers] = useState(false);
   const [tab, setTab] = useState<"members" | "admin">("members");
   const [members, setMembers] = useState<UserPreview[]>([]);
   const [admin, setAdmin] = useState<UserPreview[]>([]);
 
-  const user = states.user();
+  const currencyLabel = useMemo(
+    () => currencies.find((c) => c.value === values.currency)?.label,
+    [values.currency]
+  );
 
   const router = useRouter();
   const toast = useAppToast();
@@ -78,15 +97,13 @@ export default function CreateGroupScreen() {
   };
 
   const handleSubmit = async () => {
-    // Validate every required field at once so each missing one lights up
-    // together (name outline + message, category label + message) instead of
-    // surfacing one at a time.
+    // Category always has a value (defaults to General), so only name needs a
+    // required check here.
     const nextErrors = {
-      name: values.name.trim() ? "" : "Name is required",
-      category: values.category ? "" : "Category is required"
+      name: values.name.trim() ? "" : "Name is required"
     };
     setFormErrors(nextErrors);
-    if (nextErrors.name || nextErrors.category) return;
+    if (nextErrors.name) return;
 
     if (admin.length === 0) {
       toast({
@@ -121,6 +138,7 @@ export default function CreateGroupScreen() {
         clientId,
         name: values.name,
         category: values.category,
+        currency: values.currency,
         admin: admin[0],
         members: memberPreviews
       });
@@ -130,6 +148,7 @@ export default function CreateGroupScreen() {
         {
           name: values.name,
           category: values.category,
+          currency: values.currency,
           avatar: null,
           admin_id: admin[0].id,
           member_ids: memberPreviews.map((member) => member.id)
@@ -160,6 +179,7 @@ export default function CreateGroupScreen() {
         name: values.name,
         avatar: values.avatar,
         category: values.category,
+        currency: values.currency,
         admin_id: admin[0].id,
         member_ids: resolvedMembers.concat(admin).map((member) => member.id)
       });
@@ -226,61 +246,44 @@ export default function CreateGroupScreen() {
               errorMessage={formErrors.name}
             />
 
-            <FormControl size="md" isInvalid={!!formErrors.category}>
+            <FormControl size="md">
               <FormControlLabel>
                 <FormControlLabelText>Category</FormControlLabelText>
               </FormControlLabel>
-              <HStack className="gap-2 flex-wrap">
-                {categories.map((category) => (
-                  <Button
-                    key={category.value}
-                    size="md"
-                    variant={
-                      values.category === category.value ? "solid" : "outline"
-                    }
-                    onPress={() => {
-                      setValues({ ...values, category: category.value });
-                      if (formErrors.category)
-                        setFormErrors((prev: any) => ({
-                          ...prev,
-                          category: ""
-                        }));
-                    }}
-                    className={`items-center gap-x-2 pl-1.5 pr-4 rounded-full ${
-                      values.category === category.value
-                        ? "border-primary-400"
-                        : "border-background-200 bg-background-50 dark:bg-background-50"
-                    }`}
-                  >
-                    <CategoryIcon
-                      icon={category.icon}
-                      size={16}
-                      variant={
-                        values.category === category.value
-                          ? "onSolid"
-                          : "default"
-                      }
-                    />
-                    <ButtonText
-                      className={
-                        values.category === category.value
-                          ? "text-secondary-0"
-                          : "text-inherit dark:text-secondary-950"
-                      }
-                    >
-                      {category.label}
-                    </ButtonText>
-                  </Button>
-                ))}
-              </HStack>
-              {formErrors.category && (
-                <FormControlError>
-                  <FormControlErrorText>
-                    {formErrors.category}
-                  </FormControlErrorText>
-                </FormControlError>
-              )}
+              <SelectField
+                onPress={() => setCategorySheetOpen(true)}
+                leading={
+                  <CategoryIcon
+                    icon={groupCategoryMeta(values.category).icon}
+                  />
+                }
+              >
+                <Text className="text-lg" numberOfLines={1}>
+                  {groupCategoryMeta(values.category).label}
+                </Text>
+              </SelectField>
             </FormControl>
+
+            <FormControl size="md">
+              <FormControlLabel>
+                <FormControlLabelText>Currency</FormControlLabelText>
+              </FormControlLabel>
+              <SelectField
+                onPress={() =>
+                  isPro ? setCurrencySheetOpen(true) : setUpgradeOpen(true)
+                }
+              >
+                <Text className="text-lg" numberOfLines={1}>
+                  {isPro ? currencyLabel : `${currencyLabel} - Pro`}
+                </Text>
+              </SelectField>
+              <FormControlHelper>
+                <FormControlHelperText>
+                  New expenses start in it, and totals convert to it.
+                </FormControlHelperText>
+              </FormControlHelper>
+            </FormControl>
+
             <FormControl size="md">
               <VStack className="gap-y-2">
                 <HStack>
@@ -329,8 +332,8 @@ export default function CreateGroupScreen() {
                     tab === "members" ? (
                       <VStack className="p-4 justify-center items-center">
                         <Text className="text-sm text-secondary-950 text-center">
-                          No members added yet. Click "Add Member" to include
-                          members in your group.
+                          No members yet. Tap &quot;Add Member&quot; to include
+                          them.
                         </Text>
                       </VStack>
                     ) : (
@@ -356,6 +359,27 @@ export default function CreateGroupScreen() {
           </VStack>
         </ScrollView>
       </FormLayout>
+
+      <CategorySheet
+        isOpen={categorySheetOpen}
+        category={values.category}
+        onClose={() => setCategorySheetOpen(false)}
+        onSelect={(value) => setValues({ ...values, category: value })}
+        options={categories}
+      />
+
+      <CurrencySelectionSheet
+        isOpen={currencySheetOpen}
+        currency={values.currency}
+        onClose={() => setCurrencySheetOpen(false)}
+        onCurrencyChange={(value) => setValues({ ...values, currency: value })}
+      />
+
+      <UpgradeSheet
+        isOpen={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        description="Multi-currency groups are a Pro feature. Upgrade to track a trip's spending in any currency."
+      />
     </Fragment>
   );
 }

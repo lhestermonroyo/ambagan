@@ -146,6 +146,110 @@ export function ExpenseFormStepSkeleton() {
 }
 
 // ─────────────────────────────────────────────
+// Personal (book) expense form skeletons
+// The destination book is fetched on mount — the routed one when the form is
+// locked, the most recent one otherwise — and in edit mode every field is
+// hydrated from the expense being loaded.
+// ─────────────────────────────────────────────
+
+// Mirrors the Book field: label + bordered row with avatar(24) + book name.
+function BookFieldBones({ color }: { color: string }) {
+  return (
+    <View style={{ gap: 8 }}>
+      <Bone w={40} h={12} color={color} />
+      <View
+        style={{
+          height: 56,
+          borderWidth: 1,
+          borderColor: color,
+          borderRadius: 8,
+          paddingHorizontal: 16,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12
+        }}
+      >
+        <Bone w={24} h={24} radius={999} color={color} />
+        <Bone w="45%" h={16} color={color} />
+      </View>
+    </View>
+  );
+}
+
+export function BookFieldSkeleton() {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  return (
+    <Animated.View style={animStyle}>
+      <BookFieldBones color={color} />
+    </Animated.View>
+  );
+}
+
+// Mirrors the whole personal expense form — amount (currency + input),
+// description, status, book, and the collapsed More options chip row — for edit
+// mode, where every field is hydrated from the expense being loaded.
+export function PersonalExpenseFormSkeleton() {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  return (
+    <Animated.View style={[animStyle, { gap: 24 }]}>
+      {/* Amount: currency selector + input, both h-14 */}
+      <View style={{ gap: 8 }}>
+        <Bone w={56} h={12} color={color} />
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Bone w={88} h={56} radius={8} color={color} />
+          <View style={{ flex: 1 }}>
+            <Bone w="100%" h={56} radius={8} color={color} />
+          </View>
+        </View>
+      </View>
+
+      {/* Description */}
+      <View style={{ gap: 8 }}>
+        <Bone w={80} h={12} color={color} />
+        <Bone w="100%" h={80} radius={8} color={color} />
+      </View>
+
+      {/* Status: label + bordered select row with a leading icon */}
+      <View style={{ gap: 8 }}>
+        <Bone w={44} h={12} color={color} />
+        <View
+          style={{
+            height: 56,
+            borderWidth: 1,
+            borderColor: color,
+            borderRadius: 8,
+            paddingHorizontal: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12
+          }}
+        >
+          <Bone w={22} h={22} radius={999} color={color} />
+          <Bone w="30%" h={16} color={color} />
+        </View>
+      </View>
+
+      <BookFieldBones color={color} />
+
+      {/* Collapsed chip row + expand toggle */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        {[96, 80, 72].map((w) => (
+          <Bone key={w} w={w} h={36} radius={999} color={color} />
+        ))}
+        <View style={{ flex: 1 }} />
+        <Bone w={36} h={36} radius={999} color={color} />
+      </View>
+    </Animated.View>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Header action skeleton
 // Icon-sized bone(s) shown in place of header action buttons whose behavior
 // depends on the record still being fetched (e.g. the group-details leave /
@@ -400,7 +504,7 @@ export function SettlementListSkeleton({ count = 4 }: { count?: number }) {
 
 // ─────────────────────────────────────────────
 // AnalyticsScreen skeleton
-// Overview card + Spending by Group + Monthly Trend + Top Partners
+// Total Spent (gauge) + Where It Went + Trend + Top Partners
 // ─────────────────────────────────────────────
 export function AnalyticsSkeleton() {
   const scheme = useColorScheme() ?? "light";
@@ -410,7 +514,7 @@ export function AnalyticsSkeleton() {
 
   return (
     <Animated.View style={[animStyle, { padding: 16, gap: 24 }]}>
-      {/* Overview card */}
+      {/* Total Spent card — gauge, legend, then the 3-up stat row */}
       <View
         style={{
           backgroundColor: color,
@@ -419,23 +523,51 @@ export function AnalyticsSkeleton() {
           gap: 16
         }}
       >
-        <Bone w={72} h={12} color={divider} />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Bone w={48} h={32} color={divider} />
-          <Bone w={72} h={14} color={divider} />
+        <View
+          style={{ flexDirection: "row", justifyContent: "space-between" }}
+        >
+          <Bone w={88} h={12} color={divider} />
+          <Bone w={56} h={12} color={divider} />
         </View>
+
+        {/* Matches CategoryGauge's viewBox ratio so the card doesn't resize
+            when the real arc swaps in. */}
+        <View style={{ width: "100%", aspectRatio: 280 / 138 }}>
+          <View
+            style={{
+              flex: 1,
+              borderTopLeftRadius: 999,
+              borderTopRightRadius: 999,
+              backgroundColor: divider
+            }}
+          />
+        </View>
+
+        {[0, 1, 2].map((i) => (
+          <View
+            key={i}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+          >
+            <Bone w={10} h={10} radius={999} color={divider} />
+            <Bone w="35%" h={14} color={divider} />
+            <View style={{ flex: 1 }} />
+            <Bone w={32} h={12} color={divider} />
+            <Bone w={64} h={14} color={divider} />
+          </View>
+        ))}
+
         <View style={{ height: 1, backgroundColor: divider }} />
-        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <Bone w={72} h={14} color={divider} />
-          <Bone w={96} h={18} color={divider} />
-        </View>
-        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <Bone w={64} h={14} color={divider} />
-          <Bone w={96} h={18} color={divider} />
+        <View style={{ flexDirection: "row", gap: 24 }}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={{ flex: 1, gap: 6 }}>
+              <Bone w={56} h={12} color={divider} />
+              <Bone w={72} h={18} color={divider} />
+            </View>
+          ))}
         </View>
       </View>
 
-      {/* Spending by Group */}
+      {/* Where It Went */}
       <View style={{ gap: 10 }}>
         <Bone w={180} h={22} color={color} />
         <View
@@ -469,9 +601,9 @@ export function AnalyticsSkeleton() {
         </View>
       </View>
 
-      {/* Monthly Trend */}
+      {/* Trend */}
       <View style={{ gap: 10 }}>
-        <Bone w={148} h={22} color={color} />
+        <Bone w={96} h={22} color={color} />
         <View
           style={{
             backgroundColor: color,

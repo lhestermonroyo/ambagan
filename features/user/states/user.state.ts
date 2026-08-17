@@ -1,3 +1,4 @@
+import BOOK_STATE from "@/features/book/states/book.state";
 import EXPENSE_STATE from "@/features/expense/states/expense.state";
 import GROUP_STATE from "@/features/group/states/group.state";
 import NOTIFICATION_STATE from "@/features/notifications/states/notification.state";
@@ -12,6 +13,7 @@ import {
 } from "@/features/user/services/preferences.service";
 import {
   AppearanceMode,
+  HeroView,
   SettlementView,
   UserPreferences,
   UserState
@@ -26,6 +28,7 @@ const NOTIF_ALL_ON = {
   notif_settlement_rejected: true,
   notif_settlement_completed: true,
   notif_expense_inclusion: true,
+  notif_recurring_expense: true,
   notif_group_join: true,
   notif_group_leave: true
 };
@@ -37,6 +40,9 @@ const NOTIF_ALL_OFF = Object.fromEntries(
 const isAnyNotifEnabled = (prefs: UserPreferences) =>
   Object.keys(NOTIF_ALL_ON).some((k) => prefs[k as keyof UserPreferences]);
 
+const normalizeHeroView = (view: HeroView | null | undefined): HeroView =>
+  view === "personal" ? "personal" : "balance";
+
 const USER_STATE = create<UserState>((set, get) => ({
   loading: true,
   routeIntent: "splash",
@@ -44,10 +50,13 @@ const USER_STATE = create<UserState>((set, get) => ({
   details: null,
   oauthName: null,
   preferences: null,
+  // Light is the app's default theme: it's what the auth/onboarding screens use
+  // before any preference is loaded, and what a new account's row is created
+  // with below. An existing user's stored preference always wins over this.
   appearanceMode: "light",
   settlementView: "full",
+  heroView: "balance",
   notificationsEnabled: true,
-  defaultCurrency: "PHP",
 
   signOut: () => {
     set({
@@ -55,7 +64,7 @@ const USER_STATE = create<UserState>((set, get) => ({
       details: null,
       preferences: null,
       settlementView: "full",
-      defaultCurrency: "PHP",
+      heroView: "balance",
       // Reset the routing intent so a stale "tabs"/"splash" from the previous
       // account can't survive into the next login and mis-route index.tsx.
       routeIntent: "login"
@@ -64,6 +73,7 @@ const USER_STATE = create<UserState>((set, get) => ({
     clearCachedUserSession();
     EXPENSE_STATE.getState().reset();
     GROUP_STATE.getState().reset();
+    BOOK_STATE.getState().reset();
     NOTIFICATION_STATE.getState().reset();
     // Clear the persisted Supabase session so a cold launch's getSession() can't
     // restore the account we just left (and a stale token refresh can't silently
@@ -114,17 +124,27 @@ const USER_STATE = create<UserState>((set, get) => ({
     }
   },
 
+  setHeroView: async (view: HeroView) => {
+    const { details } = get();
+    if (!details?.id) return;
+    // Purely visual, so apply it immediately and let it sync. Offline → queue
+    // the change (flushed on reconnect) instead of failing the DB write.
+    set({ heroView: view });
+    if (await offlineQueue.isOnline()) {
+      await updatePreferencesInDB(details.id, { hero_view: view });
+    } else {
+      await offlineQueue.queueUpdatePreferences(details.id, {
+        hero_view: view
+      });
+    }
+  },
+
   setNotificationsEnabled: async (enabled: boolean) => {
     const { details } = get();
     if (!details?.id) return;
     const notifPrefs = enabled ? NOTIF_ALL_ON : NOTIF_ALL_OFF;
     await updatePreferencesInDB(details.id, notifPrefs);
     set({ notificationsEnabled: enabled });
-  },
-
-  setDefaultCurrency: async (userId: string, currency: string) => {
-    await updatePreferencesInDB(userId, { default_currency: currency });
-    set({ defaultCurrency: currency });
   },
 
   updatePreferences: async (prefs) => {
@@ -140,8 +160,8 @@ const USER_STATE = create<UserState>((set, get) => ({
       ...(prefs.settlement_view !== undefined && {
         settlementView: prefs.settlement_view
       }),
-      ...(prefs.default_currency !== undefined && {
-        defaultCurrency: prefs.default_currency
+      ...(prefs.hero_view !== undefined && {
+        heroView: prefs.hero_view
       })
     });
   },
@@ -159,10 +179,14 @@ const USER_STATE = create<UserState>((set, get) => ({
       let prefs = await getPreferences(userId);
 
       if (!prefs) {
+        // `default_currency` is deliberately absent — the column still exists
+        // (so an existing user's stored choice isn't destroyed if we ever bring
+        // the setting back) but nothing reads it, and it defaults to 'PHP' in
+        // the schema. See BASE_CURRENCY in utils/fx.
         prefs = await createPreferences(userId, {
           appearance: "light",
           settlement_view: "full",
-          default_currency: "PHP",
+          hero_view: "balance",
           ...NOTIF_ALL_ON
         });
       }
@@ -175,14 +199,23 @@ const USER_STATE = create<UserState>((set, get) => ({
           (pending?.settlement_view as SettlementView) ??
           prefs.settlement_view ??
           "full",
-        notificationsEnabled: isAnyNotifEnabled(prefs),
-        defaultCurrency: prefs.default_currency
+        // Anything unrecognised falls back to the balance page rather than
+        // being trusted — an older build reading a value added later would
+        // otherwise land the pager on a page it can't render.
+        heroView: normalizeHeroView(
+          (pending?.hero_view as HeroView) ?? prefs.hero_view
+        ),
+        notificationsEnabled: isAnyNotifEnabled(prefs)
       });
     } catch (error) {
-      // Offline / failed load — still apply a pending appearance change so the
-      // theme the user picked offline persists across the restart.
+      // Offline / failed load — still apply the pending changes that decide
+      // what the app looks like on this launch, so a choice made offline
+      // persists across the restart.
       if (pending?.appearance) {
         set({ appearanceMode: pending.appearance as AppearanceMode });
+      }
+      if (pending?.hero_view) {
+        set({ heroView: normalizeHeroView(pending.hero_view as HeroView) });
       }
       console.error("Error loading preferences:", error);
     }

@@ -26,8 +26,14 @@ import { formatDate } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
 import { CircleIcon, UserStar } from "lucide-react-native";
+import { useColorScheme as useAppColorScheme } from "nativewind";
 import { Fragment, useState } from "react";
-import { useColorScheme } from "react-native";
+import { Image, useColorScheme } from "react-native";
+
+const GROUPS_ART = {
+  light: require("@/assets/images/groups-light.png"),
+  dark: require("@/assets/images/groups-dark.png")
+};
 
 export default function GroupSelection({
   group,
@@ -39,6 +45,9 @@ export default function GroupSelection({
   isLocked?: boolean;
 }) {
   const [openActionsheet, setOpenActionsheet] = useState(false);
+  // nativewind's, not react-native's — App Appearance drives that one, so the
+  // react-native hook would serve the light art to a user forced to Dark.
+  const { colorScheme: appColorScheme } = useAppColorScheme();
 
   const router = useRouter();
 
@@ -49,15 +58,23 @@ export default function GroupSelection({
         onPress={() => router.push("/groups/create")}
       >
         <HStack className="gap-x-4 justify-center items-center">
+          {/* Smaller than EmptyList's 80 — this is a compact row inside the
+              form, not a full-height empty screen. */}
+          <Image
+            source={GROUPS_ART[appColorScheme === "dark" ? "dark" : "light"]}
+            style={{ width: 40, height: 40 }}
+            resizeMode="contain"
+          />
           <VStack className="flex-1 gap-y-4">
             <VStack>
               <Text className="text-lg">No group created yet.</Text>
               <Text className="text-secondary-950 text-sm">
-                Group is required to add expenses. Create a group to start
-                adding expenses and sharing with friends.
+                Expenses need a group. Create one to get started.
               </Text>
             </VStack>
           </VStack>
+          {/* Kept as the action affordance — the art is decorative, this is
+              what says the row does something. */}
           <Icon as="group-add" className="text-primary-400" />
         </HStack>
       </PressableListItem>

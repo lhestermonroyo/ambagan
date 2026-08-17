@@ -30,7 +30,6 @@ const AppAvatar = ({
   ...props
 }: AppAvatarProps) => {
   const [imageError, setImageError] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
   const { isOnline } = useNetwork();
 
   // Offline: remote avatar URLs can't load (broken/blank), so show initials.
@@ -52,7 +51,6 @@ const AppAvatar = ({
           source={{ uri: uri }}
           alt={name || "Avatar"}
           onError={() => setImageError(true)}
-          onLoad={() => setImageLoaded(true)}
         />
       )}
       {showFallback && (

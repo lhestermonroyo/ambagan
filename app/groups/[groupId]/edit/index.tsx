@@ -1,41 +1,58 @@
 import CategoryIcon from "@/components/CategoryIcon";
+import { CurrencySelectionSheet } from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import { Button, ButtonText } from "@/components/ui/button";
+import SelectField from "@/components/SelectField";
+import UpgradeSheet from "@/components/UpgradeSheet";
 import {
   FormControl,
-  FormControlError,
-  FormControlErrorText,
+  FormControlHelper,
+  FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
-import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
+import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadAvatar from "@/components/UploadAvatar";
+import CategorySheet, {
+  groupCategoryMeta
+} from "@/features/expense/components/CategorySheet";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
-import { categories } from "@/utils/constants";
+import { GroupCategory } from "@/types/groups";
+import { categories, currencies } from "@/utils/constants";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useMemo, useState } from "react";
 
 export default function EditGroupScreen() {
+  const { details: userDetails } = states.user();
+  const isPro = userDetails?.plan === "pro";
+
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
     name: "",
     avatar: null as ImagePickerSuccessResult | null,
-    category: ""
+    category: GroupCategory.GENERAL as string,
+    currency: "PHP"
   });
   const [formErrors, setFormErrors] = useState({
-    name: "",
-    category: ""
+    name: ""
   }) as any;
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+  const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [defaultAvatar, setDefaultAvatar] = useState<string | null>(null);
+
+  const currencyLabel = useMemo(
+    () => currencies.find((c) => c.value === values.currency)?.label,
+    [values.currency]
+  );
 
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -68,7 +85,8 @@ export default function EditGroupScreen() {
       setValues({
         name: response.name,
         avatar: null,
-        category: response.category
+        category: response.category,
+        currency: response.currency ?? "PHP"
       });
       setDefaultAvatar(response.avatar || null);
     } catch (error) {
@@ -84,7 +102,8 @@ export default function EditGroupScreen() {
         setValues({
           name: fromState.name,
           avatar: null,
-          category: fromState.category
+          category: fromState.category,
+          currency: fromState.currency ?? "PHP"
         });
         setDefaultAvatar(fromState.avatar || null);
       } else {
@@ -104,20 +123,19 @@ export default function EditGroupScreen() {
     setValues({
       name: "",
       avatar: null,
-      category: ""
+      category: GroupCategory.GENERAL,
+      currency: "PHP"
     });
   };
 
   const handleSubmit = async () => {
-    // Validate every required field at once so each missing one lights up
-    // together (name outline + message, category label + message) instead of
-    // surfacing one at a time.
+    // Category always has a value (defaults to General), so only name needs a
+    // required check here.
     const nextErrors = {
-      name: values.name.trim() ? "" : "Name is required",
-      category: values.category ? "" : "Category is required"
+      name: values.name.trim() ? "" : "Name is required"
     };
     setFormErrors(nextErrors);
-    if (nextErrors.name || nextErrors.category) return;
+    if (nextErrors.name) return;
 
     if (!groupId) return;
 
@@ -127,6 +145,7 @@ export default function EditGroupScreen() {
       const response = await services.group.updateGroup(groupId, {
         name: values.name,
         category: values.category,
+        currency: values.currency,
         avatar: values.avatar
       });
 
@@ -199,65 +218,69 @@ export default function EditGroupScreen() {
                 errorMessage={formErrors.name}
               />
 
-              <FormControl size="md" isInvalid={!!formErrors.category}>
+              <FormControl size="md">
                 <FormControlLabel>
                   <FormControlLabelText>Category</FormControlLabelText>
                 </FormControlLabel>
-                <HStack className="gap-2 flex-wrap">
-                  {categories.map((category) => (
-                    <Button
-                      key={category.value}
-                      size="md"
-                      variant={
-                        values.category === category.value ? "solid" : "outline"
-                      }
-                      onPress={() => {
-                        setValues({ ...values, category: category.value });
-                        if (formErrors.category)
-                          setFormErrors((prev: any) => ({
-                            ...prev,
-                            category: ""
-                          }));
-                      }}
-                      className={`items-center gap-x-2 pl-1.5 pr-4 rounded-full ${
-                        values.category === category.value
-                          ? "border-primary-400"
-                          : "border-background-200 bg-background-50 dark:bg-background-100"
-                      }`}
-                    >
-                      <CategoryIcon
-                        icon={category.icon}
-                        size={16}
-                        variant={
-                          values.category === category.value
-                            ? "onSolid"
-                            : "default"
-                        }
-                      />
-                      <ButtonText
-                        className={
-                          values.category === category.value
-                            ? "text-background-0"
-                            : "text-inherit"
-                        }
-                      >
-                        {category.label}
-                      </ButtonText>
-                    </Button>
-                  ))}
-                </HStack>
-                {formErrors.category && (
-                  <FormControlError>
-                    <FormControlErrorText>
-                      {formErrors.category}
-                    </FormControlErrorText>
-                  </FormControlError>
-                )}
+                <SelectField
+                  onPress={() => setCategorySheetOpen(true)}
+                  leading={
+                    <CategoryIcon
+                      icon={groupCategoryMeta(values.category).icon}
+                    />
+                  }
+                >
+                  <Text className="text-lg" numberOfLines={1}>
+                    {groupCategoryMeta(values.category).label}
+                  </Text>
+                </SelectField>
+              </FormControl>
+
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>Currency</FormControlLabelText>
+                </FormControlLabel>
+                <SelectField
+                  onPress={() =>
+                    isPro ? setCurrencySheetOpen(true) : setUpgradeOpen(true)
+                  }
+                >
+                  <Text className="text-lg" numberOfLines={1}>
+                    {isPro ? currencyLabel : `${currencyLabel} - Pro`}
+                  </Text>
+                </SelectField>
+                <FormControlHelper>
+                  <FormControlHelperText>
+                    New expenses start in it, and totals convert to it. Existing
+                    expenses keep theirs.
+                  </FormControlHelperText>
+                </FormControlHelper>
               </FormControl>
             </VStack>
           </LoadingWrapper>
         </ScrollView>
       </FormLayout>
+
+      <CategorySheet
+        isOpen={categorySheetOpen}
+        category={values.category}
+        onClose={() => setCategorySheetOpen(false)}
+        onSelect={(value) => setValues({ ...values, category: value })}
+        options={categories}
+      />
+
+      <CurrencySelectionSheet
+        isOpen={currencySheetOpen}
+        currency={values.currency}
+        onClose={() => setCurrencySheetOpen(false)}
+        onCurrencyChange={(value) => setValues({ ...values, currency: value })}
+      />
+
+      <UpgradeSheet
+        isOpen={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        description="Multi-currency groups are a Pro feature. Upgrade to track a trip's spending in any currency."
+      />
     </Fragment>
   );
 }

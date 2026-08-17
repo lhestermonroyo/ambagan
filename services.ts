@@ -1,4 +1,7 @@
 import * as ANALYTICS_SERVICE from "./features/analytics/services/analytics.service";
+import * as BOOK_SERVICE from "./features/book/services/book.service";
+import * as BOOK_EXPENSE_SERVICE from "./features/book/services/book-expense.service";
+import * as BOOK_RECURRING_SERVICE from "./features/book/services/book-recurring.service";
 import * as EXPENSE_SERVICE from "./features/expense/services/expense.service";
 import * as FRIEND_SERVICE from "./features/friends/services/friend.service";
 import * as GROUP_SERVICE from "./features/group/services/group.service";
@@ -19,6 +22,9 @@ const services = {
   purchase: PURCHASE_SERVICE,
   group: GROUP_SERVICE,
   member: MEMBER_SERVICE,
+  book: BOOK_SERVICE,
+  bookExpense: BOOK_EXPENSE_SERVICE,
+  bookRecurring: BOOK_RECURRING_SERVICE,
   expense: EXPENSE_SERVICE,
   friend: FRIEND_SERVICE,
   notification: NOTIFICATION_SERVICE

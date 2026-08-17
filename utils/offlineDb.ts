@@ -39,6 +39,12 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       cached_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS cache_group_contacts (
+      user_id TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      cached_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS cache_user_stats (
       user_id TEXT PRIMARY KEY,
       data TEXT NOT NULL,
@@ -87,6 +93,40 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       user_id TEXT PRIMARY KEY,
       count INTEGER NOT NULL,
       day_key TEXT NOT NULL,
+      cached_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cache_books_list (
+      user_id TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      cached_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cache_book_detail (
+      book_id TEXT PRIMARY KEY,
+      book_json TEXT NOT NULL,
+      expense_list TEXT NOT NULL,
+      totals TEXT NOT NULL,
+      cached_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cache_daily_personal_count (
+      user_id TEXT PRIMARY KEY,
+      count INTEGER NOT NULL,
+      day_key TEXT NOT NULL,
+      cached_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS cache_personal_monthly (
+      user_id TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      cached_at INTEGER NOT NULL
+    );
+
+    -- FX rates are global, not per-user, so this holds exactly one row.
+    CREATE TABLE IF NOT EXISTS cache_fx_rates (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      data TEXT NOT NULL,
       cached_at INTEGER NOT NULL
     );
   `);

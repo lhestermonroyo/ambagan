@@ -18,6 +18,7 @@ import states from "@/states";
 import { FriendSummary } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
+import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Search } from "lucide-react-native";
@@ -43,6 +44,7 @@ export default function FriendsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [recentFriends, setRecentFriends] = useState<UserPreview[]>([]);
+  const [groupContacts, setGroupContacts] = useState<UserPreview[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchVisible, setSearchVisible] = useState(false);
   const [initialized, setInitialized] = useState(false);
@@ -50,6 +52,7 @@ export default function FriendsScreen() {
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
 
   const { details: userDetails } = states.user();
+  const fx = useFxRates();
   const router = useRouter();
 
   const { favoriteIds, favoriteUsers, loadFavorites, handleToggleFavorite } =
@@ -61,6 +64,7 @@ export default function FriendsScreen() {
       fetchFriends(initialized);
       loadFavorites();
       loadRecentFriends();
+      loadGroupContacts();
     }, [userDetails?.id, initialized])
   );
 
@@ -92,12 +96,23 @@ export default function FriendsScreen() {
     }
   };
 
+  const loadGroupContacts = async () => {
+    if (!userDetails?.id) return;
+    try {
+      const data = await services.friend.getGroupContacts(userDetails.id);
+      setGroupContacts(data);
+    } catch (error) {
+      console.error("Failed to load group contacts:", error);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
       fetchFriends(true),
       loadFavorites(),
-      loadRecentFriends()
+      loadRecentFriends(),
+      loadGroupContacts()
     ]);
     setRefreshing(false);
   };
@@ -130,19 +145,23 @@ export default function FriendsScreen() {
     return map;
   }, [friends]);
 
-  // The full people directory: favorites + people we have balances with +
-  // recent contacts, de-duplicated (favorites kept first).
+  // The full people directory: favorites + people we have balances with + every
+  // co-member across our groups + recent contacts, de-duplicated (favorites
+  // first). The group roster comes from the server, so the directory survives a
+  // reinstall and includes people we didn't add ourselves (invite link, another
+  // admin) — the local `recentFriends` list alone missed all of those.
   const allContacts = useMemo(() => {
     const map = new Map<string, UserPreview>();
     [
       ...favoriteUsers,
       ...friends.map((f) => f.friend),
+      ...groupContacts,
       ...recentFriends
     ].forEach((u) => {
       if (u.id !== userDetails?.id && !map.has(u.id)) map.set(u.id, u);
     });
     return Array.from(map.values());
-  }, [favoriteUsers, friends, recentFriends, userDetails?.id]);
+  }, [favoriteUsers, friends, groupContacts, recentFriends, userDetails?.id]);
 
   const matchesQuery = (u: UserPreview, q: string) =>
     `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||
@@ -158,19 +177,28 @@ export default function FriendsScreen() {
     return allContacts.filter((u) => matchesQuery(u, q));
   }, [isSearchActive, searchInput, allContacts]);
 
+  // Filter and sort on the SAME converted net the row prints, not on the first
+  // currency — otherwise a friend you owe on balance can sit under "To collect"
+  // because their peso line happens to be positive. Currencies with no rate are
+  // skipped, matching useConvertedTotal.
   const balanceList = useMemo(() => {
+    const netOf = (friend: FriendSummary) =>
+      friend.balances.reduce((sum, balance) => {
+        const rate = getRate(fx, balance.currency, BASE_CURRENCY);
+        return rate === null ? sum : sum + balance.amount * rate;
+      }, 0);
+
+    const nets = new Map(friends.map((f) => [f.friend.id, netOf(f)]));
+    const net = (f: FriendSummary) => nets.get(f.friend.id) ?? 0;
+
     const filtered =
       balanceFilter === "collect"
-        ? friends.filter((f) => (f.balances[0]?.amount ?? 0) > 0)
+        ? friends.filter((f) => net(f) > 0)
         : balanceFilter === "pay"
-          ? friends.filter((f) => (f.balances[0]?.amount ?? 0) < 0)
+          ? friends.filter((f) => net(f) < 0)
           : friends;
-    return [...filtered].sort(
-      (a, b) =>
-        Math.abs(b.balances[0]?.amount ?? 0) -
-        Math.abs(a.balances[0]?.amount ?? 0)
-    );
-  }, [friends, balanceFilter]);
+    return [...filtered].sort((a, b) => Math.abs(net(b)) - Math.abs(net(a)));
+  }, [friends, balanceFilter, fx]);
 
   const favoriteContacts = useMemo(
     () => allContacts.filter((u) => favoriteIds.has(u.id)),
@@ -331,7 +359,13 @@ export default function FriendsScreen() {
                     ItemSeparatorComponent={ListDivider}
                     ListEmptyComponent={() =>
                       favoriteContacts.length === 0 ? (
-                        <EmptyList type={EmptyType.FRIEND} />
+                        // The FRIEND default is about outstanding settlements,
+                        // which is the Balances tab's concern — an empty
+                        // contacts directory just means no shared groups yet.
+                        <EmptyList
+                          type={EmptyType.FRIEND}
+                          content="No contacts yet. People you share a group with will show up here."
+                        />
                       ) : null
                     }
                   />

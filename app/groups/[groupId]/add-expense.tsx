@@ -3,22 +3,18 @@ import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
 import CurrencySelection from "@/components/CurrencySelection";
+import DailyLimitBadge from "@/components/DailyLimitBadge";
+import DatePickerModal from "@/components/DatePickerModal";
+import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
+import PressableListItem from "@/components/PressableListItem";
 import SelectField from "@/components/SelectField";
 import {
   GroupCardSkeleton,
   PayerFieldSkeleton
 } from "@/components/SkeletonLoader";
-import {
-  Actionsheet,
-  ActionsheetBackdrop,
-  ActionsheetContent,
-  ActionsheetDragIndicator,
-  ActionsheetDragIndicatorWrapper
-} from "@/components/ui/actionsheet";
-import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -28,7 +24,6 @@ import {
   FormControlLabelText
 } from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
-import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -37,12 +32,20 @@ import UploadImage from "@/components/UploadImage";
 import CategorySheet, {
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
+import ExpenseOptions, {
+  ExpenseOptionChip
+} from "@/features/expense/components/ExpenseOptions";
 import { GroupSelectionActionSheet } from "@/features/expense/components/GroupSelection";
 import PayerContributionSheet from "@/features/expense/components/PayerContributionSheet";
 import RecurrenceSheet from "@/features/expense/components/RecurrenceSheet";
 import SplitExpenseSheet from "@/features/expense/components/SplitExpenseSheet";
+import { resolveDailyCount } from "@/features/expense/utils/dailyLimit";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { recurrenceSummary } from "@/features/expense/utils/recurrence.util";
+import {
+  consumeScanDraft,
+  scanDraftFor
+} from "@/features/expense/utils/scanDraft";
 import {
   generatePaymentSplits,
   getAmountPerPerson,
@@ -55,14 +58,15 @@ import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
 import { ExpenseCategory, RecurrenceConfig } from "@/types/expenses";
+import { EmptyType } from "@/types/general";
 import { Group, Member } from "@/types/groups";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { BASE_CURRENCY } from "@/utils/fx";
+import { getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { format } from "date-fns";
+import { format, isThisYear, isToday } from "date-fns";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import {
   Stack,
@@ -70,38 +74,11 @@ import {
   useLocalSearchParams,
   useRouter
 } from "expo-router";
-import { CalendarDays, Edit3, ListPlus } from "lucide-react-native";
+import { CalendarDays, Paperclip, Repeat } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
-
-// Local-day key (not a UTC ISO date) so the cached daily count is compared
-// against the same calendar day the user is in.
-const dayKey = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-};
-
-/**
- * The user's expense count for today, usable offline. Online: the live server
- * count, cached for later offline reads. Offline: the last cached server count
- * for today (0 if missing or from another day) plus the ADD_EXPENSE ops queued
- * today — so the free-tier daily limit stays enforced without a server round
- * trip. The two never overlap: queued ops aren't in the cached server count
- * until they sync, at which point the queue is empty again.
- */
-async function resolveDailyCount(userId: string): Promise<number> {
-  if (await offlineQueue.isOnline()) {
-    const count = await services.expense.getDailyExpenseCount(userId);
-    await cacheService.saveDailyExpenseCount(userId, count, dayKey());
-    return count;
-  }
-  const cached = await cacheService.getDailyExpenseCount(userId);
-  const base = cached && cached.dayKey === dayKey() ? cached.count : 0;
-  const queuedToday = await offlineQueue.countExpensesQueuedToday();
-  return base + queuedToday;
-}
 
 /**
  * Add Expense: log an expense in one screen. Defaults to the quick path — paid
@@ -109,7 +86,7 @@ async function resolveDailyCount(userId: string): Promise<number> {
  * fullscreen sheet to customize payers (multiple contributors) and the split
  * (equal / percentage / exact amounts, with member exclusion). Opened from Home
  * (group defaults to the one you most recently joined, changeable) or from a
- * group (that group, locked), and seeds from a Scan Receipt (Beta) hand-off when
+ * group (that group, locked), and seeds from a Scan Receipt hand-off when
  * a scanDraft is waiting. This is the single expense form — it replaced the
  * separate Quick/Custom flows.
  */
@@ -120,9 +97,16 @@ export default function AddExpenseScreen() {
   // Reached with the literal "[groupId]" segment from Home (group changeable)
   // or with a real id from a group screen (group locked).
   const isLocked = !!groupId && groupId !== "[groupId]";
+  // Set when Scan Receipt routed here — identifies the receipt this screen may
+  // seed from, and (with scanStack) how to leave once it's saved.
+  const scanId = params.scanId as string | undefined;
+  // The scanner reached this form by pushing through the destination picker, so
+  // a plain back() after saving would land on the picker. Dismiss the whole scan
+  // stack instead. Locked scanners replace themselves and don't set this.
+  const fromScanStack = params.scanStack === "1";
 
   const { list: groupList, initialized: groupsInitialized } = states.group();
-  const { details: currentUser, session, defaultCurrency } = states.user();
+  const { details: currentUser, session } = states.user();
   const userId = currentUser?.id ?? session?.user?.id;
   const isPro = currentUser?.plan === "pro";
 
@@ -130,13 +114,16 @@ export default function AddExpenseScreen() {
   const { isOnline } = useNetwork();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
-  // Seed from a Scan Receipt (Beta) hand-off if one is waiting. Read once at
-  // mount via a lazy initializer; the draft is cleared in the effect below so a
-  // back-out + re-entry starts clean. Scanned currency is only honored for Pro
-  // (free = PHP-only) and only when it's a currency we support — see
+  // Seed from a Scan Receipt hand-off — but only the receipt this screen was
+  // routed with, so an Add Expense opened any other way starts blank even while
+  // a scan is still in play. Read once at mount via a lazy initializer; the
+  // draft outlives the form and is dropped on save (see handleSaved), which is
+  // what makes backing out and re-picking a destination re-seed instead of
+  // losing the receipt. Scanned currency is only honored for Pro (free =
+  // PHP-only) and only when it's a currency we support — see
   // [[project_multicurrency]].
   const [seed] = useState(() => {
-    const draft = states.expense.getState().scanDraft;
+    const draft = scanDraftFor(scanId);
     const scannedCurrency =
       isPro &&
       draft?.currency &&
@@ -147,7 +134,10 @@ export default function AddExpenseScreen() {
     return {
       amount: draft?.amount ?? "",
       description: draft?.description ?? "",
-      currency: scannedCurrency ?? (isPro ? defaultCurrency : "PHP"),
+      currency: scannedCurrency ?? BASE_CURRENCY,
+      // Kept so the group-currency sync below can tell an explicit scanned
+      // currency (which wins) apart from the plain default.
+      scannedCurrency,
       expenseDate:
         scannedDate && !isNaN(scannedDate.getTime()) ? scannedDate : new Date(),
       proofOfPayment: (draft?.proof_of_payment ??
@@ -159,7 +149,7 @@ export default function AddExpenseScreen() {
   const [amount, setAmount] = useState(seed.amount);
   const [description, setDescription] = useState(seed.description);
   const [currency, setCurrency] = useState(seed.currency);
-  const [category, setCategory] = useState<string>(ExpenseCategory.OTHER);
+  const [category, setCategory] = useState<string>(ExpenseCategory.GENERAL);
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [expenseDate, setExpenseDate] = useState(seed.expenseDate);
   const [proofOfPayment, setProofOfPayment] =
@@ -202,12 +192,27 @@ export default function AddExpenseScreen() {
   const openDateSheet = useCallback(() => setDateSheetOpen(true), []);
   const closeDateSheet = useCallback(() => setDateSheetOpen(false), []);
 
-  // The scan hand-off has been consumed by the seed initializer above — clear it
-  // so leaving and re-entering this screen doesn't re-seed a stale receipt.
-  useEffect(() => {
-    const { scanDraft, clearScanDraft } = states.expense.getState();
-    if (scanDraft) clearScanDraft();
-  }, []);
+  // Optional fields (category / date / repeat / receipt) collapse into a chip
+  // row. Always starts closed — the common case is amount + description on the
+  // defaults, and anything a scan set to a non-default already shows as a
+  // filled-in chip without expanding. Who paid and how it splits stay outside
+  // entirely: they're the substance of a group expense, and the one thing a
+  // collapsed summary can't stand in for.
+  const [optionsExpanded, setOptionsExpanded] = useState(false);
+  const handleToggleOptions = () => setOptionsExpanded((prev) => !prev);
+
+  // Leave after a successful save (online, offline-queued, draft, or recurring).
+  // The scanned receipt has now landed somewhere, so it's done — and when the
+  // scanner pushed us here through the destination picker, back() would only
+  // land on that picker, so unwind the whole scan stack to where it started.
+  const handleSaved = () => {
+    consumeScanDraft(scanId);
+    if (fromScanStack && router.canDismiss()) {
+      router.dismissAll();
+      return;
+    }
+    router.back();
+  };
 
   useEffect(() => {
     if (!isPro && userId) {
@@ -278,6 +283,19 @@ export default function AddExpenseScreen() {
     // the group id so a re-fetch fires when the selected group changes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (selectedGroup) fetchMembers(selectedGroup.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGroup?.id]);
+
+  // Default the currency to the resolved group's own currency (a Pro "Japan
+  // Trip" group is JPY-first). A scanned currency always wins; free groups are
+  // "PHP" so this is a no-op for them. Fires when the selected group changes,
+  // mirroring the book add-expense flow.
+  useEffect(() => {
+    if (seed.scannedCurrency) return;
+    // A group cached before group-currency shipped has no `currency` — fall back
+    // to the home currency so we never set `undefined`.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (selectedGroup) setCurrency(selectedGroup.currency ?? BASE_CURRENCY);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGroup?.id]);
 
@@ -530,6 +548,58 @@ export default function AddExpenseScreen() {
     setRecurrenceSheetOpen(true);
   };
 
+  const hasReceipt = !!proofOfPayment;
+  const CategoryChipIcon = expenseCategoryMeta(category).icon;
+
+  // The collapsed row. Each chip opens the same sheet its full field does, so
+  // changing just the category never costs an expand. A chip renders muted while
+  // its field is on the default and fills in once it isn't. Nothing here can be
+  // invalid — the only validated fields (amount, description, payers, split) all
+  // stay visible — so no chip needs an error state.
+  const optionChips: ExpenseOptionChip[] = [
+    {
+      key: "category",
+      label: expenseCategoryMeta(category).label,
+      isDefault: category === ExpenseCategory.GENERAL,
+      icon: (color) => <CategoryChipIcon size={16} color={color} />,
+      onPress: () => setCategorySheetOpen(true)
+    },
+    {
+      key: "date",
+      label: isToday(expenseDate)
+        ? "Today"
+        : // Drop the year for the current one — "Aug 12" reads better in a chip,
+          // but a back-dated expense from last year must stay unambiguous.
+          format(
+            expenseDate,
+            isThisYear(expenseDate) ? "MMM dd" : "MMM dd, yyyy"
+          ),
+      isDefault: isToday(expenseDate),
+      icon: (color) => <CalendarDays size={16} color={color} />,
+      onPress: openDateSheet
+    },
+    {
+      key: "repeat",
+      label: recurrence
+        ? recurrenceSummary(recurrence)
+        : isPro
+          ? "One-time"
+          : "One-time · Pro",
+      isDefault: !recurrence,
+      icon: (color) => <Repeat size={16} color={color} />,
+      onPress: handleOpenRecurrence
+    },
+    {
+      key: "receipt",
+      label: hasReceipt ? "Receipt added" : "Receipt",
+      isDefault: !hasReceipt,
+      icon: (color) => <Paperclip size={16} color={color} />,
+      // The one chip that expands instead of opening a sheet: the uploader is a
+      // preview surface, not a value a sheet can hand back.
+      onPress: () => setOptionsExpanded(true)
+    }
+  ];
+
   const canSubmit =
     parsedAmount > 0 &&
     description.trim().length > 0 &&
@@ -632,7 +702,7 @@ export default function AddExpenseScreen() {
           : "This draft will sync automatically when you're back online.",
         type: "info"
       });
-      router.back();
+      handleSaved();
       return;
     }
 
@@ -655,7 +725,7 @@ export default function AddExpenseScreen() {
         description: "Finalize it later to set who paid and split it.",
         type: "success"
       });
-      router.back();
+      handleSaved();
     } catch {
       toast({
         title: "Draft Save Failed",
@@ -713,7 +783,7 @@ export default function AddExpenseScreen() {
           recurrenceSummary(recurrence) + " — we'll post it for you.",
         type: "success"
       });
-      router.back();
+      handleSaved();
     } catch {
       toast({
         title: "Failed",
@@ -827,7 +897,7 @@ export default function AddExpenseScreen() {
           : "This expense will sync automatically when you're back online.",
         type: "info"
       });
-      router.back();
+      handleSaved();
       return;
     }
 
@@ -874,7 +944,7 @@ export default function AddExpenseScreen() {
       });
       // Origin screens (Home / group) re-init on focus, so backing out refreshes
       // the list without an explicit callback.
-      router.back();
+      handleSaved();
     } catch {
       toast({
         title: "Failed",
@@ -895,15 +965,10 @@ export default function AddExpenseScreen() {
         {hasNoGroups ? (
           <VStack className="flex-1 p-4">
             <VStack className="items-center justify-center flex-1 gap-y-4">
-              <Icon
-                as="sentiment-dissatisfied"
-                size={64}
-                className="text-primary-400"
+              <EmptyList
+                type={EmptyType.GROUP}
+                content="You're not in a group yet. Join or create one to add an expense."
               />
-              <Text className="text-center">
-                You are not part of any group yet. Please join or create a group
-                to be able to add an expense.
-              </Text>
               <FormButton
                 text="Create Group"
                 iconEnd={
@@ -972,12 +1037,12 @@ export default function AddExpenseScreen() {
         ]}
       >
         <ScrollView className="flex-1 px-4">
-          <VStack className="gap-y-6 pt-2">
+          <VStack className="gap-y-6 pt-2 pb-4">
             <FormControl size="md" isInvalid={!!amountError}>
               <FormControlLabel>
                 <FormControlLabelText>Amount</FormControlLabelText>
               </FormControlLabel>
-              <HStack className="gap-x-2 items-end h-12">
+              <HStack className="gap-x-2 items-end h-14">
                 <CurrencySelection
                   currency={currency}
                   onCurrencyChange={setCurrency}
@@ -1015,165 +1080,48 @@ export default function AddExpenseScreen() {
               errorMessage={descriptionError}
             />
 
-            <HStack className="gap-x-2">
-              <FormControl size="md" className="flex-1">
-                <FormControlLabel>
-                  <FormControlLabelText>Category</FormControlLabelText>
-                </FormControlLabel>
-                <SelectField
-                  onPress={() => setCategorySheetOpen(true)}
-                  leading={
-                    <CategoryIcon icon={expenseCategoryMeta(category).icon} />
-                  }
-                >
-                  <Text className="text-lg" numberOfLines={1}>
-                    {expenseCategoryMeta(category).label}
-                  </Text>
-                </SelectField>
-              </FormControl>
-
-              <FormControl size="md" className="flex-1">
-                <FormControlLabel>
-                  <FormControlLabelText>Expense Date</FormControlLabelText>
-                </FormControlLabel>
-                <SelectField
-                  onPress={openDateSheet}
-                  leading={
-                    <CalendarDays
-                      color={getSecondaryHex("text-secondary-950", colorScheme)}
-                    />
-                  }
-                >
-                  <Text className="text-lg" numberOfLines={1}>
-                    {format(expenseDate, "MMM dd, yyyy")}
-                  </Text>
-                </SelectField>
-              </FormControl>
-            </HStack>
-
-            <FormControl size="md">
-              <FormControlLabel>
-                <FormControlLabelText>Repeat</FormControlLabelText>
-              </FormControlLabel>
-              <SelectField
-                onPress={handleOpenRecurrence}
-                leading={
-                  <Icon
-                    as="event-repeat"
-                    className="text-secondary-950"
-                    size={22}
-                  />
-                }
-              >
-                <Text className="text-lg">
-                  {recurrence
-                    ? recurrenceSummary(recurrence)
-                    : isPro
-                      ? "One-time"
-                      : "One-time - Pro"}
-                </Text>
-              </SelectField>
-              {recurrence && (
-                <Text className="text-sm text-secondary-950 mt-1">
-                  This creates a recurring series — the first expense posts now,
-                  the rest post automatically.
-                </Text>
-              )}
-            </FormControl>
-
             {fieldsLoading ? (
-              <FormControl size="md">
-                <FormControlLabel>
-                  <FormControlLabelText>Payers</FormControlLabelText>
-                </FormControlLabel>
+              <VStack className="gap-y-6">
                 <PayerFieldSkeleton />
-              </FormControl>
-            ) : (
-              <FormControl size="md">
-                <FormControlLabel>
-                  <FormControlLabelText>Payers</FormControlLabelText>
-                </FormControlLabel>
-                <SelectField
-                  onPress={handleOpenPayerSheet}
-                  leading={
-                    isMultiPayer ? (
-                      <AppAvatarGroup
-                        items={payerMembers.map((m) => ({
-                          id: m.id,
-                          name: m.first_name,
-                          uri: m.avatar || undefined
-                        }))}
-                        size="sm"
-                        maxDisplay={3}
-                      />
-                    ) : (
-                      <AppAvatar
-                        name={
-                          payerMembers[0]?.first_name ??
-                          currentUser?.first_name ??
-                          "You"
-                        }
-                        size="sm"
-                        uri={
-                          payerMembers[0]?.avatar ?? currentUser?.avatar ?? ""
-                        }
-                      />
-                    )
-                  }
-                >
-                  <Text className="text-lg" numberOfLines={1}>
-                    {payerLabel}
-                  </Text>
-                </SelectField>
-                {!payersValid && (
-                  <Text className="text-sm text-error-500 mt-1">
-                    Contributions must add up to{" "}
-                    {formatAmount(parsedAmount, currency)}.
-                  </Text>
-                )}
-              </FormControl>
-            )}
-
-            {fieldsLoading ? (
-              <GroupCardSkeleton />
+                <GroupCardSkeleton />
+              </VStack>
             ) : memberCount > 0 ? (
+              /* Group + who paid + how it splits, as one card of tappable rows.
+                 Each row opens the sheet it summarizes, so the payer field no
+                 longer needs a slot of its own above the card. */
               <FormControl size="md">
                 <VStack
-                  className={`border rounded-lg overflow-hidden ${
-                    !splitValid ? "border-error-300" : "border-background-200"
-                  }`}
+                  className={cn(
+                    "border rounded-lg overflow-hidden",
+                    !splitValid || !payersValid
+                      ? "border-error-300"
+                      : "border-background-200"
+                  )}
                 >
-                  {/* Top: group name + group changer (chevrons). Only the top
-                      row is pressable — the card below holds its own buttons. */}
+                  {/* Top: group name + group changer. Pressable only when the
+                      group isn't fixed by the route. */}
                   {!isLocked ? (
-                    <Pressable
-                      className="px-4 pt-4"
+                    <PressableListItem
                       onPress={() => setGroupPickerOpen(true)}
+                      className="p-4"
                     >
-                      {({ pressed }) => (
-                        <HStack
-                          className={cn(
-                            "items-center gap-x-2",
-                            pressed && "opacity-50"
-                          )}
+                      <HStack className="items-center gap-x-2">
+                        <Text
+                          bold
+                          className="text-sm text-secondary-950 uppercase flex-1"
+                          numberOfLines={1}
                         >
-                          <Text
-                            bold
-                            className="text-sm text-secondary-950 uppercase"
-                            numberOfLines={1}
-                          >
-                            {selectedGroup?.name}
-                          </Text>
-                          <Icon
-                            as="unfold-more"
-                            size={18}
-                            className="text-sm text-secondary-950"
-                          />
-                        </HStack>
-                      )}
-                    </Pressable>
+                          {selectedGroup?.name}
+                        </Text>
+                        <Icon
+                          as="unfold-more"
+                          size={18}
+                          className="text-sm text-secondary-950"
+                        />
+                      </HStack>
+                    </PressableListItem>
                   ) : (
-                    <Box className="px-4 pt-4">
+                    <Box className="p-4">
                       <Text
                         bold
                         className="text-sm text-secondary-950 uppercase"
@@ -1184,24 +1132,81 @@ export default function AddExpenseScreen() {
                     </Box>
                   )}
 
-                  {/* Middle: included avatars + "split among" on the left,
-                      split-type summary on the right. */}
-                  <HStack className="px-4 pt-4 justify-between items-start gap-x-3">
-                    <VStack className="items-start gap-y-1 flex-1">
+                  {/* Paid by → the payer contribution sheet. */}
+                  <PressableListItem
+                    onPress={handleOpenPayerSheet}
+                    className="h-20 justify-center px-4 border-t border-background-200"
+                  >
+                    <HStack className="items-center gap-x-3">
+                      {isMultiPayer ? (
+                        <AppAvatarGroup
+                          items={payerMembers.map((m) => ({
+                            id: m.id,
+                            name: m.first_name,
+                            uri: m.avatar || undefined
+                          }))}
+                          size="sm"
+                          maxDisplay={3}
+                        />
+                      ) : (
+                        <AppAvatar
+                          name={
+                            payerMembers[0]?.first_name ??
+                            currentUser?.first_name ??
+                            "You"
+                          }
+                          size="md"
+                          uri={
+                            payerMembers[0]?.avatar ?? currentUser?.avatar ?? ""
+                          }
+                        />
+                      )}
+                      <VStack className="flex-1">
+                        <Text className="text-sm text-secondary-950">
+                          Paid by
+                        </Text>
+                        <Text className="text-lg" numberOfLines={1}>
+                          {payerLabel}
+                        </Text>
+                      </VStack>
+                      <Icon
+                        as="chevron-right"
+                        size={20}
+                        className="text-secondary-950"
+                      />
+                    </HStack>
+                  </PressableListItem>
+
+                  {!payersValid && (
+                    <Text className="text-sm text-error-500 px-4 pb-3">
+                      Contributions must add up to{" "}
+                      {formatAmount(parsedAmount, currency)}.
+                    </Text>
+                  )}
+
+                  {/* Split → the split sheet. The per-person figure only reads
+                      as "each" on an equal split; the other modes are per-member
+                      and belong in the breakdown below. */}
+                  <PressableListItem
+                    onPress={handleOpenSplitSheet}
+                    className="h-20 justify-center px-4 border-t border-background-200"
+                  >
+                    <HStack className="items-center gap-x-3">
                       <AppAvatarGroup
                         items={splitAvatars}
                         size="sm"
-                        maxDisplay={4}
+                        maxDisplay={3}
                       />
-                      <HStack className="items-center gap-x-1">
-                        <Text className="text-secondary-950 text-sm">
-                          {splitAmongText} • {splitTypeLabel}
+                      <VStack className="flex-1">
+                        <Text className="text-sm text-secondary-950">
+                          {splitTypeLabel}
                         </Text>
-                      </HStack>
-                    </VStack>
-                    <VStack className="items-end justify-center gap-y-1">
+                        <Text className="text-lg" numberOfLines={1}>
+                          {splitAmongText}
+                        </Text>
+                      </VStack>
                       {splitType === "equal" && (
-                        <HStack className="gap-x-2">
+                        <VStack className="items-end">
                           <Text
                             bold
                             className="text-2xl text-primary-500"
@@ -1209,54 +1214,42 @@ export default function AddExpenseScreen() {
                           >
                             {formatAmount(perIncluded, currency)}
                           </Text>
-                          <Text className="text-secondary-950 text-sm self-end mb-[2px]">
+                          <Text className="text-secondary-950 text-sm">
                             each
                           </Text>
-                        </HStack>
+                        </VStack>
                       )}
-                    </VStack>
-                  </HStack>
+                      <Icon
+                        as="chevron-right"
+                        size={20}
+                        className="text-secondary-950"
+                      />
+                    </HStack>
+                  </PressableListItem>
 
                   {!splitValid && (
-                    <Text className="text-sm text-error-500 px-4 pt-2">
+                    <Text className="text-sm text-error-500 px-4 pb-3">
                       {splitError}
                     </Text>
                   )}
 
-                  {/* Actions: edit the split, or reveal the per-person breakdown. */}
-                  <HStack className="gap-x-2 p-4">
-                    <FormButton
-                      className="flex-1"
-                      size="sm"
-                      action={!splitValid ? "negative" : "primary"}
-                      icon={
-                        <Edit3
-                          size={16}
-                          color={getSecondaryHex(
-                            "text-secondary-0",
-                            colorScheme
-                          )}
-                        />
-                      }
-                      text="Edit Split"
-                      onPress={handleOpenSplitSheet}
-                    />
-                    <FormButton
-                      className="flex-1"
-                      size="sm"
-                      variant="outline"
-                      icon={
-                        <ListPlus
-                          size={16}
-                          color={getPrimaryHex("text-primary-500", colorScheme)}
-                        />
-                      }
-                      text={showBreakdown ? "Hide breakdown" : "Show breakdown"}
-                      onPress={() => setShowBreakdown((prev) => !prev)}
-                    />
-                  </HStack>
+                  {/* Per-person breakdown: name + % + amount. */}
+                  <PressableListItem
+                    onPress={() => setShowBreakdown((prev) => !prev)}
+                    className="px-4 py-3 border-t border-background-200"
+                  >
+                    <HStack className="items-center justify-center gap-x-1">
+                      <Text bold className="text-sm text-primary-500">
+                        {showBreakdown ? "Hide breakdown" : "Show breakdown"}
+                      </Text>
+                      <Icon
+                        as={showBreakdown ? "expand-less" : "expand-more"}
+                        size={18}
+                        className="text-primary-500"
+                      />
+                    </HStack>
+                  </PressableListItem>
 
-                  {/* Toggled per-person breakdown: name + % + amount. */}
                   {showBreakdown && (
                     <VStack className="border-t border-background-200 gap-y-2 py-2">
                       {breakdownRows.map((row) => (
@@ -1308,18 +1301,93 @@ export default function AddExpenseScreen() {
               </VStack>
             )}
 
-            <VStack className="gap-y-1 pb-4">
-              <UploadImage
-                title="Upload Proof of Payment (optional)"
-                key={proofOfPayment?.assets?.[0]?.uri ?? "none"}
-                defaultUri={proofOfPayment?.assets?.[0]?.uri ?? null}
-                onSelect={setProofOfPayment}
-              />
-              <Text className="text-secondary-950 text-sm">
-                Proof could be a photo of receipt, screenshot of online payment,
-                or any document that shows the expense details.
-              </Text>
-            </VStack>
+            {/* Everything below has a working default, so it collapses to the
+                chip row until the user wants it. */}
+            <ExpenseOptions
+              chips={optionChips}
+              expanded={optionsExpanded}
+              onToggle={handleToggleOptions}
+            >
+              <HStack className="gap-x-2">
+                <FormControl size="md" className="flex-1">
+                  <FormControlLabel>
+                    <FormControlLabelText>Category</FormControlLabelText>
+                  </FormControlLabel>
+                  <SelectField
+                    onPress={() => setCategorySheetOpen(true)}
+                    leading={
+                      <CategoryIcon icon={expenseCategoryMeta(category).icon} />
+                    }
+                  >
+                    <Text className="text-lg" numberOfLines={1}>
+                      {expenseCategoryMeta(category).label}
+                    </Text>
+                  </SelectField>
+                </FormControl>
+
+                <FormControl size="md" className="flex-1">
+                  <FormControlLabel>
+                    <FormControlLabelText>Expense Date</FormControlLabelText>
+                  </FormControlLabel>
+                  <SelectField
+                    onPress={openDateSheet}
+                    leading={
+                      <CalendarDays
+                        color={getSecondaryHex(
+                          "text-secondary-950",
+                          colorScheme
+                        )}
+                      />
+                    }
+                  >
+                    <Text className="text-lg" numberOfLines={1}>
+                      {format(expenseDate, "MMM dd, yyyy")}
+                    </Text>
+                  </SelectField>
+                </FormControl>
+              </HStack>
+
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>Repeat</FormControlLabelText>
+                </FormControlLabel>
+                <SelectField
+                  onPress={handleOpenRecurrence}
+                  leading={
+                    <Repeat
+                      size={22}
+                      color={getSecondaryHex("text-secondary-950", colorScheme)}
+                    />
+                  }
+                >
+                  <Text className="text-lg">
+                    {recurrence
+                      ? recurrenceSummary(recurrence)
+                      : isPro
+                        ? "One-time"
+                        : "One-time - Pro"}
+                  </Text>
+                </SelectField>
+                {recurrence && (
+                  <Text className="text-sm text-secondary-950 mt-1">
+                    First expense posts now, the rest automatically.
+                  </Text>
+                )}
+              </FormControl>
+
+              <VStack className="gap-y-1">
+                <UploadImage
+                  title="Upload Proof of Payment (optional)"
+                  key={proofOfPayment?.assets?.[0]?.uri ?? "none"}
+                  defaultUri={proofOfPayment?.assets?.[0]?.uri ?? null}
+                  onSelect={setProofOfPayment}
+                />
+                <Text className="text-secondary-950 text-sm">
+                  A receipt photo, payment screenshot, or any proof of the
+                  expense.
+                </Text>
+              </VStack>
+            </ExpenseOptions>
           </VStack>
         </ScrollView>
       </FormLayout>
@@ -1391,56 +1459,12 @@ export default function AddExpenseScreen() {
         description={upgradeDescription}
       />
 
-      <Actionsheet isOpen={dateSheetOpen} onClose={closeDateSheet}>
-        <ActionsheetBackdrop />
-        <ActionsheetContent className="p-0">
-          <ActionsheetDragIndicatorWrapper>
-            <ActionsheetDragIndicator />
-          </ActionsheetDragIndicatorWrapper>
-          <VStack className="w-full gap-y-2 items-center">
-            <VStack className="self-start px-4 pt-4">
-              <Text bold className="text-xl">
-                Select Expense Date
-              </Text>
-            </VStack>
-            <VStack className="pb-4">
-              <DateTimePicker
-                value={expenseDate}
-                mode="date"
-                display="inline"
-                themeVariant={colorScheme}
-                accentColor={getPrimaryHex("text-primary-400", colorScheme)}
-                onNeutralButtonPress={closeDateSheet}
-                onChange={(_, date) => {
-                  if (date) {
-                    setExpenseDate(date);
-                    closeDateSheet();
-                  }
-                }}
-              />
-            </VStack>
-          </VStack>
-        </ActionsheetContent>
-      </Actionsheet>
+      <DatePickerModal
+        isOpen={dateSheetOpen}
+        onClose={closeDateSheet}
+        value={expenseDate}
+        onChange={setExpenseDate}
+      />
     </>
-  );
-}
-
-function DailyLimitBadge({ count, limit }: { count: number; limit: number }) {
-  const remaining = limit - count;
-  const isLimitReached = remaining <= 0;
-
-  return (
-    <Badge
-      size="md"
-      variant="solid"
-      className={`rounded-full px-4 py-2 ${isLimitReached ? "bg-error-50" : "bg-primary-50"}`}
-    >
-      <BadgeText
-        className={`font-bold text-sm uppercase ${isLimitReached ? "text-error-600" : "text-primary-400"}`}
-      >
-        {isLimitReached ? "LIMIT REACHED" : `${remaining} / ${limit} LEFT`}
-      </BadgeText>
-    </Badge>
   );
 }

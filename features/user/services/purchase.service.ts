@@ -95,9 +95,7 @@ export const restorePurchases = async (): Promise<CustomerInfo> => {
 };
 
 export const getCustomerInfo = async (): Promise<CustomerInfo> => {
-  const info = await Purchases.getCustomerInfo();
-  console.log("[getCustomerInfo]", JSON.stringify(info, null, 2));
-  return info;
+  return Purchases.getCustomerInfo();
 };
 
 export const isPurchaseCancelled = (error: unknown): boolean => {

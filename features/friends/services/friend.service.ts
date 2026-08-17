@@ -90,6 +90,71 @@ export const removeFavorite = async (
   if (error) throw error;
 };
 
+/**
+ * Everyone you share a group with, straight from group_members_tbl.
+ *
+ * The Contacts tab used to be assembled only from favorites, people with an
+ * outstanding balance, and the device-local `recentUsers` list — so a co-member
+ * appeared only if THIS device happened to write them to AsyncStorage at the
+ * moment they were added. Anyone who joined by invite link, was added by another
+ * admin, or was added before a reinstall/device switch was invisible. Reading the
+ * roster from the server makes the directory durable and device-independent.
+ *
+ * Placeholder ghosts (phone contacts with no account yet) are included — they're
+ * real members of your group, and the row badges them (see FriendRow).
+ */
+export const getGroupContacts = async (
+  userId: string
+): Promise<UserPreview[]> => {
+  try {
+    const user = await supabase.auth.getUser();
+    if (!user.data.user) throw new Error("User not authenticated");
+
+    const { data: myGroups, error: groupsError } = await supabase
+      .from(tables.GROUP_MEMBERS_TBL)
+      .select("group_id")
+      .eq("member_id", userId);
+
+    if (groupsError) throw groupsError;
+
+    const groupIds = [...new Set((myGroups ?? []).map((g) => g.group_id))];
+    if (groupIds.length === 0) {
+      cacheService.saveGroupContacts(userId, []).catch(() => {});
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from(tables.GROUP_MEMBERS_TBL)
+      .select(
+        `member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan, is_placeholder)`
+      )
+      .in("group_id", groupIds)
+      .neq("member_id", userId);
+
+    if (error) throw error;
+
+    const byId = new Map<string, UserPreview>();
+    (data ?? []).forEach((item) => {
+      const member = (
+        Array.isArray(item.member) ? item.member[0] : item.member
+      ) as UserPreview | undefined;
+      if (member?.id && !byId.has(member.id)) byId.set(member.id, member);
+    });
+
+    const result = Array.from(byId.values());
+
+    cacheService.saveGroupContacts(userId, result).catch(() => {});
+
+    return result;
+  } catch (error) {
+    const cached = await cacheService.getGroupContacts(userId);
+    if (cached) {
+      return (cached as UserPreview[]).filter((u) => Boolean(u?.id));
+    }
+    throw error;
+  }
+};
+
 export const getFriendsSummary = async (
   userId: string
 ): Promise<FriendSummary[]> => {
@@ -210,12 +275,12 @@ const FRIEND_SETTLED_PAGE_SIZE = 20;
 export const getSettledFriendSettlements = async (
   userId: string,
   friendId: string,
-  options: { cutoff?: Date | null; page?: number } = {}
+  options: { cutoff?: Date | null; until?: Date | null; page?: number } = {}
 ): Promise<{ data: PaymentPreview[]; hasNext: boolean }> => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 
-  const { cutoff = null, page = 0 } = options;
+  const { cutoff = null, until = null, page = 0 } = options;
   const from = page * FRIEND_SETTLED_PAGE_SIZE;
   const to = from + FRIEND_SETTLED_PAGE_SIZE - 1;
 
@@ -228,6 +293,7 @@ export const getSettledFriendSettlements = async (
     .range(from, to);
 
   if (cutoff) query = query.gte("created_at", cutoff.toISOString());
+  if (until) query = query.lte("created_at", until.toISOString());
 
   const { data, error, count } = await query;
   if (error) throw error;
@@ -258,7 +324,8 @@ const mapFriendExportRows = (data: any[]): PaymentExportRow[] =>
 export const getFriendPaymentsForExport = async (
   userId: string,
   friendId: string,
-  cutoff: Date | null
+  cutoff: Date | null,
+  until: Date | null = null
 ): Promise<PaymentExportRow[]> => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
@@ -270,6 +337,7 @@ export const getFriendPaymentsForExport = async (
     .order("created_at", { ascending: false });
 
   if (cutoff) query = query.gte("created_at", cutoff.toISOString());
+  if (until) query = query.lte("created_at", until.toISOString());
 
   const { data, error } = await query;
   if (error) throw error;

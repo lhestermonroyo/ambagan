@@ -12,7 +12,7 @@ import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
-import { categories } from "@/utils/constants";
+import { categories, currencies } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import React, { Fragment, useMemo, useState } from "react";
@@ -36,6 +36,11 @@ export default function GroupDetailsTab() {
     return categories.find((c) => c.value === details.category) ?? null;
   }, [details?.category]);
 
+  const currency = useMemo(
+    () => currencies.find((c) => c.value === details?.currency) ?? null,
+    [details?.currency]
+  );
+
   const filteredMemberList = useMemo(() => {
     if (!details) return [];
 
@@ -50,6 +55,44 @@ export default function GroupDetailsTab() {
     <Fragment>
       <VStack className="gap-y-6 px-4">
         <Box className="bg-secondary-100 rounded-xl overflow-hidden">
+          {/* Not "Default currency": it seeds new expenses, but it's also what
+              Stats and the settlement totals convert into, so calling it a
+              default understates it — the same undersell the create form's
+              helper text carried. */}
+          <DetailRow
+            label="Currency"
+            value={
+              <Text>
+                {currency ? currency.subtitle : (details.currency ?? "PHP")} (
+                {currency?.sign ?? details.currency ?? "PHP"})
+              </Text>
+            }
+          />
+          <RowDivider />
+          <DetailRow
+            label="Category"
+            value={
+              category ? (
+                <HStack className="items-center gap-x-3">
+                  <CategoryIcon icon={category.icon} size={16} />
+                  <Text className="text-sm">{category.label}</Text>
+                </HStack>
+              ) : (
+                <Text className="text-sm">-</Text>
+              )
+            }
+          />
+          <RowDivider />
+          <DetailRow
+            label="Members"
+            value={
+              <Text>
+                {memberList.length}{" "}
+                {memberList.length === 1 ? "member" : "members"}
+              </Text>
+            }
+          />
+          <RowDivider />
           <DetailRow
             label="Admin"
             value={
@@ -66,40 +109,10 @@ export default function GroupDetailsTab() {
               </HStack>
             }
           />
-          <Box className="mx-4">
-            <Divider className="border-secondary-200" />
-          </Box>
+          <RowDivider />
           <DetailRow
             label="Created at"
             value={<Text>{formatDate(details?.created_at || "")}</Text>}
-          />
-          <Box className="mx-4">
-            <Divider className="border-secondary-200" />
-          </Box>
-          <DetailRow
-            label="Members"
-            value={
-              <Text>
-                {memberList.length}{" "}
-                {memberList.length === 1 ? "member" : "members"}
-              </Text>
-            }
-          />
-          <Box className="mx-4">
-            <Divider className="border-secondary-200" />
-          </Box>
-          <DetailRow
-            label="Category"
-            value={
-              category ? (
-                <HStack className="items-center gap-x-3">
-                  <CategoryIcon icon={category.icon} size={16} />
-                  <Text className="text-sm">{category.label}</Text>
-                </HStack>
-              ) : (
-                <Text className="text-sm">-</Text>
-              )
-            }
           />
         </Box>
 
@@ -109,10 +122,7 @@ export default function GroupDetailsTab() {
               Members
             </Text>
             {isAdmin && (
-              <Button
-                variant="link"
-                onPress={() => setIsEditMembersOpen(true)}
-              >
+              <Button variant="link" onPress={() => setIsEditMembersOpen(true)}>
                 <Text className="text-primary-400 font-medium">
                   Edit Members
                 </Text>
@@ -156,6 +166,12 @@ export default function GroupDetailsTab() {
     </Fragment>
   );
 }
+
+const RowDivider = () => (
+  <Box className="mx-4">
+    <Divider className="border-secondary-200" />
+  </Box>
+);
 
 const DetailRow = ({
   label,

@@ -15,6 +15,7 @@ import { HStack } from "@/components/ui/hstack";
 import {
   Modal,
   ModalBody,
+  ModalBackdrop,
   ModalContent,
   ModalFooter,
   ModalHeader
@@ -696,6 +697,7 @@ export default function ExpenseDetailsScreen() {
         isOpen={deleteModalOpen}
         onClose={() => !deleting && setDeleteModalOpen(false)}
       >
+        <ModalBackdrop />
         <ModalContent>
           <ModalHeader>
             <Heading size="lg">Delete Expense</Heading>
@@ -739,20 +741,8 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
 
 function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
   const { details: userDetails } = states.user();
-  const router = useRouter();
   const isMe = memberSplit.member.id === userDetails?.id;
 
-  const handlePress = () => {
-    router.push({
-      pathname: "/friends/[friendId]",
-      params: {
-        friendId: memberSplit.member.id,
-        name: `${memberSplit.member.first_name} ${memberSplit.member.last_name}`,
-        email: memberSplit.member.email,
-        avatar: memberSplit.member.avatar || ""
-      }
-    });
-  };
   return (
     <Box className="p-4">
       <HStack className="gap-x-3 items-center">

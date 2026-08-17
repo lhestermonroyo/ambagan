@@ -2,11 +2,17 @@ import { ImagePickerSuccessResult } from "expo-image-picker";
 import { UserPreview } from "./user";
 
 /**
- * Transient hand-off from Scan Receipt (Beta) to the new-expense form. Carries
+ * Transient hand-off from Scan Receipt to the new-expense form. Carries
  * the fields parsed off the receipt plus the picked image (which doubles as the
- * expense's proof-of-payment). Set right before navigating to new-expense and
- * cleared once the form seeds itself. Kept in the store rather than route params
+ * expense's proof-of-payment). Kept in the store rather than route params
  * because the picked-image object doesn't serialize cleanly through navigation.
+ *
+ * It outlives the first form it seeds: the user may back out of Add Expense and
+ * pick a different destination, and re-scanning after that wait is the one thing
+ * this flow can't ask of them. What keeps a stale receipt from seeding an
+ * unrelated Add Expense later is `scan_id` — only a form routed to with that
+ * exact id in its params reads the draft (see scanDraft.ts). It's dropped on a
+ * successful save, when the scanner is closed, and once `scanned_at` ages out.
  */
 export type ScanDraft = {
   amount: string | null;
@@ -14,6 +20,10 @@ export type ScanDraft = {
   currency: string | null;
   date: string | null;
   proof_of_payment: ImagePickerSuccessResult;
+  /** Identifies this scan; a form seeds only when its `scanId` param matches. */
+  scan_id: string;
+  /** Epoch ms the scan finished — drafts past SCAN_DRAFT_TTL_MS are ignored. */
+  scanned_at: number;
 };
 
 /**
@@ -192,6 +202,7 @@ export enum SplitType {
 }
 
 export enum ExpenseCategory {
+  GENERAL = "general",
   FOOD = "food",
   GROCERIES = "groceries",
   TRANSPORT = "transport",
@@ -200,6 +211,7 @@ export enum ExpenseCategory {
   SHOPPING = "shopping",
   BILLS = "bills",
   HEALTH = "health",
+  SAVINGS = "savings",
   OTHER = "other"
 }
 

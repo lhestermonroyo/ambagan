@@ -1,3 +1,4 @@
+import { computeInitialNextRunAt } from "@/features/expense/utils/recurrence.util";
 import { createNotification } from "@/features/notifications/services/notification.service";
 import states from "@/states";
 import {
@@ -15,16 +16,15 @@ import {
 import { NotificationType } from "@/types/notifications";
 import { cacheService } from "@/utils/cacheService";
 import { splitTypes, tables } from "@/utils/constants";
-import { computeInitialNextRunAt } from "@/features/expense/utils/recurrence.util";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { sendPushNotification } from "@/utils/sendPushNotifications";
-import { isUniqueViolation, supabase } from "@/utils/supabase";
+import { edgeFn, isUniqueViolation, supabase } from "@/utils/supabase";
 import { getCompressedReceiptBase64, uploadFile } from "@/utils/upload";
 import { ImagePickerAsset, ImagePickerSuccessResult } from "expo-image-picker";
 import { v4 as uuid } from "uuid";
 
 /**
- * Scan Receipt (Beta): compress the picked photo, send it to the scan-receipt
+ * Scan Receipt: compress the picked photo, send it to the scan-receipt
  * Edge Function, and return the parsed amount/description/currency/etc. The AI
  * vendor lives behind the Edge Function — this just speaks the normalized
  * contract. Throws on a transport failure so the caller can toast + fall back.
@@ -32,9 +32,12 @@ import { v4 as uuid } from "uuid";
 export const scanReceipt = async (uri: string): Promise<ScanResult> => {
   const imageBase64 = await getCompressedReceiptBase64(uri);
 
-  const { data, error } = await supabase.functions.invoke("scan-receipt", {
-    body: { imageBase64, mimeType: "image/jpeg" }
-  });
+  const { data, error } = await supabase.functions.invoke(
+    edgeFn("scan-receipt"),
+    {
+      body: { imageBase64, mimeType: "image/jpeg" }
+    }
+  );
 
   if (error) throw error;
 
@@ -1246,7 +1249,7 @@ export const getExpensesByGroupId = async (groupId: string) => {
           payer_list: payerData,
           has_settlement_progress
         };
-      } catch (error) {
+      } catch {
         return {
           ...item,
           creator: resolveUser(item.creator),
@@ -1822,12 +1825,12 @@ const SETTLED_PAGE_SIZE = 20;
 export const getSettledPaymentsByGroupAndUserId = async (
   groupId: string,
   userId: string,
-  options: { cutoff?: Date | null; page?: number } = {}
+  options: { cutoff?: Date | null; until?: Date | null; page?: number } = {}
 ): Promise<{ data: Payment[]; hasNext: boolean }> => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
 
-  const { cutoff = null, page = 0 } = options;
+  const { cutoff = null, until = null, page = 0 } = options;
   const from = page * SETTLED_PAGE_SIZE;
   const to = from + SETTLED_PAGE_SIZE - 1;
 
@@ -1843,6 +1846,9 @@ export const getSettledPaymentsByGroupAndUserId = async (
   if (cutoff) {
     query = query.gte("created_at", cutoff.toISOString());
   }
+  if (until) {
+    query = query.lte("created_at", until.toISOString());
+  }
 
   const { data, error, count } = await query;
   if (error) throw error;
@@ -1854,7 +1860,8 @@ export const getSettledPaymentsByGroupAndUserId = async (
 export const getPaymentsForExport = async (
   groupId: string,
   userId: string,
-  cutoff: Date | null
+  cutoff: Date | null,
+  until: Date | null = null
 ): Promise<PaymentExportRow[]> => {
   const user = await supabase.auth.getUser();
   if (!user.data.user) throw new Error("User not authenticated");
@@ -1868,6 +1875,9 @@ export const getPaymentsForExport = async (
 
   if (cutoff) {
     query = query.gte("created_at", cutoff.toISOString());
+  }
+  if (until) {
+    query = query.lte("created_at", until.toISOString());
   }
 
   const { data, error } = await query;

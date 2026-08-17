@@ -48,7 +48,7 @@ export default function SettlementSheetHeader({
 
       {showGroupLink && groupId && (
         <FormButton
-          variant="outline"
+          variant="link"
           size="md"
           text="View Group"
           iconEnd={

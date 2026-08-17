@@ -11,9 +11,11 @@ import { VStack } from "@/components/ui/vstack";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
+  CustomDateRange,
   DateRangeOption,
-  dateRangeLabels,
-  getDateRangeCutoff
+  formatDateRangeLabel,
+  getDateRangeBounds,
+  isWithinRange
 } from "@/features/group/components/DateRangeSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
@@ -22,6 +24,7 @@ import { PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { groupByCurrency } from "@/utils/currency";
 import { exportFriendSettlementsAsCsv } from "@/utils/exportCsv";
+import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { ChevronDown, Download } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
@@ -30,22 +33,24 @@ import { useColorScheme } from "react-native";
 export default function FriendStatsTab({
   userId,
   friendId,
-  friendName,
-  defaultCurrency = "PHP"
+  friendName
 }: {
   userId: string;
   friendId: string;
   friendName: string;
-  defaultCurrency?: string;
 }) {
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
   const { details: userDetails } = states.user();
   const isPro = userDetails?.plan === "pro";
+  // A friendship spans groups that may each be in a different currency, so the
+  // figures that need a single yardstick fold into the app's home currency.
+  const fx = useFxRates();
 
   const [loading, setLoading] = useState(true);
   const [settlements, setSettlements] = useState<PaymentPreview[]>([]);
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
+  const [customRange, setCustomRange] = useState<CustomDateRange | null>(null);
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [upgradeSheetOpen, setUpgradeSheetOpen] = useState(false);
@@ -73,43 +78,22 @@ export default function FriendStatsTab({
     };
   }, [userId, friendId]);
 
-  const cutoff = useMemo(() => getDateRangeCutoff(dateRange), [dateRange]);
+  const { start: cutoff, end: until } = useMemo(
+    () => getDateRangeBounds(dateRange, customRange),
+    [dateRange, customRange]
+  );
 
   const filtered = useMemo(() => {
-    if (!cutoff) return settlements;
-    return settlements.filter((s) => new Date(s.created_at) >= cutoff);
-  }, [settlements, cutoff]);
+    if (!cutoff && !until) return settlements;
+    return settlements.filter((s) =>
+      isWithinRange(s.created_at, cutoff, until)
+    );
+  }, [settlements, cutoff, until]);
 
-  const active = useMemo(
-    () => filtered.filter((s) => s.status !== "settled"),
-    [filtered]
-  );
   const settled = useMemo(
     () => filtered.filter((s) => s.status === "settled"),
     [filtered]
   );
-
-  // Outstanding — pending/requested only, netted per currency.
-  const toCollect = useMemo(
-    () => groupByCurrency(active.filter((s) => s.payer.id === userId)),
-    [active, userId]
-  );
-  const toPay = useMemo(
-    () => groupByCurrency(active.filter((s) => s.member.id === userId)),
-    [active, userId]
-  );
-  const netBalance = useMemo(() => {
-    const currencies = new Set([
-      ...toCollect.map((i) => i.currency),
-      ...toPay.map((i) => i.currency)
-    ]);
-    return Array.from(currencies).map((currency) => {
-      const receive =
-        toCollect.find((i) => i.currency === currency)?.amount ?? 0;
-      const pay = toPay.find((i) => i.currency === currency)?.amount ?? 0;
-      return { currency, amount: receive - pay };
-    });
-  }, [toCollect, toPay]);
 
   // Lifetime settled — money that has actually changed hands between the two.
   const totalSettled = useMemo(() => groupByCurrency(settled), [settled]);
@@ -122,14 +106,33 @@ export default function FriendStatsTab({
     [settled, userId]
   );
 
-  // Count + average, scoped to the primary currency so the average stays a
-  // meaningful figure (averaging across currencies would be nonsense).
+  // Count + average over EVERY settlement, with the average folded into one
+  // currency so it stays a meaningful figure. An earlier version filtered to a
+  // single currency instead, which silently dropped a traveller's JPY history
+  // from both numbers — the count read as "settlements" but meant "PHP
+  // settlements".
+  //
+  // The count is the true total; the average divides only by what could be
+  // priced, since a settlement with no rate can't contribute to a total it
+  // isn't in. So the two can disagree by a settlement in an unrated currency —
+  // the count stays a fact, and the average is already flagged approximate.
   const primaryStats = useMemo(() => {
-    const inCurrency = settled.filter((s) => s.currency === defaultCurrency);
-    const count = inCurrency.length;
-    const total = inCurrency.reduce((sum, s) => sum + s.amount, 0);
-    return { count, average: count > 0 ? total / count : 0 };
-  }, [settled, defaultCurrency]);
+    let total = 0;
+    let priced = 0;
+    let approx = false;
+    for (const s of settled) {
+      const rate = getRate(fx, s.currency, BASE_CURRENCY);
+      if (rate === null) continue;
+      total += s.amount * rate;
+      priced += 1;
+      if (s.currency !== BASE_CURRENCY) approx = true;
+    }
+    return {
+      count: settled.length,
+      average: priced > 0 ? total / priced : 0,
+      isApprox: approx
+    };
+  }, [settled, fx]);
 
   // Status mix across the filtered range, with each slice's share of the total.
   const statusBreakdown = useMemo(() => {
@@ -156,15 +159,20 @@ export default function FriendStatsTab({
       }));
   }, [filtered]);
 
-  // Biggest settlements in range, scoped to the primary currency — ranking a
-  // ¥5,000 settlement above a ₱4,000 one by raw amount would be misleading.
+  // Biggest settlements in range. Ranking is by CONVERTED value so a ¥5,000
+  // settlement can't outrank a ₱4,000 one on its raw number, but each row still
+  // displays in the currency it will actually be paid in — the yardstick is
+  // approximate, the amounts on screen are not. One with no rate can't be
+  // ranked at all, so it sits out rather than sorting as zero.
   const topSettlements = useMemo(
     () =>
       filtered
-        .filter((s) => s.currency === defaultCurrency)
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 5),
-    [filtered, defaultCurrency]
+        .map((s) => ({ s, value: getRate(fx, s.currency, BASE_CURRENCY) }))
+        .filter((r) => r.value !== null)
+        .sort((a, b) => b.s.amount * b.value! - a.s.amount * a.value!)
+        .slice(0, 5)
+        .map((r) => r.s),
+    [filtered, fx]
   );
 
   // Distinct groups the two of you share expenses in, over the range.
@@ -183,7 +191,8 @@ export default function FriendStatsTab({
       const payments = await services.friend.getFriendPaymentsForExport(
         userId,
         friendId,
-        cutoff
+        cutoff,
+        until
       );
 
       if (payments.length === 0) {
@@ -219,7 +228,12 @@ export default function FriendStatsTab({
   if (settlements.length === 0) {
     return (
       <VStack className="pt-6">
-        <EmptyList type={EmptyType.SETTLEMENT_ALL} />
+        {/* Same reason as the Settlements tab: the type's default copy names a
+            group, which this screen isn't. */}
+        <EmptyList
+          type={EmptyType.SETTLEMENT_ALL}
+          content="No settlements with this friend yet."
+        />
       </VStack>
     );
   }
@@ -235,7 +249,11 @@ export default function FriendStatsTab({
         isOpen={dateRangeSheetOpen}
         onClose={() => setDateRangeSheetOpen(false)}
         dateRange={dateRange}
-        onSelect={setDateRange}
+        customRange={customRange}
+        onSelect={(value, custom) => {
+          setDateRange(value);
+          setCustomRange(custom ?? null);
+        }}
       />
       <VStack className="gap-y-6 pb-6">
         {/* Date range filter pill — opens the same sheet the Settlements tab uses */}
@@ -243,7 +261,7 @@ export default function FriendStatsTab({
           <FormButton
             size="sm"
             variant="outline"
-            text={dateRangeLabels[dateRange]}
+            text={formatDateRangeLabel(dateRange, customRange)}
             iconEnd={
               <ChevronDown
                 size={16}
@@ -266,7 +284,7 @@ export default function FriendStatsTab({
               <VStack className="gap-y-4">
                 <SettledHero
                   items={totalSettled}
-                  primaryCurrency={defaultCurrency}
+                  primaryCurrency={BASE_CURRENCY}
                 />
                 <Divider />
                 <HStack className="items-stretch">
@@ -284,7 +302,8 @@ export default function FriendStatsTab({
                       Avg / Settlement
                     </Text>
                     <Text bold className="text-lg">
-                      {formatAmount(primaryStats.average, defaultCurrency)}
+                      {primaryStats.isApprox ? "≈ " : ""}
+                      {formatAmount(primaryStats.average, BASE_CURRENCY)}
                     </Text>
                   </VStack>
                 </HStack>
@@ -311,7 +330,7 @@ export default function FriendStatsTab({
                       items={collected}
                       label="You Collected"
                       type="receive"
-                      primaryCurrency={defaultCurrency}
+                      primaryCurrency={BASE_CURRENCY}
                     />
                   </VStack>
                   <Divider orientation="vertical" className="mx-4" />
@@ -323,7 +342,7 @@ export default function FriendStatsTab({
                       items={paid}
                       label="You Paid"
                       type="pay"
-                      primaryCurrency={defaultCurrency}
+                      primaryCurrency={BASE_CURRENCY}
                     />
                   </VStack>
                 </HStack>
@@ -500,40 +519,3 @@ function SettledHero({
   );
 }
 
-function NetHero({
-  items,
-  primaryCurrency = "PHP"
-}: {
-  items: { currency: string; amount: number }[];
-  primaryCurrency?: string;
-}) {
-  const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
-  );
-  const [primary, ...secondary] = sorted;
-  const primaryAmount = primary?.amount ?? 0;
-  const amountColor = primaryAmount < 0 ? "text-error-400" : undefined;
-
-  return (
-    <VStack className="gap-y-2">
-      <Text bold className="text-secondary-950 uppercase text-sm">
-        Net Balance
-      </Text>
-      <HStack className="items-end gap-x-2">
-        <Text bold className={`text-3xl ${amountColor ?? ""}`}>
-          {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
-        </Text>
-        <HStack className="items-center gap-x-1 pb-1">
-          <Text className="text-secondary-950 text-base">
-            {primary?.currency ?? primaryCurrency}
-          </Text>
-          {secondary.length > 0 && (
-            <Text className="text-secondary-950 text-sm">
-              +{secondary.length} more
-            </Text>
-          )}
-        </HStack>
-      </HStack>
-    </VStack>
-  );
-}

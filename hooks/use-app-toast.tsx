@@ -146,7 +146,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
       <Box
         className={cn(
           getBackgroundColor(toast.type),
-          "px-4 py-3 rounded-lg mx-2 shadow-lg"
+          "px-4 py-2 rounded-lg mx-2 shadow-lg"
         )}
       >
         <Box className="flex-row items-center justify-between">
@@ -156,7 +156,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
                 {toast.title}
               </Text>
             )}
-            <Text className="text-white">{toast.description}</Text>
+            <Text className="text-white text-sm">{toast.description}</Text>
             {toast.link && (
               <Pressable
                 onPress={() => {

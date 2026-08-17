@@ -1,4 +1,3 @@
-import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -17,12 +16,12 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
 import MarkAsSettledSheet from "@/features/expense/components/MarkAsSettledSheet";
+import NetBalanceDisplay from "@/features/expense/components/NetBalanceDisplay";
 import RequestSettledSheet from "@/features/expense/components/RequestSettledSheet";
 import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementGroupCard from "@/features/expense/components/SettlementGroupCard";
 import SettlementItem from "@/features/expense/components/SettlementItem";
-import { formatAmount } from "@/features/expense/utils/formatAmount";
 import {
   groupByDate,
   groupByExpenseId
@@ -30,9 +29,11 @@ import {
 import { sortPaymentsByStatus } from "@/features/expense/utils/payment.util";
 import { getSettlementUpdatedAt } from "@/features/expense/utils/settlementDate.util";
 import DateRangeSheet, {
+  CustomDateRange,
   DateRangeOption,
-  dateRangeLabels,
-  getDateRangeCutoff
+  formatDateRangeLabel,
+  getDateRangeBounds,
+  isWithinRange
 } from "@/features/group/components/DateRangeSheet";
 import StatusSheet, {
   SettlementStatus
@@ -47,8 +48,8 @@ import { Payment, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
+import { BASE_CURRENCY } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useFocusEffect } from "expo-router";
 import {
   CalendarRange,
@@ -80,11 +81,12 @@ export default function GroupSettlements({
   refreshTrigger?: number;
 }) {
   const { details, settlementRefreshToken } = states.group();
-  const {
-    details: userDetails,
-    defaultCurrency,
-    settlementView
-  } = states.user();
+  const { details: userDetails, settlementView } = states.user();
+
+  // These cards are scoped to one group, so they lead with that group's own
+  // currency — the same one the compact sticky bar on the detail screen folds
+  // into, which is what keeps the two figures agreeing.
+  const primaryCurrency = details?.currency ?? BASE_CURRENCY;
   const colorScheme = useColorScheme() ?? "light";
   const { isOnline } = useNetwork();
 
@@ -105,6 +107,7 @@ export default function GroupSettlements({
   const [viewBy, setViewBy] = useState<ViewOption>("By Date");
   const [viewSheetOpen, setViewSheetOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
+  const [customRange, setCustomRange] = useState<CustomDateRange | null>(null);
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -136,17 +139,19 @@ export default function GroupSettlements({
   useEffect(() => {
     if (!initializedRef.current) return;
     if (!details?.id || !userDetails?.id) return;
-    const cutoff = getDateRangeCutoff(dateRange);
     setSettledPayments([]);
     setSettledPage(0);
-    fetchSettled(0, cutoff);
-  }, [dateRange]);
+    fetchSettled(0, getDateRangeBounds(dateRange, customRange));
+  }, [dateRange, customRange]);
 
   const fetchAll = async () => {
     if (!details?.id || !userDetails?.id) return;
     setLoading(true);
     try {
-      const cutoff = getDateRangeCutoff(dateRange);
+      const { start: cutoff, end: until } = getDateRangeBounds(
+        dateRange,
+        customRange
+      );
       const [active, settled] = await Promise.all([
         services.expense.getActivePaymentsByGroupAndUserId(
           details.id,
@@ -155,7 +160,7 @@ export default function GroupSettlements({
         services.expense.getSettledPaymentsByGroupAndUserId(
           details.id,
           userDetails.id,
-          { cutoff, page: 0 }
+          { cutoff, until, page: 0 }
         )
       ]);
       setActivePayments(sortPaymentsByStatus(active));
@@ -201,13 +206,16 @@ export default function GroupSettlements({
     }
   };
 
-  const fetchSettled = async (page: number, cutoff: Date | null) => {
+  const fetchSettled = async (
+    page: number,
+    bounds: { start: Date | null; end: Date | null }
+  ) => {
     if (!details?.id || !userDetails?.id) return;
     try {
       const result = await services.expense.getSettledPaymentsByGroupAndUserId(
         details.id,
         userDetails.id,
-        { cutoff, page }
+        { cutoff: bounds.start, until: bounds.end, page }
       );
       setSettledPayments((prev) =>
         page === 0 ? result.data : [...prev, ...result.data]
@@ -222,7 +230,10 @@ export default function GroupSettlements({
   const loadMoreSettled = async () => {
     setLoadingMore(true);
     try {
-      await fetchSettled(settledPage + 1, getDateRangeCutoff(dateRange));
+      await fetchSettled(
+        settledPage + 1,
+        getDateRangeBounds(dateRange, customRange)
+      );
     } finally {
       setLoadingMore(false);
     }
@@ -259,7 +270,10 @@ export default function GroupSettlements({
   }, [yourToCollectTotalByCurrency, yourTotalUnpaidByCurrency]);
 
   const settlementSections = useMemo(() => {
-    const cutoff = getDateRangeCutoff(dateRange);
+    const { start: cutoff, end: until } = getDateRangeBounds(
+      dateRange,
+      customRange
+    );
 
     let filtered: Payment[];
     if (settlementTab === "Settled") {
@@ -267,14 +281,14 @@ export default function GroupSettlements({
     } else if (settlementTab === "Pending") {
       filtered = activePayments
         .filter((p) => p.status === "pending")
-        .filter((p) => !cutoff || new Date(p.created_at) >= cutoff);
+        .filter((p) => isWithinRange(p.created_at, cutoff, until));
     } else if (settlementTab === "Requested") {
       filtered = activePayments
         .filter((p) => p.status === "requested")
-        .filter((p) => !cutoff || new Date(p.created_at) >= cutoff);
+        .filter((p) => isWithinRange(p.created_at, cutoff, until));
     } else {
-      const activeFiltered = activePayments.filter(
-        (p) => !cutoff || new Date(p.created_at) >= cutoff
+      const activeFiltered = activePayments.filter((p) =>
+        isWithinRange(p.created_at, cutoff, until)
       );
       filtered = [...activeFiltered, ...settledPayments];
     }
@@ -337,6 +351,7 @@ export default function GroupSettlements({
     viewBy,
     userDetails,
     dateRange,
+    customRange,
     searchQuery
   ]);
 
@@ -423,10 +438,11 @@ export default function GroupSettlements({
         <VStack className="px-4">
           <Card className="rounded-xl bg-secondary-100">
             <VStack className="gap-y-4">
-              <NetBalanceHero
+              <NetBalanceDisplay
                 isLoading={loading}
                 items={netBalance}
-                primaryCurrency={defaultCurrency}
+                currency={primaryCurrency}
+                subtitle="To Collect minus To Pay in this group, per currency"
               />
 
               <Divider />
@@ -434,7 +450,7 @@ export default function GroupSettlements({
               <HStack className="items-stretch">
                 <VStack className="flex-1 gap-y-2">
                   <HStack className="items-center gap-x-2">
-                    <SettlementAvatar isPayer={true} />
+                    <SettlementAvatar isPayer={true} size="sm" />
                     <Text className="text-secondary-950 text-sm uppercase">
                       To Collect
                     </Text>
@@ -443,14 +459,17 @@ export default function GroupSettlements({
                     isLoading={loading}
                     items={yourToCollectTotalByCurrency}
                     label="To Collect"
+                    subtitle="Owed to you in this group, per currency"
                     type="receive"
-                    primaryCurrency={defaultCurrency}
+                    primaryCurrency={primaryCurrency}
+                    convertTo={primaryCurrency}
+                    totalLabel="Total to collect"
                   />
                 </VStack>
                 <Divider orientation="vertical" className="mx-4" />
                 <VStack className="flex-1 gap-y-2">
                   <HStack className="items-center gap-x-2">
-                    <SettlementAvatar isPayer={false} />
+                    <SettlementAvatar isPayer={false} size="sm" />
                     <Text className="text-secondary-950 text-sm uppercase">
                       To Pay
                     </Text>
@@ -459,8 +478,11 @@ export default function GroupSettlements({
                     isLoading={loading}
                     items={yourTotalUnpaidByCurrency}
                     label="To Pay"
+                    subtitle="You owe in this group, per currency"
                     type="pay"
-                    primaryCurrency={defaultCurrency}
+                    primaryCurrency={primaryCurrency}
+                    convertTo={primaryCurrency}
+                    totalLabel="Total to pay"
                   />
                 </VStack>
               </HStack>
@@ -567,11 +589,14 @@ export default function GroupSettlements({
               )}
               {dateRange !== "All" && (
                 <Pressable
-                  onPress={() => setDateRange("All")}
+                  onPress={() => {
+                    setDateRange("All");
+                    setCustomRange(null);
+                  }}
                   className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                 >
                   <Text className="text-sm text-primary-600">
-                    {dateRangeLabels[dateRange]}
+                    {formatDateRangeLabel(dateRange, customRange)}
                   </Text>
                   <X
                     size={12}
@@ -669,7 +694,11 @@ export default function GroupSettlements({
         isOpen={dateRangeSheetOpen}
         onClose={() => setDateRangeSheetOpen(false)}
         dateRange={dateRange}
-        onSelect={setDateRange}
+        customRange={customRange}
+        onSelect={(value, custom) => {
+          setDateRange(value);
+          setCustomRange(custom ?? null);
+        }}
       />
       <ViewBySheet
         isOpen={viewSheetOpen}
@@ -718,51 +747,5 @@ export default function GroupSettlements({
         />
       )}
     </Fragment>
-  );
-}
-
-function NetBalanceHero({
-  items,
-  isLoading,
-  primaryCurrency = "PHP"
-}: {
-  items: { currency: string; amount: number }[];
-  isLoading: boolean;
-  primaryCurrency?: string;
-}) {
-  const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
-  );
-  const [primary] = sorted;
-  const primaryAmount = primary?.amount ?? 0;
-  const amountColor = primaryAmount < 0 && "text-error-400";
-
-  return (
-    <VStack className="gap-y-2">
-      <Text bold className="text-sm text-secondary-950 uppercase">
-        Net Balance
-      </Text>
-      {isLoading ? (
-        <Text bold className="text-3xl">
-          —
-        </Text>
-      ) : (
-        <HStack className="items-end gap-x-2">
-          <Text bold className={cn("text-3xl", amountColor)}>
-            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
-          </Text>
-          <HStack className="items-center gap-x-1 pb-1">
-            <Text className="text-secondary-950 text-base">
-              {primary?.currency ?? primaryCurrency}
-            </Text>
-            <CurrencyCountButton
-              items={sorted}
-              title="Net Balance"
-              subtitle="To Collect minus To Pay, per currency"
-            />
-          </HStack>
-        </HStack>
-      )}
-    </VStack>
   );
 }

@@ -4,28 +4,38 @@ export type AppearanceMode = "light" | "dark" | "system";
 
 export type SettlementView = "full" | "compact" | "arrow";
 
+/**
+ * Which page of the Overview's hero pager opens by default — the group net
+ * balance, or month-to-date personal spending. Both pages stay one swipe away
+ * either way; this only decides where a launch lands.
+ */
+export type HeroView = "balance" | "personal";
+
 export type UserPreferences = {
   id: string;
   user_id: string;
+  // No longer read by the app — the home currency is the BASE_CURRENCY constant
+  // in utils/fx. The column is kept so an existing user's stored choice survives
+  // in case the setting ever comes back; drop it once that's ruled out.
   default_currency: string;
   appearance: AppearanceMode;
   settlement_view: SettlementView;
+  hero_view: HeroView;
   notif_settlement_request: boolean;
   notif_settlement_approved: boolean;
   notif_settlement_rejected: boolean;
   notif_settlement_completed: boolean;
   notif_expense_inclusion: boolean;
+  // Covers both recurring notification types (posted + needs-review) and both
+  // surfaces (group and book) — one switch for "my recurring expenses".
+  notif_recurring_expense: boolean;
   notif_group_join: boolean;
   notif_group_leave: boolean;
   updated_at: string;
 };
 
 export type RouteIntent =
-  | "splash"
-  | "welcome"
-  | "onboarding"
-  | "tabs"
-  | "login";
+  "splash" | "welcome" | "onboarding" | "tabs" | "login";
 
 export type UserState = {
   session: Session | null;
@@ -42,14 +52,16 @@ export type UserState = {
   oauthName: { firstName: string; lastName: string } | null;
   appearanceMode: AppearanceMode;
   settlementView: SettlementView;
+  heroView: HeroView;
   notificationsEnabled: boolean;
-  defaultCurrency: string;
   signOut: () => void;
   setAppearanceMode: (mode: AppearanceMode) => Promise<void>;
   setSettlementView: (view: SettlementView) => Promise<void>;
+  setHeroView: (view: HeroView) => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
-  setDefaultCurrency: (userId: string, currency: string) => Promise<void>;
-  updatePreferences: (prefs: Partial<Omit<UserPreferences, "id" | "user_id" | "updated_at">>) => Promise<void>;
+  updatePreferences: (
+    prefs: Partial<Omit<UserPreferences, "id" | "user_id" | "updated_at">>
+  ) => Promise<void>;
   loadPreferences: (userId?: string) => Promise<void>;
 };
 

@@ -27,8 +27,8 @@ const OnboardPhone = ({
   return (
     <VStack className="gap-y-6 px-4 flex-1">
       <Text className="text-xl text-secondary-950">
-        Next, we'll need your phone number. This will be used for account
-        recovery and important notifications.
+        Next, your phone number — used for account recovery and important
+        notifications.
       </Text>
 
       <VStack className="flex-1">

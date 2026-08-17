@@ -8,6 +8,7 @@ import "@/global.css";
 import { buildFriendSettlementRoute } from "@/features/notifications/utils/buildFriendSettlementRoute";
 import useAppToast, { ToastProvider } from "@/hooks/use-app-toast";
 import { useBanner } from "@/hooks/useBanner";
+import { hideSplashNow } from "@/hooks/useHideSplash";
 import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
@@ -52,6 +53,17 @@ import {
   withSequence,
   withTiming
 } from "react-native-reanimated";
+
+// Without this, expo hides the splash on its own as soon as the root view has
+// any content — which is the instant RootLayout stops returning null, ~1s
+// before the tab tree finishes mounting. That autohide, not our own hideAsync,
+// was what uncovered the bare window on a cold launch. Opt out here so the only
+// thing that lifts the splash is a landing screen's first painted frame (see
+// useHideSplashOnFirstFrame) or the watchdog below.
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/** Backstop only — see the watchdog effect in RootLayout. */
+const SPLASH_WATCHDOG_MS = 4000;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -132,10 +144,19 @@ export default function RootLayout() {
     );
   }, [appearanceMode]);
 
+  // The splash is normally lifted by whichever landing screen paints first, via
+  // useHideSplashOnFirstFrame — NOT here. Hiding it the moment auth resolved
+  // uncovered the bare window ~1s before the tab tree finished mounting, so a
+  // cold launch read: splash → blank → content.
+  //
+  // This is only the backstop. If we land somewhere that doesn't call the hook
+  // (a deep link into a screen we haven't annotated) or the destination throws
+  // before its first frame, the splash must still come down rather than stick
+  // forever. Generous by design — it should normally never be the one to fire.
   useEffect(() => {
-    if (loaded && !loading) {
-      SplashScreen.hideAsync();
-    }
+    if (!loaded || loading) return;
+    const timer = setTimeout(hideSplashNow, SPLASH_WATCHDOG_MS);
+    return () => clearTimeout(timer);
   }, [loaded, loading]);
 
   useEffect(() => {
@@ -362,8 +383,7 @@ export default function RootLayout() {
         await setCachedUserSession({
           userId: id,
           details: after.details,
-          appearanceMode: after.appearanceMode,
-          defaultCurrency: after.defaultCurrency
+          appearanceMode: after.appearanceMode
         });
       }
     } catch (error) {
@@ -383,9 +403,6 @@ export default function RootLayout() {
           details: cached.details,
           ...(cached.appearanceMode && {
             appearanceMode: cached.appearanceMode as typeof prev.appearanceMode
-          }),
-          ...(cached.defaultCurrency && {
-            defaultCurrency: cached.defaultCurrency
           }),
           routeIntent: "tabs"
         }));
@@ -438,8 +455,7 @@ export default function RootLayout() {
       await setCachedUserSession({
         userId: id,
         details: response.data,
-        appearanceMode: current.appearanceMode,
-        defaultCurrency: current.defaultCurrency
+        appearanceMode: current.appearanceMode
       });
 
       await refreshPlan(id);
@@ -522,9 +538,29 @@ export default function RootLayout() {
                 {/* Once inside the app (or auth), the back-swipe must not pop
                     the whole group off the root stack — that's how an accidental
                     swipe was landing the user back on the login screen. All
-                    other root screens keep the native swipe-back. */}
-                <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
-                <Stack.Screen name="(auth)" options={{ gestureEnabled: false }} />
+                    other root screens keep the native swipe-back.
+
+                    animation: "none" — index.tsx `Redirect`s the splash into one
+                    of these groups, and the stack's default simple_push made the
+                    destination slide in after the spinner. These are whole-app
+                    swaps (launch, login, logout), not pushes, so they should
+                    appear instantly. */}
+                <Stack.Screen
+                  name="(tabs)"
+                  options={{ gestureEnabled: false, animation: "none" }}
+                />
+                <Stack.Screen
+                  name="(auth)"
+                  options={{ gestureEnabled: false, animation: "none" }}
+                />
+                {/* The first-run feature tour. A modal presentation so the
+                    swipe-down dismiss is native — the tour is always skippable,
+                    and the route marks it seen on the way out whichever way you
+                    leave. */}
+                <Stack.Screen
+                  name="feature-tour"
+                  options={{ presentation: "modal" }}
+                />
               </Stack>
               <StatusBar style="auto" />
               <OfflineSync />

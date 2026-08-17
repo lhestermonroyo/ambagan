@@ -1,5 +1,4 @@
 import AppAvatar from "@/components/AppAvatar";
-import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -27,6 +26,7 @@ import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
+import NetBalanceDisplay from "@/features/expense/components/NetBalanceDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementGroupCard from "@/features/expense/components/SettlementGroupCard";
@@ -40,9 +40,11 @@ import { getSettlementUpdatedAt } from "@/features/expense/utils/settlementDate.
 import FriendInfoTab from "@/features/friends/components/FriendInfoTab";
 import FriendStatsTab from "@/features/friends/components/FriendStatsTab";
 import DateRangeSheet, {
+  CustomDateRange,
   DateRangeOption,
-  dateRangeLabels,
-  getDateRangeCutoff
+  formatDateRangeLabel,
+  getDateRangeBounds,
+  isWithinRange
 } from "@/features/group/components/DateRangeSheet";
 import StatusSheet, {
   SettlementStatus
@@ -61,8 +63,8 @@ import { PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
+import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import {
   Stack,
   useFocusEffect,
@@ -134,6 +136,7 @@ export default function FriendDetailScreen() {
   const [viewBy, setViewBy] = useState<ViewOption>("By Date");
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
+  const [customRange, setCustomRange] = useState<CustomDateRange | null>(null);
   const [pendingAction, setPendingAction] = useState<
     "settle" | "request" | null
   >(null);
@@ -152,11 +155,7 @@ export default function FriendDetailScreen() {
   const autoOpenHandledRef = useRef(false);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const {
-    details: userDetails,
-    defaultCurrency,
-    settlementView
-  } = states.user();
+  const { details: userDetails, settlementView } = states.user();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
@@ -185,11 +184,10 @@ export default function FriendDetailScreen() {
   useEffect(() => {
     if (!initializedRef.current) return;
     if (!userDetails?.id || !friendId) return;
-    const cutoff = getDateRangeCutoff(dateRange);
     setSettledSettlements([]);
     setSettledPage(0);
-    fetchSettled(0, cutoff);
-  }, [dateRange]);
+    fetchSettled(0, getDateRangeBounds(dateRange, customRange));
+  }, [dateRange, customRange]);
 
   // Deep-link from a settlement notification: once the lists are loaded, open
   // the referenced settlement's sheet and highlight its row. One-shot so it
@@ -272,11 +270,15 @@ export default function FriendDetailScreen() {
     if (!userDetails?.id || !friendId) return;
     if (showLoading) setLoading(true);
     try {
-      const cutoff = getDateRangeCutoff(dateRange);
+      const { start: cutoff, end: until } = getDateRangeBounds(
+        dateRange,
+        customRange
+      );
       const [active, settled] = await Promise.all([
         services.friend.getActiveFriendSettlements(userDetails.id, friendId),
         services.friend.getSettledFriendSettlements(userDetails.id, friendId, {
           cutoff,
+          until,
           page: 0
         })
       ]);
@@ -310,13 +312,16 @@ export default function FriendDetailScreen() {
     }
   };
 
-  const fetchSettled = async (page: number, cutoff: Date | null) => {
+  const fetchSettled = async (
+    page: number,
+    bounds: { start: Date | null; end: Date | null }
+  ) => {
     if (!userDetails?.id || !friendId) return;
     try {
       const result = await services.friend.getSettledFriendSettlements(
         userDetails.id,
         friendId,
-        { cutoff, page }
+        { cutoff: bounds.start, until: bounds.end, page }
       );
       setSettledSettlements((prev) =>
         page === 0 ? result.data : [...prev, ...result.data]
@@ -331,7 +336,10 @@ export default function FriendDetailScreen() {
   const loadMoreSettled = async () => {
     setLoadingMore(true);
     try {
-      await fetchSettled(settledPage + 1, getDateRangeCutoff(dateRange));
+      await fetchSettled(
+        settledPage + 1,
+        getDateRangeBounds(dateRange, customRange)
+      );
     } finally {
       setLoadingMore(false);
     }
@@ -384,7 +392,7 @@ export default function FriendDetailScreen() {
       }
       setPendingAction(null);
       await fetchAll(false);
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -439,38 +447,13 @@ export default function FriendDetailScreen() {
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const primaryNet = useMemo(() => {
-    const sorted = [...netBalance].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [netBalance, defaultCurrency]);
+  // Mirrors the hero card it fades in from, so it converts on the same terms —
+  // the two are briefly on screen together, and a "Net" that disagreed with the
+  // card above it would read as a bug.
+  const compactNet = useConvertedTotal(netBalance, BASE_CURRENCY);
 
-  const primaryCollect = useMemo(() => {
-    const sorted = [...toCollect].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [toCollect, defaultCurrency]);
-
-  const primaryPay = useMemo(() => {
-    const sorted = [...toPay].sort((a, b) =>
-      a.currency === defaultCurrency
-        ? -1
-        : b.currency === defaultCurrency
-          ? 1
-          : 0
-    );
-    return sorted[0] ?? { currency: defaultCurrency, amount: 0 };
-  }, [toPay, defaultCurrency]);
+  const compactCollect = useConvertedTotal(toCollect, BASE_CURRENCY);
+  const compactPay = useConvertedTotal(toPay, BASE_CURRENCY);
 
   const COMPACT_THRESHOLD = 290;
   const compactOpacity = scrollY.interpolate({
@@ -485,7 +468,10 @@ export default function FriendDetailScreen() {
   });
 
   const filteredSettlements = useMemo(() => {
-    const cutoff = getDateRangeCutoff(dateRange);
+    const { start: cutoff, end: until } = getDateRangeBounds(
+      dateRange,
+      customRange
+    );
 
     let filtered: PaymentPreview[];
     if (settlementTab === "Settled") {
@@ -493,14 +479,14 @@ export default function FriendDetailScreen() {
     } else if (settlementTab === "Pending") {
       filtered = activeSettlements
         .filter((s) => s.status === "pending")
-        .filter((s) => !cutoff || new Date(s.created_at) >= cutoff);
+        .filter((s) => isWithinRange(s.created_at, cutoff, until));
     } else if (settlementTab === "Requested") {
       filtered = activeSettlements
         .filter((s) => s.status === "requested")
-        .filter((s) => !cutoff || new Date(s.created_at) >= cutoff);
+        .filter((s) => isWithinRange(s.created_at, cutoff, until));
     } else {
-      const activeFiltered = activeSettlements.filter(
-        (s) => !cutoff || new Date(s.created_at) >= cutoff
+      const activeFiltered = activeSettlements.filter((s) =>
+        isWithinRange(s.created_at, cutoff, until)
       );
       filtered = [...activeFiltered, ...settledSettlements];
     }
@@ -534,6 +520,7 @@ export default function FriendDetailScreen() {
     settledSettlements,
     settlementTab,
     dateRange,
+    customRange,
     searchQuery
   ]);
 
@@ -582,6 +569,17 @@ export default function FriendDetailScreen() {
         : settlementTab === "Settled"
           ? EmptyType.SETTLEMENT_SETTLED
           : EmptyType.SETTLEMENT_ALL;
+
+  // SETTLEMENT_ALL's default copy says "in this group" — correct on the group
+  // screen it shares the type with, wrong here. Name the friend instead, and
+  // say what produces a settlement, since an empty All tab is usually someone
+  // wondering why nothing showed up. The other tabs' copy is already neutral.
+  const emptyContent =
+    emptyType === EmptyType.SETTLEMENT_ALL
+      ? `No settlements with ${
+          decodedName.split(" ")[0] || "this friend"
+        } yet. They show up once you share a group expense.`
+      : undefined;
 
   const handleItemPress = (item: PaymentPreview) => {
     // Viewing a settlement is allowed offline — the sheet's actions (mark
@@ -685,10 +683,11 @@ export default function FriendDetailScreen() {
                   <Card className="rounded-xl bg-secondary-100">
                     <VStack className="gap-y-4">
                       {/* Net Balance Hero */}
-                      <NetBalanceHero
+                      <NetBalanceDisplay
                         isLoading={loading}
                         items={netBalance}
-                        primaryCurrency={defaultCurrency}
+                        currency={BASE_CURRENCY}
+                        subtitle="To Collect minus To Pay with this friend, per currency"
                       />
 
                       <Divider />
@@ -697,7 +696,7 @@ export default function FriendDetailScreen() {
                       <HStack className="items-stretch">
                         <VStack className="flex-1 gap-y-2">
                           <HStack className="items-center gap-x-2">
-                            <SettlementAvatar isPayer={true} />
+                            <SettlementAvatar isPayer={true} size="sm" />
                             <Text className="text-secondary-950 text-sm uppercase">
                               To Collect
                             </Text>
@@ -706,14 +705,17 @@ export default function FriendDetailScreen() {
                             isLoading={loading}
                             items={toCollect}
                             label="To Collect"
+                            subtitle="Owed to you by this friend, per currency"
                             type="receive"
-                            primaryCurrency={defaultCurrency}
+                            primaryCurrency={BASE_CURRENCY}
+                            convertTo={BASE_CURRENCY}
+                            totalLabel="Total to collect"
                           />
                         </VStack>
                         <Divider orientation="vertical" className="mx-4" />
                         <VStack className="flex-1 gap-y-2">
                           <HStack className="items-center gap-x-2">
-                            <SettlementAvatar isPayer={false} />
+                            <SettlementAvatar isPayer={false} size="sm" />
                             <Text className="text-secondary-950 text-sm uppercase">
                               To Pay
                             </Text>
@@ -722,8 +724,11 @@ export default function FriendDetailScreen() {
                             isLoading={loading}
                             items={toPay}
                             label="To Pay"
+                            subtitle="You owe this friend, per currency"
                             type="pay"
-                            primaryCurrency={defaultCurrency}
+                            primaryCurrency={BASE_CURRENCY}
+                            convertTo={BASE_CURRENCY}
+                            totalLabel="Total to pay"
                           />
                         </VStack>
                       </HStack>
@@ -774,17 +779,11 @@ export default function FriendDetailScreen() {
                 userId={userDetails.id}
                 friendId={friendId}
                 friendName={decodedName}
-                defaultCurrency={defaultCurrency}
               />
             )}
 
             {activeTab === "Info" && friendId && (
-              <FriendInfoTab
-                friendId={friendId}
-                name={decodedName}
-                email={decodedEmail}
-                avatar={decodedAvatar}
-              />
+              <FriendInfoTab friendId={friendId} email={decodedEmail} />
             )}
 
             {activeTab === "Settlements" && (
@@ -890,11 +889,14 @@ export default function FriendDetailScreen() {
                     )}
                     {dateRange !== "All" && (
                       <Pressable
-                        onPress={() => setDateRange("All")}
+                        onPress={() => {
+                          setDateRange("All");
+                          setCustomRange(null);
+                        }}
                         className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                       >
                         <Text className="text-sm text-primary-600">
-                          {dateRangeLabels[dateRange]}
+                          {formatDateRangeLabel(dateRange, customRange)}
                         </Text>
                         <X
                           size={12}
@@ -945,7 +947,9 @@ export default function FriendDetailScreen() {
                       )}
                       ItemSeparatorComponent={ListDivider}
                       stickySectionHeadersEnabled={true}
-                      ListEmptyComponent={() => <EmptyList type={emptyType} />}
+                      ListEmptyComponent={() => (
+                        <EmptyList type={emptyType} content={emptyContent} />
+                      )}
                       ListFooterComponent={() =>
                         (settlementTab === "Settled" ||
                           settlementTab === "All") &&
@@ -959,7 +963,7 @@ export default function FriendDetailScreen() {
                       }
                     />
                   ) : sections.length === 0 ? (
-                    <EmptyList type={emptyType} />
+                    <EmptyList type={emptyType} content={emptyContent} />
                   ) : (
                     <VStack className="gap-y-3 px-4">
                       {sections.map((section) => (
@@ -1017,10 +1021,11 @@ export default function FriendDetailScreen() {
                 <Text
                   bold
                   className={`text-lg ${
-                    primaryNet.amount < 0 ? "text-error-400" : ""
+                    compactNet.total < 0 ? "text-error-400" : ""
                   }`}
                 >
-                  {formatAmount(primaryNet.amount, primaryNet.currency)}
+                  {compactNet.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactNet.total, BASE_CURRENCY)}
                 </Text>
               </VStack>
               <Text className="text-secondary-200">|</Text>
@@ -1031,8 +1036,9 @@ export default function FriendDetailScreen() {
                 >
                   Collect
                 </Text>
-                <Text bold className="text-lg">
-                  {formatAmount(primaryCollect.amount, primaryCollect.currency)}
+                <Text bold className="text-lg" numberOfLines={1}>
+                  {compactCollect.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactCollect.total, BASE_CURRENCY)}
                 </Text>
               </VStack>
               <Text className="text-secondary-200">|</Text>
@@ -1043,8 +1049,9 @@ export default function FriendDetailScreen() {
                 >
                   Pay
                 </Text>
-                <Text bold className="text-lg text-error-400">
-                  {formatAmount(primaryPay.amount, primaryPay.currency)}
+                <Text bold className="text-lg text-error-400" numberOfLines={1}>
+                  {compactPay.convertedCurrencies.length > 0 ? "≈ " : ""}
+                  {formatAmount(compactPay.total, BASE_CURRENCY)}
                 </Text>
               </VStack>
             </HStack>
@@ -1068,7 +1075,11 @@ export default function FriendDetailScreen() {
         isOpen={dateRangeSheetOpen}
         onClose={() => setDateRangeSheetOpen(false)}
         dateRange={dateRange}
-        onSelect={setDateRange}
+        customRange={customRange}
+        onSelect={(value, custom) => {
+          setDateRange(value);
+          setCustomRange(custom ?? null);
+        }}
       />
       <ViewBySheet
         isOpen={viewSheetOpen}
@@ -1113,51 +1124,5 @@ export default function FriendDetailScreen() {
         </ModalContent>
       </Modal>
     </>
-  );
-}
-
-function NetBalanceHero({
-  items,
-  isLoading,
-  primaryCurrency = "PHP"
-}: {
-  items: { currency: string; amount: number }[];
-  isLoading: boolean;
-  primaryCurrency?: string;
-}) {
-  const sorted = [...items].sort((a, b) =>
-    a.currency === primaryCurrency ? -1 : b.currency === primaryCurrency ? 1 : 0
-  );
-  const [primary] = sorted;
-  const primaryAmount = primary?.amount ?? 0;
-  const amountColor = primaryAmount < 0 && "text-error-400";
-
-  return (
-    <VStack className="gap-y-2">
-      <Text bold className="text-sm text-secondary-950 uppercase">
-        Net Balance
-      </Text>
-      {isLoading ? (
-        <Text bold className="text-3xl">
-          —
-        </Text>
-      ) : (
-        <HStack className="items-end gap-x-2">
-          <Text bold className={cn("text-3xl", amountColor)}>
-            {formatAmount(primaryAmount, primary?.currency ?? primaryCurrency)}
-          </Text>
-          <HStack className="items-center gap-x-1 pb-1">
-            <Text className="text-secondary-950 text-base">
-              {primary?.currency ?? primaryCurrency}
-            </Text>
-            <CurrencyCountButton
-              items={sorted}
-              title="Net Balance"
-              subtitle="To Collect minus To Pay, per currency"
-            />
-          </HStack>
-        </HStack>
-      )}
-    </VStack>
   );
 }

@@ -119,8 +119,8 @@ export default function LinkExpirationSheet({
               Link Expiration
             </Text>
             <Text className="text-sm text-secondary-950">
-              Choose how long the new link and QR stay valid. Resetting stops
-              the current link immediately.
+              How long the new link and QR stay valid. The current one stops
+              immediately.
             </Text>
           </VStack>
 

@@ -1,13 +1,13 @@
 import AppAvatar from "@/components/AppAvatar";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
-import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { UserPreview } from "@/types/user";
+import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
@@ -17,10 +17,18 @@ import { useColorScheme } from "react-native";
 
 type Balance = { amount: number; currency: string };
 
+/** Stable identity for the no-balance case — useConvertedTotal memoizes on it. */
+const NO_BALANCES: Balance[] = [];
+
 /**
  * Unified friend/contact row used across the Friends tab.
  *  - Shows the balance on the right ONLY when `balances` has an entry (a person
  *    you share money with); a pure contact renders without an amount.
+ *  - A row is a SUMMARY of where you stand with someone, so mixed currencies
+ *    fold into one figure in the user's default currency, marked "≈" (see
+ *    utils/fx). The per-currency working lives on the friend detail screen,
+ *    one tap away — a list row is too small to carry a breakdown chip, and the
+ *    old "+N" said there was more without saying it was more MONEY.
  *  - Always shows the favorite heart toggle, reflecting `isFavorite`.
  */
 const FriendRow = React.memo(function FriendRow({
@@ -36,9 +44,20 @@ const FriendRow = React.memo(function FriendRow({
   onPress: (user: UserPreview) => void;
   onToggleFavorite: (user: UserPreview) => void;
 }) {
+  // Only `user` is required. A pure contact row is rendered WITHOUT `balances`
+  // (see the Contacts tab) — guarding on it here blanked every balance-less row.
+  if (!user) return null;
+
   const colorScheme = useColorScheme() ?? "light";
-  const [primary, ...rest] = balances ?? [];
-  const isNegative = (primary?.amount ?? 0) < 0;
+  const { total, convertedCurrencies } = useConvertedTotal(
+    balances ?? NO_BALANCES,
+    BASE_CURRENCY
+  );
+  const hasBalance = (balances?.length ?? 0) > 0;
+  const isNegative = total < 0;
+  const amountText = `${convertedCurrencies.length > 0 ? "≈ " : ""}${
+    isNegative ? "-" : ""
+  }${formatAmount(Math.abs(total), BASE_CURRENCY)}`;
 
   const handlePress = useCallback(() => onPress(user), [user, onPress]);
   const handleToggle = useCallback(
@@ -49,7 +68,11 @@ const FriendRow = React.memo(function FriendRow({
   return (
     <PressableListItem className="p-4" onPress={handlePress}>
       <HStack className="gap-x-3 items-center">
-        <AppAvatar name={user.first_name} uri={user.avatar || undefined} />
+        <AppAvatar
+          name={user.first_name}
+          uri={user.avatar || undefined}
+          isPlaceholder={user.is_placeholder}
+        />
         <VStack className="flex-1">
           <Text className="text-lg">
             {user.first_name} {user.last_name}
@@ -59,27 +82,16 @@ const FriendRow = React.memo(function FriendRow({
           </Text>
         </VStack>
         <HStack className="gap-x-3 items-center">
-          {primary && (
-            <HStack className="gap-x-1 items-center">
-              <Text
-                className={cn(
-                  "text-lg font-medium",
-                  isNegative && "text-error-400"
-                )}
-              >
-                {`${isNegative ? "-" : ""}${formatAmount(
-                  Math.abs(primary.amount),
-                  primary.currency
-                )}`}
-              </Text>
-              {rest.length > 0 && (
-                <Box className="bg-primary-400 rounded-full h-5 w-5 items-center justify-center">
-                  <Text className="text-white text-xs font-semibold">
-                    +{rest.length}
-                  </Text>
-                </Box>
+          {hasBalance && (
+            <Text
+              className={cn(
+                "text-lg font-medium",
+                isNegative && "text-error-400"
               )}
-            </HStack>
+              numberOfLines={1}
+            >
+              {amountText}
+            </Text>
           )}
           <Pressable onPress={handleToggle}>
             <Heart

@@ -6,7 +6,7 @@
 > instead of retyping them.** Update this file when a value changes, and everything
 > downstream stays consistent.
 
-Last verified against the codebase: **2026-07-25** (app version `1.3.0`).
+Last verified against the codebase: **2026-08-08** (app version `1.4.0`).
 
 ## App identity
 
@@ -16,6 +16,7 @@ Last verified against the codebase: **2026-07-25** (app version `1.3.0`).
 | Full / store name | Ambagan PH |
 | Meaning | Filipino: *to chip in* |
 | Tagline | Split bills, settle up, no awkward math. |
+| Secondary tagline (v1.4+) | Split with your barkada, or track your own. |
 | iOS bundle identifier | `com.lhestermonroyo.ambagan` |
 | Android package | `com.lhestermonroyo.ambagan` |
 | App Store ID | `6779220285` |
@@ -46,14 +47,17 @@ Free plan and a **Pro subscription** (via RevenueCat, entitlement `Ambagan Pro`)
 
 | Plan | Price |
 | --- | --- |
-| Free | ₱0 — up to **5 expenses per day** (counted across all groups; resets at midnight) |
+| Free | ₱0 — up to **5 group expenses per day** (counted across all groups; resets at midnight) **plus a separate 5/day allowance for personal expenses**. Personal books and budgets are free and uncapped. |
 | Pro — 2 Weeks | **₱99** |
 | Pro — Monthly | **₱149** |
 | Pro — Yearly | **₱799** |
 
-**Pro unlocks:** unlimited daily expenses · draft expenses · recurring expenses · CSV
-export · spending analytics · multi-currency expenses · custom default currency. Push
-notifications are free for everyone.
+**Pro unlocks:** unlimited daily expenses · draft expenses · recurring expenses (group **and**
+personal) · CSV export · spending analytics · multi-currency expenses · a separate entry
+currency per book · a home currency per group · custom default currency.
+
+**Free for everyone:** push notifications, personal books, and per-book budgets. Budgets are
+deliberately free — a budget you must pay for is one that charges you to learn you overspent.
 
 > Source of truth in code: `app/profile/subscription/index.tsx` (prices) and
 > `features/user/services/purchase.service.ts` (entitlement `Ambagan Pro`).

@@ -2,17 +2,25 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import { currencies } from "@/utils/constants";
 import { getSecondaryHex } from "@/utils/getColorHex";
-import { ChevronDown, CircleIcon, Lock } from "lucide-react-native";
+import { CircleIcon, Lock } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
-import PressableListItem from "./PressableListItem";
 import AppSheet from "./AppSheet";
-import { Pressable } from "./ui/pressable";
+import PressableListItem from "./PressableListItem";
 import { FlatList } from "./ui/flat-list";
 import { HStack } from "./ui/hstack";
+import { Pressable } from "./ui/pressable";
 import { Radio, RadioGroup, RadioIcon, RadioIndicator } from "./ui/radio";
 import { Text } from "./ui/text";
 import { VStack } from "./ui/vstack";
+
+/**
+ * The `currency` value that stands for "don't pin one — follow the other
+ * setting" when the sheet is given a {@link CurrencySelectionSheet} `sameAs`
+ * option. Empty string rather than null so it can sit in the RadioGroup's
+ * value alongside real currency codes, which never collide with it.
+ */
+export const CURRENCY_SAME_AS = "";
 
 export const CurrencySelectionSheet = ({
   isOpen,
@@ -22,6 +30,7 @@ export const CurrencySelectionSheet = ({
   title = "Select Currency",
   // Disables selection (e.g. offline, when the change can't be saved to the DB).
   disabled = false,
+  sameAs
 }: {
   isOpen: boolean;
   currency: string;
@@ -29,6 +38,13 @@ export const CurrencySelectionSheet = ({
   onCurrencyChange: (currency: string) => void;
   title?: string;
   disabled?: boolean;
+  /**
+   * Adds a leading "follow the other setting" option above the currency list,
+   * which emits {@link CURRENCY_SAME_AS}. For settings whose real default is
+   * "inherit" rather than a specific currency — pinning a code there would
+   * silently stop tracking the thing it inherits from.
+   */
+  sameAs?: { label: string; subtitle: string };
 }) => {
   return (
     <AppSheet
@@ -47,8 +63,7 @@ export const CurrencySelectionSheet = ({
       {disabled && (
         <VStack className="px-4">
           <Text className="text-sm text-secondary-950">
-            You're offline — changing your default currency needs an internet
-            connection.
+            You're offline — changing this needs a connection.
           </Text>
         </VStack>
       )}
@@ -64,6 +79,21 @@ export const CurrencySelectionSheet = ({
         <FlatList
           data={currencies}
           keyExtractor={(item) => item.value}
+          // The inherit option leads the list rather than sitting inside it:
+          // it's the default, and it isn't a currency, so it doesn't belong in
+          // the alphabetical run of codes below.
+          ListHeaderComponent={
+            sameAs ? (
+              <Fragment>
+                <CurrencyItem
+                  title={sameAs.label}
+                  subtitle={sameAs.subtitle}
+                  value={CURRENCY_SAME_AS}
+                />
+                <ListDivider />
+              </Fragment>
+            ) : null
+          }
           renderItem={({ item }) => (
             <CurrencyItem
               title={item.label}
@@ -82,7 +112,7 @@ const CurrencySelection = ({
   currency,
   onCurrencyChange,
   locked = false,
-  onLockedPress,
+  onLockedPress
 }: {
   currency: string;
   onCurrencyChange: (currency: string) => void;
@@ -100,20 +130,17 @@ const CurrencySelection = ({
     <Fragment>
       <PressableListItem
         onPress={() => (locked ? onLockedPress?.() : setIsOpen(true))}
-        className="border border-secondary-500 items-center justify-center h-full px-2 py-2 rounded-lg"
+        className="h-14 border border-background-200 items-center justify-center px-2 py-2 rounded-lg"
       >
-        <HStack className="items-center justify-center gap-x-1">
+        <HStack className="items-center justify-center gap-x-2">
           <Text className="font-semibold">{currencyLabel}</Text>
           {locked ? (
             <Lock
-              size={16}
-              color={getSecondaryHex("text-secondary-950", colorScheme)}
-            />
-          ) : (
-            <ChevronDown
               size={18}
               color={getSecondaryHex("text-secondary-950", colorScheme)}
             />
+          ) : (
+            <Icon as="unfold-more" className="text-sm text-secondary-950" />
           )}
         </HStack>
       </PressableListItem>
@@ -132,7 +159,7 @@ const CurrencySelection = ({
 function CurrencyItem({
   title,
   subtitle,
-  value,
+  value
 }: {
   title: string;
   subtitle: string;

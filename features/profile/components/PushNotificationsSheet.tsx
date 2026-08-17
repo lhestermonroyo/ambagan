@@ -36,6 +36,7 @@ type NotifKey = keyof Pick<
   | "notif_settlement_rejected"
   | "notif_settlement_completed"
   | "notif_expense_inclusion"
+  | "notif_recurring_expense"
   | "notif_group_join"
   | "notif_group_leave"
 >;
@@ -75,6 +76,12 @@ const SECTIONS: { title: string; data: NotifItem[] }[] = [
         key: "notif_expense_inclusion",
         label: "Expense Inclusion",
         description: "When you're added to a new expense",
+      },
+      {
+        key: "notif_recurring_expense",
+        label: "Recurring Expenses",
+        description:
+          "When a recurring expense posts in a group or book, or needs review",
       },
     ],
   },
@@ -243,7 +250,10 @@ export default function PushNotificationsSheet({
                       </VStack>
                       <Switch
                         size="sm"
-                        value={preferences[item.key]}
+                        // Defaults to on when the column is missing from the
+                        // row (a build running ahead of its migration) —
+                        // notifications are opt-out everywhere else too.
+                        value={preferences[item.key] ?? true}
                         isDisabled={!isOnline}
                         onValueChange={(val) => handleToggle(item.key, val)}
                         trackColor={switchColors}

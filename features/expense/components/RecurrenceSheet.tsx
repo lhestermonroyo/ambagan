@@ -1,3 +1,4 @@
+import AppDatePicker from "@/components/AppDatePicker";
 import AppSheet from "@/components/AppSheet";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
@@ -7,7 +8,7 @@ import { Box } from "@/components/ui/box";
 import {
   FormControl,
   FormControlLabel,
-  FormControlLabelText,
+  FormControlLabelText
 } from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
@@ -17,11 +18,10 @@ import { VStack } from "@/components/ui/vstack";
 import {
   RecurrenceConfig,
   RecurrenceEndType,
-  RecurrenceFrequency,
+  RecurrenceFrequency
 } from "@/types/expenses";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { CalendarDays } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -39,13 +39,13 @@ type RecurrenceSheetProps = {
 const FREQUENCIES: { label: string; value: RecurrenceFrequency }[] = [
   { label: "Daily", value: RecurrenceFrequency.DAILY },
   { label: "Weekly", value: RecurrenceFrequency.WEEKLY },
-  { label: "Monthly", value: RecurrenceFrequency.MONTHLY },
+  { label: "Monthly", value: RecurrenceFrequency.MONTHLY }
 ];
 
 const END_TYPES: { label: string; value: RecurrenceEndType }[] = [
   { label: "Never", value: RecurrenceEndType.NEVER },
   { label: "On date", value: RecurrenceEndType.ON_DATE },
-  { label: "After…", value: RecurrenceEndType.AFTER_COUNT },
+  { label: "After…", value: RecurrenceEndType.AFTER_COUNT }
 ];
 
 const defaultConfig = (): RecurrenceConfig => ({
@@ -54,7 +54,7 @@ const defaultConfig = (): RecurrenceConfig => ({
   start_date: new Date(),
   end_type: RecurrenceEndType.NEVER,
   end_date: null,
-  occurrence_limit: null,
+  occurrence_limit: null
 });
 
 /**
@@ -67,15 +67,15 @@ export default function RecurrenceSheet({
   isOpen,
   value,
   onClose,
-  onDone,
+  onDone
 }: RecurrenceSheetProps) {
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   const [draft, setDraft] = useState<RecurrenceConfig>(
-    value ?? defaultConfig(),
+    value ?? defaultConfig()
   );
   const [countText, setCountText] = useState(
-    value?.occurrence_limit ? String(value.occurrence_limit) : "12",
+    value?.occurrence_limit ? String(value.occurrence_limit) : "12"
   );
   const [startPickerOpen, setStartPickerOpen] = useState(false);
   const [endPickerOpen, setEndPickerOpen] = useState(false);
@@ -89,7 +89,7 @@ export default function RecurrenceSheet({
     /* eslint-disable react-hooks/set-state-in-effect */
     setDraft(value ?? defaultConfig());
     setCountText(
-      value?.occurrence_limit ? String(value.occurrence_limit) : "12",
+      value?.occurrence_limit ? String(value.occurrence_limit) : "12"
     );
     /* eslint-enable react-hooks/set-state-in-effect */
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,11 +110,9 @@ export default function RecurrenceSheet({
       end_date:
         draft.end_type === RecurrenceEndType.ON_DATE ? draft.end_date : null,
       occurrence_limit:
-        draft.end_type === RecurrenceEndType.AFTER_COUNT ? parsedCount : null,
+        draft.end_type === RecurrenceEndType.AFTER_COUNT ? parsedCount : null
     });
   };
-
-  const primary = getPrimaryHex("text-primary-400", colorScheme);
 
   return (
     <AppSheet
@@ -151,7 +149,7 @@ export default function RecurrenceSheet({
         </HStack>
       </Pressable>
       <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
-        Set up a recurring expense that automatically posts on a schedule.
+        Post this expense automatically on a schedule.
       </Text>
 
       <ScrollView className="flex-1 px-4">
@@ -170,17 +168,16 @@ export default function RecurrenceSheet({
                     className={cn(
                       "flex-1 py-3 rounded-lg border items-center",
                       selected
-                        ? "border-primary-400 bg-primary-0"
-                        : "border-background-200",
+                        ? "border-primary-200 bg-primary-0"
+                        : "border-background-200"
                     )}
                     onPress={() =>
                       setDraft((d) => ({ ...d, frequency: f.value }))
                     }
                   >
                     <Text
-                      className={cn(
-                        selected ? "text-primary-400 font-bold" : "",
-                      )}
+                      bold={selected}
+                      className={cn(selected ? "text-primary-500" : "")}
                     >
                       {f.label}
                     </Text>
@@ -199,7 +196,7 @@ export default function RecurrenceSheet({
             onChangeText={(t) =>
               setDraft((d) => ({
                 ...d,
-                repeat_interval: parseInt(t, 10) || 0,
+                repeat_interval: parseInt(t, 10) || 0
               }))
             }
             helperText={`Every ${Math.max(1, interval)} ${
@@ -229,7 +226,7 @@ export default function RecurrenceSheet({
               </Text>
             </SelectField>
             <Text className="text-sm text-secondary-950 mt-1">
-              If today or earlier, the first expense posts immediately.
+              Today or earlier posts the first one now.
             </Text>
           </FormControl>
 
@@ -247,17 +244,16 @@ export default function RecurrenceSheet({
                     className={cn(
                       "flex-1 py-3 rounded-lg border items-center",
                       selected
-                        ? "border-primary-400 bg-primary-0"
-                        : "border-background-200",
+                        ? "border-primary-200 bg-primary-0"
+                        : "border-background-200"
                     )}
                     onPress={() =>
                       setDraft((d) => ({ ...d, end_type: e.value }))
                     }
                   >
                     <Text
-                      className={cn(
-                        selected ? "text-primary-400 font-bold" : "",
-                      )}
+                      bold={selected}
+                      className={cn(selected ? "text-primary-500" : "")}
                     >
                       {e.label}
                     </Text>
@@ -291,7 +287,7 @@ export default function RecurrenceSheet({
               keyboardType="number-pad"
               value={countText}
               onChangeText={setCountText}
-              helperText="The series stops after this many occurrences."
+              helperText="Stops after this many occurrences."
             />
           )}
         </VStack>
@@ -314,37 +310,34 @@ export default function RecurrenceSheet({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: "rgba(0,0,0,0.5)"
           }}
         />
         <Box className="absolute bottom-0 left-0 right-0 bg-background-0 rounded-t-3xl">
-          <VStack className="w-full items-center pb-4">
+          <VStack className="w-full items-center">
             <VStack className="self-start px-4 pt-4">
               <Text bold className="text-xl">
                 {endPickerOpen ? "Select End Date" : "Select Start Date"}
               </Text>
             </VStack>
-            <DateTimePicker
-              value={
-                endPickerOpen
-                  ? (draft.end_date ?? draft.start_date)
-                  : draft.start_date
-              }
-              mode="date"
-              display="inline"
-              themeVariant={colorScheme}
-              accentColor={primary}
-              onChange={(_, date) => {
-                const wasEnd = endPickerOpen;
-                closePickers();
-                if (date)
+            <VStack>
+              <AppDatePicker
+                value={
+                  endPickerOpen
+                    ? (draft.end_date ?? draft.start_date)
+                    : draft.start_date
+                }
+                onChange={(date) => {
+                  const wasEnd = endPickerOpen;
+                  closePickers();
                   setDraft((d) =>
                     wasEnd
                       ? { ...d, end_date: date }
-                      : { ...d, start_date: date },
+                      : { ...d, start_date: date }
                   );
-              }}
-            />
+                }}
+              />
+            </VStack>
           </VStack>
         </Box>
       </Modal>

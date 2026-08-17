@@ -1,0 +1,1080 @@
+import AmountInput from "@/components/AmountInput";
+import AppAvatar from "@/components/AppAvatar";
+import CategoryIcon from "@/components/CategoryIcon";
+import CurrencySelection from "@/components/CurrencySelection";
+import DailyLimitBadge from "@/components/DailyLimitBadge";
+import DatePickerModal from "@/components/DatePickerModal";
+import EmptyList from "@/components/EmptyList";
+import FormButton from "@/components/FormButton";
+import FormTextarea from "@/components/FormTextarea";
+import Icon from "@/components/Icon";
+import SelectField from "@/components/SelectField";
+import {
+  BookFieldSkeleton,
+  HeaderActionSkeleton,
+  PersonalExpenseFormSkeleton
+} from "@/components/SkeletonLoader";
+import { Box } from "@/components/ui/box";
+import {
+  FormControl,
+  FormControlError,
+  FormControlErrorText,
+  FormControlLabel,
+  FormControlLabelText
+} from "@/components/ui/form-control";
+import { Heading } from "@/components/ui/heading";
+import { HStack } from "@/components/ui/hstack";
+import {
+  Modal,
+  ModalBody,
+  ModalBackdrop,
+  ModalContent,
+  ModalFooter,
+  ModalHeader
+} from "@/components/ui/modal";
+import { Pressable } from "@/components/ui/pressable";
+import { ScrollView } from "@/components/ui/scroll-view";
+import { Text } from "@/components/ui/text";
+import { VStack } from "@/components/ui/vstack";
+import UpgradeSheet from "@/components/UpgradeSheet";
+import UploadImage from "@/components/UploadImage";
+import BookPickerSheet from "@/features/book/components/BookPickerSheet";
+import PersonalExpenseStatusSheet from "@/features/book/components/PersonalExpenseStatusSheet";
+import { bookEntryCurrency } from "@/features/book/utils/bookCurrency";
+import CategorySheet, {
+  expenseCategoryMeta
+} from "@/features/expense/components/CategorySheet";
+import ExpenseOptions, {
+  ExpenseOptionChip
+} from "@/features/expense/components/ExpenseOptions";
+import RecurrenceSheet from "@/features/expense/components/RecurrenceSheet";
+import { resolvePersonalDailyCount } from "@/features/expense/utils/dailyLimit";
+import { recurrenceSummary } from "@/features/expense/utils/recurrence.util";
+import {
+  consumeScanDraft,
+  scanDraftFor
+} from "@/features/expense/utils/scanDraft";
+import useAppToast from "@/hooks/use-app-toast";
+import FormLayout from "@/layouts/FormLayout";
+import services from "@/services";
+import states from "@/states";
+import { Book, PersonalExpenseStatus } from "@/types/books";
+import { ExpenseCategory, RecurrenceConfig } from "@/types/expenses";
+import { EmptyType } from "@/types/general";
+import { currencies, PERSONAL_EXPENSE_LIMIT } from "@/utils/constants";
+import { BASE_CURRENCY } from "@/utils/fx";
+import { getSecondaryHex } from "@/utils/getColorHex";
+import * as offlineQueue from "@/utils/offlineQueue";
+import { format, isThisYear, isToday } from "date-fns";
+import { ImagePickerSuccessResult } from "expo-image-picker";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { CalendarDays, Paperclip, Repeat, Trash2 } from "lucide-react-native";
+import { Fragment, useEffect, useState } from "react";
+import { useColorScheme } from "react-native";
+import "react-native-get-random-values";
+import { v4 as uuid } from "uuid";
+
+export default function AddPersonalExpenseScreen() {
+  const params = useLocalSearchParams<{
+    bookId: string;
+    expenseId?: string;
+    scanId?: string;
+    scanStack?: string;
+  }>();
+  const bookIdParam = params.bookId;
+  // Reached with the literal "[bookId]" segment from Home / Scan (book
+  // changeable) or with a real id from a book screen (book locked). Edit always
+  // arrives with a real id, so it's locked too.
+  const isLocked = !!bookIdParam && bookIdParam !== "[bookId]";
+  const expenseId =
+    typeof params.expenseId === "string" ? params.expenseId : undefined;
+  const isEdit = !!expenseId;
+  // Set when Scan Receipt routed here — identifies the receipt this screen may
+  // seed from, and (with scanStack) how to leave once it's saved.
+  const scanId = params.scanId;
+  // Reached by pushing through the scanner's destination picker, so a plain
+  // back() after saving would land on that picker — dismiss the scan stack
+  // instead. Locked scanners replace themselves and don't set this.
+  const fromScanStack = params.scanStack === "1";
+
+  const { details: userDetails } = states.user();
+  const { list: bookList } = states.book();
+  const isPro = userDetails?.plan === "pro";
+
+  const router = useRouter();
+  const toast = useAppToast();
+  const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
+
+  // Seed from a Scan Receipt hand-off (ADD mode only) — but only the receipt
+  // this screen was routed with, so an Add Expense opened any other way starts
+  // blank even while a scan is still in play. Read once at mount; the draft
+  // outlives the form and is dropped on save (see handleSaved), so backing out
+  // and re-picking a destination re-seeds instead of losing the receipt. Scanned
+  // currency is honored only for Pro and only for a supported currency (mirrors
+  // the group add-expense flow).
+  const [seed] = useState(() => {
+    if (isEdit) return null;
+    const draft = scanDraftFor(scanId);
+    if (!draft) return null;
+    const scannedCurrency =
+      isPro &&
+      draft.currency &&
+      currencies.some((c) => c.value === draft.currency)
+        ? draft.currency
+        : null;
+    const scannedDate = draft.date ? new Date(draft.date) : null;
+    return {
+      amount: draft.amount ?? "",
+      description: draft.description ?? "",
+      currency: scannedCurrency,
+      expenseDate:
+        scannedDate && !isNaN(scannedDate.getTime()) ? scannedDate : null,
+      proofOfPayment: draft.proof_of_payment as ImagePickerSuccessResult
+    };
+  });
+
+  // Two-stage load: resolve which book we're adding to, then (edit) its expense
+  // + the daily count. The form stays skeletoned until both settle.
+  const [bookResolved, setBookResolved] = useState(false);
+  const [detailLoaded, setDetailLoaded] = useState(false);
+  const loading = !bookResolved || !detailLoaded;
+  const [submitting, setSubmitting] = useState(false);
+  // The book this expense belongs to. Locked → the routed book; unlocked →
+  // defaults to the most recent book and is changeable via the picker.
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [bookPickerOpen, setBookPickerOpen] = useState(false);
+  // Scanned currency (if any) wins; otherwise the book's currency is filled in
+  // once it loads. Default until then.
+  const [currency, setCurrency] = useState(seed?.currency ?? BASE_CURRENCY);
+  const [dailyCount, setDailyCount] = useState(0);
+
+  const [amount, setAmount] = useState(seed?.amount ?? "");
+  const [description, setDescription] = useState(seed?.description ?? "");
+  const [category, setCategory] = useState<string>(ExpenseCategory.GENERAL);
+  const [expenseDate, setExpenseDate] = useState(
+    seed?.expenseDate ?? new Date()
+  );
+  // Paid by default — most logged expenses are already spent; the user flips to
+  // Pending for an upcoming/unpaid bill. In edit mode it's hydrated below.
+  const [status, setStatus] = useState<PersonalExpenseStatus>("paid");
+  const [proofOfPayment, setProofOfPayment] =
+    useState<ImagePickerSuccessResult | null>(seed?.proofOfPayment ?? null);
+  const [existingProofUrl, setExistingProofUrl] = useState<string | null>(null);
+  // The pre-edit amount/currency, so an offline edit can back the old value out
+  // of the cached book totals before folding the new one in.
+  const [original, setOriginal] = useState<{
+    amount: number;
+    currency: string;
+    status: PersonalExpenseStatus;
+  } | null>(null);
+
+  const [amountError, setAmountError] = useState("");
+  const [descriptionError, setDescriptionError] = useState("");
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+  const [dateSheetOpen, setDateSheetOpen] = useState(false);
+  const [statusSheetOpen, setStatusSheetOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeDescription, setUpgradeDescription] = useState<
+    string | undefined
+  >();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [recurrenceSheetOpen, setRecurrenceSheetOpen] = useState(false);
+  // null = one-off expense (the default); set = a recurring series.
+  const [recurrence, setRecurrence] = useState<RecurrenceConfig | null>(null);
+
+  // Optional fields (category / date / status / repeat / receipt) collapse into
+  // a chip row. Adding always starts closed — the common case is amount +
+  // description on the defaults. Editing opens it when the loaded expense has a
+  // non-default value (see the hydrate effect below).
+  const [optionsExpanded, setOptionsExpanded] = useState(false);
+
+  // Resolve which book we're adding to. Locked → fetch the routed book. Unlocked
+  // (from Home / Scan) → default to the most recent book, fetching the list once
+  // if the store is empty. No books resolves to null → the empty state below.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        if (isLocked) {
+          const book = await services.book.getBookById(bookIdParam);
+          if (active) setSelectedBook(book);
+        } else {
+          let books = states.book.getState().list;
+          if (books.length === 0 && userDetails?.id) {
+            try {
+              const res = await services.book.getBooksByUserIdPaginated(
+                userDetails.id,
+                0,
+                "all"
+              );
+              books = res.data;
+              states.book.setState((prev) => ({ ...prev, list: res.data }));
+            } catch {
+              // Offline with no cached list — resolves to no book → empty state.
+            }
+          }
+          if (active) setSelectedBook(books[0] ?? null);
+        }
+      } catch {
+        if (active) {
+          toast({
+            title: "Error",
+            description: "Couldn't load this book. Please try again.",
+            type: "error"
+          });
+          router.back();
+        }
+      } finally {
+        if (active) setBookResolved(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [isLocked, bookIdParam]);
+
+  // A scanned currency (Pro) wins; otherwise every expense starts in the book's
+  // ENTRY currency — its `default_expense_currency` when set, and its reporting
+  // currency otherwise (see bookEntryCurrency). Re-applied whenever the book
+  // changes, and skipped in edit, where the expense keeps its own currency.
+  useEffect(() => {
+    if (isEdit || seed?.currency) return;
+    const entry = bookEntryCurrency(selectedBook);
+    if (entry) setCurrency(entry);
+  }, [selectedBook?.id]);
+
+  // Hydrate the existing expense (edit mode) and the free-tier daily count.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const [expense, count] = await Promise.all([
+          isEdit
+            ? services.bookExpense.getPersonalExpenseById(expenseId)
+            : Promise.resolve(null),
+          !isPro && userDetails?.id
+            ? resolvePersonalDailyCount(userDetails.id)
+            : Promise.resolve(0)
+        ]);
+        if (!active) return;
+        setDailyCount(count);
+        if (expense) {
+          setAmount(String(expense.amount));
+          setDescription(expense.description);
+          setCategory(expense.category);
+          setExpenseDate(new Date(expense.expense_date));
+          setExistingProofUrl(expense.proof_of_payment);
+          setStatus(expense.status);
+          // An edited expense keeps its own currency if it differs from the book.
+          setCurrency(expense.currency);
+          setOriginal({
+            amount: expense.amount,
+            currency: expense.currency,
+            status: expense.status
+          });
+          // Editing is a review, not a quick log — open More options whenever
+          // this expense actually carries a non-default one, so nothing the
+          // user is about to re-save sits folded behind a chip. Adding still
+          // always starts closed.
+          if (
+            expense.category !== ExpenseCategory.GENERAL ||
+            !isToday(new Date(expense.expense_date)) ||
+            !!expense.proof_of_payment
+          ) {
+            setOptionsExpanded(true);
+          }
+        }
+      } catch {
+        toast({
+          title: "Error",
+          description: "Couldn't load this expense. Please try again.",
+          type: "error"
+        });
+        router.back();
+      } finally {
+        if (active) setDetailLoaded(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [expenseId]);
+
+  // Leave after a successful save/delete. The scanned receipt has landed, so the
+  // hand-off is done — and when the scanner pushed us here through the
+  // destination picker, back() would only land on that picker, so unwind the
+  // whole scan stack to where it started.
+  const handleSaved = () => {
+    consumeScanDraft(scanId);
+    if (fromScanStack && router.canDismiss()) {
+      router.dismissAll();
+      return;
+    }
+    router.back();
+  };
+
+  const handleToggleOptions = () => setOptionsExpanded((prev) => !prev);
+
+  const validate = () => {
+    const parsed = parseFloat(amount);
+    const nextAmountError =
+      !amount || isNaN(parsed) || parsed <= 0
+        ? "Enter an amount greater than 0"
+        : "";
+    const nextDescriptionError = description.trim()
+      ? ""
+      : "Description is required";
+    setAmountError(nextAmountError);
+    setDescriptionError(nextDescriptionError);
+    return !nextAmountError && !nextDescriptionError;
+  };
+
+  // Switching book re-defaults the currency to the new book's (via the effect
+  // above, keyed on the book id) — matches how the group form re-defaults on a
+  // group change.
+  const handleChangeBook = (next: Book) => {
+    setBookPickerOpen(false);
+    if (next.id === selectedBook?.id) return;
+    setSelectedBook(next);
+  };
+
+  // Repeat row: Pro-only. Free users get the upgrade sheet instead of the
+  // recurrence picker (mirrors the currency-lock pattern above and the group
+  // Add Expense flow).
+  const handleOpenRecurrence = () => {
+    if (!isPro) {
+      setUpgradeDescription(
+        "Recurring expenses are a Pro feature. Upgrade to auto-post monthly rent, subscriptions, and other regular bills on a schedule."
+      );
+      setUpgradeOpen(true);
+      return;
+    }
+    setRecurrenceSheetOpen(true);
+  };
+
+  // A recurring series is a server-side template (materialized by the same cron
+  // that posts group recurring expenses), so it's online-only — queuing a
+  // template could race a server run.
+  const handleSubmitRecurring = async () => {
+    if (!validate() || !userDetails?.id || !selectedBook || !recurrence) return;
+
+    if (!(await offlineQueue.isOnline())) {
+      toast({
+        title: "You're offline",
+        description:
+          "Recurring expenses need a connection. Reconnect to set one up.",
+        type: "info"
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await services.bookRecurring.savePersonalRecurring({
+        book_id: selectedBook.id,
+        amount: parseFloat(amount),
+        description: description.trim(),
+        category,
+        currency,
+        recurrence
+      });
+      toast({
+        title: "Recurring Expense Set",
+        description: `${recurrenceSummary(recurrence)} — we'll post it for you.`,
+        type: "success"
+      });
+      handleSaved();
+    } catch (error) {
+      console.error("Failed to save personal recurring expense:", error);
+      toast({
+        title: "Couldn't set up",
+        description:
+          "Could not set up the recurring expense. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!validate() || !userDetails?.id || !selectedBook) return;
+
+    // A recurrence turns this into a server-side series, not a one-off insert.
+    if (recurrence) {
+      await handleSubmitRecurring();
+      return;
+    }
+
+    const bookId = selectedBook.id;
+    const parsedAmount = parseFloat(amount);
+    const trimmedDescription = description.trim();
+
+    // Free-tier gate (ADD only) — re-resolve so same-session/offline adds count
+    // toward today's limit, not just the value read on mount.
+    if (!isEdit && !isPro) {
+      const count = await resolvePersonalDailyCount(userDetails.id);
+      setDailyCount(count);
+      if (count >= PERSONAL_EXPENSE_LIMIT) {
+        setUpgradeDescription(
+          "You've reached your 5 personal expenses for today. Upgrade to Pro for unlimited expenses."
+        );
+        setUpgradeOpen(true);
+        return;
+      }
+    }
+
+    // Offline → queue + optimistic cache. A receipt picked before going offline
+    // is stashed on-device and re-uploaded once the expense syncs.
+    if (!(await offlineQueue.isOnline())) {
+      const proofAsset = proofOfPayment?.assets?.[0];
+      const proofUpload = proofAsset
+        ? { uri: proofAsset.uri, fileName: proofAsset.fileName ?? null }
+        : undefined;
+      if (isEdit) {
+        const optimistic = offlineQueue.buildOptimisticPersonalExpense({
+          clientId: expenseId!,
+          bookId,
+          userId: userDetails.id,
+          amount: parsedAmount,
+          description: trimmedDescription,
+          category,
+          currency,
+          expenseDate: expenseDate.toISOString(),
+          status
+        });
+        await offlineQueue.queueUpdatePersonalExpense(
+          bookId,
+          expenseId!,
+          {
+            amount: parsedAmount,
+            description: trimmedDescription,
+            category,
+            currency,
+            expense_date: expenseDate.toISOString(),
+            proof_of_payment: null,
+            existing_proof_url: existingProofUrl,
+            status
+          },
+          optimistic,
+          original?.amount ?? parsedAmount,
+          original?.currency ?? currency,
+          original?.status ?? status,
+          proofUpload
+        );
+      } else {
+        const clientId = uuid();
+        const optimistic = offlineQueue.buildOptimisticPersonalExpense({
+          clientId,
+          bookId,
+          userId: userDetails.id,
+          amount: parsedAmount,
+          description: trimmedDescription,
+          category,
+          currency,
+          expenseDate: expenseDate.toISOString(),
+          status
+        });
+        await offlineQueue.queueAddPersonalExpense(
+          bookId,
+          {
+            book_id: bookId,
+            user_id: userDetails.id,
+            amount: parsedAmount,
+            description: trimmedDescription,
+            category,
+            currency,
+            expense_date: expenseDate.toISOString(),
+            proof_of_payment: null,
+            status
+          },
+          optimistic,
+          proofUpload
+        );
+      }
+      toast({
+        title: "Saved offline",
+        description: "Your expense will sync when you're back online.",
+        type: "info"
+      });
+      handleSaved();
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      if (isEdit) {
+        await services.bookExpense.updatePersonalExpense(expenseId!, {
+          amount: parsedAmount,
+          description: trimmedDescription,
+          category,
+          currency,
+          expense_date: expenseDate,
+          proof_of_payment: proofOfPayment,
+          existing_proof_url: existingProofUrl,
+          status
+        });
+        toast({
+          title: "Expense updated",
+          description: "Your changes have been saved.",
+          type: "success"
+        });
+      } else {
+        await services.bookExpense.savePersonalExpense({
+          book_id: bookId,
+          user_id: userDetails.id,
+          amount: parsedAmount,
+          description: trimmedDescription,
+          category,
+          currency,
+          expense_date: expenseDate,
+          proof_of_payment: proofOfPayment,
+          status
+        });
+        toast({
+          title: "Expense added",
+          description: "Your expense has been recorded.",
+          type: "success"
+        });
+      }
+      handleSaved();
+    } catch (error) {
+      console.error("Failed to save personal expense:", error);
+      toast({
+        title: isEdit ? "Update Failed" : "Add Expense Failed",
+        description: "An error occurred. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Delete (edit mode only) — the personal expense list has no swipe actions, so
+  // this header action is the single delete path. Offline → queue + optimistic
+  // cache removal (adjusts the cached book totals), same as the online delete.
+  const handleDelete = async () => {
+    if (!expenseId || !selectedBook) return;
+    setDeleting(true);
+    try {
+      if (!(await offlineQueue.isOnline())) {
+        await offlineQueue.queueDeletePersonalExpense(
+          selectedBook.id,
+          expenseId,
+          original?.amount ?? 0,
+          original?.currency ?? currency,
+          original?.status ?? status
+        );
+        toast({
+          title: "Deleted offline",
+          description: "This will sync when you're back online.",
+          type: "info"
+        });
+      } else {
+        await services.bookExpense.deletePersonalExpense(expenseId);
+        toast({
+          title: "Expense deleted",
+          description: "The expense has been removed.",
+          type: "success"
+        });
+      }
+      setDeleteOpen(false);
+      router.back();
+    } catch (error) {
+      console.error("Failed to delete personal expense:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete expense. Please try again.",
+        type: "error"
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const hasReceipt = !!proofOfPayment || !!existingProofUrl;
+  const CategoryChipIcon = expenseCategoryMeta(category).icon;
+
+  // The collapsed row. Each chip opens the same sheet its full field does, so
+  // changing just the category never costs an expand. A chip renders muted while
+  // its field is on the default and fills in once it isn't.
+  const optionChips: ExpenseOptionChip[] = [
+    {
+      key: "category",
+      label: expenseCategoryMeta(category).label,
+      isDefault: category === ExpenseCategory.GENERAL,
+      icon: (color) => <CategoryChipIcon size={16} color={color} />,
+      onPress: () => setCategorySheetOpen(true)
+    },
+    {
+      key: "date",
+      label: isToday(expenseDate)
+        ? "Today"
+        : // Drop the year for the current one — "Aug 12" reads better in a chip,
+          // but a back-dated expense from last year must stay unambiguous.
+          format(
+            expenseDate,
+            isThisYear(expenseDate) ? "MMM dd" : "MMM dd, yyyy"
+          ),
+      isDefault: isToday(expenseDate),
+      icon: (color) => <CalendarDays size={16} color={color} />,
+      onPress: () => setDateSheetOpen(true)
+    },
+    // Repeat mirrors the visibility rule of its full field below.
+    ...(!isEdit
+      ? [
+          {
+            key: "repeat",
+            label: recurrence
+              ? recurrenceSummary(recurrence)
+              : isPro
+                ? "One-time"
+                : "One-time · Pro",
+            isDefault: !recurrence,
+            icon: (color: string) => <Repeat size={16} color={color} />,
+            onPress: handleOpenRecurrence
+          }
+        ]
+      : []),
+    {
+      key: "receipt",
+      label: hasReceipt ? "Receipt added" : "Receipt",
+      isDefault: !hasReceipt,
+      icon: (color) => <Paperclip size={16} color={color} />,
+      // The one chip that expands instead of opening a sheet: the uploader is a
+      // preview surface, not a value a sheet can hand back.
+      onPress: () => setOptionsExpanded(true)
+    }
+  ];
+
+  // Editing hydrates every field from the fetched expense, so the whole form is
+  // a skeleton until the book + expense land — an empty form that fills itself
+  // in a beat later reads as one the user already typed into, and its Delete
+  // action would have no expense behind it. Adding skeletons only the Book field
+  // (below): amount and description are usable from the first frame.
+  if (isEdit && loading) {
+    return (
+      <FormLayout
+        title="Edit Expense"
+        onBack={() => router.back()}
+        actions={
+          <Stack.Toolbar.View>
+            <HeaderActionSkeleton />
+          </Stack.Toolbar.View>
+        }
+        androidActions={
+          <Box className="pr-1">
+            <HeaderActionSkeleton />
+          </Box>
+        }
+        footer={[
+          <FormButton
+            key="save"
+            className="flex-1"
+            text="Save Changes"
+            disabled
+          />
+        ]}
+      >
+        <ScrollView className="flex-1 px-4">
+          <VStack className="pt-2 pb-4">
+            <PersonalExpenseFormSkeleton />
+          </VStack>
+        </ScrollView>
+      </FormLayout>
+    );
+  }
+
+  // Unlocked entry (Home / Scan) but the user has no book yet — mirror the group
+  // form's no-group state with a Create Book CTA. Replace so backing out of
+  // create doesn't return to this empty form.
+  if (bookResolved && !selectedBook) {
+    return (
+      <FormLayout title="Add Expense" onBack={() => router.back()} footer={[]}>
+        <VStack className="flex-1 p-4">
+          <VStack className="items-center justify-center flex-1 gap-y-4">
+            <EmptyList
+              type={EmptyType.BOOK}
+              content="No book yet. Create one to start tracking your spending."
+            />
+            <FormButton
+              text="Create Book"
+              iconEnd={
+                <Icon as="chevron-right" className="text-background-0" />
+              }
+              onPress={() => router.replace("/books/create")}
+            />
+          </VStack>
+        </VStack>
+      </FormLayout>
+    );
+  }
+
+  return (
+    <Fragment>
+      <FormLayout
+        title={isEdit ? "Edit Expense" : "Add Expense"}
+        onBack={() => router.back()}
+        actions={
+          isEdit ? (
+            <Stack.Toolbar.Button
+              icon="trash"
+              tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
+              accessibilityLabel="Delete expense"
+              onPress={() => setDeleteOpen(true)}
+            />
+          ) : !isPro ? (
+            <Stack.Toolbar.View>
+              <DailyLimitBadge
+                count={dailyCount}
+                limit={PERSONAL_EXPENSE_LIMIT}
+              />
+            </Stack.Toolbar.View>
+          ) : undefined
+        }
+        androidActions={
+          isEdit ? (
+            <Pressable
+              className="pr-1"
+              aria-label="Delete expense"
+              onPress={() => setDeleteOpen(true)}
+            >
+              <Trash2
+                size={22}
+                color={getSecondaryHex("text-secondary-950", colorScheme)}
+              />
+            </Pressable>
+          ) : !isPro ? (
+            <Box className="pr-1">
+              <DailyLimitBadge
+                count={dailyCount}
+                limit={PERSONAL_EXPENSE_LIMIT}
+              />
+            </Box>
+          ) : undefined
+        }
+        footer={[
+          <FormButton
+            key="save"
+            className="flex-1"
+            text={
+              isEdit
+                ? "Save Changes"
+                : recurrence
+                  ? "Save Recurring"
+                  : "Add Expense"
+            }
+            loading={submitting}
+            disabled={loading}
+            onPress={handleSubmit}
+          />
+        ]}
+      >
+        <ScrollView className="flex-1 px-4">
+          <VStack className="gap-y-6 pt-2 pb-4">
+            <FormControl size="md" isInvalid={!!amountError}>
+              <FormControlLabel>
+                <FormControlLabelText>Amount</FormControlLabelText>
+              </FormControlLabel>
+              <HStack className="gap-x-2 items-end h-14">
+                <CurrencySelection
+                  currency={currency}
+                  onCurrencyChange={setCurrency}
+                  locked={!isPro}
+                  onLockedPress={() => {
+                    setUpgradeDescription(
+                      "Multi-currency expenses are a Pro feature. Upgrade to track spending in any currency."
+                    );
+                    setUpgradeOpen(true);
+                  }}
+                />
+                <VStack className="flex-1">
+                  <AmountInput
+                    className="h-full"
+                    placeholder="0.00"
+                    value={amount}
+                    onChangeText={(text) => {
+                      setAmount(text);
+                      if (amountError) setAmountError("");
+                    }}
+                  />
+                </VStack>
+              </HStack>
+              {amountError && (
+                <FormControlError>
+                  <FormControlErrorText>{amountError}</FormControlErrorText>
+                </FormControlError>
+              )}
+            </FormControl>
+
+            <FormTextarea
+              label="Description"
+              placeholder="Enter description (e.g., Lunch at Jollibee)"
+              value={description}
+              onChangeText={(text: string) => {
+                setDescription(text);
+                if (descriptionError) setDescriptionError("");
+              }}
+              autoCapitalize="none"
+              size="sm"
+              errorMessage={descriptionError}
+            />
+
+            {/* Status — paid vs an upcoming/unpaid bill. Never collapsed: it's
+                the field that decides whether this expense counts as spent or
+                still owed, so it sits with amount/description rather than
+                behind a chip. Hidden while a recurrence is set: a series has no
+                single status, and each materialized occurrence starts Paid. */}
+            {!recurrence && (
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>Status</FormControlLabelText>
+                </FormControlLabel>
+                <SelectField
+                  onPress={() => setStatusSheetOpen(true)}
+                  leading={
+                    <Icon
+                      as={status === "paid" ? "check-circle" : "schedule"}
+                      className="text-secondary-950"
+                      size={22}
+                    />
+                  }
+                >
+                  <Text className="text-lg capitalize">{status}</Text>
+                </SelectField>
+              </FormControl>
+            )}
+
+            {/* Book — the destination. Never collapsed: picking the wrong book
+                is the one mistake this form can't walk back. Read-only whenever
+                the book is fixed (added from a book screen, or editing an
+                existing expense); changeable only on the unlocked entry from
+                Home / Scan. Skeletoned while the book is still resolving, so the
+                field doesn't pop in under the description. */}
+            {!bookResolved && <BookFieldSkeleton />}
+            {selectedBook && (
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>Book</FormControlLabelText>
+                </FormControlLabel>
+                {isLocked || isEdit ? (
+                  <Box className="p-4 border border-background-200 rounded-lg">
+                    <HStack className="items-center gap-x-3">
+                      <AppAvatar
+                        size="xs"
+                        name={selectedBook.name}
+                        uri={selectedBook.avatar || undefined}
+                      />
+                      <Text className="text-lg" numberOfLines={1}>
+                        {selectedBook.name}
+                      </Text>
+                    </HStack>
+                  </Box>
+                ) : (
+                  <SelectField
+                    onPress={() => setBookPickerOpen(true)}
+                    leading={
+                      <AppAvatar
+                        size="xs"
+                        name={selectedBook.name}
+                        uri={selectedBook.avatar || undefined}
+                      />
+                    }
+                  >
+                    <Text className="text-lg" numberOfLines={1}>
+                      {selectedBook.name}
+                    </Text>
+                  </SelectField>
+                )}
+              </FormControl>
+            )}
+
+            {/* Everything below has a working default, so it collapses to the
+                chip row until the user wants it. */}
+            <ExpenseOptions
+              chips={optionChips}
+              expanded={optionsExpanded}
+              onToggle={handleToggleOptions}
+            >
+              <HStack className="gap-x-2">
+                <FormControl size="md" className="flex-1">
+                  <FormControlLabel>
+                    <FormControlLabelText>Category</FormControlLabelText>
+                  </FormControlLabel>
+                  <SelectField
+                    onPress={() => setCategorySheetOpen(true)}
+                    leading={
+                      <CategoryIcon icon={expenseCategoryMeta(category).icon} />
+                    }
+                  >
+                    <Text className="text-lg" numberOfLines={1}>
+                      {expenseCategoryMeta(category).label}
+                    </Text>
+                  </SelectField>
+                </FormControl>
+
+                <FormControl size="md" className="flex-1">
+                  <FormControlLabel>
+                    <FormControlLabelText>Expense Date</FormControlLabelText>
+                  </FormControlLabel>
+                  <SelectField
+                    onPress={() => setDateSheetOpen(true)}
+                    leading={
+                      <CalendarDays
+                        color={getSecondaryHex(
+                          "text-secondary-950",
+                          colorScheme
+                        )}
+                      />
+                    }
+                  >
+                    <Text className="text-lg" numberOfLines={1}>
+                      {format(expenseDate, "MMM dd, yyyy")}
+                    </Text>
+                  </SelectField>
+                </FormControl>
+              </HStack>
+
+              {/* Repeat — Pro-only, ADD mode only. A recurrence turns this into
+                  a server-side series (the same cron that posts group recurring
+                  expenses materializes it). Not offered in edit mode: an already
+                  posted occurrence is an independent one-off. */}
+              {!isEdit && (
+                <FormControl size="md">
+                  <FormControlLabel>
+                    <FormControlLabelText>Repeat</FormControlLabelText>
+                  </FormControlLabel>
+                  <SelectField
+                    onPress={handleOpenRecurrence}
+                    leading={
+                      <Repeat
+                        size={22}
+                        color={getSecondaryHex(
+                          "text-secondary-950",
+                          colorScheme
+                        )}
+                      />
+                    }
+                  >
+                    <Text className="text-lg">
+                      {recurrence
+                        ? recurrenceSummary(recurrence)
+                        : isPro
+                          ? "One-time"
+                          : "One-time - Pro"}
+                    </Text>
+                  </SelectField>
+                  {recurrence && (
+                    <Text className="text-sm text-secondary-950 mt-1">
+                      First expense posts now, the rest automatically.
+                    </Text>
+                  )}
+                </FormControl>
+              )}
+
+              <VStack className="gap-y-1">
+                <UploadImage
+                  title="Upload Proof of Payment (optional)"
+                  key={
+                    proofOfPayment?.assets?.[0]?.uri ??
+                    existingProofUrl ??
+                    "none"
+                  }
+                  defaultUri={
+                    proofOfPayment?.assets?.[0]?.uri ?? existingProofUrl
+                  }
+                  onSelect={setProofOfPayment}
+                />
+                <Text className="text-secondary-950 text-sm">
+                  A receipt photo, payment screenshot, or any proof of the
+                  expense.
+                </Text>
+              </VStack>
+            </ExpenseOptions>
+          </VStack>
+        </ScrollView>
+      </FormLayout>
+
+      <BookPickerSheet
+        isOpen={bookPickerOpen}
+        onClose={() => setBookPickerOpen(false)}
+        books={bookList}
+        onSelect={handleChangeBook}
+        title="Select Book"
+      />
+
+      <CategorySheet
+        isOpen={categorySheetOpen}
+        category={category}
+        onClose={() => setCategorySheetOpen(false)}
+        onSelect={setCategory}
+      />
+
+      <DatePickerModal
+        isOpen={dateSheetOpen}
+        onClose={() => setDateSheetOpen(false)}
+        value={expenseDate}
+        onChange={setExpenseDate}
+      />
+
+      <PersonalExpenseStatusSheet
+        isOpen={statusSheetOpen}
+        onClose={() => setStatusSheetOpen(false)}
+        status={status}
+        onSelect={setStatus}
+      />
+
+      <RecurrenceSheet
+        isOpen={recurrenceSheetOpen}
+        value={recurrence}
+        onClose={() => setRecurrenceSheetOpen(false)}
+        onDone={(value) => {
+          setRecurrence(value);
+          setRecurrenceSheetOpen(false);
+        }}
+      />
+
+      <UpgradeSheet
+        isOpen={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        description={upgradeDescription}
+      />
+
+      {/* Delete confirm (header-action triggered) — mirrors the group expense
+          detail screen. */}
+      <Modal
+        isOpen={deleteOpen}
+        onClose={() => !deleting && setDeleteOpen(false)}
+      >
+        <ModalBackdrop />
+        <ModalContent>
+          <ModalHeader>
+            <Heading size="lg">Delete Expense</Heading>
+          </ModalHeader>
+          <ModalBody>
+            <Text>
+              This expense will be permanently removed. This cannot be undone.
+            </Text>
+          </ModalBody>
+          <ModalFooter>
+            <HStack className="gap-x-2">
+              <FormButton
+                variant="outline"
+                text="Cancel"
+                disabled={deleting}
+                onPress={() => setDeleteOpen(false)}
+              />
+              <FormButton
+                text="Delete"
+                action="negative"
+                loading={deleting}
+                onPress={handleDelete}
+              />
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </Fragment>
+  );
+}

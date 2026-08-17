@@ -6,8 +6,27 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import StatusBadge from "@/features/expense/components/StatusBadge";
-import { Notification, NotificationType } from "@/types/notifications";
+import {
+  isRecurringNotification,
+  Notification,
+  NotificationType
+} from "@/types/notifications";
 import { formatDate } from "@/utils/formatDate";
+import { getPrimaryHex } from "@/utils/getColorHex";
+import { Repeat } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+
+/**
+ * Recurring notifications are raised by the generator on your own behalf, so
+ * `from_user` is you — "<your name> posted a recurring expense" reads like
+ * someone else did it. These render as a standalone sentence with a repeat
+ * glyph instead of the usual "<name> <suffix>" + avatar row.
+ */
+function getRecurringMessage(type: NotificationType): string {
+  return type === NotificationType.RECURRING_REVIEW
+    ? "A recurring expense posted as a draft and needs your review."
+    : "A recurring expense posted automatically.";
+}
 
 function getNotificationSuffix(type: NotificationType): string {
   switch (type) {
@@ -39,20 +58,38 @@ export default function NotificationItem({
   item: Notification;
   onPress: (notification: Notification) => void;
 }) {
+  const { colorScheme } = useColorScheme();
   const fromName = `${item.from_user.first_name} ${item.from_user.last_name}`;
-  const suffix = getNotificationSuffix(item.type as NotificationType);
+  const type = item.type as NotificationType;
+  const isRecurring = isRecurringNotification(type);
+  const suffix = getNotificationSuffix(type);
 
   return (
     <PressableListItem className="p-4" onPress={() => onPress(item)}>
       <HStack className="gap-x-3">
-        <AppAvatar
-          name={fromName}
-          uri={item.from_user.avatar ?? undefined}
-          size="md"
-        />
+        {isRecurring ? (
+          <Box className="w-12 h-12 rounded-full bg-primary-50 items-center justify-center">
+            <Repeat
+              size={20}
+              color={getPrimaryHex("text-primary-600", colorScheme ?? "light")}
+            />
+          </Box>
+        ) : (
+          <AppAvatar
+            name={fromName}
+            uri={item.from_user.avatar ?? undefined}
+            size="md"
+          />
+        )}
         <VStack className="flex-1 gap-y-1">
           <Text numberOfLines={3}>
-            <Text className="font-medium">{fromName}</Text> {suffix}
+            {isRecurring ? (
+              getRecurringMessage(type)
+            ) : (
+              <>
+                <Text className="font-medium">{fromName}</Text> {suffix}
+              </>
+            )}
           </Text>
           <HStack className="items-center gap-x-2">
             <Text className="text-sm text-secondary-950">

@@ -2,6 +2,7 @@ export enum EmptyType {
   FRIEND = "friend",
   ACTIVITY = "activity",
   GROUP = "group",
+  BOOK = "book",
   SETTLEMENT = "settlement",
   EXPENSE = "expense",
   NOTIFICATION = "notification",

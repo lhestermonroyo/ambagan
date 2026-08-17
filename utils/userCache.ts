@@ -12,7 +12,6 @@ export type CachedUserSession = {
   userId: string;
   details: any;
   appearanceMode?: string;
-  defaultCurrency?: string;
 };
 
 export const setCachedUserSession = async (

@@ -64,7 +64,7 @@ const FormInput: FC<IFormInputProps> = ({
           <FormControlLabelText>{label}</FormControlLabelText>
         </FormControlLabel>
       )}
-      <Input className="rounded-lg" size="lg">
+      <Input className="rounded-lg h-14" size="lg">
         {leftAddon && (
           <InputSlot>
             <Text className="font-medium ml-2">{leftAddon}</Text>

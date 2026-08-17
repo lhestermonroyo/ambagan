@@ -1,5 +1,4 @@
 import AppAvatar from "@/components/AppAvatar";
-import { CurrencySelectionSheet } from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
@@ -13,15 +12,13 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import AppearanceSheet from "@/features/profile/components/AppearanceSheet";
+import HeroViewSheet from "@/features/profile/components/HeroViewSheet";
 import NotificationsSheet from "@/features/profile/components/PushNotificationsSheet";
 import SettlementViewSheet from "@/features/profile/components/SettlementViewSheet";
-import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
-import { useNetwork } from "@/hooks/useNetwork";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
-import { currencies } from "@/utils/constants";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import Constants from "expo-constants";
@@ -30,21 +27,28 @@ import { useRouter } from "expo-router";
 import {
   Bell,
   CircleQuestionMark,
-  Coins,
   Copyright,
-  Crown,
   Eye,
+  LayoutDashboard,
   LayoutList,
   LogOut,
   MonitorCog,
   Moon,
+  Sparkles,
   Sun,
   TrendingUp,
   UserCircle,
   UserLock
 } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import { Pressable, useColorScheme } from "react-native";
+import { Image, Pressable, useColorScheme } from "react-native";
+
+// Same hexagon art the subscription screen uses — pair it to the active scheme
+// so it doesn't fight the chip behind it.
+const PRO_BADGE = {
+  light: require("@/assets/images/pro-light.png"),
+  dark: require("@/assets/images/pro-dark.png")
+};
 
 export default function ProfileScreen() {
   const {
@@ -52,26 +56,18 @@ export default function ProfileScreen() {
     signOut,
     appearanceMode,
     settlementView,
-    defaultCurrency,
-    setDefaultCurrency
+    heroView
   } = states.user();
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
-  const { isOnline } = useNetwork();
-  const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
 
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [settlementViewOpen, setSettlementViewOpen] = useState(false);
+  const [heroViewOpen, setHeroViewOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [currencyOpen, setCurrencyOpen] = useState(false);
   const [analyticsUpgradeOpen, setAnalyticsUpgradeOpen] = useState(false);
-  const [currencyUpgradeOpen, setCurrencyUpgradeOpen] = useState(false);
-
-  const currencyLabel = useMemo(() => {
-    return currencies.find((c) => c.value === defaultCurrency)?.label;
-  }, [defaultCurrency]);
 
   const appearanceLabel = useMemo(() => {
     switch (appearanceMode) {
@@ -94,6 +90,8 @@ export default function ProfileScreen() {
       : settlementView === "arrow"
         ? "Arrow"
         : "Full";
+
+  const heroViewLabel = heroView === "personal" ? "Personal" : "Balance";
 
   const isPro = userDetails?.plan === "pro";
 
@@ -126,6 +124,21 @@ export default function ProfileScreen() {
             label: "Account Settings",
             description: "Manage your account security and preferences",
             onPress: () => router.push("/profile/account-settings")
+          },
+          {
+            icon: (
+              <TrendingUp
+                color={getPrimaryHex("text-primary-400", colorScheme)}
+              />
+            ),
+            label: "Spending Analytics",
+            description:
+              "See where your money goes — by group, by month, by friend",
+            badge: !isPro ? <ProBadge /> : undefined,
+            onPress: () =>
+              isPro
+                ? router.push("/profile/analytics")
+                : setAnalyticsUpgradeOpen(true)
           }
         ]
       },
@@ -139,17 +152,6 @@ export default function ProfileScreen() {
             label: "Push Notifications",
             description: "Manage your push notification preferences",
             onPress: handleNotificationsOpen
-          },
-          {
-            icon: (
-              <Coins color={getPrimaryHex("text-primary-400", colorScheme)} />
-            ),
-            label: "Default Currency",
-            description: "Manage your default currency",
-            value: <Text className="text-lg">{currencyLabel}</Text>,
-            badge: !isPro ? <ProBadge /> : undefined,
-            onPress: () =>
-              isPro ? setCurrencyOpen(true) : setCurrencyUpgradeOpen(true)
           },
           {
             icon: (
@@ -168,8 +170,21 @@ export default function ProfileScreen() {
             ),
             label: "Settlement View",
             description: "Choose full or compact settlement rows",
-            value: <Text className="text-lg">{settlementViewLabel}</Text>,
+            value: (
+              <Text className="text-lg font-medium">{settlementViewLabel}</Text>
+            ),
             onPress: () => setSettlementViewOpen(true)
+          },
+          {
+            icon: (
+              <LayoutDashboard
+                color={getPrimaryHex("text-primary-400", colorScheme)}
+              />
+            ),
+            label: "Overview Hero",
+            description: "Open on net balance or personal spending",
+            value: <Text className="text-lg font-medium">{heroViewLabel}</Text>,
+            onPress: () => setHeroViewOpen(true)
           }
         ]
       },
@@ -178,18 +193,11 @@ export default function ProfileScreen() {
         items: [
           {
             icon: (
-              <TrendingUp
-                color={getPrimaryHex("text-primary-400", colorScheme)}
-              />
+              <Sparkles color={getPrimaryHex("text-primary-400", colorScheme)} />
             ),
-            label: "Spending Analytics",
-            description:
-              "See where your money goes — by group, by month, by friend",
-            badge: !isPro ? <ProBadge /> : undefined,
-            onPress: () =>
-              isPro
-                ? router.push("/profile/analytics")
-                : setAnalyticsUpgradeOpen(true)
+            label: "How Ambagan works",
+            description: "A quick tour of what you can do in the app",
+            onPress: () => router.push("/feature-tour")
           },
           {
             icon: (
@@ -207,7 +215,7 @@ export default function ProfileScreen() {
     [
       appearanceLabel,
       settlementViewLabel,
-      currencyLabel,
+      heroViewLabel,
       colorScheme,
       handleNotificationsOpen,
       isPro
@@ -282,14 +290,13 @@ export default function ProfileScreen() {
                     isPro ? "bg-primary-400" : "bg-warning-400"
                   )}
                 >
-                  <Box className="bg-background-0 rounded-full p-4">
-                    <Crown
-                      size={24}
-                      color={
-                        isPro
-                          ? getPrimaryHex("text-primary-400", colorScheme)
-                          : "#d97706"
+                  <Box className="bg-background-0 rounded-full p-3">
+                    <Image
+                      source={
+                        PRO_BADGE[colorScheme === "dark" ? "dark" : "light"]
                       }
+                      style={{ width: 32, height: 32 }}
+                      resizeMode="contain"
                     />
                   </Box>
                   <VStack className="flex-1">
@@ -361,12 +368,6 @@ export default function ProfileScreen() {
           description="Spending Analytics is a Pro feature. Upgrade to see where your money goes."
         />
 
-        <UpgradeSheet
-          isOpen={currencyUpgradeOpen}
-          onClose={() => setCurrencyUpgradeOpen(false)}
-          description="Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
-        />
-
         <AppearanceSheet
           isOpen={appearanceOpen}
           onClose={() => setAppearanceOpen(false)}
@@ -377,29 +378,14 @@ export default function ProfileScreen() {
           onClose={() => setSettlementViewOpen(false)}
         />
 
+        <HeroViewSheet
+          isOpen={heroViewOpen}
+          onClose={() => setHeroViewOpen(false)}
+        />
+
         <NotificationsSheet
           isOpen={notificationsOpen}
           onClose={() => setNotificationsOpen(false)}
-        />
-
-        <CurrencySelectionSheet
-          isOpen={currencyOpen}
-          currency={defaultCurrency}
-          title="Select Default Currency"
-          disabled={!isOnline}
-          onClose={() => setCurrencyOpen(false)}
-          onCurrencyChange={(currency) => {
-            if (!userDetails?.id) return;
-
-            setDefaultCurrency(userDetails.id, currency);
-
-            const label = currencies.find((c) => c.value === currency)?.label;
-            toast({
-              title: "Default Currency Updated",
-              description: `Default currency set to ${label}.`,
-              type: "success"
-            });
-          }}
         />
       </Box>
     </TabLayout>

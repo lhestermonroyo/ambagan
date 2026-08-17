@@ -1,254 +1,140 @@
-import AppAvatar from "@/components/AppAvatar";
+import ApproxRateNote from "@/components/ApproxRateNote";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
-import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import { AnalyticsSkeleton } from "@/components/SkeletonLoader";
-import { Box } from "@/components/ui/box";
-import { Card } from "@/components/ui/card";
-import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
-import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { AnalyticsData } from "@/features/analytics/services/analytics.service";
-import { formatAmount } from "@/features/expense/utils/formatAmount";
+import AnalyticsContainersCard from "@/features/analytics/components/AnalyticsContainersCard";
+import AnalyticsFrontingCard from "@/features/analytics/components/AnalyticsFrontingCard";
+import AnalyticsPartnersCard from "@/features/analytics/components/AnalyticsPartnersCard";
+import AnalyticsScopeTabs from "@/features/analytics/components/AnalyticsScopeTabs";
+import AnalyticsTotalCard from "@/features/analytics/components/AnalyticsTotalCard";
+import AnalyticsTrendCard from "@/features/analytics/components/AnalyticsTrendCard";
 import {
+  AnalyticsScope,
+  useAnalytics
+} from "@/features/analytics/hooks/useAnalytics";
+import DateRangeSheet, {
+  CustomDateRange,
   DateRangeOption,
-  getDateRangeCutoff
+  formatDateRangeLabel,
+  getDateRangeBounds
 } from "@/features/group/components/DateRangeSheet";
 import InnerLayout from "@/layouts/InnerLayout";
-import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
+import { getPrimaryHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-const ANALYTICS_DATE_RANGES: DateRangeOption[] = [
-  "1M",
-  "3M",
-  "6M",
-  "1Y",
-  "All"
-];
-const BAR_MAX_HEIGHT = 72;
+import { ChevronDown } from "lucide-react-native";
+import { useMemo, useState } from "react";
+import { useColorScheme } from "react-native";
 
 export default function AnalyticsScreen() {
   const router = useRouter();
-  const { details: userDetails, defaultCurrency } = states.user();
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<AnalyticsData | null>(null);
+  const colorScheme = useColorScheme() ?? "light";
+  const { details: userDetails } = states.user();
+
+  // Below the hooks on purpose — bailing before them would change the hook
+  // count between renders the moment the user details land.
+  if (!userDetails) return null;
+
+  const [scope, setScope] = useState<AnalyticsScope>("all");
   const [dateRange, setDateRange] = useState<DateRangeOption>("1M");
+  const [customRange, setCustomRange] = useState<CustomDateRange | null>(null);
+  const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
 
-  const cutoff = useMemo(() => getDateRangeCutoff(dateRange), [dateRange]);
-
-  const fetchData = useCallback(async () => {
-    if (!userDetails?.id) return;
-    setLoading(true);
-    try {
-      const result = await services.analytics.getAnalyticsData(
-        userDetails.id,
-        cutoff
-      );
-      setData(result);
-    } catch (error) {
-      console.error("Failed to fetch analytics:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [userDetails?.id, cutoff]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const maxGroupAmount = useMemo(
-    () => Math.max(...(data?.byGroup.map((g) => g.amount) ?? [1])),
-    [data]
+  const { start, end } = useMemo(
+    () => getDateRangeBounds(dateRange, customRange),
+    [dateRange, customRange]
   );
 
-  const maxMonthAmount = useMemo(
-    () => Math.max(...(data?.monthlyTrend.map((m) => m.amount) ?? [1])),
-    [data]
+  const { loading, error, data } = useAnalytics(
+    userDetails?.id,
+    start,
+    end,
+    scope
   );
+
+  const isEmpty = !data || data.expenseCount === 0;
+  // Fronting is a group-only idea, and a period where nothing was fronted has
+  // nothing to say about it.
+  const showFronting =
+    !!data &&
+    scope !== "personal" &&
+    (data.fronted > 0 || data.frontedShare > 0);
 
   return (
     <InnerLayout title="Spending Analytics" onBack={() => router.back()}>
+      <DateRangeSheet
+        isOpen={dateRangeSheetOpen}
+        onClose={() => setDateRangeSheetOpen(false)}
+        dateRange={dateRange}
+        customRange={customRange}
+        onSelect={(value, custom) => {
+          setDateRange(value);
+          setCustomRange(custom ?? null);
+        }}
+      />
       <ScrollView className="flex-1">
         <VStack className="gap-y-6 p-4">
-          {/* Date range tabs */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <HStack className="gap-x-2">
-              {ANALYTICS_DATE_RANGES.map((option) => (
-                <FormButton
-                  key={option}
-                  size="sm"
-                  variant={dateRange === option ? "solid" : "outline"}
-                  text={option === "All" ? "All Time" : option}
-                  onPress={() => setDateRange(option)}
+          {/* Scope toggle + date range pill, matching the group Stats tab. The
+              range applies to whichever scope is active. */}
+          <HStack className="items-center justify-between gap-x-2">
+            <AnalyticsScopeTabs scope={scope} onChange={setScope} />
+            <FormButton
+              size="sm"
+              variant="outline"
+              text={formatDateRangeLabel(dateRange, customRange)}
+              iconEnd={
+                <ChevronDown
+                  size={16}
+                  color={getPrimaryHex("text-primary-500", colorScheme)}
                 />
-              ))}
-            </HStack>
-          </ScrollView>
+              }
+              onPress={() => setDateRangeSheetOpen(true)}
+            />
+          </HStack>
 
           <LoadingWrapper isLoading={loading} skeleton={<AnalyticsSkeleton />}>
-            {!data || data.summary.expenseCount === 0 ? (
-              <EmptyList type={EmptyType.ACTIVITY} />
+            {error ? (
+              // No cache behind this screen, so a failed read is the only thing
+              // an empty state could mean — say so rather than claiming the user
+              // has no expenses.
+              <EmptyList
+                type={EmptyType.ACTIVITY}
+                content="Couldn't load your analytics. Check your connection and try again."
+              />
+            ) : isEmpty ? (
+              <EmptyList
+                type={EmptyType.ACTIVITY}
+                content={emptyMessage(scope, dateRange)}
+              />
             ) : (
               <>
-                {/* Summary card */}
-              <Card className="rounded-2xl bg-secondary-100">
-                <VStack className="gap-y-4">
-                  <Text bold className="uppercase text-secondary-950 text-sm">
-                    Overview
-                  </Text>
-                  <HStack className="items-center gap-x-2">
-                    <Text bold className="text-3xl text-primary-400">
-                      {data.summary.expenseCount}
-                    </Text>
-                    <Text className="text-secondary-950">
-                      Expense{data.summary.expenseCount !== 1 ? "s" : ""}
-                    </Text>
-                  </HStack>
-                  <Divider />
-                  <HStack className="items-center justify-between gap-x-4">
-                    <Text className="text-secondary-950">Involved</Text>
-                    <Text bold className="text-xl">
-                      {formatAmount(
-                        data.summary.totalInvolved,
-                        defaultCurrency
-                      )}
-                    </Text>
-                  </HStack>
-                  <HStack className="items-center justify-between gap-x-4">
-                    <Text className="text-secondary-950">You Paid</Text>
-                    <Text bold className="text-xl">
-                      {formatAmount(data.summary.totalPaid, defaultCurrency)}
-                    </Text>
-                  </HStack>
-                </VStack>
-              </Card>
+                <AnalyticsTotalCard data={data} />
 
-              {/* Spending by group */}
-              {data.byGroup.length > 0 && (
-                <VStack className="gap-y-2">
-                  <Text bold className="text-2xl">
-                    Spending by Group
-                  </Text>
-                  <Card className="rounded-2xl bg-secondary-100 py-6">
-                    <VStack className="gap-y-6">
-                      {data.byGroup.map((group) => {
-                        const pct =
-                          maxGroupAmount > 0
-                            ? group.amount / maxGroupAmount
-                            : 0;
-                        return (
-                          <VStack key={group.groupId} className="gap-y-1">
-                            <HStack className="justify-between items-center">
-                              <Text
-                                className="flex-1 text-lg"
-                                numberOfLines={1}
-                              >
-                                {group.groupName}
-                              </Text>
-                              <Text bold className="text-lg">
-                                {formatAmount(group.amount, defaultCurrency)}
-                              </Text>
-                            </HStack>
-                            <Box className="h-2 rounded-full bg-background-200 overflow-hidden">
-                              <Box
-                                className="h-2 rounded-full bg-primary-400"
-                                style={{ width: `${Math.max(pct * 100, 4)}%` }}
-                              />
-                            </Box>
-                          </VStack>
-                        );
-                      })}
-                    </VStack>
-                  </Card>
-                </VStack>
-              )}
+                {data.byContainer.length > 0 && (
+                  <AnalyticsContainersCard containers={data.byContainer} />
+                )}
 
-              {/* Monthly trend */}
-              <VStack className="gap-y-2">
-                <Text bold className="text-2xl">
-                  Monthly Trend
-                </Text>
-                <Card className="rounded-2xl bg-secondary-100">
-                  <VStack className="gap-y-3">
-                    <HStack
-                      className="items-end gap-x-2"
-                      style={{ height: BAR_MAX_HEIGHT + 24 }}
-                    >
-                      {data.monthlyTrend.map((month) => {
-                        const barH =
-                          maxMonthAmount > 0
-                            ? Math.max(
-                                (month.amount / maxMonthAmount) *
-                                  BAR_MAX_HEIGHT,
-                                month.amount > 0 ? 4 : 0
-                              )
-                            : 0;
-                        return (
-                          <VStack
-                            key={month.key}
-                            className="flex-1 items-center gap-y-1"
-                            style={{ justifyContent: "flex-end" }}
-                          >
-                            <Box
-                              className={`w-full rounded-t-md ${month.amount > 0 ? "bg-primary-400" : "bg-background-200"}`}
-                              style={{ height: barH || 4 }}
-                            />
-                            <Text className="text-secondary-950 text-xs">
-                              {month.label}
-                            </Text>
-                          </VStack>
-                        );
-                      })}
-                    </HStack>
-                  </VStack>
-                </Card>
-              </VStack>
+                {data.trend.length > 0 && (
+                  <AnalyticsTrendCard trend={data.trend} />
+                )}
 
-              {/* Top split partners */}
-              {data.topPartners.length > 0 && (
-                <VStack className="gap-y-2">
-                  <Text bold className="text-2xl">
-                    Top Split Partners
-                  </Text>
-                  <Card className="rounded-2xl bg-secondary-100 p-0 overflow-hidden">
-                    <VStack>
-                      {data.topPartners.map((partner, index) => (
-                        <Box key={partner.id}>
-                          <HStack className="p-4 gap-x-3 items-center">
-                            <AppAvatar
-                              name={partner.firstName}
-                              uri={partner.avatar ?? undefined}
-                            />
-                            <VStack className="flex-1">
-                              <Text className="text-lg">
-                                {partner.firstName} {partner.lastName}
-                              </Text>
-                              <Text className="text-secondary-950 text-sm">
-                                {partner.count} shared expense
-                                {partner.count !== 1 ? "s" : ""}
-                              </Text>
-                            </VStack>
-                            <Box className="bg-primary-50 dark:bg-primary-900 px-3 py-1 rounded-full">
-                              <Text bold className="text-primary-400 text-sm">
-                                #{index + 1}
-                              </Text>
-                            </Box>
-                          </HStack>
-                          {index < data.topPartners.length - 1 && (
-                            <ListDivider />
-                          )}
-                        </Box>
-                      ))}
-                    </VStack>
-                  </Card>
-                </VStack>
-              )}
+                {showFronting && <AnalyticsFrontingCard data={data} />}
+
+                {data.partners.length > 0 && (
+                  <AnalyticsPartnersCard partners={data.partners} />
+                )}
+
+                {/* One note for the whole screen — renders nothing when no
+                    conversion happened, so the PHP-only case stays clean. */}
+                <ApproxRateNote
+                  currencies={data.foreignCurrencies}
+                  className="px-1"
+                />
               </>
             )}
           </LoadingWrapper>
@@ -257,3 +143,25 @@ export default function AnalyticsScreen() {
     </InnerLayout>
   );
 }
+
+/**
+ * An empty result has three different causes here and they need different
+ * copy — otherwise narrowing the scope or the range reads as having lost data.
+ */
+const emptyMessage = (
+  scope: AnalyticsScope,
+  dateRange: DateRangeOption
+): string | undefined => {
+  const ranged = dateRange !== "All";
+  if (scope === "personal") {
+    return ranged
+      ? "No personal expenses in the selected date range."
+      : "No personal expenses yet. Add one in a book to see it here.";
+  }
+  if (scope === "groups") {
+    return ranged
+      ? "No group expenses in the selected date range."
+      : "No group expenses yet.";
+  }
+  return ranged ? "No expenses in the selected date range." : undefined;
+};

@@ -27,8 +27,7 @@ const OnboardName = ({
   return (
     <VStack className="gap-y-6 px-4 flex-1">
       <Text className="text-xl text-secondary-950">
-        Let's start with your name. You can always change this later in your
-        profile settings.
+        Let's start with your name. You can change this later.
       </Text>
       <HStack className="gap-x-2">
         <VStack className="flex-1">

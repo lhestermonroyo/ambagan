@@ -256,8 +256,7 @@ export default function ContactPickerSheet({
               Add from Contacts
             </Text>
             <Text className="text-sm text-secondary-950 w-full">
-              People you add from contacts can see and claim these shared
-              expenses when they join Ambagan.
+              They can claim these expenses once they join Ambagan.
             </Text>
           </VStack>
         </HStack>

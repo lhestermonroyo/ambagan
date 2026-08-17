@@ -12,8 +12,12 @@ import services from "@/services";
 import states from "@/states";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 
 export default function LoginScreen() {
+  // Cold-launch landing screen: holds the native splash until this screen's
+  // first frame is drawn, so the launch never flashes the bare window.
+  useHideSplashOnFirstFrame();
   const [values, setValues] = useState({
     emailOrPhone: "",
     password: ""

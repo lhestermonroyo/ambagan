@@ -22,7 +22,6 @@ export default function ForgotPasswordScreen() {
   const router = useRouter();
   const toast = useAppToast();
   const colorScheme = useColorScheme() ?? "light";
-  const iconColor = colorScheme === "dark" ? "#8B5CF6" : "#7C3AED";
 
   const handleSend = async () => {
     if (!email.trim()) {

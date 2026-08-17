@@ -1,12 +1,6 @@
 import { useColorScheme } from "react-native";
 import { Image } from "./ui/image";
 
-const COIN = "#F59E0B";
-const COIN_RING = "rgba(255,255,255,0.25)";
-const PURPLE = "#8B5CF6";
-const PURPLE_MUTED = "#DDD6FE";
-const FONT = "GoogleSans-Bold";
-
 type LogoProps = {
   type?: "splash" | "auth" | "nav";
 };

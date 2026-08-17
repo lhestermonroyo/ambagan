@@ -11,16 +11,23 @@ import {
   House,
   LucideIcon,
   PartyPopper,
+  PiggyBank,
   Pill,
   Plane,
   ReceiptText,
   ShoppingBag,
   ShoppingCart,
+  Star,
   Users,
   UtensilsCrossed
 } from "lucide-react-native";
 
 export const DAILY_EXPENSE_LIMIT = 5;
+
+// Free-tier daily cap on personal (book) expenses. A SEPARATE bucket from
+// DAILY_EXPENSE_LIMIT — a free user gets 5 group + 5 personal expenses per day,
+// each tracked by its own append-only creation log.
+export const PERSONAL_EXPENSE_LIMIT = 5;
 
 export const tables = {
   USERS_TBL: "users_tbl",
@@ -35,7 +42,16 @@ export const tables = {
   NOTIFICATIONS_TBL: "notifications_tbl",
   USER_FAVORITES_TBL: "user_favorites_tbl",
   USER_PREFERENCES_TBL: "user_preferences_tbl",
-  USER_PUSH_TOKENS_TBL: "user_push_tokens_tbl"
+  USER_PUSH_TOKENS_TBL: "user_push_tokens_tbl",
+  // Personal-expense feature (standalone "books").
+  PERSONAL_BOOKS_TBL: "personal_books_tbl",
+  PERSONAL_EXPENSES_TBL: "personal_expenses_tbl",
+  PERSONAL_RECURRING_TBL: "personal_recurring_tbl",
+  PERSONAL_EXPENSE_CREATION_LOG_TBL: "personal_expense_creation_log_tbl",
+
+  // Indicative FX rates, refreshed weekly by the refresh-fx-rates Edge
+  // Function. Read-only to the app (see utils/fx.ts).
+  FX_RATES_TBL: "fx_rates_tbl"
 };
 
 // apply signs to all currencies
@@ -130,9 +146,21 @@ export type CategoryOption = {
   label: string;
   value: string;
   icon: LucideIcon;
+  /**
+   * Identity color for charts/legends (budget bar, breakdowns). One hex per
+   * category, picked mid-tone so it reads on both the light and dark card
+   * surfaces. Only the expense categories carry one — group categories are
+   * never charted.
+   */
+  color?: string;
 };
 
 export const categories: CategoryOption[] = [
+  {
+    label: "General",
+    value: GroupCategory.GENERAL,
+    icon: Star
+  },
   {
     label: "Trip",
     value: GroupCategory.TRIP,
@@ -175,15 +203,80 @@ export const categories: CategoryOption[] = [
 // on expenses_tbl.category and drives the Stats breakdown. "Other" is the
 // server default, so it's the implicit fallback for anything left unset.
 export const expenseCategories: CategoryOption[] = [
-  { label: "Food & Drinks", value: ExpenseCategory.FOOD, icon: UtensilsCrossed },
-  { label: "Groceries", value: ExpenseCategory.GROCERIES, icon: ShoppingCart },
-  { label: "Transport", value: ExpenseCategory.TRANSPORT, icon: Car },
-  { label: "Accommodation", value: ExpenseCategory.ACCOMMODATION, icon: BedDouble },
-  { label: "Entertainment", value: ExpenseCategory.ENTERTAINMENT, icon: Clapperboard },
-  { label: "Shopping", value: ExpenseCategory.SHOPPING, icon: ShoppingBag },
-  { label: "Bills & Utilities", value: ExpenseCategory.BILLS, icon: ReceiptText },
-  { label: "Health", value: ExpenseCategory.HEALTH, icon: Pill },
-  { label: "Other", value: ExpenseCategory.OTHER, icon: Folder }
+  {
+    label: "General",
+    value: ExpenseCategory.GENERAL,
+    icon: Star,
+    color: "#7C3AED"
+  },
+  {
+    label: "Food & Drinks",
+    value: ExpenseCategory.FOOD,
+    icon: UtensilsCrossed,
+    color: "#F97316"
+  },
+  {
+    label: "Groceries",
+    value: ExpenseCategory.GROCERIES,
+    icon: ShoppingCart,
+    color: "#6366F1"
+  },
+  {
+    label: "Transport",
+    value: ExpenseCategory.TRANSPORT,
+    icon: Car,
+    color: "#3B82F6"
+  },
+  {
+    label: "Accommodation",
+    value: ExpenseCategory.ACCOMMODATION,
+    icon: BedDouble,
+    color: "#14B8A6"
+  },
+  {
+    label: "Entertainment",
+    value: ExpenseCategory.ENTERTAINMENT,
+    icon: Clapperboard,
+    color: "#EC4899"
+  },
+  {
+    label: "Shopping",
+    value: ExpenseCategory.SHOPPING,
+    icon: ShoppingBag,
+    color: "#EAB308"
+  },
+  {
+    label: "Bills & Utilities",
+    value: ExpenseCategory.BILLS,
+    icon: ReceiptText,
+    color: "#EF4444"
+  },
+  {
+    label: "Health",
+    value: ExpenseCategory.HEALTH,
+    icon: Pill,
+    color: "#06B6D4"
+  },
+  // Money set aside rather than consumed. It is deliberately a normal spending
+  // category: the amount leaves the wallet, so it counts against a book's budget
+  // like everything else and needs no special-casing in the totals. Its payoff is
+  // the Stats gauge — with the date range on "All", the savings slice is the
+  // running total set aside across every month the book has existed.
+  {
+    label: "Savings",
+    value: ExpenseCategory.SAVINGS,
+    icon: PiggyBank,
+    color: "#22C55E"
+  },
+  // Keep "Other" last — expenseCategoryMeta() falls back to the final entry for
+  // any unrecognized value (see CategorySheet), so a new category appended here
+  // would silently become that fallback.
+  {
+    label: "Other",
+    value: ExpenseCategory.OTHER,
+    icon: Folder,
+    color: "#94A3B8"
+  }
 ];
 
 export const splitTypes = [
@@ -216,6 +309,11 @@ export const emptyTypes = [
     type: EmptyType.GROUP,
     content: "No groups yet. Create or join a group to get started!",
     icon: "🏠"
+  },
+  {
+    type: EmptyType.BOOK,
+    content: "No books yet. Create one to start tracking your personal spending!",
+    icon: "📒"
   },
   {
     type: EmptyType.EXPENSE,

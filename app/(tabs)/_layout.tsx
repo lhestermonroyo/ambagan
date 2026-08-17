@@ -3,18 +3,33 @@ import { View } from "@/components/ui/view";
 import PushNotificationPermissionSheet from "@/features/user/components/PushNotificationPermissionSheet";
 import services from "@/services";
 import states from "@/states";
+import { getTourSeen } from "@/utils/featureTour";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
+import { useFocusEffect, useRouter } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 
 const PUSH_ASKED_KEY = "@push_permission_asked";
 
+/**
+ * First-run overlays run one at a time, in this order. Both used to be free to
+ * fire the moment user details landed, which put the tour and the notification
+ * priming on screen in the same frame.
+ *
+ * "checking" — deciding whether the tour is owed
+ * "showing"  — the tour is up; nothing else may present
+ * "done"     — the tour is settled, push priming may go ahead
+ */
+type FirstRunStep = "checking" | "showing" | "done";
+
 export default function TabLayout() {
   const [permissionSheetOpen, setPermissionSheetOpen] = useState(false);
+  const [firstRunStep, setFirstRunStep] = useState<FirstRunStep>("checking");
   const { details: userDetails, session } = states.user();
+  const router = useRouter();
 
   // Safety net: if we have a session but no user details yet, refetch
   useEffect(() => {
@@ -29,10 +44,48 @@ export default function TabLayout() {
       .catch(() => {});
   }, [session?.user?.id, userDetails?.id]);
 
+  // Step 1 — the feature tour. Gated here rather than at the end of onboarding
+  // because this is the one place every authenticated arrival converges: fresh
+  // signup, returning login, and a restored session on cold launch.
+  //
+  // A pending group invite routes to /groups/[groupId], which lives outside
+  // this layout — so someone who opened the app on an invite link gets the
+  // group they came for, and meets the tour on their next visit to a tab.
   useEffect(() => {
-    if (!userDetails?.id) return;
+    const userId = userDetails?.id;
+    if (!userId || firstRunStep !== "checking") return;
+
+    let cancelled = false;
+    (async () => {
+      const seen = await getTourSeen(userId);
+      if (cancelled) return;
+      if (seen) {
+        setFirstRunStep("done");
+        return;
+      }
+      setFirstRunStep("showing");
+      router.push("/feature-tour");
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userDetails?.id, firstRunStep, router]);
+
+  // The tour is a route on the root stack, so dismissing it — by button, swipe,
+  // or back — hands focus back here. That's the signal to move on, and it's the
+  // only one that covers every way out of it.
+  useFocusEffect(
+    useCallback(() => {
+      setFirstRunStep((step) => (step === "showing" ? "done" : step));
+    }, [])
+  );
+
+  // Step 2 — notification priming, once the tour is out of the way.
+  useEffect(() => {
+    if (!userDetails?.id || firstRunStep !== "done") return;
     checkAndPromptPermission();
-  }, [userDetails?.id]);
+  }, [userDetails?.id, firstRunStep]);
 
   const checkAndPromptPermission = async () => {
     try {
@@ -93,6 +146,19 @@ export default function TabLayout() {
             }
           />
           <NativeTabs.Trigger.Label>Groups</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger name="books">
+          <NativeTabs.Trigger.Icon
+            renderingMode="template"
+            src={
+              <NativeTabs.Trigger.VectorIcon
+                family={LucideIcon}
+                name="notebook-pen"
+              />
+            }
+          />
+          <NativeTabs.Trigger.Label>Books</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="friends">

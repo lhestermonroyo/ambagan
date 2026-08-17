@@ -428,8 +428,7 @@ export default function ShareGroupScreen() {
                   Reset invite link
                 </Text>
                 <Text className="text-sm text-secondary-950">
-                  Generate a new link and QR. The current one stops working
-                  immediately.
+                  New link and QR. The current one stops immediately.
                 </Text>
               </VStack>
 

@@ -1,5 +1,6 @@
 import { PaymentStatus } from "@/types/expenses";
 import {
+  isRecurringNotification,
   isSettlementNotification,
   Notification,
   NotificationType
@@ -258,6 +259,34 @@ export const getNotificationRoute = async (
 
       if (error || !data) return null;
       return `/groups/${data.group_id}/${referenceId}`;
+    }
+
+    // A recurring notification's reference is whichever expense the generator
+    // just created — a group expense OR a personal (book) one, with no marker
+    // on the row to say which. Try the group table first, then books; a miss on
+    // both means the expense is gone (or was never visible), which the callers
+    // surface as "no longer available".
+    if (isRecurringNotification(type)) {
+      const { data: expense } = await supabase
+        .from(tables.EXPENSES_TBL)
+        .select("group_id")
+        .eq("id", referenceId)
+        .maybeSingle();
+
+      if (expense) return `/groups/${expense.group_id}/${referenceId}`;
+
+      const { data: personal } = await supabase
+        .from(tables.PERSONAL_EXPENSES_TBL)
+        .select("book_id")
+        .eq("id", referenceId)
+        .maybeSingle();
+
+      // Personal expenses have no detail screen — the edit form IS the detail
+      // view, same as tapping the row in the book.
+      if (personal)
+        return `/books/${personal.book_id}/add-expense?expenseId=${referenceId}`;
+
+      return null;
     }
 
     if (

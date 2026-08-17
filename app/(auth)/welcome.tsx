@@ -15,8 +15,12 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 
 export default function WelcomeScreen() {
+  // Cold-launch landing screen: holds the native splash until this screen's
+  // first frame is drawn, so the launch never flashes the bare window.
+  useHideSplashOnFirstFrame();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
 

@@ -44,10 +44,10 @@ const AmountInput: React.FC<IFormInputProps> = ({
   ...props
 }) => {
   return (
-    <Input className={cn("rounded-lg", className)} size="lg">
+    <Input className={cn("rounded-lg h-14", className)} size="lg">
       {leftAddon && (
         <InputSlot>
-          <Text className="font-medium ml-2">{leftAddon}</Text>
+          <Text className="font-medium ml-3">{leftAddon}</Text>
         </InputSlot>
       )}
       <InputField

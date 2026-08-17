@@ -1,0 +1,355 @@
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { cacheService } from "./cacheService";
+import { tables } from "./constants";
+import { supabase } from "./supabase";
+
+/**
+ * Indicative FX rates, used to render mixed-currency money as a single figure —
+ * spend against one budget, and the balance summaries (net, To Collect, To Pay)
+ * on home, group and friend. Deliberately approximate, with three rules:
+ *
+ *   * Conversion happens at DISPLAY time only. A stored expense always keeps the
+ *     currency and amount it was entered in, so a refreshed rate re-prices every
+ *     historical book at once and no migration is ever needed.
+ *   * Anything showing a converted figure MUST mark it approximate and cite
+ *     {@link FxTable.asOf} — an unlabelled converted number reads as exact. In
+ *     practice that means an "≈" on the figure and the rate note one tap away
+ *     in its breakdown sheet, which is why the chip that opens that sheet stays
+ *     visible whenever a conversion happened (see CurrencyCountButton).
+ *   * A SUMMARY may convert; money that gets ACTED ON may not. Individual
+ *     settlement rows stay in the currency they'll be paid in, because a ¥10,000
+ *     debt is not settleable in pesos at our rate. The summaries above it are
+ *     abstractions nobody pays directly, so folding them is safe — and the exact
+ *     per-currency working is always behind the chip.
+ *
+ * Rates come from `fx_rates_tbl`, refreshed weekly by the `refresh-fx-rates`
+ * Edge Function (pg_cron). The client reads that table, caches it in SQLite so
+ * it survives offline, and falls back to {@link FALLBACK} when it has never
+ * managed a fetch. Because `asOf` travels with the rates, a dead cron shows up
+ * on screen as an ageing date rather than a silently stale number.
+ */
+/**
+ * The app's home currency. Two distinct jobs, both of which used to be a
+ * per-user setting:
+ *
+ *   * the currency a new group or book is created in, and
+ *   * the currency the cross-container rollups (home, friends, analytics,
+ *     personal spending) fold their mixed-currency figures into.
+ *
+ * It stopped being user-configurable because it could never be right for both:
+ * the per-container currency answers the first job better (a JPY trip group
+ * next to a PHP rent book), and the second is a display choice on figures that
+ * are already marked approximate, with the exact per-currency working always a
+ * tap away. Ambagan is Philippines-first, so PHP is that floor.
+ *
+ * Anything that has a group's or book's OWN currency to hand must prefer it —
+ * this is only the fallback for figures that span containers.
+ */
+export const BASE_CURRENCY = "PHP";
+
+export type FxTable = {
+  /** PHP per 1 unit of each currency. PHP is the anchor purely because it's the
+   *  app default — cross-rates are derived, so any pair works. */
+  rates: Record<string, number>;
+  /**
+   * Publication date PER CURRENCY. Rates don't necessarily refresh together —
+   * the refresh function rejects an individual currency whose rate looks broken
+   * and keeps its previous value, so one currency can lag the rest. Kept
+   * per-currency so a caption can quote the vintage of the rates it actually
+   * used rather than the table's best-case date. See {@link fxAsOfFor}.
+   */
+  asOfByCurrency: Record<string, string>;
+  /** OLDEST date in the table — the honest headline vintage when no particular
+   *  set of currencies is in question. Never the newest: that would advertise a
+   *  freshness some rows don't have. */
+  asOf: string;
+};
+
+/**
+ * Shipped baseline, used until the first successful fetch and on a device that
+ * has never been online. Snapshot of the same feed the cron reads, taken
+ * 2026-08-01 — it ages from the day it ships, so it's a floor that keeps the
+ * budget card working, not a substitute for the refresh.
+ */
+const FALLBACK_AS_OF = "2026-08-01";
+
+const FALLBACK: FxTable = {
+  asOf: FALLBACK_AS_OF,
+  // Every baseline rate is from the same snapshot, so they share one date.
+  asOfByCurrency: {},
+  rates: {
+    PHP: 1,
+    USD: 61.25,
+    EUR: 70.51,
+    JPY: 0.3837,
+    GBP: 82.44,
+    CNY: 9.099,
+    KRW: 0.04252,
+    SGD: 47.72,
+    VND: 0.002333,
+    THB: 1.832,
+    TWD: 1.898,
+    MYR: 14.99,
+    IDR: 0.003395,
+    INR: 0.6415
+  }
+};
+
+/**
+ * REQUIRED attribution for the rate feed — not optional styling. ExchangeRate-
+ * API's free open-access endpoint grants commercial use without an API key on
+ * the condition of "attribution on the pages you're using these rates with",
+ * linking this URL with this label. They explicitly allow it to be discreet and
+ * in keeping with the rest of the app, which is why it rides along in the
+ * budget card's caption rather than getting its own row.
+ *
+ * If the feed in refresh-fx-rates ever changes, this has to change with it.
+ */
+export const FX_ATTRIBUTION_URL = "https://www.exchangerate-api.com";
+export const FX_ATTRIBUTION_LABEL = "Rates By Exchange Rate API";
+
+/** Refetch at most this often — rates only move weekly on the server. */
+const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+let current: FxTable = FALLBACK;
+let lastFetchedAt = 0;
+let inFlight: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function publish(next: FxTable): void {
+  // Identity change is what drives useSyncExternalStore — always a new object.
+  current = next;
+  for (const listener of listeners) listener();
+}
+
+/**
+ * Multiplier taking 1 unit of `from` to units of `to`, or null when either side
+ * has no rate — callers must handle null by leaving that money unconverted
+ * rather than silently treating it as zero.
+ *
+ * Takes the table explicitly rather than reading module state, so a component
+ * memoizing on it has a dependency React can actually see. Pair with
+ * {@link useFxRates}.
+ */
+export function getRate(
+  table: FxTable,
+  from: string,
+  to: string
+): number | null {
+  if (from === to) return 1;
+  const fromRate = table.rates[from];
+  const toRate = table.rates[to];
+  if (!fromRate || !toRate) return null;
+  return fromRate / toRate;
+}
+
+/**
+ * Oldest publication date among `currencies` — the only vintage a caption can
+ * honestly claim for a figure built from those rates. Currencies don't refresh
+ * in lockstep (a rejected rate keeps its previous value), so quoting the
+ * table's newest date next to a conversion that used a lagging rate would
+ * overstate how current the number is.
+ *
+ * Falls back to the table-wide `asOf` for any currency with no date of its own,
+ * which covers the shipped baseline and caches written by older app versions.
+ */
+export function fxAsOfFor(table: FxTable, currencies: string[]): string {
+  let oldest = "";
+  for (const currency of currencies) {
+    const asOf = table.asOfByCurrency?.[currency] ?? table.asOf;
+    if (!oldest || asOf < oldest) oldest = asOf;
+  }
+  return oldest || table.asOf;
+}
+
+/**
+ * "August 2026" — the vintage caption shown beside converted figures. Parsed
+ * field-by-field rather than via `new Date(asOf)`, which reads a bare
+ * YYYY-MM-DD as UTC midnight and so renders the previous month for anyone west
+ * of Greenwich.
+ */
+export function formatFxAsOf(asOf: string): string {
+  const [year, month, day] = asOf.split("-").map(Number);
+  if (!year || !month || !day) return asOf;
+  return new Date(year, month - 1, day).toLocaleString("en-US", {
+    month: "long",
+    year: "numeric"
+  });
+}
+
+/**
+ * Load rates, preferring the server table and falling back through the SQLite
+ * cache to {@link FALLBACK}. Safe to call on every mount: the result is cached
+ * for {@link REFRESH_INTERVAL_MS} and concurrent calls share one request.
+ * Never throws — a failed refresh just leaves the previous rates in place,
+ * which is the whole point of shipping a baseline.
+ */
+export async function loadFxRates(): Promise<void> {
+  if (inFlight) return inFlight;
+  if (Date.now() - lastFetchedAt < REFRESH_INTERVAL_MS) return;
+
+  inFlight = (async () => {
+    // Cached rates first so an offline launch still beats the shipped baseline.
+    if (current === FALLBACK) {
+      const cached = await cacheService.getFxRates().catch(() => null);
+      if (cached) publish(cached);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from(tables.FX_RATES_TBL)
+        .select("currency, php_per_unit, as_of");
+      if (error) throw error;
+      if (!data?.length) return;
+
+      const rates: Record<string, number> = {};
+      const asOfByCurrency: Record<string, string> = {};
+      let oldest = "";
+      for (const row of data as {
+        currency: string;
+        php_per_unit: number;
+        as_of: string;
+      }[]) {
+        const rate = Number(row.php_per_unit);
+        if (!Number.isFinite(rate) || rate <= 0) continue;
+        rates[row.currency] = rate;
+        asOfByCurrency[row.currency] = row.as_of;
+        // Table-wide vintage is the OLDEST row, not the newest — a currency
+        // whose refresh keeps getting rejected must not be papered over by the
+        // ones that did update. Per-currency dates above let a caption be more
+        // precise than this when it knows which rates it used.
+        if (!oldest || row.as_of < oldest) oldest = row.as_of;
+      }
+      if (!rates.PHP || Object.keys(rates).length < 2) return;
+
+      const table = { rates, asOfByCurrency, asOf: oldest || FALLBACK.asOf };
+      lastFetchedAt = Date.now();
+      publish(table);
+      await cacheService.saveFxRates(table).catch(() => {});
+    } catch {
+      // Offline or the table isn't deployed yet — keep whatever we have.
+    }
+  })();
+
+  try {
+    await inFlight;
+  } finally {
+    inFlight = null;
+  }
+}
+
+/**
+ * Sum of `items` expressed in `to`, plus the foreign currencies that actually
+ * contributed. That second half is not a convenience: it decides whether the
+ * caller may print a bare number or must say "≈", and which vintage its rate
+ * note quotes. Anything with no rate is left out rather than counted as zero,
+ * so a total is always understated rather than wrong — callers that can say so
+ * on screen should.
+ *
+ * Returns a zero total and no currencies when `to` is undefined, so a component
+ * can call it unconditionally and decide afterwards whether to convert at all.
+ */
+export function useConvertedTotal(
+  items: { currency: string; amount: number }[],
+  to?: string
+): { total: number; convertedCurrencies: string[] } {
+  const table = useFxRates();
+  return useMemo(() => {
+    if (!to) return { total: 0, convertedCurrencies: [] };
+    let total = 0;
+    const convertedCurrencies: string[] = [];
+    for (const item of items) {
+      const rate = getRate(table, item.currency, to);
+      if (rate === null) continue;
+      total += item.amount * rate;
+      // A zero balance in another currency is converted, but converting it
+      // changed nothing — it must not be what makes a figure "approximate".
+      if (item.currency !== to && item.amount !== 0) {
+        convertedCurrencies.push(item.currency);
+      }
+    }
+    return { total, convertedCurrencies };
+  }, [items, to, table]);
+}
+
+/**
+ * Prices one amount into `to`, or null when its currency has no rate. Null means
+ * "can't be priced": callers must leave that money OUT of a converted figure
+ * rather than counting it as zero, so a total is understated rather than wrong.
+ *
+ * The per-item counterpart to {@link useConvertedTotal}, for the stats screens
+ * that convert while grouping (by category, by member) and so can't hand over a
+ * flat list. Stable as long as the rates are, so it can be a memo dependency.
+ */
+export function useConverter(
+  to: string
+): (amount: number, currency: string) => number | null {
+  const table = useFxRates();
+  return useCallback(
+    (amount, currency) => {
+      const rate = getRate(table, currency || BASE_CURRENCY, to);
+      return rate === null ? null : amount * rate;
+    },
+    [table, to]
+  );
+}
+
+/**
+ * Whether pricing this money into `to` will actually change it — non-zero, in
+ * another currency. This is the rule for a SINGLE figure's "≈": a total is only
+ * approximate if something converted moved it, so a PHP-only category sitting
+ * beside a yen one must still print an exact amount.
+ *
+ * Says nothing about whether a rate exists: callers apply this after they've
+ * priced the item, where a missing rate has already dropped it from the figure
+ * and so can't have made it approximate either.
+ */
+export function isConverted(
+  amount: number,
+  currency: string,
+  to: string
+): boolean {
+  return amount !== 0 && (currency || BASE_CURRENCY) !== to;
+}
+
+/**
+ * The foreign currencies in `items` that actually contributed to a figure
+ * converted into `to` — i.e. money {@link isConverted} counts, that we also hold
+ * a rate for. Drives which vintage an {@link ApproxRateNote} quotes; an empty
+ * result means nothing was converted and the single-currency case stays clean.
+ */
+export function useForeignCurrencies(
+  items: { currency: string; amount: number }[],
+  to: string
+): string[] {
+  const table = useFxRates();
+  return useMemo(() => {
+    const seen = new Set<string>();
+    for (const item of items) {
+      if (!isConverted(item.amount, item.currency, to)) continue;
+      const currency = item.currency || BASE_CURRENCY;
+      if (getRate(table, currency, to) !== null) seen.add(currency);
+    }
+    return Array.from(seen);
+  }, [items, to, table]);
+}
+
+/**
+ * Current rates, re-rendering the caller when a refresh lands. Kicks off the
+ * load itself, so a screen only has to use the hook to get live rates.
+ */
+export function useFxRates(): FxTable {
+  const table = useSyncExternalStore(
+    (onChange) => {
+      listeners.add(onChange);
+      return () => listeners.delete(onChange);
+    },
+    () => current
+  );
+  // Fire-and-forget: resolves into a publish() when it lands, and is a no-op
+  // while rates are still fresh.
+  useEffect(() => {
+    loadFxRates();
+  }, []);
+  return table;
+}

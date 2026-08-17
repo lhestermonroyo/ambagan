@@ -274,6 +274,9 @@ export default function EditMembersSheet({
         )
         .map((member) => member.id);
 
+      // Keep `phone` and `is_placeholder` — blanking them let phone-contact
+      // ghosts slip past addRecentUsers' filter (the create-group path drops
+      // them) and broke the phone-based dedupe in `excludePhones`.
       const membersToSave = resolvedMembers.map(
         (m) =>
           ({
@@ -282,7 +285,8 @@ export default function EditMembersSheet({
             avatar: m.avatar,
             first_name: m.first_name,
             last_name: m.last_name,
-            phone: "",
+            phone: (m as any).phone ?? "",
+            is_placeholder: (m as any).is_placeholder,
           }) as UserPreview,
       );
 
