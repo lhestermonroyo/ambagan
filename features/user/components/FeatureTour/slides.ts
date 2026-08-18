@@ -4,13 +4,13 @@ import {
   ART_SCAN_TEXT,
   ART_SHARED_EXPENSE_LIST,
   BLOB_ACCENTS,
-  type BlobAccent,
-  type TourArt
-} from "./art";
+  type Artwork,
+  type BlobAccent
+} from "../art";
 
 export type TourSlide = {
   key: string;
-  art: TourArt;
+  art: Artwork;
   /**
    * Colour of the shape behind the art. Lives on the slide rather than being
    * indexed by position, so reordering the tour carries the colour along.

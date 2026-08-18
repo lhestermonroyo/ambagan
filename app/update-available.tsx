@@ -5,7 +5,6 @@ import { snoozeUpdate } from "@/utils/updatePrompt";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { BackHandler } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 /**
  * The "please update" screen, presented over whatever the user was doing.
@@ -68,12 +67,10 @@ export default function UpdateAvailableScreen() {
   if (!gate) return null;
 
   return (
-    <SafeAreaView className="flex-1 bg-background-0" edges={["top", "bottom"]}>
-      <UpdateAvailable
-        gate={gate}
-        onUpdate={() => services.appVersion.openStorePage(gate.storeUrl)}
-        onLater={required ? undefined : () => router.back()}
-      />
-    </SafeAreaView>
+    <UpdateAvailable
+      gate={gate}
+      onUpdate={() => services.appVersion.openStorePage(gate.storeUrl)}
+      onLater={required ? undefined : () => router.back()}
+    />
   );
 }

@@ -1,16 +1,27 @@
 import FormButton from "@/components/FormButton";
+import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { UpdateGate } from "@/types/appVersion";
-import { getErrorHex, getPrimaryHex } from "@/utils/getColorHex";
-import { ArrowDownToLine, ShieldAlert } from "lucide-react-native";
 import { useState } from "react";
-import { Platform, useColorScheme } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  useColorScheme,
+  useWindowDimensions
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { SvgXml } from "react-native-svg";
+import ArtBlob from "./ArtBlob";
+import { ART_LAUNCH_APP, BLOB_ACCENTS, fitArt } from "./art";
 
 /** Named so the copy reads right on both stores once Android ships. */
 const STORE_NAME = Platform.OS === "ios" ? "App Store" : "Play Store";
+
+/** Matches the feature tour's slide padding, so the two screens share a gutter. */
+const SCREEN_PADDING = 24;
 
 export default function UpdateAvailable({
   gate,
@@ -22,9 +33,22 @@ export default function UpdateAvailable({
   /** Absent for a required update — there is no "later" to offer. */
   onLater?: () => void;
 }) {
-  const colorScheme = useColorScheme() ?? "light";
+  const isDark = (useColorScheme() ?? "light") === "dark";
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [opening, setOpening] = useState(false);
   const required = gate.status === "required";
+
+  // Ink, not brand purple — the colour belongs to the blob, the subject stays
+  // high-contrast. Same reasoning and same values as the feature tour.
+  const artColor = isDark ? "#F5F5F5" : "#262627";
+
+  // Shorter than the tour's box: this screen carries release notes and two
+  // buttons under the drawing, where a slide carries only a title and a line.
+  const artBoxWidth = windowWidth - SCREEN_PADDING * 2;
+  const artBoxHeight = Math.max(140, Math.min(220, windowHeight * 0.24));
+  const art = fitArt(ART_LAUNCH_APP, artBoxWidth, artBoxHeight);
+  // Bigger than the drawing so the shape runs past it rather than framing it.
+  const blobSize = Math.min(artBoxWidth, artBoxHeight * 1.2);
 
   const handleUpdate = async () => {
     // The store hand-off is a round trip through the OS, so the button has to
@@ -54,31 +78,43 @@ export default function UpdateAvailable({
       >
         <VStack className="gap-y-8 items-center">
           <VStack className="items-center gap-y-5">
-            <VStack
-              className={
-                required
-                  ? "bg-error-100 rounded-full p-6"
-                  : "bg-primary-100 rounded-full p-6"
-              }
+            {/* Fixed-height box so the copy below sits in the same place
+                whichever variant is showing. */}
+            <Box
+              style={{ height: artBoxHeight }}
+              className="items-center justify-center"
             >
-              {required ? (
-                <ShieldAlert
-                  size={40}
-                  color={getErrorHex("text-error-500", colorScheme)}
+              {/* Behind the drawing, and deaf to touches. */}
+              <Box
+                style={StyleSheet.absoluteFill}
+                className="items-center justify-center"
+                pointerEvents="none"
+              >
+                {/* The drawing is the same either way — this is one message,
+                    "there's a newer Ambagan". Urgency is carried by the accent
+                    (brand violet vs. the amber/rose warning pair) and by the
+                    copy and the missing "Not now", not by a second icon. */}
+                <ArtBlob
+                  size={blobSize}
+                  index={required ? 1 : 0}
+                  accent={required ? BLOB_ACCENTS.amber : BLOB_ACCENTS.violet}
+                  isDark={isDark}
                 />
-              ) : (
-                <ArrowDownToLine
-                  size={40}
-                  color={getPrimaryHex("text-primary-500", colorScheme)}
-                />
-              )}
-            </VStack>
+              </Box>
+
+              <SvgXml
+                xml={ART_LAUNCH_APP.xml}
+                width={art.width}
+                height={art.height}
+                color={artColor}
+              />
+            </Box>
 
             <VStack className="gap-y-2 items-center">
               <Text bold className="text-2xl text-center">
                 {required ? "Update required" : "A new version is here"}
               </Text>
-              <Text className="text-sm text-secondary-950 text-center px-2">
+              <Text className="text-secondary-950 text-center px-2">
                 {required
                   ? `This version of Ambagan is no longer supported. Update from the ${STORE_NAME} to keep your expenses and settlements in sync.`
                   : `Ambagan ${gate.latestVersion} is ready in the ${STORE_NAME}. Updating takes a moment and keeps everything working the way it should.`}
@@ -89,11 +125,11 @@ export default function UpdateAvailable({
                 is the one question a person actually has here, and it's also
                 what makes a support screenshot useful. */}
             <HStack className="items-center gap-x-2">
-              <Text className="text-xs text-secondary-500">
+              <Text className="text-sm text-secondary-950">
                 {gate.installedVersion}
               </Text>
-              <Text className="text-xs text-secondary-500">→</Text>
-              <Text bold className="text-xs text-primary-500">
+              <Text className="text-sm text-secondary-950">→</Text>
+              <Text bold className="text-sm text-primary-500">
                 {gate.latestVersion}
               </Text>
             </HStack>
@@ -121,16 +157,18 @@ export default function UpdateAvailable({
         </VStack>
       </ScrollView>
 
-      <VStack className="w-full gap-y-2 px-6 pb-4">
-        <FormButton
-          text={required ? "Update now" : "Update"}
-          loading={opening}
-          onPress={handleUpdate}
-        />
-        {onLater && (
-          <FormButton text="Not now" variant="link" onPress={onLater} />
-        )}
-      </VStack>
+      <SafeAreaView edges={["bottom"]}>
+        <VStack className="w-full gap-y-2 px-6 pb-4">
+          <FormButton
+            text={required ? "Update now" : "Update"}
+            loading={opening}
+            onPress={handleUpdate}
+          />
+          {onLater && (
+            <FormButton text="Not now" variant="link" onPress={onLater} />
+          )}
+        </VStack>
+      </SafeAreaView>
     </VStack>
   );
 }
