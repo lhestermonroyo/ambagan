@@ -51,7 +51,11 @@ export const tables = {
 
   // Indicative FX rates, refreshed weekly by the refresh-fx-rates Edge
   // Function. Read-only to the app (see utils/fx.ts).
-  FX_RATES_TBL: "fx_rates_tbl"
+  FX_RATES_TBL: "fx_rates_tbl",
+
+  // One row per platform describing the newest shipped build and the oldest
+  // still-supported one. Read-only to the app (see app-version.service.ts).
+  APP_VERSIONS_TBL: "app_versions_tbl"
 };
 
 // apply signs to all currencies

@@ -1,3 +1,4 @@
+import AppUpdateGate from "@/components/AppUpdateGate";
 import NetworkBanner from "@/components/NetworkBanner";
 import OfflineSync from "@/components/OfflineSync";
 import { Box } from "@/components/ui/box";
@@ -561,9 +562,33 @@ export default function RootLayout() {
                   name="feature-tour"
                   options={{ presentation: "modal" }}
                 />
+                {/* The out-of-date-build prompt. Two presentations off one
+                    route, because the two cases are genuinely different
+                    screens to the user:
+
+                    - OPTIONAL — a plain modal. Swipe-down and Android back
+                      both dismiss it, and the route snoozes on the way out.
+                    - REQUIRED (`forced=1`, i.e. below min_supported_version) —
+                      fullScreenModal with the swipe disabled, so the only way
+                      forward is the store. The hardware back button is blocked
+                      in the route itself; gestureEnabled doesn't cover it. */}
+                <Stack.Screen
+                  name="update-available"
+                  options={({ route }) => {
+                    const forced =
+                      (route.params as { forced?: string } | undefined)
+                        ?.forced === "1";
+                    return {
+                      presentation: forced ? "fullScreenModal" : "modal",
+                      gestureEnabled: !forced,
+                      animation: "slide_from_bottom"
+                    };
+                  }}
+                />
               </Stack>
               <StatusBar style="auto" />
               <OfflineSync />
+              <AppUpdateGate />
               <NetworkBanner />
             </ThemeProvider>
           </ToastProvider>

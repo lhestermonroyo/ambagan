@@ -1,4 +1,5 @@
 import * as ANALYTICS_SERVICE from "./features/analytics/services/analytics.service";
+import * as APP_VERSION_SERVICE from "./features/user/services/app-version.service";
 import * as BOOK_SERVICE from "./features/book/services/book.service";
 import * as BOOK_EXPENSE_SERVICE from "./features/book/services/book-expense.service";
 import * as BOOK_RECURRING_SERVICE from "./features/book/services/book-recurring.service";
@@ -15,6 +16,7 @@ import * as PURCHASE_SERVICE from "./features/user/services/purchase.service";
 
 const services = {
   analytics: ANALYTICS_SERVICE,
+  appVersion: APP_VERSION_SERVICE,
   auth: AUTH_SERVICE,
   user: USER_SERVICE,
   preferences: PREFERENCES_SERVICE,
