@@ -22,6 +22,15 @@ export const formatDate = (date: string) => {
     return format(parsedDate, "MMM dd - hh:mm a");
   }
 
+  return formatTimeAgo(date);
+};
+
+/** Relative time for every age, including dates older than a few days. */
+export const formatTimeAgo = (date: string) => {
+  if (!date) return "";
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
   return formatDistanceToNow(parsedDate, { addSuffix: true })
     .replace(/^about\s/i, "")
     .replace(/\bseconds?\b/gi, "s")
@@ -29,6 +38,17 @@ export const formatDate = (date: string) => {
     .replace(/\bminute\b/gi, "min")
     .replace(/\bhours\b/gi, "hrs")
     .replace(/\bhour\b/gi, "hr");
+};
+
+/** Recent updates use relative time; updates older than 72 hours use Jan 3. */
+export const formatLastUpdate = (date: string) => {
+  if (!date) return "";
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
+  return Date.now() - parsedDate.getTime() > 3 * 24 * 60 * 60 * 1000
+    ? format(parsedDate, "MMM d")
+    : formatTimeAgo(date);
 };
 
 export const getDateGroupTitle = (dateString: string) => {

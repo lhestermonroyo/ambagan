@@ -16,6 +16,9 @@ export type GroupState = {
 export type Group = {
   id: string;
   created_at: string;
+  /** Latest group activity, maintained by database triggers. Optional only for
+   *  older offline snapshots; sorting falls back to created_at. */
+  last_updated_at?: string | null;
   /** The group's OWNER — whoever created it (groups_tbl.admin_id), or whoever
    *  it was transferred to when they left. Exactly one, and the only person who
    *  can edit/archive/delete the group or promote a member to co-admin. Other

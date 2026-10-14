@@ -13,6 +13,7 @@ import {
   PersonalExpense
 } from "@/types/books";
 import { Group, GroupRole, Member } from "@/types/groups";
+import { sortGroupsByActivity } from "@/features/group/utils/groupActivity";
 import { UserPreview } from "@/types/user";
 import NetInfo from "@react-native-community/netinfo";
 import "react-native-get-random-values";
@@ -619,6 +620,42 @@ export async function countPersonalExpensesQueuedToday(): Promise<number> {
 // so a queued item shows up immediately and survives an app restart.
 // ---------------------------------------------------------------------------
 
+/** Match the server activity triggers while an operation is queued offline. */
+async function touchGroupActivityOptimistic(
+  groupId: string,
+  userId = states.user.getState().details?.id
+) {
+  const now = Date.now();
+  const touch = <T extends Group>(group: T): T =>
+    group.id === groupId
+      ? {
+          ...group,
+          last_updated_at: new Date(
+            Math.max(now, Date.parse(group.last_updated_at ?? group.created_at) || 0)
+          ).toISOString()
+        }
+      : group;
+
+  states.group.setState((prev) => ({
+    ...prev,
+    list: sortGroupsByActivity(prev.list.map(touch)),
+    details: prev.details ? touch(prev.details) : null
+  }));
+
+  if (!userId) return;
+  try {
+    const cached = await cacheService.getGroupsList(userId);
+    if (cached) {
+      await cacheService.saveGroupsList(
+        userId,
+        sortGroupsByActivity((cached as (Group & { members: Member[] })[]).map(touch))
+      );
+    }
+  } catch {
+    // best-effort; live state still reflects the new activity
+  }
+}
+
 async function injectPendingExpense(groupId: string, expense: ExpensePreview) {
   // Update both the group detail expenseList (if open) and the group list
   // expense_count in a single setState call.
@@ -668,6 +705,7 @@ async function injectPendingExpense(groupId: string, expense: ExpensePreview) {
       // best-effort
     }
   }
+  await touchGroupActivityOptimistic(groupId);
 }
 
 async function clearPendingExpense(groupId: string, clientId: string) {
@@ -974,11 +1012,17 @@ async function injectPendingGroup(
   userId: string,
   group: Group & { members: Member[] }
 ) {
-  states.group.setState((prev) => ({ ...prev, list: [group, ...prev.list] }));
+  states.group.setState((prev) => ({
+    ...prev,
+    list: sortGroupsByActivity([group, ...prev.list])
+  }));
 
   try {
     const cached = (await cacheService.getGroupsList(userId)) ?? [];
-    await cacheService.saveGroupsList(userId, [group, ...cached]);
+    await cacheService.saveGroupsList(
+      userId,
+      sortGroupsByActivity([group, ...(cached as (Group & { members: Member[] })[])])
+    );
   } catch {
     // best-effort
   }
@@ -1054,6 +1098,7 @@ async function replaceExpenseOptimistic(
       )
       .catch(() => {});
   }
+  await touchGroupActivityOptimistic(groupId);
 }
 
 /**
@@ -1108,6 +1153,7 @@ async function removeExpenseOptimistic(groupId: string, expenseId: string) {
       // best-effort
     }
   }
+  await touchGroupActivityOptimistic(groupId);
 }
 
 /** Patch a group's name/category/currencies in the live list + caches (offline
@@ -1140,6 +1186,7 @@ async function updateGroupOptimistic(
   } catch {
     // best-effort
   }
+  await touchGroupActivityOptimistic(groupId, userId);
 }
 
 /** Flip a group's archived flag in the caches (offline archive/unarchive). The
@@ -1162,6 +1209,7 @@ async function setGroupArchivedInCache(
   } catch {
     // best-effort
   }
+  await touchGroupActivityOptimistic(groupId, userId);
 }
 
 /**
@@ -1181,6 +1229,7 @@ async function updateMembersOptimistic(groupId: string, roster: Member[]) {
   } catch {
     // best-effort
   }
+  await touchGroupActivityOptimistic(groupId);
 }
 
 async function addFavoriteToCache(userId: string, favorite: UserPreview) {
@@ -1813,6 +1862,7 @@ export function buildOptimisticGroup(params: {
   return {
     id: params.clientId,
     created_at: now,
+    last_updated_at: now,
     admin: params.admin,
     name: params.name,
     category: params.category,

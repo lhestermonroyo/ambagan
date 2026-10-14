@@ -20,10 +20,9 @@ import { Image } from "expo-image";
 import { Expand, ReceiptText } from "lucide-react-native";
 import { Fragment, ReactNode, useState } from "react";
 import { useColorScheme } from "react-native";
-import { formatAmount } from "../utils/formatAmount";
 import ImageViewerSheet from "./ImageViewerSheet";
-import SettlementBreakdown from "./SettlementBreakdown";
 import SettlementSheetHeader from "./SettlementSheetHeader";
+import SettlementSummary from "./SettlementSummary";
 import StatusBadge from "./StatusBadge";
 
 export default function ReviewRequestPaidSheet({
@@ -273,27 +272,7 @@ export default function ReviewRequestPaidSheet({
 
       <ScrollView className="flex-1 px-4">
         <VStack className="gap-y-6">
-          <VStack className="gap-y-1">
-            {payment.expense_description && (
-              <Text
-                className="text-sm text-secondary-950 uppercase"
-                bold
-                numberOfLines={1}
-              >
-                {payment.expense_description}
-              </Text>
-            )}
-            <VStack>
-              <Text className="text-3xl" bold>
-                {formatAmount(payment.amount || 0, payment.currency)}
-              </Text>
-              <Text className="text-secondary-950">
-                {isPayerMe ? "Amount received" : "Amount paid"}
-              </Text>
-            </VStack>
-          </VStack>
-
-          <SettlementBreakdown payment={payment} />
+          <SettlementSummary payment={payment} />
 
           <Box className="bg-secondary-100 rounded-xl">
             <DetailRow

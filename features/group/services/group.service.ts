@@ -3,6 +3,7 @@ import states from "@/states";
 import { NotificationType } from "@/types/notifications";
 import { Group, GroupRole, Member } from "@/types/groups";
 import { normalizeEntryCurrency } from "@/features/group/utils/groupCurrency";
+import { compareGroupsByActivity, sortGroupsByActivity } from "@/features/group/utils/groupActivity";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
@@ -379,6 +380,7 @@ export const getGroupsByUserId = async (userId: string) => {
         `${tables.GROUPS_TBL} (
           id,
           created_at,
+          last_updated_at,
           name,
           category,
           currency,
@@ -404,10 +406,7 @@ export const getGroupsByUserId = async (userId: string) => {
         };
       })
       .filter((group) => group.archived === false)
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ) as Group[];
+      .sort(compareGroupsByActivity) as Group[];
     const groupIds = groups.map((g) => g.id);
 
     const members = await getMembersByGroupIds(groupIds);
@@ -425,7 +424,7 @@ export const getGroupsByUserId = async (userId: string) => {
     // Offline / fetch failure — fall back to the last cached snapshot.
     const cached = await cacheService.getGroupsList(userId);
     if (cached) {
-      return cached as (Group & { members: Member[] })[];
+      return sortGroupsByActivity(cached as (Group & { members: Member[] })[]);
     }
     throw error;
   }
@@ -450,7 +449,7 @@ export const getGroupsByUserIdPaginated = async (
     let query = supabase
       .from(tables.GROUPS_TBL)
       .select(
-        `id, created_at, name, category, currency, default_expense_currency, avatar, archived,
+        `id, created_at, last_updated_at, name, category, currency, default_expense_currency, avatar, archived,
          admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
          ${tables.GROUP_MEMBERS_TBL}!inner(member_id),
          expenses:${tables.EXPENSES_TBL}(count)`,
@@ -458,7 +457,9 @@ export const getGroupsByUserIdPaginated = async (
       )
       .eq(`${tables.GROUP_MEMBERS_TBL}.member_id`, userId)
       .eq("archived", filter === "archived")
+      .order("last_updated_at", { ascending: false })
       .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
       .range(from, to);
 
     if (filter === "created") {
@@ -517,7 +518,7 @@ export const getGroupsByUserIdPaginated = async (
       data = [];
     }
 
-    return { data, hasNext: false };
+    return { data: sortGroupsByActivity(data), hasNext: false };
   }
 };
 

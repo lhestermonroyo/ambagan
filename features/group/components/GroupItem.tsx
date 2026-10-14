@@ -8,7 +8,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
-import { formatDate } from "@/utils/formatDate";
+import { formatLastUpdate } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import { UserStar } from "lucide-react-native";
 import { useMemo } from "react";
@@ -67,7 +67,7 @@ export default function GroupItem({
               <Icon as="sync" size={14} className="text-primary-400" />
             )}
             <Text className="text-sm text-secondary-950">
-              {formatDate(details.created_at)} •{" "}
+              Last update {formatLastUpdate(details.last_updated_at ?? details.created_at)} •{" "}
               {details.expense_count ?? 0} expense
               {(details.expense_count ?? 0) !== 1 ? "s" : ""}
             </Text>

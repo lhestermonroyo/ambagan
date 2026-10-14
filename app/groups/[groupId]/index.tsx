@@ -59,7 +59,7 @@ import { ExpensePreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
-import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
+import { formatLastUpdate, getDateGroupTitle } from "@/utils/formatDate";
 import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
 import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
@@ -878,7 +878,9 @@ export default function GroupDetailsScreen() {
                     {groupDetails?.name}
                   </Text>
                   <Text className="text-secondary-950">
-                    {formatDate(groupDetails?.created_at || "")} •{" "}
+                    Last update {formatLastUpdate(
+                      groupDetails?.last_updated_at ?? groupDetails?.created_at ?? ""
+                    )} •{" "}
                     {expenseList.length} expense
                     {expenseList.length !== 1 ? "s" : ""}
                   </Text>

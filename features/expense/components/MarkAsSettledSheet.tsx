@@ -1,13 +1,7 @@
-import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import AppSheet from "@/components/AppSheet";
 import { Box } from "@/components/ui/box";
-import {
-  FormControl,
-  FormControlLabel,
-  FormControlLabelText,
-} from "@/components/ui/form-control";
 import { HStack } from "@/components/ui/hstack";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -16,15 +10,12 @@ import UploadImage from "@/components/UploadImage";
 import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
-import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
-import { getUserSubtitle } from "@/utils/userDisplay";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useState } from "react";
-import { formatAmount } from "../utils/formatAmount";
-import SettlementBreakdown from "./SettlementBreakdown";
 import SettlementSheetHeader from "./SettlementSheetHeader";
+import SettlementSummary from "./SettlementSummary";
 
 export default function MarkAsSettledSheet({
   isOpen,
@@ -45,15 +36,12 @@ export default function MarkAsSettledSheet({
     receipt: null as ImagePickerSuccessResult | null,
   });
 
-  const { details: userDetails } = states.user();
   const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
 
   if (!payment) {
     return null;
   }
-
-  const isMe = payment.member.id === userDetails?.id;
 
   const handleSubmit = async () => {
     if (
@@ -121,25 +109,7 @@ export default function MarkAsSettledSheet({
 
       <ScrollView className="flex-1 px-4">
         <VStack className="gap-y-6">
-          <VStack className="gap-y-1">
-            {payment.expense_description && (
-              <Text
-                className="text-sm text-secondary-950 uppercase"
-                bold
-                numberOfLines={1}
-              >
-                {payment.expense_description}
-              </Text>
-            )}
-            <VStack>
-              <Text className="text-3xl" bold>
-                {formatAmount(payment.amount || 0, payment.currency)}
-              </Text>
-              <Text className="text-secondary-950">You receive</Text>
-            </VStack>
-          </VStack>
-
-          <SettlementBreakdown payment={payment} />
+          <SettlementSummary payment={payment} />
 
           {payment.rejected_at && (
             <VStack className="bg-secondary-100 rounded-xl p-4 gap-y-1">
@@ -152,32 +122,6 @@ export default function MarkAsSettledSheet({
               </Text>
             </VStack>
           )}
-
-          <FormControl size="md">
-            <VStack className="gap-y-1">
-              <FormControlLabel className="flex-1">
-                <FormControlLabelText>Paid by</FormControlLabelText>
-              </FormControlLabel>
-              <HStack className="gap-x-3 items-center flex-1">
-                <AppAvatar
-                  name={payment.member.first_name}
-                  uri={payment.member.avatar!}
-                  size="md"
-                />
-                <VStack>
-                  <HStack className="gap-x-1 items-center">
-                    <Text className="text-lg">
-                      {payment.member.first_name} {payment.member.last_name}
-                      {isMe && " (You)"}
-                    </Text>
-                  </HStack>
-                  <Text className="text-sm text-secondary-950">
-                    {getUserSubtitle(payment.member)}
-                  </Text>
-                </VStack>
-              </HStack>
-            </VStack>
-          </FormControl>
 
           <FormTextarea
             label="Note (optional)"
