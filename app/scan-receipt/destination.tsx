@@ -112,7 +112,7 @@ export default function ScanDestinationScreen() {
         <VStack className="flex-1 justify-center gap-y-6 p-6">
           <EmptyList
             type={EmptyType.GROUP}
-            content="You don't have a group or a personal book yet — an expense needs somewhere to live. Create one and your scanned receipt will be waiting."
+            content="You don't have a group or an Individual entry yet — an expense needs somewhere to live. Create one and your scanned receipt will be waiting."
           />
           <VStack className="gap-y-2">
             <FormButton
@@ -121,7 +121,7 @@ export default function ScanDestinationScreen() {
             />
             <FormButton
               variant="outline"
-              text="Create a Book"
+              text="Create an Individual"
               onPress={() => router.push("/books/create")}
             />
           </VStack>
@@ -133,7 +133,7 @@ export default function ScanDestinationScreen() {
           {showSearch && (
             <Box className="px-4 pt-2 pb-1">
               <SearchInput
-                placeholder="Search groups and books"
+                placeholder="Search groups and Individual entries"
                 value={searchInput}
                 onChangeText={setSearchInput}
                 onSetSearching={setSearching}
@@ -156,7 +156,7 @@ export default function ScanDestinationScreen() {
               <Box className="pt-8">
                 <EmptyList
                   type={EmptyType.SEARCH}
-                  content={`No group or book matches "${searchInput.trim()}".`}
+                  content={`No group or Individual entry matches "${searchInput.trim()}".`}
                 />
               </Box>
             ) : (

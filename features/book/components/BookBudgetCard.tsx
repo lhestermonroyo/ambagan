@@ -139,7 +139,7 @@ export default function BookBudgetCard({
           {isMonthly ? "Monthly budget" : "Total budget"}
         </Text>
         <Text className="text-sm text-secondary-950">
-          {isMonthly ? monthLabel() : "Whole book"}
+          {isMonthly ? monthLabel() : "All time"}
         </Text>
       </HStack>
 

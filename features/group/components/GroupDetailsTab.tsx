@@ -63,6 +63,8 @@ export default function GroupDetailsTab({
     <Fragment>
       <VStack className="gap-y-6 px-4">
         <Box className="bg-secondary-100 rounded-xl overflow-hidden">
+          <DetailRow label="Mode" value={<Text>Group</Text>} />
+          <RowDivider />
           {/* The REPORTING currency — what Stats and the settlement totals
               convert into. It also seeds new expenses unless the row below
               overrides it, which is why this one isn't labelled "default". */}

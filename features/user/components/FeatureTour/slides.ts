@@ -48,7 +48,7 @@ export const TOUR_SLIDES: TourSlide[] = [
     art: ART_DIVERSIFIED_BASKET,
     blob: BLOB_ACCENTS.sky,
     title: "Track your own spending too",
-    body: "Books are for the expenses that are just yours. Give one a budget and watch how the month goes."
+    body: "Choose Individual mode when creating an entry in Groups to track expenses that are just yours. Record your expenses and see how much you have spent."
   },
   {
     key: "scan",

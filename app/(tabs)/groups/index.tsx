@@ -16,27 +16,35 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import GroupItem from "@/features/group/components/GroupItem";
-import { GroupFilter } from "@/features/group/services/group.service";
+import GroupListFilterSheet, { groupFilterLabel } from "@/features/group/components/GroupListFilterSheet";
+import { sortGroupsByActivity } from "@/features/group/utils/groupActivity";
+import { groupEntryHref, groupEntryKey, isIndividualGroup } from "@/features/group/utils/groupMode";
+import type { GroupFilter } from "@/features/group/services/group.service";
 import useAppToast from "@/hooks/use-app-toast";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
+import { GroupMode, type Group, type Member } from "@/types/groups";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
-import { HousePlus, Plus, QrCode, Search, X } from "lucide-react-native";
+import { ChevronDown, HousePlus, Plus, QrCode, Search, X } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
 import { Modal, RefreshControl, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SwipeListView } from "react-native-swipe-list-view";
 
-const TABS: { key: GroupFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "created", label: "Created" },
-  { key: "joined", label: "Joined" },
-  { key: "archived", label: "Archived" }
+const TABS = [
+  { key: GroupMode.GROUP, label: "Groups" },
+  { key: GroupMode.INDIVIDUAL, label: "Individual" }
 ];
+
+type Entry = Group & { members: Member[] };
+const initialFilters: Record<GroupMode, GroupFilter> = {
+  [GroupMode.GROUP]: "all",
+  [GroupMode.INDIVIDUAL]: "all"
+};
 
 export default function GroupsScreen() {
   const [loading, setLoading] = useState(false);
@@ -47,14 +55,23 @@ export default function GroupsScreen() {
   const [searching, setSearching] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchInput, setSearchInput] = useState("");
+  const [searchEntries, setSearchEntries] = useState<Entry[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [groups, setGroups] = useState<any[]>([]);
+  const [groups, setGroups] = useState<Entry[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [activeTab, setActiveTab] = useState<GroupFilter>("all");
+  const [activeTab, setActiveTab] = useState<GroupMode>(GroupMode.GROUP);
+  const [filters, setFilters] = useState(initialFilters);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const activeFilter = filters[activeTab];
   const [fabOpen, setFabOpen] = useState(false);
 
-  const activeTabRef = useRef<GroupFilter>("all");
+  const activeTabRef = useRef<GroupMode>(GroupMode.GROUP);
+  const filtersRef = useRef(initialFilters);
+  const requestIdRef = useRef(0);
+  const searchRequestIdRef = useRef(0);
 
   const { details: userDetails } = states.user();
 
@@ -68,77 +85,107 @@ export default function GroupsScreen() {
     useMemo(
       () => () => {
         if (!userDetails?.id) return;
-        init(initialized, activeTabRef.current);
+        init(initialized);
       },
       [userDetails?.id, initialized]
     )
   );
 
-  const init = async (isInitialized = false, filter: GroupFilter = "all") => {
-    await fetchGroup(0, filter, isInitialized);
+  const init = async (isInitialized = false) => {
+    await fetchGroup(0, filtersRef.current[activeTabRef.current], isInitialized);
     setInitialized(true);
   };
 
   const fetchGroup = async (
     pageNum: number,
     filter: GroupFilter,
-    isInitialized = false
+    isInitialized = false,
+    mode = activeTabRef.current
   ) => {
     if (!userDetails?.id) return;
+    const requestId = pageNum === 0 ? ++requestIdRef.current : requestIdRef.current;
+    if (pageNum === 0) setLoadingMore(false);
     if (!isInitialized) setLoading(true);
     try {
-      const result = await services.group.getGroupsByUserIdPaginated(
+      const result = await services.group.getGroupEntriesByUserIdPaginated(
         userDetails.id,
         pageNum,
-        filter
+        filter,
+        mode
       );
-      setGroups((prev) =>
-        pageNum === 0 ? result.data : [...prev, ...result.data]
-      );
+      if (
+        requestId !== requestIdRef.current || mode !== activeTabRef.current ||
+        filter !== filtersRef.current[mode]
+      ) return;
+      setGroups((prev) => pageNum === 0 ? result.data :
+        [...new Map([...prev, ...result.data].map(entry => [groupEntryKey(entry), entry])).values()]);
       setPage(pageNum);
       setHasMore(result.hasNext);
       if (filter === "all") {
         states.group.setState((prev) => ({
           ...prev,
-          list: pageNum === 0 ? result.data : [...prev.list, ...result.data],
+          list: sortGroupsByActivity([...new Map([
+            ...(pageNum === 0 && !result.hasNext
+              ? prev.list.filter(entry => (entry.mode ?? GroupMode.GROUP) !== mode)
+              : prev.list),
+            ...result.data
+          ].map(entry => [groupEntryKey(entry), entry])).values()]),
           initialized: true
         }));
       }
     } catch (error) {
       console.error("Failed to fetch groups:", error);
     } finally {
-      if (!isInitialized) setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   };
 
   const loadMore = async () => {
+    if (loading || loadingMore || !hasMore) return;
+    const requestId = requestIdRef.current;
     setLoadingMore(true);
     try {
-      await fetchGroup(page + 1, activeTabRef.current, true);
+      await fetchGroup(page + 1, filtersRef.current[activeTabRef.current], true);
     } finally {
-      setLoadingMore(false);
+      if (requestId === requestIdRef.current) setLoadingMore(false);
     }
   };
 
-  const handleTabChange = async (tab: GroupFilter) => {
+  const handleTabChange = async (tab: GroupMode) => {
     if (tab === activeTabRef.current) return;
     activeTabRef.current = tab;
     setActiveTab(tab);
+    setFilterSheetOpen(false);
+    setGroups([]);
     setPage(0);
     setHasMore(false);
-    await fetchGroup(0, tab, true);
+    setLoadingMore(false);
+    await fetchGroup(0, filtersRef.current[tab], false, tab);
   };
 
-  const handleArchiveGroup = async (groupId: string) => {
+  const handleFilterChange = async (filter: GroupFilter) => {
+    const mode = activeTabRef.current;
+    if (filter === filtersRef.current[mode]) return;
+    filtersRef.current = { ...filtersRef.current, [mode]: filter };
+    setFilters(filtersRef.current);
+    setGroups([]);
+    setPage(0);
+    setHasMore(false);
+    setLoadingMore(false);
+    await fetchGroup(0, filter, false, mode);
+  };
+
+  const handleArchiveGroup = async (entry: Group) => {
+    const groupId = entry.id;
     setArchiving(true);
     try {
-      await services.group.archiveGroup(groupId);
+      await (isIndividualGroup(entry) ? services.book.archiveBook(groupId) : services.group.archiveGroup(groupId));
       toast({
-        title: "Group archived",
-        description: "You can find it in the Archived tab.",
+        title: isIndividualGroup(entry) ? "Individual archived" : "Group archived",
+        description: "You can find it using the Archived filter.",
         type: "success"
       });
-      await fetchGroup(0, activeTabRef.current, true);
+      await fetchGroup(0, filtersRef.current[activeTabRef.current], true);
     } catch (error) {
       console.error("Failed to archive group:", error);
       toast({
@@ -151,19 +198,20 @@ export default function GroupsScreen() {
     }
   };
 
-  const handleDeleteGroup = async (groupId: string) => {
+  const handleDeleteGroup = async (entry: Group) => {
+    const groupId = entry.id;
     setDeleting(true);
     try {
-      await services.group.deleteGroup(groupId);
+      await (isIndividualGroup(entry) ? services.book.deleteBook(groupId) : services.group.deleteGroup(groupId));
       toast({
-        title: "Group deleted",
+        title: isIndividualGroup(entry) ? "Individual deleted" : "Group deleted",
         description: "The group has been permanently deleted.",
         type: "success"
       });
-      setGroups((prev) => prev.filter((g) => g.id !== groupId));
+      setGroups((prev) => prev.filter((g) => groupEntryKey(g) !== groupEntryKey(entry)));
       states.group.setState((prev) => ({
         ...prev,
-        list: prev.list.filter((g) => g.id !== groupId)
+        list: prev.list.filter((g) => groupEntryKey(g) !== groupEntryKey(entry))
       }));
     } catch (error: any) {
       console.error("Failed to delete group:", error);
@@ -178,16 +226,17 @@ export default function GroupsScreen() {
     }
   };
 
-  const handleUnarchiveGroup = async (groupId: string) => {
+  const handleUnarchiveGroup = async (entry: Group) => {
+    const groupId = entry.id;
     setArchiving(true);
     try {
-      await services.group.unarchiveGroup(groupId);
+      await (isIndividualGroup(entry) ? services.book.unarchiveBook(groupId) : services.group.unarchiveGroup(groupId));
       toast({
         title: "Group restored",
         description: "Group has been moved back to your active groups.",
         type: "success"
       });
-      await fetchGroup(0, activeTabRef.current, true);
+      await fetchGroup(0, filtersRef.current[activeTabRef.current], true);
     } catch (error) {
       console.error("Failed to unarchive group:", error);
       toast({
@@ -202,7 +251,7 @@ export default function GroupsScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchGroup(0, activeTabRef.current, true);
+    await fetchGroup(0, filtersRef.current[activeTabRef.current], true);
     setRefreshing(false);
   };
 
@@ -223,23 +272,64 @@ export default function GroupsScreen() {
     router.push("/scan" as any);
   };
 
+  const fetchSearchEntries = async () => {
+    if (!userDetails?.id) return;
+    const userId = userDetails.id;
+    const requestId = ++searchRequestIdRef.current;
+    const filter = filtersRef.current[activeTabRef.current] === "archived" ? "archived" : "all";
+    setSearchEntries([]);
+    setSearchLoading(true);
+    setSearchError(false);
+    try {
+      const entries: Entry[] = [];
+      let searchPage = 0;
+      let hasNext = true;
+      while (hasNext) {
+        // Omitting mode searches both ledgers, independently of the selected tab.
+        const result = await services.group.getGroupEntriesByUserIdPaginated(userId, searchPage++, filter);
+        if (requestId !== searchRequestIdRef.current || states.user.getState().details?.id !== userId) return;
+        entries.push(...result.data);
+        hasNext = result.hasNext;
+      }
+      setSearchEntries(sortGroupsByActivity(
+        [...new Map(entries.map(entry => [groupEntryKey(entry), entry])).values()]
+      ));
+    } catch (error) {
+      if (requestId !== searchRequestIdRef.current) return;
+      console.error("Failed to search entries:", error);
+      setSearchError(true);
+    } finally {
+      if (requestId === searchRequestIdRef.current) setSearchLoading(false);
+    }
+  };
+
+  const openSearch = () => {
+    if (!userDetails?.id) return;
+    setSearchVisible(true);
+    fetchSearchEntries();
+  };
+
   const handleSearchChange = (text: string) => {
     setSearchInput(text);
-    setSearching(text.length > 0);
+    setSearching(text.trim().length > 0);
+  };
+
+  const closeSearch = () => {
+    setSearchVisible(false);
+    searchRequestIdRef.current += 1;
+    setSearchLoading(false);
   };
 
   const handleCancelSearch = () => {
     setSearchInput("");
     setSearching(false);
-    setSearchVisible(false);
+    closeSearch();
   };
 
-  const filteredGroups = useMemo(() => {
-    if (searchInput.length === 0) return groups;
-    return groups.filter((g) =>
-      g.name.toLowerCase().includes(searchInput.toLowerCase())
-    );
-  }, [searchInput, groups]);
+  const searchResults = useMemo(() => {
+    const query = searchInput.trim().toLowerCase();
+    return searchEntries.filter(entry => entry.name.toLowerCase().includes(query));
+  }, [searchInput, searchEntries]);
 
   return (
     <TabLayout
@@ -249,7 +339,7 @@ export default function GroupsScreen() {
           key: "search",
           sf: "magnifyingglass",
           lucide: Search,
-          label: "Search groups",
+          label: "Search Groups and Individual",
           // The dim backdrop can't cover the native header, so guard here:
           // while the add menu is open, a search tap just dismisses it.
           onPress: () => {
@@ -257,7 +347,7 @@ export default function GroupsScreen() {
               setFabOpen(false);
               return;
             }
-            setSearchVisible(true);
+            openSearch();
           }
         },
         {
@@ -278,52 +368,58 @@ export default function GroupsScreen() {
           }
         >
           <VStack className="bg-background-0 pb-4 gap-y-4 pt-2">
-            {!searching && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <HStack className="gap-x-2 px-4">
-                  {TABS.map((tab) => (
-                    <FormButton
-                      key={tab.key}
-                      size="sm"
-                      variant={activeTab === tab.key ? "solid" : "outline"}
-                      text={tab.label}
-                      onPress={() => handleTabChange(tab.key)}
-                    />
-                  ))}
-                </HStack>
-              </ScrollView>
-            )}
+            <HStack className="gap-x-2 px-4">
+              {TABS.map((tab) => (
+                <FormButton
+                  key={tab.key}
+                  size="sm"
+                  className="flex-1"
+                  variant={activeTab === tab.key ? "solid" : "outline"}
+                  text={tab.label}
+                  onPress={() => handleTabChange(tab.key)}
+                />
+              ))}
+            </HStack>
+            <HStack className="px-4 items-center">
+              <FormButton
+                size="sm"
+                variant="outline"
+                text={groupFilterLabel(activeFilter)}
+                iconEnd={<ChevronDown size={16} color={getPrimaryHex("text-primary-500", colorScheme)} />}
+                onPress={() => setFilterSheetOpen(true)}
+              />
+            </HStack>
           </VStack>
 
           <LoadingWrapper isLoading={loading} skeleton={<GroupListSkeleton />}>
             <SwipeListView
               className="flex-1"
               scrollEnabled={false}
-              data={filteredGroups}
-              keyExtractor={(item) => item.id}
+              data={groups}
+              keyExtractor={groupEntryKey}
               renderItem={({ item }) => (
                 <GroupItem
                   details={item}
-                  onOpen={() => router.push(`/groups/${item.id}`)}
-                  key={item.id}
+                  onOpen={() => router.push(groupEntryHref(item))}
+                  key={groupEntryKey(item)}
                 />
               )}
               renderHiddenItem={({ item }, rowMap) =>
                 item.admin.id === userDetails?.id && (
                   <HStack className="flex-1 justify-end items-center flex-row px-4 gap-x-2 bg-background-50">
-                    {activeTab === "archived" ? (
+                    {activeFilter === "archived" ? (
                       <>
                         <ConfirmIconButton
                           icon="unarchive"
                           iconClassName="text-background-0"
                           variant="solid"
                           className="rounded-full h-[40] w-[40] p-0"
-                          confirmTitle="Restore Group"
+                          confirmTitle={isIndividualGroup(item) ? "Restore Individual" : "Restore Group"}
                           confirmDescription="This will move the group back to your active groups."
                           isLoading={archiving}
                           onConfirm={() => {
-                            rowMap[item.id]?.closeRow();
-                            handleUnarchiveGroup(item.id);
+                            rowMap[groupEntryKey(item)]?.closeRow();
+                            handleUnarchiveGroup(item);
                           }}
                         />
                         <ConfirmIconButton
@@ -332,13 +428,13 @@ export default function GroupsScreen() {
                           variant="solid"
                           action="negative"
                           className="rounded-full h-[40] w-[40] p-0"
-                          confirmTitle="Delete Group"
-                          confirmDescription="Permanently deleting this group will remove all expenses, settlements, and member data. This cannot be undone."
+                          confirmTitle={isIndividualGroup(item) ? "Delete Individual" : "Delete Group"}
+                          confirmDescription={isIndividualGroup(item) ? "Permanently deleting this Individual entry removes its expenses and recurring schedules. This cannot be undone." : "Permanently deleting this group will remove all expenses, settlements, and member data. This cannot be undone."}
                           isDelete
                           isLoading={deleting}
                           onConfirm={() => {
-                            rowMap[item.id]?.closeRow();
-                            handleDeleteGroup(item.id);
+                            rowMap[groupEntryKey(item)]?.closeRow();
+                            handleDeleteGroup(item);
                           }}
                         />
                       </>
@@ -348,8 +444,8 @@ export default function GroupsScreen() {
                           variant="solid"
                           className="rounded-full h-[40] w-[40] p-0"
                           onPress={() => {
-                            router.push(`/groups/${item.id}/edit?isGroup=true`);
-                            rowMap[item.id]?.closeRow();
+                            router.push(isIndividualGroup(item) ? `/books/create?bookId=${item.id}` : `/groups/${item.id}/edit?isGroup=true`);
+                            rowMap[groupEntryKey(item)]?.closeRow();
                           }}
                         >
                           <Icon as="edit" className="text-background-0" />
@@ -359,12 +455,12 @@ export default function GroupsScreen() {
                           iconClassName="text-background-0"
                           variant="solid"
                           className="rounded-full h-[40] w-[40] p-0"
-                          confirmTitle="Archive Group"
-                          confirmDescription="This group will be archived and hidden from your active list. You can restore it anytime from the Archived tab."
+                          confirmTitle={isIndividualGroup(item) ? "Archive Individual" : "Archive Group"}
+                          confirmDescription="This group will be archived and hidden from your active list. You can restore it anytime using the Archived filter."
                           isLoading={archiving}
                           onConfirm={() => {
-                            rowMap[item.id]?.closeRow();
-                            handleArchiveGroup(item.id);
+                            rowMap[groupEntryKey(item)]?.closeRow();
+                            handleArchiveGroup(item);
                           }}
                         />
                         <ConfirmIconButton
@@ -373,13 +469,13 @@ export default function GroupsScreen() {
                           variant="solid"
                           action="negative"
                           className="rounded-full h-[40] w-[40] p-0"
-                          confirmTitle="Delete Group"
-                          confirmDescription="Permanently deleting this group will remove all expenses, settlements, and member data. This cannot be undone."
+                          confirmTitle={isIndividualGroup(item) ? "Delete Individual" : "Delete Group"}
+                          confirmDescription={isIndividualGroup(item) ? "Permanently deleting this Individual entry removes its expenses and recurring schedules. This cannot be undone." : "Permanently deleting this group will remove all expenses, settlements, and member data. This cannot be undone."}
                           isDelete
                           isLoading={deleting}
                           onConfirm={() => {
-                            rowMap[item.id]?.closeRow();
-                            handleDeleteGroup(item.id);
+                            rowMap[groupEntryKey(item)]?.closeRow();
+                            handleDeleteGroup(item);
                           }}
                         />
                       </>
@@ -387,20 +483,15 @@ export default function GroupsScreen() {
                   </HStack>
                 )
               }
-              rightOpenValue={activeTab === "archived" ? -116 : -174}
+              rightOpenValue={activeFilter === "archived" ? -116 : -174}
               disableRightSwipe
               ItemSeparatorComponent={ListDivider}
-              ListHeaderComponent={() =>
-                searching && (
-                  <Text className="text-sm text-secondary-950 px-4 pb-2" bold>
-                    {filteredGroups.length} result
-                    {filteredGroups.length !== 1 ? "s" : ""}
-                  </Text>
-                )
-              }
               ListEmptyComponent={() => (
                 <EmptyList
-                  type={searching ? EmptyType.SEARCH : EmptyType.GROUP}
+                  type={activeTab === GroupMode.INDIVIDUAL ? EmptyType.BOOK : EmptyType.GROUP}
+                  content={activeTab === GroupMode.INDIVIDUAL
+                    ? activeFilter === "archived" ? "No archived Individual entries." : "No Individual entries yet. Create one to record your personal expenses."
+                    : undefined}
                 />
               )}
               ListFooterComponent={() => (
@@ -484,38 +575,58 @@ export default function GroupsScreen() {
           </Box>
         </Modal>
 
+        <GroupListFilterSheet
+          isOpen={filterSheetOpen}
+          onClose={() => setFilterSheetOpen(false)}
+          mode={activeTab}
+          filter={activeFilter}
+          onSelect={handleFilterChange}
+        />
+
         <SearchDrawer
           isOpen={searchVisible}
-          onClose={() => setSearchVisible(false)}
+          onClose={closeSearch}
           onCancel={handleCancelSearch}
           value={searchInput}
           onChangeText={handleSearchChange}
           placeholder="Search groups"
         >
           {searching ? (
-            <FlatList
-              data={filteredGroups}
-              keyExtractor={(item) => item.id}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingBottom: 24 }}
-              renderItem={({ item }) => (
-                <GroupItem
-                  details={item}
-                  onOpen={() => {
-                    handleCancelSearch();
-                    router.push(`/groups/${item.id}`);
-                  }}
-                />
-              )}
-              ItemSeparatorComponent={ListDivider}
-              ListHeaderComponent={
-                <Text className="text-sm text-secondary-950 px-4 py-2" bold>
-                  {filteredGroups.length} result
-                  {filteredGroups.length !== 1 ? "s" : ""}
-                </Text>
-              }
-              ListEmptyComponent={<EmptyList type={EmptyType.SEARCH} />}
-            />
+            <VStack className="flex-1">
+              <LoadingWrapper isLoading={searchLoading} skeleton={<GroupListSkeleton />}>
+                {searchError ? (
+                  <VStack className="p-4 gap-y-3 items-center">
+                    <Text className="text-secondary-950">Couldn't load search results.</Text>
+                    <FormButton size="sm" text="Try again" variant="outline" onPress={fetchSearchEntries} />
+                  </VStack>
+                ) : (
+                  <FlatList
+                    className="flex-1"
+                    data={searchResults}
+                    keyExtractor={groupEntryKey}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={{ paddingBottom: 24 }}
+                    renderItem={({ item }) => (
+                      <GroupItem
+                        details={item}
+                        onOpen={() => {
+                          handleCancelSearch();
+                          router.push(groupEntryHref(item));
+                        }}
+                      />
+                    )}
+                    ItemSeparatorComponent={ListDivider}
+                    ListHeaderComponent={
+                      <Text className="text-sm text-secondary-950 px-4 py-2" bold>
+                        {searchResults.length} result
+                        {searchResults.length !== 1 ? "s" : ""}
+                      </Text>
+                    }
+                    ListEmptyComponent={<EmptyList type={EmptyType.SEARCH} />}
+                  />
+                )}
+              </LoadingWrapper>
+            </VStack>
           ) : null}
         </SearchDrawer>
       </Box>

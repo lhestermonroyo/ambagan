@@ -1,7 +1,9 @@
 import { createNotification } from "@/features/notifications/services/notification.service";
 import states from "@/states";
 import { NotificationType } from "@/types/notifications";
-import { Group, GroupRole, Member } from "@/types/groups";
+import { Group, GroupMode, GroupRole, Member } from "@/types/groups";
+import type { Book } from "@/types/books";
+import { individualGroupEntry, isIndividualGroup } from "@/features/group/utils/groupMode";
 import { normalizeEntryCurrency } from "@/features/group/utils/groupCurrency";
 import { compareGroupsByActivity, sortGroupsByActivity } from "@/features/group/utils/groupActivity";
 import { cacheService } from "@/utils/cacheService";
@@ -23,6 +25,7 @@ export const saveGroup = async ({
   default_expense_currency,
   admin_id,
   member_ids,
+  admin_member_ids = [],
   id
 }: {
   name: string;
@@ -34,6 +37,8 @@ export const saveGroup = async ({
   avatar: ImagePickerSuccessResult | null;
   admin_id: string;
   member_ids: string[];
+  /** Members selected as co-admins by the owner during creation. */
+  admin_member_ids?: string[];
   /** Optional pre-generated id — used so offline-queued groups keep a stable id on sync. */
   id?: string;
 }) => {
@@ -45,6 +50,12 @@ export const saveGroup = async ({
 
   if (admin_id !== user.data.user.id) {
     throw new Error("Admin ID must be the same as the authenticated user");
+  }
+
+  const membershipIds = [...new Set([admin_id, ...member_ids])];
+  const selectedAdmins = new Set(admin_member_ids);
+  if (admin_member_ids.some((memberId) => !membershipIds.includes(memberId))) {
+    throw new Error("Admins must be selected group members");
   }
 
   const groupId = id ?? uuid();
@@ -88,7 +99,7 @@ export const saveGroup = async ({
   // Upsert (ignore duplicates) so a repair pass only fills in the member rows a
   // partial prior write missed, and a re-synced add never duplicates a row.
   const responses = await Promise.all([
-    ...member_ids.map((id) => {
+    ...membershipIds.map((id) => {
       return supabase.from(tables.GROUP_MEMBERS_TBL).upsert(
         {
           group_id: groupId,
@@ -97,7 +108,9 @@ export const saveGroup = async ({
           // group's admins as a plain filter on the roster. It is NOT what
           // makes them the owner — that's groups_tbl.admin_id, which RLS reads
           // directly (see migrations/2026-08-19_group_co_admins.sql).
-          role: id === admin_id ? GroupRole.ADMIN : GroupRole.MEMBER
+          role: id === admin_id || selectedAdmins.has(id)
+            ? GroupRole.ADMIN
+            : GroupRole.MEMBER
         },
         { onConflict: "group_id,member_id", ignoreDuplicates: true }
       );
@@ -111,7 +124,7 @@ export const saveGroup = async ({
   }
 
   if (!isRepair) {
-    const membersToNotify = member_ids.filter((id) => id !== admin_id);
+    const membersToNotify = membershipIds.filter((id) => id !== admin_id);
 
     await Promise.allSettled(
       membersToNotify.map((memberId) =>
@@ -424,7 +437,7 @@ export const getGroupsByUserId = async (userId: string) => {
     // Offline / fetch failure — fall back to the last cached snapshot.
     const cached = await cacheService.getGroupsList(userId);
     if (cached) {
-      return sortGroupsByActivity(cached as (Group & { members: Member[] })[]);
+      return sortGroupsByActivity((cached as (Group & { members: Member[] })[]).filter(g => !isIndividualGroup(g)));
     }
     throw error;
   }
@@ -508,11 +521,12 @@ export const getGroupsByUserIdPaginated = async (
       | null;
     if (!cached) throw error;
 
-    let data = cached;
+    const shared = cached.filter(g => !isIndividualGroup(g));
+    let data = shared;
     if (filter === "created") {
-      data = cached.filter((g) => g.admin?.id === userId);
+      data = shared.filter((g) => g.admin?.id === userId);
     } else if (filter === "joined") {
-      data = cached.filter((g) => g.admin?.id !== userId);
+      data = shared.filter((g) => g.admin?.id !== userId);
     } else if (filter === "archived") {
       // Archived groups aren't cached (the snapshot excludes them).
       data = [];
@@ -520,6 +534,115 @@ export const getGroupsByUserIdPaginated = async (
 
     return { data: sortGroupsByActivity(data), hasNext: false };
   }
+};
+
+/** Paginated Group and Individual entries, optionally restricted to one mode.
+ *  The view applies member/owner policies and filters before pagination. */
+export const getGroupEntriesByUserIdPaginated = async (
+  userId: string,
+  page = 0,
+  filter: GroupFilter = "all",
+  mode?: GroupMode
+): Promise<{ data: (Group & { members: Member[] })[]; hasNext: boolean }> => {
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    if (auth.user?.id !== userId) throw new Error("User not authenticated");
+    const from = page * GROUPS_PAGE_SIZE;
+    let query = supabase.from("group_entries_v")
+      .select("*", { count: "exact" })
+      .eq("archived", filter === "archived")
+      .order("last_updated_at", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true })
+      .order("mode", { ascending: true })
+      .range(from, from + GROUPS_PAGE_SIZE - 1);
+    if (mode) query = query.eq("mode", mode);
+    if (filter === "created") query = query.eq("admin_id", userId);
+    if (filter === "joined") query = query.neq("admin_id", userId);
+    const { data, error, count } = await query;
+    if (error) throw error;
+    const rawEntries = (data ?? []) as (Group & { individual_ledger?: Book | null })[];
+    const entries = rawEntries.map(({ individual_ledger: _, ...entry }) => entry);
+    const privateBooks = rawEntries.flatMap(entry => entry.individual_ledger
+      ? [{ ...entry.individual_ledger, expense_count: entry.expense_count }] : []);
+    const complete = !mode && page === 0 && filter === "all" && from + entries.length >= (count ?? 0);
+    const completeBooks = complete || (mode === GroupMode.INDIVIDUAL && page === 0 &&
+      filter === "all" && from + entries.length >= (count ?? 0));
+    if (privateBooks.length || completeBooks) {
+      const cached = (await cacheService.getBooksList(userId).catch(() => null)) as Book[] | null;
+      const merged = new Map((completeBooks ? [] : cached ?? []).map(book => [book.id, book]));
+      for (const book of privateBooks) merged.set(book.id, book);
+      const books = sortGroupsByActivity([...merged.values()]).filter(book => !book.archived);
+      states.book.setState(prev => ({ ...prev, list: books, initialized: completeBooks || prev.initialized }));
+      await cacheService.saveBooksList(userId, books).catch(() => {});
+    }
+    const ids = entries.filter(g => !isIndividualGroup(g)).map(g => g.id);
+    const members = ids.length ? await getMembersByGroupIds(ids) : [];
+    const result = {
+      data: entries.map(g => ({
+        ...g,
+        members: isIndividualGroup(g)
+          ? [{ ...g.admin, group_id: g.id, joined_at: g.created_at, role: GroupRole.ADMIN }]
+          : members.filter(m => m.group_id === g.id)
+      })),
+      hasNext: from + entries.length < (count ?? 0)
+    };
+    if (page === 0 && filter === "all" && !result.hasNext) {
+      const cached = mode
+        ? await cacheService.getGroupsList(userId).catch(() => null)
+        : null;
+      const entriesToCache = mode
+        ? [...((cached ?? []) as (Group & { members: Member[] })[])
+            .filter(entry => (entry.mode ?? GroupMode.GROUP) !== mode), ...result.data]
+        : result.data;
+      await cacheService.saveGroupsList(userId, sortGroupsByActivity(entriesToCache)).catch(() => {});
+    }
+    return result;
+  } catch (error) {
+    if (page > 0) throw error;
+    const owner = states.user.getState().details;
+    if (owner?.id !== userId) throw error;
+    const [groups, books] = await Promise.all([
+      cacheService.getGroupsList(userId), cacheService.getBooksList(userId)
+    ]);
+    if (!groups && !books) throw error;
+    const entries = new Map<string, Group & { members: Member[] }>();
+    for (const g of (groups ?? []) as (Group & { members: Member[] })[]) {
+      if (!isIndividualGroup(g) || g.admin.id === userId) entries.set(`${g.mode ?? GroupMode.GROUP}:${g.id}`, g);
+    }
+    if (owner?.id === userId) {
+      for (const book of (books ?? []) as Book[]) {
+        entries.set(`${GroupMode.INDIVIDUAL}:${book.id}`, individualGroupEntry(book, owner));
+      }
+    }
+    const data = sortGroupsByActivity([...entries.values()]).filter(g =>
+      (!mode || (g.mode ?? GroupMode.GROUP) === mode) &&
+      !g.archived && (filter !== "created" || g.admin.id === userId) &&
+      (filter !== "joined" || g.admin.id !== userId)
+    );
+    return { data: filter === "archived" ? [] : data, hasNext: false };
+  }
+};
+
+export const getGroupEntriesByUserId = async (userId: string) => {
+  const entries: (Group & { members: Member[] })[] = [];
+  let page = 0;
+  let hasNext = true;
+  while (hasNext) {
+    const result = await getGroupEntriesByUserIdPaginated(userId, page++, "all");
+    entries.push(...result.data);
+    hasNext = result.hasNext;
+  }
+  cacheService.saveGroupsList(userId, entries).catch(() => {});
+  const ids = new Set(entries.filter(isIndividualGroup).map(g => g.id));
+  const books = await cacheService.getBooksList(userId).catch(() => null);
+  states.book.setState(prev => ({
+    ...prev,
+    list: sortGroupsByActivity(((books ?? prev.list) as Book[]).filter(b => ids.has(b.id) && b.user_id === userId)),
+    initialized: true
+  }));
+  if (books) cacheService.saveBooksList(userId, (books as Book[]).filter(b => ids.has(b.id))).catch(() => {});
+  return entries;
 };
 
 export const getGroupById = async (groupId: string) => {

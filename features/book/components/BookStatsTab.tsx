@@ -70,7 +70,7 @@ export default function BookStatsTab({
         if (!cancelled) setExpenses(data);
       })
       .catch((error) => {
-        console.error("Failed to load book stats:", error);
+        console.error("Failed to load Individual entry stats:", error);
         if (!cancelled) setExpenses([]);
       })
       .finally(() => {
@@ -384,7 +384,7 @@ export default function BookStatsTab({
                       {combinedTotalLabel(linkedGroupCategory)}
                     </Text>
                     <Text className="text-sm text-secondary-950">
-                      This book plus your share of{" "}
+                      This Individual entry plus your share of{" "}
                       {linkedGroupName ?? "the linked group"}.
                     </Text>
                   </VStack>
@@ -395,7 +395,7 @@ export default function BookStatsTab({
                         className="text-sm text-secondary-950 flex-1"
                         numberOfLines={1}
                       >
-                        This book (paid)
+                        This Individual entry (paid)
                       </Text>
                       <Text numberOfLines={1} adjustsFontSizeToFit>
                         {spending.paidApprox ? "≈ " : ""}

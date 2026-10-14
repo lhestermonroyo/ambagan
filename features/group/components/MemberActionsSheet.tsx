@@ -20,7 +20,8 @@ import {
   LucideIcon,
   ShieldOff,
   ShieldPlus,
-  UserRound
+  UserRound,
+  UserRoundMinus
 } from "lucide-react-native";
 import { useMemo } from "react";
 import { useColorScheme } from "react-native";
@@ -50,7 +51,8 @@ export default function MemberActionsSheet({
   canManage,
   isOwnerRow,
   onViewDetails,
-  onSetRole
+  onSetRole,
+  onRemove
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -60,8 +62,9 @@ export default function MemberActionsSheet({
   canManage: boolean;
   /** True when this row IS the owner's. */
   isOwnerRow: boolean;
-  onViewDetails: (member: Member) => void;
+  onViewDetails?: (member: Member) => void;
   onSetRole: (member: Member, role: GroupRole) => void;
+  onRemove?: (member: Member) => void;
 }) {
   const colorScheme = useColorScheme() ?? "light";
 
@@ -70,15 +73,16 @@ export default function MemberActionsSheet({
   const items: ActionItem[] = useMemo(() => {
     if (!member) return [];
 
-    const list: ActionItem[] = [
-      {
+    const list: ActionItem[] = [];
+    if (onViewDetails) {
+      list.push({
         key: "details",
         icon: UserRound,
         iconColor: getSecondaryHex("text-secondary-950", colorScheme),
         label: "Friend Details",
         onPress: () => onViewDetails(member)
-      }
-    ];
+      });
+    }
 
     if (canManage && !isOwnerRow) {
       list.push(
@@ -101,6 +105,17 @@ export default function MemberActionsSheet({
       );
     }
 
+    if (canManage && !isOwnerRow && onRemove) {
+      list.push({
+        key: "remove",
+        icon: UserRoundMinus,
+        iconColor: getErrorHex("text-error-600", colorScheme),
+        label: "Remove member",
+        destructive: true,
+        onPress: () => onRemove(member)
+      });
+    }
+
     return list;
   }, [
     member,
@@ -109,7 +124,8 @@ export default function MemberActionsSheet({
     isAdminRow,
     colorScheme,
     onViewDetails,
-    onSetRole
+    onSetRole,
+    onRemove
   ]);
 
   return (

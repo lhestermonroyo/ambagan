@@ -13,8 +13,15 @@ export type GroupState = {
   settlementRefreshToken: number;
 };
 
+export enum GroupMode {
+  GROUP = "group",
+  INDIVIDUAL = "individual"
+}
+
 export type Group = {
   id: string;
+  /** Individual entries use the private ledger; legacy snapshots default to Group. */
+  mode?: GroupMode;
   created_at: string;
   /** Latest group activity, maintained by database triggers. Optional only for
    *  older offline snapshots; sorting falls back to created_at. */

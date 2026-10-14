@@ -1,3 +1,4 @@
+import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AmountInput from "@/components/AmountInput";
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
@@ -22,16 +23,7 @@ import {
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
-import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import {
-  Modal,
-  ModalBody,
-  ModalBackdrop,
-  ModalContent,
-  ModalFooter,
-  ModalHeader
-} from "@/components/ui/modal";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -220,7 +212,7 @@ export default function AddPersonalExpenseScreen() {
         if (active) {
           toast({
             title: "Error",
-            description: "Couldn't load this book. Please try again.",
+            description: "Couldn't load this Individual entry. Please try again.",
             type: "error"
           });
           router.back();
@@ -696,10 +688,10 @@ export default function AddPersonalExpenseScreen() {
           <VStack className="items-center justify-center flex-1 gap-y-4">
             <EmptyList
               type={EmptyType.BOOK}
-              content="No book yet. Create one to start tracking your spending."
+              content="No Individual entry yet. Create one to start tracking your spending."
             />
             <FormButton
-              text="Create Book"
+              text="Create Individual"
               iconEnd={
                 <Icon as="chevron-right" className="text-background-0" />
               }
@@ -856,7 +848,7 @@ export default function AddPersonalExpenseScreen() {
             {selectedBook && (
               <FormControl size="md">
                 <FormControlLabel>
-                  <FormControlLabelText>Book</FormControlLabelText>
+                  <FormControlLabelText>Individual</FormControlLabelText>
                 </FormControlLabel>
                 {isLocked || isEdit ? (
                   <Box className="p-4 border border-background-200 rounded-lg">
@@ -1001,7 +993,7 @@ export default function AddPersonalExpenseScreen() {
         onClose={() => setBookPickerOpen(false)}
         books={bookList}
         onSelect={handleChangeBook}
-        title="Select Book"
+        title="Select Individual"
       />
 
       <CategorySheet
@@ -1043,38 +1035,16 @@ export default function AddPersonalExpenseScreen() {
 
       {/* Delete confirm (header-action triggered) — mirrors the group expense
           detail screen. */}
-      <Modal
+      <ConfirmationSheet
         isOpen={deleteOpen}
-        onClose={() => !deleting && setDeleteOpen(false)}
-      >
-        <ModalBackdrop />
-        <ModalContent>
-          <ModalHeader>
-            <Heading size="lg">Delete Expense</Heading>
-          </ModalHeader>
-          <ModalBody>
-            <Text>
-              This expense will be permanently removed. This cannot be undone.
-            </Text>
-          </ModalBody>
-          <ModalFooter>
-            <HStack className="gap-x-2">
-              <FormButton
-                variant="outline"
-                text="Cancel"
-                disabled={deleting}
-                onPress={() => setDeleteOpen(false)}
-              />
-              <FormButton
-                text="Delete"
-                action="negative"
-                loading={deleting}
-                onPress={handleDelete}
-              />
-            </HStack>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+        onClose={() => setDeleteOpen(false)}
+        title="Delete Expense"
+        description="This expense will be permanently removed. This cannot be undone."
+        confirmText="Delete"
+        isDelete
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
     </Fragment>
   );
 }

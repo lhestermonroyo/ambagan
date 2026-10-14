@@ -7,24 +7,14 @@ import { VStack } from "@/components/ui/vstack";
 import { AmountTextSize } from "@/features/expense/utils/amountTextSize";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { PersonalBookTotal, PersonalOverview } from "@/types/books";
-import {
-  BASE_CURRENCY,
-  getRate,
-  useConvertedTotal,
-  useFxRates
-} from "@/utils/fx";
-import {
-  Minus,
-  PiggyBank,
-  TrendingDown,
-  TrendingUp
-} from "lucide-react-native";
+import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
+import { Minus, TrendingDown, TrendingUp } from "lucide-react-native";
 import { useMemo } from "react";
 
 /**
  * Month-to-date personal spending as the Overview hero's second page, in the
  * same three bands as the net-balance page it swaps with: headline, divider,
- * two half-width stats.
+ * a comparison stat.
  *
  * Sharing that skeleton is load-bearing, not cosmetic. The two pages occupy one
  * slot in a pager, so a personal page built to its own shape — as this was when
@@ -40,7 +30,7 @@ import { useMemo } from "react";
  * directly, so folding it is safe (see utils/fx); the exact per-currency
  * working, pending included, stays one tap away behind the chip.
  *
- * Headline is PAID spend only, matching the run that fills a book's budget bar.
+ * Headline is paid spend only, representing money already spent.
  * Pending rides along as each row's secondary figure in the breakdown sheet
  * rather than taking a band of its own.
  */
@@ -101,15 +91,6 @@ export default function PersonalSpendingPane({
               : summary.trend.spoken
           }
         />
-        <Divider orientation="vertical" className="mx-4 bg-white/20" />
-        <HeroColumn
-          icon={<PiggyBank size={14} color="#fff" />}
-          label="Budgets Over"
-          valueText={unavailable ? "—" : summary.budget.value}
-          accessibilityLabel={
-            unavailable ? "Budgets unavailable" : summary.budget.spoken
-          }
-        />
       </HStack>
     </VStack>
   );
@@ -125,8 +106,6 @@ export default function PersonalSpendingPane({
  * page it faded in from would read as a bug.
  */
 export function usePersonalSpendSummary(overview: PersonalOverview | null) {
-  const fx = useFxRates();
-
   // This page spans every book, so it has no one book's currency to lead with —
   // it folds into the app's home currency. The exact per-currency working stays
   // behind the chip.
@@ -162,11 +141,6 @@ export function usePersonalSpendSummary(overview: PersonalOverview | null) {
     [overview]
   );
 
-  const budget = useMemo(
-    () => rollUpBudgets(overview?.budgets ?? [], fx),
-    [overview, fx]
-  );
-
   const trend = useMemo(
     () => trendFor(total, previousTotal),
     [total, previousTotal]
@@ -175,7 +149,7 @@ export function usePersonalSpendSummary(overview: PersonalOverview | null) {
   const isApprox = convertedCurrencies.length > 0;
   const amountText = `${isApprox ? "≈ " : ""}${formatAmount(total, BASE_CURRENCY)}`;
 
-  return { total, isApprox, amountText, chipItems, trend, budget };
+  return { total, isApprox, amountText, chipItems, trend };
 }
 
 /**
@@ -224,57 +198,6 @@ function trendFor(current: number, previous: number) {
     value: `${isUp ? "↑" : "↓"} ${Math.abs(pct)}%`,
     spoken: `${Math.abs(pct)}% ${isUp ? "more" : "less"} than last month to date`
   };
-}
-
-/**
- * How the budgeted books are doing, as "over of budgeted". Each book's spend is
- * converted into its OWN budget currency on the same terms its budget card
- * uses, so the rollup and the card a tap away can't disagree about whether a
- * book is over. The worst offender no longer fits on screen, so it survives in
- * the spoken label and on the Books tab a tap away.
- */
-function rollUpBudgets(
-  budgets: PersonalOverview["budgets"],
-  fx: ReturnType<typeof useFxRates>
-) {
-  let over = 0;
-  let worst: { name: string; pct: number } | null = null;
-
-  for (const budget of budgets) {
-    let spent = 0;
-    for (const item of budget.spent) {
-      const rate = getRate(fx, item.currency, budget.currency);
-      // No rate — left out rather than counted as zero, so a book is only ever
-      // reported as under-spent, never falsely over.
-      if (rate === null) continue;
-      spent += item.amount * rate;
-    }
-    const pct = (spent / budget.budget) * 100;
-    if (pct > 100) over += 1;
-    if (!worst || pct > worst.pct) worst = { name: budget.name, pct };
-  }
-
-  const total = budgets.length;
-
-  if (total === 0) {
-    return {
-      over: 0,
-      total: 0,
-      value: "—",
-      spoken: "Set a budget on a book to track it here"
-    };
-  }
-
-  const plural = total === 1 ? "" : "s";
-  const worstNote = worst
-    ? `, highest ${worst.name} at ${Math.round(worst.pct)} percent`
-    : "";
-  const spoken =
-    over > 0
-      ? `${over} of ${total} budget${plural} over${worstNote}`
-      : `All ${total} budget${plural} on track${worstNote}`;
-
-  return { over, total, value: `${over} of ${total}`, spoken };
 }
 
 /** Paid spend as plain currency amounts, home currency first. */

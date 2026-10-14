@@ -1,3 +1,4 @@
+import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -10,16 +11,7 @@ import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
-import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import {
-  Modal,
-  ModalBackdrop,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader
-} from "@/components/ui/modal";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { SectionList } from "@/components/ui/section-list";
@@ -1087,42 +1079,17 @@ export default function FriendDetailScreen() {
         viewBy={viewBy}
         onSelect={setViewBy}
       />
-      <Modal
+      <ConfirmationSheet
         isOpen={pendingAction !== null}
         onClose={() => setPendingAction(null)}
-      >
-        <ModalBackdrop />
-        <ModalContent>
-          <ModalHeader>
-            <Heading>
-              {pendingAction === "settle"
-                ? "Mark All as Settled"
-                : "Request All as Settled"}
-            </Heading>
-          </ModalHeader>
-          <ModalBody>
-            <Text>
-              {pendingAction === "settle"
-                ? `This will mark all your outstanding collections from ${decodedName} as settled. This action cannot be undone.`
-                : `This will send a settlement request for all your pending payments to ${decodedName}.`}
-            </Text>
-          </ModalBody>
-          <ModalFooter className="gap-x-2">
-            <FormButton
-              className="flex-1"
-              variant="outline"
-              text="Cancel"
-              onPress={() => setPendingAction(null)}
-            />
-            <FormButton
-              className="flex-1"
-              text={pendingAction === "settle" ? "Settle All" : "Request All"}
-              loading={actionLoading}
-              onPress={handleConfirmAction}
-            />
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+        title={pendingAction === "settle" ? "Mark All as Settled" : "Request All as Settled"}
+        description={pendingAction === "settle"
+          ? `This will mark all your outstanding collections from ${decodedName} as settled. This action cannot be undone.`
+          : `This will send a settlement request for all your pending payments to ${decodedName}.`}
+        confirmText={pendingAction === "settle" ? "Settle All" : "Request All"}
+        loading={actionLoading}
+        onConfirm={handleConfirmAction}
+      />
     </>
   );
 }

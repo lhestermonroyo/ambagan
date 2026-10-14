@@ -81,7 +81,7 @@ export default function LinkedGroupSheet({
         </HStack>
       </Pressable>
       <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
-        Adds your share of the group&apos;s expenses to this book&apos;s total.
+        Adds your share of the group&apos;s expenses to this Individual entry&apos;s total.
         Your personal expenses stay private.
       </Text>
 
@@ -105,7 +105,7 @@ export default function LinkedGroupSheet({
                 <VStack className="flex-1">
                   <Text className="text-lg">Not linked</Text>
                   <Text className="text-sm text-secondary-950">
-                    Keep this book standalone.
+                    Keep this Individual entry standalone.
                   </Text>
                 </VStack>
                 <RadioIndicator>

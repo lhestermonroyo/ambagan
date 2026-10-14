@@ -1,3 +1,4 @@
+import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AndroidHeaderMenu from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
@@ -7,16 +8,7 @@ import { ExpenseDetailsSkeleton } from "@/components/SkeletonLoader";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
-import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import {
-  Modal,
-  ModalBody,
-  ModalBackdrop,
-  ModalContent,
-  ModalFooter,
-  ModalHeader
-} from "@/components/ui/modal";
 import { RefreshControl } from "@/components/ui/refresh-control";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -457,39 +449,16 @@ export default function RecurringDetailsScreen() {
         </LoadingWrapper>
       </InnerLayout>
 
-      <Modal
+      <ConfirmationSheet
         isOpen={deleteModalOpen}
-        onClose={() => !busy && setDeleteModalOpen(false)}
-      >
-        <ModalBackdrop />
-        <ModalContent>
-          <ModalHeader>
-            <Heading size="lg">Delete recurring series?</Heading>
-          </ModalHeader>
-          <ModalBody>
-            <Text className="text-sm text-secondary-950">
-              Future occurrences won't be posted. Expenses already created stay
-              in the group. This can't be undone.
-            </Text>
-          </ModalBody>
-          <ModalFooter>
-            <HStack className="gap-x-2">
-              <FormButton
-                variant="outline"
-                text="Cancel"
-                disabled={busy}
-                onPress={() => setDeleteModalOpen(false)}
-              />
-              <FormButton
-                text="Delete"
-                action="negative"
-                loading={busy}
-                onPress={handleDelete}
-              />
-            </HStack>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete recurring series?"
+        description="Future occurrences won't be posted. Expenses already created stay in the group. This can't be undone."
+        confirmText="Delete"
+        isDelete
+        loading={busy}
+        onConfirm={handleDelete}
+      />
     </Fragment>
   );
 }

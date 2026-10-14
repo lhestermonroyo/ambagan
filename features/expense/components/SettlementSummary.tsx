@@ -18,8 +18,15 @@ export default function SettlementSummary({ payment }: { payment: Payment }) {
   const { details: userDetails } = states.user();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const senderIsYou = payment.member.id === userDetails?.id;
+  const recipientIsYou = payment.payer.id === userDetails?.id;
   const sender = senderIsYou ? "You" : payment.member.first_name;
-  const recipient = payment.payer.id === userDetails?.id ? "You" : payment.payer.first_name;
+  const recipient = recipientIsYou ? "You" : payment.payer.first_name;
+  const senderLabel = senderIsYou
+    ? `${userDetails?.first_name || payment.member.first_name} (You)`
+    : sender;
+  const recipientLabel = recipientIsYou
+    ? `${userDetails?.first_name || payment.payer.first_name} (You)`
+    : recipient;
   const verb = payment.status === PaymentStatus.SETTLED ? "paid" : senderIsYou ? "pay" : "pays";
 
   return (
@@ -34,7 +41,7 @@ export default function SettlementSummary({ payment }: { payment: Payment }) {
               isPlaceholder={payment.member.is_placeholder}
             />
             <Text className="text-sm text-secondary-950 text-center" numberOfLines={2}>
-              {sender}
+              {senderLabel}
             </Text>
           </VStack>
           <Box className="mt-4 h-8 w-8 items-center justify-center">
@@ -48,7 +55,7 @@ export default function SettlementSummary({ payment }: { payment: Payment }) {
               isPlaceholder={payment.payer.is_placeholder}
             />
             <Text className="text-sm text-secondary-950 text-center" numberOfLines={2}>
-              {recipient}
+              {recipientLabel}
             </Text>
           </VStack>
         </HStack>

@@ -2,6 +2,7 @@ type GroupActivity = {
   id: string;
   created_at: string;
   last_updated_at?: string | null;
+  mode?: string;
 };
 
 const timestamp = (value: string | null | undefined): number => {
@@ -17,7 +18,8 @@ export function compareGroupsByActivity(a: GroupActivity, b: GroupActivity): num
   return (
     activity(b) - activity(a) ||
     timestamp(b.created_at) - timestamp(a.created_at) ||
-    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) ||
+    ((a.mode ?? "group") < (b.mode ?? "group") ? -1 : (a.mode ?? "group") > (b.mode ?? "group") ? 1 : 0)
   );
 }
 

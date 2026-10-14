@@ -7,7 +7,6 @@ import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { bookEntryCurrency } from "@/features/book/utils/bookCurrency";
-import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { Book } from "@/types/books";
 import { categories, currencies } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
@@ -46,8 +45,10 @@ export default function BookInfoTab({ book }: { book: Book }) {
     <Fragment>
       <VStack className="gap-y-6 px-4 pb-6">
         <Box className="bg-secondary-100 rounded-xl overflow-hidden">
+          <DetailRow label="Mode" value={<Text>Individual</Text>} />
+          <RowDivider />
           <DetailRow
-            label={entryCurrency ? "Book currency" : "Currency"}
+            label={entryCurrency ? "Individual currency" : "Currency"}
             value={
               <Text>
                 {currency ? currency.subtitle : book.currency} (
@@ -116,19 +117,6 @@ export default function BookInfoTab({ book }: { book: Book }) {
                     </HStack>
                   </Pressable>
                 }
-              />
-            </>
-          )}
-          {book.budget != null && (
-            <>
-              <RowDivider />
-              <DetailRow
-                label={
-                  book.budget_period === "total"
-                    ? "Total budget"
-                    : "Monthly budget"
-                }
-                value={<Text>{formatAmount(book.budget, book.currency)}</Text>}
               />
             </>
           )}

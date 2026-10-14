@@ -1,3 +1,4 @@
+import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AndroidHeaderMenu from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
@@ -10,16 +11,7 @@ import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
-import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import {
-  Modal,
-  ModalBody,
-  ModalBackdrop,
-  ModalContent,
-  ModalFooter,
-  ModalHeader
-} from "@/components/ui/modal";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -693,39 +685,16 @@ export default function ExpenseDetailsScreen() {
         title="Proof of Payment"
       />
 
-      <Modal
+      <ConfirmationSheet
         isOpen={deleteModalOpen}
-        onClose={() => !deleting && setDeleteModalOpen(false)}
-      >
-        <ModalBackdrop />
-        <ModalContent>
-          <ModalHeader>
-            <Heading size="lg">Delete Expense</Heading>
-          </ModalHeader>
-          <ModalBody>
-            <Text className="text-sm text-secondary-950">
-              Deleting this expense will remove splits and payments associated
-              with it. Are you sure you want to proceed?
-            </Text>
-          </ModalBody>
-          <ModalFooter>
-            <HStack className="gap-x-2">
-              <FormButton
-                variant="outline"
-                text="Cancel"
-                disabled={deleting}
-                onPress={() => setDeleteModalOpen(false)}
-              />
-              <FormButton
-                text="Yes"
-                action="negative"
-                loading={deleting}
-                onPress={() => handleDeleteExpense(expenseId)}
-              />
-            </HStack>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Expense"
+        description="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
+        confirmText="Yes"
+        isDelete
+        loading={deleting}
+        onConfirm={() => handleDeleteExpense(expenseId)}
+      />
     </Fragment>
   );
 }

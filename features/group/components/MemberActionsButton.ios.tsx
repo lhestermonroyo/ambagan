@@ -10,7 +10,8 @@ export default function MemberActionsButton({
   isOwnerRow,
   colorScheme,
   onViewDetails,
-  onSetRole
+  onSetRole,
+  onRemove
 }: MemberActionsButtonProps) {
   const isAdmin = member.role === GroupRole.ADMIN;
 
@@ -30,11 +31,13 @@ export default function MemberActionsButton({
           accessibilityLabel(`More options for ${member.first_name}`)
         ]}
       >
-        <Button
-          label="Friend Details"
-          systemImage="person"
-          onPress={() => onViewDetails(member)}
-        />
+        {onViewDetails && (
+          <Button
+            label="Friend Details"
+            systemImage="person"
+            onPress={() => onViewDetails(member)}
+          />
+        )}
         {canManage && !isOwnerRow && (
           <Button
             label={isAdmin ? "Remove admin" : "Make admin"}
@@ -43,6 +46,14 @@ export default function MemberActionsButton({
             onPress={() =>
               onSetRole(member, isAdmin ? GroupRole.MEMBER : GroupRole.ADMIN)
             }
+          />
+        )}
+        {canManage && !isOwnerRow && onRemove && (
+          <Button
+            label="Remove member"
+            systemImage="person.crop.circle.badge.minus"
+            role="destructive"
+            onPress={() => onRemove(member)}
           />
         )}
       </Menu>

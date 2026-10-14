@@ -278,7 +278,7 @@ export function useOfflineSync() {
         const userId = states.user.getState().details?.id;
         if (userId) {
           services.group
-            .getGroupsByUserId(userId)
+            .getGroupEntriesByUserId(userId)
             .then((list) =>
               states.group.setState((prev) => ({ ...prev, list }))
             )

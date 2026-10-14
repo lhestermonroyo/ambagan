@@ -1,7 +1,5 @@
 import {
-  BookBudgetPeriod,
   PersonalBookTotal,
-  PersonalBudgetUsage,
   PersonalExpense,
   PersonalExpenseStatus,
   PersonalOverview
@@ -432,32 +430,7 @@ function monthWindows(now: Date = new Date()) {
   return { startOfMonth, startOfPrevMonth, prevEnd };
 }
 
-/** Paid-only spend per currency, for the budget rollup's `spent`. */
-function sumPaidByCurrency(
-  rows: { amount: number; currency: string; status?: string }[]
-): { currency: string; amount: number }[] {
-  const byCurrency = new Map<string, number>();
-  for (const row of rows) {
-    if (row.status === "pending") continue;
-    const currency = row.currency || "PHP";
-    byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + row.amount);
-  }
-  return Array.from(byCurrency.entries()).map(([currency, amount]) => ({
-    currency,
-    amount
-  }));
-}
-
-/**
- * Everything the Overview's personal-spending card needs: this month's spend
- * across ALL books (per currency, never converted, paid vs pending), the same
- * stretch of last month to compare against, and each budgeted book's usage.
- *
- * Two queries in the common case, three when the user has a `total`-period
- * budget: month-to-date rows cover both spend windows AND the monthly budgets'
- * usage, so only lifetime budgets need a fetch of their own. Summed client-side
- * — books are personal and small.
- */
+/** Month-to-date personal spending and the same stretch of last month. */
 export const getPersonalOverview = async (
   userId: string
 ): Promise<PersonalOverview> => {
@@ -466,23 +439,13 @@ export const getPersonalOverview = async (
 
     // One fetch covering both windows — the previous month is the wider bound,
     // and the split happens below.
-    const [expenseResult, bookResult] = await Promise.all([
-      supabase
-        .from(tables.PERSONAL_EXPENSES_TBL)
-        .select("book_id, amount, currency, status, expense_date")
-        .eq("user_id", userId)
-        .gte("expense_date", startOfPrevMonth.toISOString()),
-      supabase
-        .from(tables.PERSONAL_BOOKS_TBL)
-        .select("id, name, currency, budget, budget_period")
-        .eq("user_id", userId)
-        .eq("archived", false)
-        .not("budget", "is", null)
-        .gt("budget", 0)
-    ]);
+    const expenseResult = await supabase
+      .from(tables.PERSONAL_EXPENSES_TBL)
+      .select("book_id, amount, currency, status, expense_date")
+      .eq("user_id", userId)
+      .gte("expense_date", startOfPrevMonth.toISOString());
 
     if (expenseResult.error) throw expenseResult.error;
-    if (bookResult.error) throw bookResult.error;
 
     const rows = (expenseResult.data ?? []) as {
       book_id: string;
@@ -503,52 +466,9 @@ export const getPersonalOverview = async (
       // back on uneven windows.
     }
 
-    const books = (bookResult.data ?? []) as {
-      id: string;
-      name: string;
-      currency: string;
-      budget: number;
-      budget_period: BookBudgetPeriod;
-    }[];
-
-    // A lifetime budget is measured over the whole book, so this month's rows
-    // can't answer it. Only fetched when such a book actually exists.
-    const lifetimeIds = books
-      .filter((b) => b.budget_period === "total")
-      .map((b) => b.id);
-    let lifetimeRows: {
-      book_id: string;
-      amount: number;
-      currency: string;
-      status: string;
-    }[] = [];
-    if (lifetimeIds.length > 0) {
-      const { data, error } = await supabase
-        .from(tables.PERSONAL_EXPENSES_TBL)
-        .select("book_id, amount, currency, status")
-        .eq("user_id", userId)
-        .in("book_id", lifetimeIds);
-      if (error) throw error;
-      lifetimeRows = (data ?? []) as typeof lifetimeRows;
-    }
-
-    const budgets: PersonalBudgetUsage[] = books.map((book) => {
-      const source =
-        book.budget_period === "total" ? lifetimeRows : currentRows;
-      return {
-        bookId: book.id,
-        name: book.name,
-        currency: book.currency,
-        budget: book.budget,
-        period: book.budget_period,
-        spent: sumPaidByCurrency(source.filter((r) => r.book_id === book.id))
-      };
-    });
-
     const overview: PersonalOverview = {
       thisMonth: sumByCurrencyAndStatus(currentRows),
-      lastMonth: sumByCurrencyAndStatus(previousRows),
-      budgets
+      lastMonth: sumByCurrencyAndStatus(previousRows)
     };
 
     // Snapshot so the Overview card shows the last value offline.

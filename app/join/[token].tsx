@@ -79,7 +79,7 @@ export default function JoinGroupScreen() {
       // it fails; the list will refresh on next focus.
       if (details?.id) {
         try {
-          const groups = await services.group.getGroupsByUserId(details.id);
+          const groups = await services.group.getGroupEntriesByUserId(details.id);
           states.group.setState((prev) => ({ ...prev, list: groups }));
         } catch {
           // ignore — next focus will refetch

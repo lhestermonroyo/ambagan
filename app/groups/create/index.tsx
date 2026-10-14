@@ -1,4 +1,5 @@
 import CategoryIcon from "@/components/CategoryIcon";
+import ConfirmationSheet from "@/components/ConfirmationSheet";
 import {
   CURRENCY_SAME_AS,
   CurrencySelectionSheet
@@ -25,28 +26,35 @@ import UploadAvatar from "@/components/UploadAvatar";
 import CategorySheet, {
   groupCategoryMeta
 } from "@/features/expense/components/CategorySheet";
-import MemberItem from "@/features/group/components/MemberItem";
+import GroupMemberRow from "@/features/group/components/GroupMemberRow";
+import MemberActionsSheet from "@/features/group/components/MemberActionsSheet";
 import MembersSelectionSheet from "@/features/group/components/MembersSelectionSheet";
 import { normalizeEntryCurrency } from "@/features/group/utils/groupCurrency";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
-import { GroupCategory } from "@/types/groups";
+import { GroupCategory, GroupMode, GroupRole, Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
 import { categories, currencies } from "@/utils/constants";
 import { BASE_CURRENCY } from "@/utils/fx";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { ImagePickerSuccessResult } from "expo-image-picker";
-import { useRouter } from "expo-router";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Fragment, useMemo, useState } from "react";
+import { Platform, useColorScheme } from "react-native";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
 export default function CreateGroupScreen() {
   const user = states.user();
   const isPro = user.details?.plan === "pro";
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const [mode, setMode] = useState<GroupMode>(
+    params.mode === GroupMode.INDIVIDUAL ? GroupMode.INDIVIDUAL : GroupMode.GROUP
+  );
+  const individual = mode === GroupMode.INDIVIDUAL;
 
   const [submitting, setSubmitting] = useState(false);
   const [values, setValues] = useState({
@@ -72,9 +80,28 @@ export default function CreateGroupScreen() {
   const [entryCurrencySheetOpen, setEntryCurrencySheetOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [openSelectMembers, setOpenSelectMembers] = useState(false);
-  const [tab, setTab] = useState<"members" | "admin">("members");
   const [members, setMembers] = useState<UserPreview[]>([]);
-  const [admin, setAdmin] = useState<UserPreview[]>([]);
+  const [adminMemberIds, setAdminMemberIds] = useState<Set<string>>(new Set());
+  const [actionMember, setActionMember] = useState<Member | null>(null);
+  const [individualConfirmOpen, setIndividualConfirmOpen] = useState(false);
+  const owner = user.details;
+  const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
+
+  const roster = useMemo(() => {
+    const ordered = [
+      ...(owner ? [owner] : []),
+      ...members.filter((member) => adminMemberIds.has(member.id)),
+      ...members.filter((member) => !adminMemberIds.has(member.id))
+    ];
+    return ordered.map((member): Member => ({
+      ...member,
+      group_id: "",
+      joined_at: "",
+      role: member.id === owner?.id || adminMemberIds.has(member.id)
+        ? GroupRole.ADMIN
+        : GroupRole.MEMBER
+    }));
+  }, [owner, members, adminMemberIds]);
 
   const currencyLabel = useMemo(
     () => currencies.find((c) => c.value === values.currency)?.label,
@@ -86,7 +113,7 @@ export default function CreateGroupScreen() {
       values.defaultExpenseCurrency
         ? (currencies.find((c) => c.value === values.defaultExpenseCurrency)
             ?.label ?? values.defaultExpenseCurrency)
-        : "Same as group currency",
+        : "Same as currency",
     [values.defaultExpenseCurrency]
   );
 
@@ -108,28 +135,58 @@ export default function CreateGroupScreen() {
   const router = useRouter();
   const toast = useAppToast();
 
-  useEffect(() => {
-    if (user.session && user.details) {
-      setAdmin([
-        {
-          id: user.details.id,
-          first_name: user.details.first_name,
-          last_name: user.details.last_name,
-          email: user.details.email,
-          phone: user.details.phone,
-          avatar: user.details.avatar,
-          plan: user.details.plan
-        }
-      ]);
-    }
-  }, []);
-
-  const handleSaveMembers = (selected: UserPreview[]) => {
-    setMembers(selected);
+  const switchToIndividual = () => {
+    if (submitting) return;
+    setMembers([]);
+    setAdminMemberIds(new Set());
+    setOpenSelectMembers(false);
+    setActionMember(null);
+    setIndividualConfirmOpen(false);
+    setMode(GroupMode.INDIVIDUAL);
   };
 
-  const handleRemoveMember = (memberId: string) => {
-    setMembers((prev) => prev.filter((member) => member.id !== memberId));
+  const requestIndividualMode = () => {
+    if (individual || submitting) return;
+    if (members.length > 0) {
+      setIndividualConfirmOpen(true);
+      return;
+    }
+    switchToIndividual();
+  };
+
+  const handleSaveMembers = (selected: UserPreview[]) => {
+    const nextMembers = [...new Map(
+      selected.filter((member) => member.id !== owner?.id)
+        .map((member) => [member.id, member] as const)
+    ).values()];
+    setMembers(nextMembers);
+    const selectedIds = new Set(nextMembers.map((member) => member.id));
+    setAdminMemberIds((prev) => new Set([...prev].filter((id) => selectedIds.has(id))));
+  };
+
+  const handleRemoveMember = (member: Member) => {
+    if (member.id === owner?.id || submitting) return;
+    setActionMember(null);
+    setMembers((prev) => prev.filter((item) => item.id !== member.id));
+    setAdminMemberIds((prev) => {
+      const next = new Set(prev);
+      next.delete(member.id);
+      return next;
+    });
+  };
+
+  const handleSetRole = (member: Member, role: GroupRole) => {
+    if (
+      member.id === owner?.id || submitting ||
+      !members.some((item) => item.id === member.id)
+    ) return;
+    setActionMember(null);
+    setAdminMemberIds((prev) => {
+      const next = new Set(prev);
+      if (role === GroupRole.ADMIN) next.add(member.id);
+      else next.delete(member.id);
+      return next;
+    });
   };
 
   const handleSubmit = async () => {
@@ -141,74 +198,104 @@ export default function CreateGroupScreen() {
     setFormErrors(nextErrors);
     if (nextErrors.name) return;
 
-    if (admin.length === 0) {
-      toast({
-        title: "No Admin Selected",
-        description: "An admin is required to create a group.",
-        type: "error"
-      });
-      return;
-    }
-
-    // Members are optional — a group can start with just the admin, then invite
-    // people (or add phone contacts). Expenses stay gated on having 2+ members.
-
-    // Offline → queue the group creation. The cover photo is skipped (no
-    // image upload offline); it can be added once the group syncs.
-    const online = await offlineQueue.isOnline();
-    if (!online) {
-      // Phone-contact members need the placeholder RPC to get a stable id, so
-      // a group with unresolved contacts can't be queued offline.
-      if (services.member.hasUnresolvedContacts(members)) {
-        toast({
-          title: "You're offline",
-          description:
-            "Adding phone contacts as members needs an internet connection. Remove them or reconnect to continue.",
-          type: "error"
-        });
-        return;
+    if (individual) {
+      if (!user.details?.id || submitting) return;
+      setSubmitting(true);
+      const args = {
+        name: values.name.trim(), category: values.category,
+        currency: values.currency, default_expense_currency: defaultExpenseCurrency,
+        budget: null,
+        budget_period: "monthly" as const, user_id: user.details.id,
+        group_id: null, avatar: values.avatar
+      };
+      try {
+        if (!(await offlineQueue.isOnline())) {
+          const clientId = uuid();
+          const optimistic = offlineQueue.buildOptimisticBook({
+            clientId, name: args.name, category: args.category, currency: args.currency,
+            defaultExpenseCurrency, budget: args.budget, budgetPeriod: args.budget_period,
+            groupId: null, userId: user.details.id
+          });
+          await offlineQueue.queueCreateBook(user.details.id, { ...args, avatar: null }, optimistic);
+          toast({ title: "Saved offline", description: "Your Individual entry will sync when you're back online. You can add a cover photo after it syncs.", type: "info" });
+          router.replace("/groups");
+        } else {
+          const response = await services.book.saveBook(args);
+          toast({ title: "Individual created", description: "Your expenses are private to you.", type: "success" });
+          router.replace(`/books/${response.data.bookId}`);
+        }
+      } catch (error) {
+        console.error("Error creating Individual entry:", error);
+        toast({ title: "Creation failed", description: "Couldn't create the Individual entry. Please try again.", type: "error" });
+      } finally {
+        setSubmitting(false);
       }
-      const clientId = uuid();
-      const memberPreviews = members.concat(admin);
-      const optimistic = offlineQueue.buildOptimisticGroup({
-        clientId,
-        name: values.name,
-        category: values.category,
-        currency: values.currency,
-        default_expense_currency: defaultExpenseCurrency,
-        admin: admin[0],
-        members: memberPreviews
-      });
-
-      await offlineQueue.queueCreateGroup(
-        user.details!.id,
-        {
-          name: values.name,
-          category: values.category,
-          currency: values.currency,
-          default_expense_currency: defaultExpenseCurrency,
-          avatar: null,
-          admin_id: admin[0].id,
-          member_ids: memberPreviews.map((member) => member.id)
-        },
-        optimistic
-      );
-
-      await addRecentUsers(members, user.details!.id).catch(() => {});
-
-      toast({
-        title: "Saved offline",
-        description:
-          "Your group will be created automatically when you're back online. You can add a cover photo after it syncs.",
-        type: "info"
-      });
-      router.replace("/groups");
       return;
     }
+
+    if (!owner?.id || submitting) return;
+
+    // Members are optional — a group can start with just the owner, then invite
+    // people (or add phone contacts). Expenses stay gated on having 2+ members.
 
     setSubmitting(true);
 
     try {
+      // Offline → queue the group creation. The cover photo is skipped (no
+      // image upload offline); it can be added once the group syncs.
+      const online = await offlineQueue.isOnline();
+      if (!online) {
+        // Phone-contact members need the placeholder RPC to get a stable id, so
+        // a group with unresolved contacts can't be queued offline.
+        if (services.member.hasUnresolvedContacts(members)) {
+          toast({
+            title: "You're offline",
+            description:
+              "Adding phone contacts as members needs an internet connection. Remove them or reconnect to continue.",
+            type: "error"
+          });
+          return;
+        }
+        const clientId = uuid();
+        const memberPreviews = [owner, ...members];
+        const optimistic = offlineQueue.buildOptimisticGroup({
+          clientId,
+          name: values.name,
+          category: values.category,
+          currency: values.currency,
+          default_expense_currency: defaultExpenseCurrency,
+          admin: owner,
+          members: memberPreviews,
+          admin_member_ids: [...adminMemberIds]
+        });
+
+        await offlineQueue.queueCreateGroup(
+          user.details!.id,
+          {
+            name: values.name,
+            category: values.category,
+            currency: values.currency,
+            default_expense_currency: defaultExpenseCurrency,
+            avatar: null,
+            admin_id: owner.id,
+            member_ids: memberPreviews.map((member) => member.id),
+            admin_member_ids: [...adminMemberIds]
+          },
+          optimistic
+        );
+
+        await addRecentUsers(members, user.details!.id).catch(() => {});
+
+        toast({
+          title: "Saved offline",
+          description:
+            "Your group will be created automatically when you're back online. You can add a cover photo after it syncs.",
+          type: "info"
+        });
+        router.replace("/groups");
+        return;
+      }
+
       // Turn any picked phone contacts into real placeholder user ids first.
       const resolvedMembers =
         await services.member.resolveContactMembers(members);
@@ -219,8 +306,12 @@ export default function CreateGroupScreen() {
         category: values.category,
         currency: values.currency,
         default_expense_currency: defaultExpenseCurrency,
-        admin_id: admin[0].id,
-        member_ids: resolvedMembers.concat(admin).map((member) => member.id)
+        admin_id: owner.id,
+        member_ids: [owner.id, ...resolvedMembers.map((member) => member.id)],
+        // Contact resolution preserves order but can replace a temporary ID.
+        admin_member_ids: resolvedMembers
+          .filter((_, index) => adminMemberIds.has(members[index].id))
+          .map((member) => member.id)
       });
 
       if (!response) {
@@ -273,8 +364,8 @@ export default function CreateGroupScreen() {
 
             <FormInput
               type="text"
-              label="Group Name"
-              placeholder="Enter group name (e.g. Japan 2026)"
+              label="Name"
+              placeholder="Enter name (e.g. Daily, Japan Trip)"
               value={values.name}
               onChangeText={(text) => {
                 setValues({ ...values, name: text });
@@ -309,7 +400,7 @@ export default function CreateGroupScreen() {
                 rather than a setting on it. */}
             <FormControl size="md">
               <FormControlLabel>
-                <FormControlLabelText>Group currency</FormControlLabelText>
+                <FormControlLabelText>Currency</FormControlLabelText>
               </FormControlLabel>
               <SelectField
                 onPress={() =>
@@ -322,9 +413,26 @@ export default function CreateGroupScreen() {
               </SelectField>
               <FormControlHelper>
                 <FormControlHelperText>
-                  Totals, stats and balances convert to it.
+                  {individual ? "Totals and stats convert to it." : "Totals, stats and balances convert to it."}
                 </FormControlHelperText>
               </FormControlHelper>
+            </FormControl>
+
+            <FormControl size="md">
+              <FormControlLabel><FormControlLabelText>Mode</FormControlLabelText></FormControlLabel>
+              <HStack className="gap-x-2">
+                <FormButton text="Group" size="sm" className="flex-1"
+                  variant={individual ? "outline" : "solid"}
+                  disabled={submitting}
+                  onPress={() => setMode(GroupMode.GROUP)} />
+                <FormButton text="Individual" size="sm" className="flex-1"
+                  variant={individual ? "solid" : "outline"}
+                  disabled={submitting}
+                  onPress={requestIndividualMode} />
+              </HStack>
+              <FormControlHelper><FormControlHelperText>
+                {individual ? "Track your own expenses. Only you can access this entry." : "Split expenses and settle up with other people."}
+              </FormControlHelperText></FormControlHelper>
             </FormControl>
 
             {/* What Add Expense prefills. Pro-only, since free groups are
@@ -347,14 +455,14 @@ export default function CreateGroupScreen() {
                 <FormControlHelper>
                   <FormControlHelperText>
                     {defaultExpenseCurrency
-                      ? `New expenses start in ${defaultExpenseCurrency} for everyone, counted toward the group's ${values.currency} totals.`
-                      : "New expenses start in the group currency."}
+                      ? `New expenses start in ${defaultExpenseCurrency}, counted toward the ${values.currency} totals.`
+                      : "New expenses start in the selected currency."}
                   </FormControlHelperText>
                 </FormControlHelper>
               </FormControl>
             )}
 
-            <FormControl size="md">
+            {!individual && <FormControl size="md">
               <VStack className="gap-y-2">
                 <HStack>
                   <FormControlLabel className="flex-1">
@@ -364,6 +472,7 @@ export default function CreateGroupScreen() {
                   </FormControlLabel>
                   <Button
                     variant="link"
+                    disabled={submitting}
                     onPress={() => setOpenSelectMembers(true)}
                   >
                     <Text className="text-primary-400 font-medium">
@@ -371,49 +480,22 @@ export default function CreateGroupScreen() {
                     </Text>
                   </Button>
                 </HStack>
-                <HStack className="gap-x-2">
-                  <FormButton
-                    text="Members"
-                    size="sm"
-                    variant={tab === "members" ? "solid" : "outline"}
-                    className="flex-1"
-                    onPress={() => setTab("members")}
-                  />
-                  <FormButton
-                    text="Admin"
-                    size="sm"
-                    variant={tab === "admin" ? "solid" : "outline"}
-                    className="flex-1"
-                    onPress={() => setTab("admin")}
-                  />
-                </HStack>
                 <FlatList
-                  data={tab === "members" ? members : admin}
+                  data={roster}
                   scrollEnabled={false}
-                  keyExtractor={(item) => item.id.toString()}
+                  keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
-                    <MemberItem
-                      key={item.id}
+                    <GroupMemberRow
                       item={item}
-                      onRemove={() => handleRemoveMember(item.id)}
+                      ownerId={owner?.id ?? ""}
+                      pending={submitting && item.id !== owner?.id}
+                      colorScheme={colorScheme}
+                      canManage
+                      onOpenActions={setActionMember}
+                      onSetRole={handleSetRole}
+                      onRemove={handleRemoveMember}
                     />
                   )}
-                  ListEmptyComponent={() =>
-                    tab === "members" ? (
-                      <VStack className="p-4 justify-center items-center">
-                        <Text className="text-sm text-secondary-950 text-center">
-                          No members yet. Tap &quot;Add Member&quot; to include
-                          them.
-                        </Text>
-                      </VStack>
-                    ) : (
-                      <VStack className="p-4 justify-center items-center">
-                        <Text className="text-sm text-secondary-950">
-                          An admin is required to create a group.
-                        </Text>
-                      </VStack>
-                    )
-                  }
                   ItemSeparatorComponent={() => (
                     <Divider className="border-secondary-100" />
                   )}
@@ -425,10 +507,34 @@ export default function CreateGroupScreen() {
                   onSaveMembers={handleSaveMembers}
                 />
               </VStack>
-            </FormControl>
+            </FormControl>}
           </VStack>
         </ScrollView>
       </FormLayout>
+
+      <ConfirmationSheet
+        isOpen={individualConfirmOpen}
+        onClose={() => setIndividualConfirmOpen(false)}
+        title="Switch to Individual?"
+        description={
+          `Individual entries are private to you. Switching will clear your ${members.length} selected ${members.length === 1 ? "member" : "members"} and any admin assignments from this form.`
+        }
+        confirmText="Switch to Individual"
+        cancelText="Keep Group"
+        onConfirm={switchToIndividual}
+      />
+
+      {Platform.OS !== "ios" && (
+        <MemberActionsSheet
+          isOpen={!!actionMember && !individual}
+          onClose={() => setActionMember(null)}
+          member={actionMember}
+          canManage
+          isOwnerRow={actionMember?.id === owner?.id}
+          onSetRole={handleSetRole}
+          onRemove={handleRemoveMember}
+        />
+      )}
 
       <CategorySheet
         isOpen={categorySheetOpen}
@@ -440,7 +546,7 @@ export default function CreateGroupScreen() {
 
       <CurrencySelectionSheet
         isOpen={currencySheetOpen}
-        title="Group Currency"
+        title="Currency"
         currency={values.currency}
         onClose={() => setCurrencySheetOpen(false)}
         onCurrencyChange={(value) => setValues({ ...values, currency: value })}
@@ -451,7 +557,7 @@ export default function CreateGroupScreen() {
         title="New Expenses"
         currency={values.defaultExpenseCurrency}
         sameAs={{
-          label: "Same as group currency",
+          label: "Same as currency",
           subtitle: currencyLabel ?? values.currency
         }}
         onClose={() => setEntryCurrencySheetOpen(false)}

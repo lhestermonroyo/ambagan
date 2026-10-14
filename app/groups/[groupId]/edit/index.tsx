@@ -243,7 +243,7 @@ export default function EditGroupScreen() {
 
               <FormInput
                 type="text"
-                label="Group Name"
+                label="Name"
                 placeholder="Enter group name (e.g. Japan 2026)"
                 value={values.name}
                 onChangeText={(text) => {
@@ -275,7 +275,7 @@ export default function EditGroupScreen() {
 
               <FormControl size="md">
                 <FormControlLabel>
-                  <FormControlLabelText>Group currency</FormControlLabelText>
+                  <FormControlLabelText>Currency</FormControlLabelText>
                 </FormControlLabel>
                 <SelectField
                   onPress={() =>
@@ -333,7 +333,7 @@ export default function EditGroupScreen() {
 
       <CurrencySelectionSheet
         isOpen={currencySheetOpen}
-        title="Group Currency"
+        title="Currency"
         currency={values.currency}
         onClose={() => setCurrencySheetOpen(false)}
         onCurrencyChange={(value) => setValues({ ...values, currency: value })}

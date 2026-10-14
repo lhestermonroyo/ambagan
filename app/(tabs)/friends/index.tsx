@@ -11,6 +11,10 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import FriendRow from "@/features/friends/components/FriendRow";
+import BalanceFilterSheet, {
+  balanceFilterLabel,
+  type BalanceFilter
+} from "@/features/friends/components/BalanceFilterSheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
@@ -18,25 +22,19 @@ import states from "@/states";
 import { FriendSummary } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
+import { getPrimaryHex } from "@/utils/getColorHex";
 import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Search } from "lucide-react-native";
+import { ChevronDown, Search } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import { RefreshControl } from "react-native";
+import { RefreshControl, useColorScheme } from "react-native";
 
 type MainTab = "balances" | "contacts";
-type BalanceFilter = "all" | "collect" | "pay";
 
 const MAIN_TABS: { key: MainTab; label: string }[] = [
   { key: "balances", label: "Balances" },
   { key: "contacts", label: "Contacts" }
-];
-
-const BALANCE_FILTERS: { key: BalanceFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "collect", label: "To collect" },
-  { key: "pay", label: "To pay" }
 ];
 
 export default function FriendsScreen() {
@@ -50,6 +48,8 @@ export default function FriendsScreen() {
   const [initialized, setInitialized] = useState(false);
   const [mainTab, setMainTab] = useState<MainTab>("balances");
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
+  const [balanceFilterSheetOpen, setBalanceFilterSheetOpen] = useState(false);
+  const colorScheme = useColorScheme() ?? "light";
 
   const { details: userDetails } = states.user();
   const fx = useFxRates();
@@ -254,7 +254,7 @@ export default function FriendsScreen() {
                     size="sm"
                     variant={mainTab === tab.key ? "solid" : "outline"}
                     text={tab.label}
-                    onPress={() => setMainTab(tab.key)}
+                    onPress={() => { setBalanceFilterSheetOpen(false); setMainTab(tab.key); }}
                   />
                 ))}
               </HStack>
@@ -262,21 +262,20 @@ export default function FriendsScreen() {
 
             {/* Balance direction filter — only on the Balances tab, not searching */}
             {!isSearchActive && mainTab === "balances" && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <HStack className="gap-x-2 px-4">
-                  {BALANCE_FILTERS.map((filter) => (
-                    <FormButton
-                      key={filter.key}
-                      size="sm"
-                      variant={
-                        balanceFilter === filter.key ? "solid" : "outline"
-                      }
-                      text={filter.label}
-                      onPress={() => setBalanceFilter(filter.key)}
+              <HStack className="px-4 items-center">
+                <FormButton
+                  size="sm"
+                  variant="outline"
+                  text={balanceFilterLabel(balanceFilter)}
+                  iconEnd={
+                    <ChevronDown
+                      size={16}
+                      color={getPrimaryHex("text-primary-500", colorScheme)}
                     />
-                  ))}
-                </HStack>
-              </ScrollView>
+                  }
+                  onPress={() => setBalanceFilterSheetOpen(true)}
+                />
+              </HStack>
             )}
           </VStack>
 
@@ -374,6 +373,13 @@ export default function FriendsScreen() {
             )}
           </LoadingWrapper>
         </ScrollView>
+
+        <BalanceFilterSheet
+          isOpen={balanceFilterSheetOpen}
+          onClose={() => setBalanceFilterSheetOpen(false)}
+          filter={balanceFilter}
+          onSelect={setBalanceFilter}
+        />
 
         <SearchDrawer
           isOpen={searchVisible}

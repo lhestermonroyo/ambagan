@@ -6,6 +6,8 @@ export type MemberActionsButtonProps = {
   isOwnerRow: boolean;
   colorScheme: "light" | "dark";
   onOpenActions: (member: Member) => void;
-  onViewDetails: (member: Member) => void;
+  onViewDetails?: (member: Member) => void;
   onSetRole: (member: Member, role: GroupRole) => void;
+  /** Available while preparing a new group; omitted on the details roster. */
+  onRemove?: (member: Member) => void;
 };

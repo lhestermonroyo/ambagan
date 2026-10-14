@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import BookItem from "@/features/book/components/BookItem";
+import { groupEntryHref, groupEntryKey, isIndividualGroup } from "@/features/group/utils/groupMode";
 import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
 import PersonalSpendingPane, {
   usePersonalSpendSummary
@@ -42,7 +42,7 @@ import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 import services from "@/services";
 import states from "@/states";
-import { Book, PersonalExpense, PersonalOverview } from "@/types/books";
+import { PersonalExpense, PersonalOverview } from "@/types/books";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
@@ -100,12 +100,10 @@ export default function HomeScreen() {
     stats: false,
     activities: false,
     groups: false,
-    books: false,
     friends: false,
     personal: false
   });
   const [friends, setFriends] = useState<FriendSummary[]>([]);
-  const [books, setBooks] = useState<Book[]>([]);
   const [personalExpenses, setPersonalExpenses] = useState<PersonalExpense[]>(
     []
   );
@@ -293,7 +291,6 @@ export default function HomeScreen() {
     await Promise.all([
       fetchStats(isInitialized),
       fetchGroups(isInitialized),
-      fetchBooks(isInitialized),
       fetchActivities(isInitialized),
       fetchFriends(isInitialized),
       fetchPersonal(isInitialized),
@@ -443,7 +440,7 @@ export default function HomeScreen() {
     }
 
     try {
-      const response = await services.group.getGroupsByUserId(userId);
+      const response = await services.group.getGroupEntriesByUserId(userId);
 
       if (!response) return;
 
@@ -458,48 +455,13 @@ export default function HomeScreen() {
       // with rendering or navigation.
       if (!isInitialized && userId) {
         InteractionManager.runAfterInteractions(() => {
-          prefetchGroupDetails(userId, response).catch(() => {});
+          prefetchGroupDetails(userId, response.filter(g => !isIndividualGroup(g))).catch(() => {});
         });
       }
     } catch (error) {
       console.error("Failed to fetch groups:", error);
     } finally {
       setLoading((prev) => ({ ...prev, groups: false }));
-    }
-  };
-
-  // Only the first page is needed — the Overview shows the 3 most recent books
-  // and hands off to the Books tab for the rest. Paginated (not getBooksByUserId)
-  // so the offline cache fallback comes along for free.
-  const fetchBooks = async (isInitialized = false) => {
-    if (!userId) return;
-
-    if (!isInitialized) {
-      setLoading((prev) => ({ ...prev, books: true }));
-    }
-
-    try {
-      const response = await services.book.getBooksByUserIdPaginated(
-        userId,
-        0,
-        "all"
-      );
-
-      if (!response) return;
-
-      setBooks(response.data);
-      // Mirror into book state the same way the Books tab does (first page of
-      // "all"), so screens that never load books themselves — the scanner's
-      // destination check — can tell "no books yet" from "not loaded yet".
-      states.book.setState((prev) => ({
-        ...prev,
-        list: response.data,
-        initialized: true
-      }));
-    } catch (error) {
-      console.error("Failed to fetch books:", error);
-    } finally {
-      setLoading((prev) => ({ ...prev, books: false }));
     }
   };
 
@@ -527,7 +489,6 @@ export default function HomeScreen() {
   };
 
   const groupsPreview = useMemo(() => groupList.slice(0, 3), [groupList]);
-  const booksPreview = useMemo(() => books.slice(0, 3), [books]);
   const friendsPreview = useMemo(() => friends.slice(0, 5), [friends]);
 
   // The two ledgers stay in their own sections — a settlement and a personal
@@ -588,7 +549,7 @@ export default function HomeScreen() {
     router.push("/scan" as any);
   }, [ensureOnline, router]);
 
-  const handleOpenBooks = useCallback(() => router.push("/books"), [router]);
+  const handleOpenBooks = useCallback(() => router.push("/groups"), [router]);
   const handleOpenHelp = useCallback(
     () => router.push("/profile/help-center"),
     [router]
@@ -621,17 +582,7 @@ export default function HomeScreen() {
     ({ item }: { item: (typeof groupList)[0] }) => (
       <GroupItem
         details={item}
-        onOpen={() => router.push(`/groups/${item.id}`)}
-      />
-    ),
-    [router]
-  );
-
-  const renderBookItem = useCallback(
-    ({ item }: { item: Book }) => (
-      <BookItem
-        details={item}
-        onOpen={() => router.push(`/books/${item.id}`)}
+        onOpen={() => router.push(groupEntryHref(item))}
       />
     ),
     [router]
@@ -882,36 +833,12 @@ export default function HomeScreen() {
                 <FlatList
                   data={groupsPreview}
                   scrollEnabled={false}
-                  keyExtractor={(item) => item.id.toString()}
+                  keyExtractor={groupEntryKey}
                   renderItem={renderGroupItem}
                   ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
                     <EmptyList type={EmptyType.GROUP} />
                   )}
-                />
-              </LoadingWrapper>
-            </VStack>
-
-            <VStack className="gap-y-2">
-              <HStack className="items-center justify-between px-4">
-                <Text bold className="text-2xl">
-                  Recent Books
-                </Text>
-                <Button variant="link" onPress={() => router.push("/books")}>
-                  <Text className="text-primary-400 font-medium">View All</Text>
-                </Button>
-              </HStack>
-              <LoadingWrapper
-                isLoading={loading.books}
-                skeleton={<GroupListSkeleton count={3} />}
-              >
-                <FlatList
-                  data={booksPreview}
-                  scrollEnabled={false}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={renderBookItem}
-                  ItemSeparatorComponent={ListDivider}
-                  ListEmptyComponent={() => <EmptyList type={EmptyType.BOOK} />}
                 />
               </LoadingWrapper>
             </VStack>
@@ -944,7 +871,7 @@ export default function HomeScreen() {
             <VStack className="gap-y-2">
               <HStack className="items-center justify-between px-4">
                 <Text bold className="text-2xl">
-                  Recent Personal Expenses
+                  Recent Individual Expenses
                 </Text>
               </HStack>
               <LoadingWrapper
@@ -991,11 +918,6 @@ export default function HomeScreen() {
                 <CompactStat
                   label="vs Last"
                   value={personalSummary.trend.value}
-                />
-                <CompactDivider />
-                <CompactStat
-                  label="Over"
-                  value={personalSummary.budget.value}
                 />
               </>
             ) : (

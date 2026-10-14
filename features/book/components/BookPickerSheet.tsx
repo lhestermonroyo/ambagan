@@ -18,7 +18,7 @@ export default function BookPickerSheet({
   onClose,
   books,
   onSelect,
-  title = "Add to which book?"
+  title = "Add to which Individual entry?"
 }: {
   isOpen: boolean;
   onClose: () => void;

@@ -1,16 +1,6 @@
 import { Fragment, useState } from "react";
 import FormButton from "./FormButton";
-import { Heading } from "./ui/heading";
-import { HStack } from "./ui/hstack";
-import {
-  Modal,
-  ModalBackdrop,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader
-} from "./ui/modal";
-import { Text } from "./ui/text";
+import ConfirmationSheet from "./ConfirmationSheet";
 
 const ConfirmButton = ({
   onConfirm,
@@ -29,7 +19,7 @@ const ConfirmButton = ({
   const [isOpen, setIsOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Show the spinner inside the modal while the async action runs, combined
+  // Show the spinner inside the sheet while the async action runs, combined
   // with any external `loading` the caller passes in.
   const loading = submitting || Boolean(buttonProps.loading);
 
@@ -46,7 +36,7 @@ const ConfirmButton = ({
   return (
     <Fragment>
       <FormButton {...buttonProps} onPress={() => setIsOpen(true)} />
-      <ConfirmModal
+      <ConfirmationSheet
         isOpen={isOpen}
         onClose={() => {
           if (!loading) setIsOpen(false);
@@ -54,61 +44,11 @@ const ConfirmButton = ({
         onConfirm={handleConfirm}
         loading={loading}
         isDelete={isDelete}
-        confirmText={confirmText}
+        confirmText={confirmText ?? (isDelete ? "Delete" : "Confirm")}
         title={confirmTitle}
         description={confirmDescription}
       />
     </Fragment>
-  );
-};
-
-const ConfirmModal = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  loading,
-  isDelete,
-  confirmText,
-  title = "Confirm Action",
-  description = "Are you sure you want to proceed?"
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  loading?: boolean;
-  isDelete?: boolean;
-  confirmText?: string;
-  title?: string;
-  description?: string;
-}) => {
-  return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalBackdrop />
-      <ModalContent>
-        <ModalHeader>
-          <Heading size="lg">{title}</Heading>
-        </ModalHeader>
-        <ModalBody>
-          <Text>{description}</Text>
-        </ModalBody>
-        <ModalFooter>
-          <HStack className="gap-x-2">
-            <FormButton
-              variant="outline"
-              text="Cancel"
-              disabled={loading}
-              onPress={onClose}
-            />
-            <FormButton
-              text={confirmText ?? (isDelete ? "Delete" : "Confirm")}
-              action={isDelete ? "negative" : "primary"}
-              loading={loading}
-              onPress={onConfirm}
-            />
-          </HStack>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
   );
 };
 
