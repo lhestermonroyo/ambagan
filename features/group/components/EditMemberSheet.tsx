@@ -22,6 +22,7 @@ import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
+import { groupAdmins, isGroupOwner } from "@/features/group/utils/groupRoles";
 import { UserPreview } from "@/types/user";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { filterContacts, getSavedContacts } from "@/utils/offlineContacts";
@@ -69,11 +70,27 @@ export default function EditMembersSheet({
 
   const showToast = useAppToast();
 
+  // Members this sheet may not touch, mirroring what RLS allows.
+  //
+  // The owner is always here — nobody removes the group's owner; they leave and
+  // hand it over. A CO-ADMIN sees the other admins here too: they may manage
+  // ordinary members, but only the owner decides who else is an admin, so a
+  // co-admin removing a peer would be rejected server-side. The owner sees no
+  // extra protection — demoting or removing an admin is theirs to do.
+  const protectedMemberIds = useMemo(() => {
+    if (!groupDetails) return new Set<string>();
+    const ids = new Set<string>([groupDetails.admin.id]);
+    if (!isGroupOwner(groupDetails, userDetails?.id)) {
+      groupAdmins(groupDetails, memberList).forEach((m) => ids.add(m.id));
+    }
+    return ids;
+  }, [groupDetails, memberList, userDetails?.id]);
+
   useEffect(() => {
     if (isOpen && userDetails?.id) {
       init();
       loadRecentUsers();
-      loadFavorites((u) => u.id !== groupDetails?.admin.id);
+      loadFavorites((u) => !protectedMemberIds.has(u.id));
     }
   }, [isOpen]);
 
@@ -91,7 +108,7 @@ export default function EditMembersSheet({
 
       await Promise.all(
         memberList
-          .filter((member) => member.id !== groupDetails.admin.id)
+          .filter((member) => !protectedMemberIds.has(member.id))
           .map(async (member) => {
             const hasUnpaid = await services.expense.getUnpaidPayments(
               groupDetails.id,
@@ -126,13 +143,13 @@ export default function EditMembersSheet({
         const contacts = await getSavedContacts(userDetails!.id);
         setUsers(
           filterContacts(contacts, searchInput).filter(
-            (u) => u.id !== groupDetails?.admin.id,
+            (u) => !protectedMemberIds.has(u.id),
           ),
         );
         return;
       }
       const data = await services.user.searchUsers(searchInput);
-      const filteredUsers = data.filter((u) => u.id !== groupDetails?.admin.id);
+      const filteredUsers = data.filter((u) => !protectedMemberIds.has(u.id));
 
       setUsers(filteredUsers);
     } catch (error) {
@@ -143,7 +160,7 @@ export default function EditMembersSheet({
   const loadRecentUsers = async () => {
     try {
       const recent = await getRecentUsers(userDetails!.id);
-      setRecentUsers(recent.filter((u) => u.id !== groupDetails?.admin.id));
+      setRecentUsers(recent.filter((u) => !protectedMemberIds.has(u.id)));
     } catch (error) {
       console.error("Error loading recent users:", error);
     }
@@ -269,7 +286,7 @@ export default function EditMembersSheet({
       const membersToRemove = memberList
         .filter(
           (member) =>
-            member.id !== groupDetails.admin.id &&
+            !protectedMemberIds.has(member.id) &&
             !allMembers.some((m) => m.id === member.id),
         )
         .map((member) => member.id);
@@ -292,20 +309,29 @@ export default function EditMembersSheet({
 
       // Offline → queue the roster change with an optimistic update. The cached
       // member list is updated too, so an offline-added expense reflects the new
-      // roster. Member editing is admin-only, so there's a single authorized
-      // editor and no cross-user conflict.
+      // roster. Roster editing is admin-only; with co-admins there can now be
+      // more than one authorized editor, so two admins editing offline at once
+      // both sync (adds upsert, removes are idempotent) with last-write-wins on
+      // a genuine conflict.
       if (!online) {
         const now = new Date().toISOString();
 
-        // The admin is always a member but is filtered out of the editable list
-        // (init excludes them), so re-include them in the optimistic roster. The
-        // online path stores getMembersByGroupId, which returns the admin too,
-        // and the group's "needs 2+ members" gate counts them — dropping the
-        // admin would make a group with one added member look like it has a
-        // single member and wrongly block adding expenses.
-        const adminMember =
-          memberList.find((m) => m.id === groupDetails.admin.id) ??
-          ({
+        // Protected members (the owner, plus the other admins when a co-admin
+        // is the one editing) are filtered out of the editable list by `init`,
+        // so re-include them in the optimistic roster. The online path stores
+        // getMembersByGroupId, which returns everyone, and the group's "needs
+        // 2+ members" gate counts them — dropping them would make a group with
+        // one added member look like it has a single member and wrongly block
+        // adding expenses.
+        // Every protected id except the owner comes straight out of memberList,
+        // so only the owner can need synthesizing (a cache written before they
+        // were in the roster).
+        const protectedMembers: Member[] = Array.from(protectedMemberIds)
+          .map((id) => memberList.find((m) => m.id === id))
+          .filter(Boolean) as Member[];
+
+        if (!protectedMembers.some((m) => m.id === groupDetails.admin.id)) {
+          protectedMembers.unshift({
             id: groupDetails.admin.id,
             email: groupDetails.admin.email ?? "",
             phone: groupDetails.admin.phone ?? "",
@@ -315,9 +341,10 @@ export default function EditMembersSheet({
             joined_at: now,
             group_id: groupDetails.id,
           } as Member);
+        }
 
         const roster: Member[] = [
-          adminMember,
+          ...protectedMembers,
           ...allMembers.map(
             (m) =>
               ({

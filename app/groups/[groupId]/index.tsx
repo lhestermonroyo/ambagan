@@ -39,6 +39,7 @@ import DateRangeSheet, {
 } from "@/features/group/components/DateRangeSheet";
 import DeleteGroupSheet from "@/features/group/components/DeleteGroupSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
+import GroupMembersTab from "@/features/group/components/GroupMembersTab";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
 import GroupStatsTab from "@/features/group/components/GroupStatsTab";
 import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
@@ -50,6 +51,10 @@ import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
+import {
+  isGroupAdmin,
+  isGroupOwner
+} from "@/features/group/utils/groupRoles";
 import { ExpensePreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
@@ -102,7 +107,7 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const tabs = ["Settlements", "Expenses", "Stats", "Info"] as const;
+const tabs = ["Settlements", "Expenses", "Stats", "Members", "Info"] as const;
 
 export default function GroupDetailsScreen() {
   const [loading, setLoading] = useState(false);
@@ -467,10 +472,15 @@ export default function GroupDetailsScreen() {
     return [draftSection, ...dateSections];
   }, [filteredExpenseList]);
 
-  const isAdmin = groupDetails?.admin.id === userDetails?.id;
+  // Two levels, and the gates below split on which one an action needs:
+  // an admin (owner or co-admin) manages members and the invite link, while
+  // editing, archiving and deleting the group stay with the owner.
+  const isAdmin = isGroupAdmin(groupDetails, memberList, userDetails?.id);
+  const isOwner = isGroupOwner(groupDetails, userDetails?.id);
 
   const shouldSuggestArchive = useMemo(() => {
-    if (!isAdmin || !groupDetails || groupDetails.archived || loading)
+    // Archiving is the owner's call, so only nudge them.
+    if (!isOwner || !groupDetails || groupDetails.archived || loading)
       return false;
     if (expenseList.length === 0) return false;
 
@@ -488,7 +498,7 @@ export default function GroupDetailsScreen() {
 
     const lastActivity = new Date(Math.max(...dates.map((d) => d.getTime())));
     return differenceInDays(new Date(), lastActivity) >= 30;
-  }, [isAdmin, groupDetails, loading, expenseList, settlementList]);
+  }, [isOwner, groupDetails, loading, expenseList, settlementList]);
 
   const handleArchiveGroup = async () => {
     setArchiving(true);
@@ -544,7 +554,7 @@ export default function GroupDetailsScreen() {
       toast({
         title: "Add a member first",
         description:
-          "A group needs at least two members before you can add an expense. Add someone from Group Info → Edit Members.",
+          "A group needs at least two members before you can add an expense. Add someone from the group's Members tab.",
         type: "info"
       });
       return false;
@@ -566,7 +576,7 @@ export default function GroupDetailsScreen() {
 
     const iconColor = getSecondaryHex("text-secondary-950", colorScheme);
 
-    const menuItems: AndroidHeaderMenuItem[] = isAdmin
+    const menuItems: AndroidHeaderMenuItem[] = isOwner
       ? [
           ...(!groupDetails?.archived
             ? [
@@ -642,75 +652,74 @@ export default function GroupDetailsScreen() {
         onBack={handleBack}
         gestureEnabled={false}
         actions={
-          loading ? undefined : isAdmin ? (
-            [
-              !groupDetails?.archived && groupDetails?.invite_token ? (
-                <Stack.Toolbar.Button
-                  key="share"
-                  icon="square.and.arrow.up"
+          // One array, always — a fragment here is silently dropped by the
+          // native toolbar. Share is admin-level (owner or co-admin); Edit /
+          // Archive / Delete stay owner-only, so a co-admin's menu is just
+          // "Leave Group", same as any member's.
+          loading
+            ? undefined
+            : [
+                isAdmin &&
+                !groupDetails?.archived &&
+                groupDetails?.invite_token ? (
+                  <Stack.Toolbar.Button
+                    key="share"
+                    icon="square.and.arrow.up"
+                    tintColor={getSecondaryHex(
+                      "text-secondary-950",
+                      colorScheme
+                    )}
+                    accessibilityLabel="Share group invite"
+                    onPress={() => router.push(`/groups/${groupId}/share`)}
+                  />
+                ) : null,
+                <Stack.Toolbar.Menu
+                  key="menu"
+                  icon="ellipsis"
                   tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
-                  accessibilityLabel="Share group invite"
-                  onPress={() => router.push(`/groups/${groupId}/share`)}
-                />
-              ) : null,
-              <Stack.Toolbar.Menu
-                key="menu"
-                icon="ellipsis"
-                tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
-                accessibilityLabel="More group options"
-              >
-                {!groupDetails?.archived && (
-                  <Stack.Toolbar.MenuAction
-                    icon="pencil"
-                    onPress={() => router.push(`/groups/${groupId}/edit`)}
-                  >
-                    Edit
-                  </Stack.Toolbar.MenuAction>
-                )}
-                <Stack.Toolbar.MenuAction
-                  icon="rectangle.portrait.and.arrow.right"
-                  onPress={() => setLeaveSheetOpen(true)}
+                  accessibilityLabel="More group options"
                 >
-                  Leave Group
-                </Stack.Toolbar.MenuAction>
-                {groupDetails?.archived ? (
+                  {isOwner && !groupDetails?.archived && (
+                    <Stack.Toolbar.MenuAction
+                      icon="pencil"
+                      onPress={() => router.push(`/groups/${groupId}/edit`)}
+                    >
+                      Edit
+                    </Stack.Toolbar.MenuAction>
+                  )}
                   <Stack.Toolbar.MenuAction
-                    icon="tray.and.arrow.up"
-                    onPress={handleUnarchiveGroup}
+                    icon="rectangle.portrait.and.arrow.right"
+                    onPress={() => setLeaveSheetOpen(true)}
                   >
-                    Unarchive
+                    Leave Group
                   </Stack.Toolbar.MenuAction>
-                ) : (
-                  <Stack.Toolbar.MenuAction
-                    icon="archivebox"
-                    onPress={handleArchiveGroup}
-                  >
-                    Archive
-                  </Stack.Toolbar.MenuAction>
-                )}
-                <Stack.Toolbar.MenuAction
-                  icon="trash"
-                  destructive
-                  onPress={() => setDeleteSheetOpen(true)}
-                >
-                  Delete Group
-                </Stack.Toolbar.MenuAction>
-              </Stack.Toolbar.Menu>
-            ]
-          ) : (
-            <Stack.Toolbar.Menu
-              icon="ellipsis"
-              tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
-              accessibilityLabel="More group options"
-            >
-              <Stack.Toolbar.MenuAction
-                icon="rectangle.portrait.and.arrow.right"
-                onPress={() => setLeaveSheetOpen(true)}
-              >
-                Leave Group
-              </Stack.Toolbar.MenuAction>
-            </Stack.Toolbar.Menu>
-          )
+                  {isOwner &&
+                    (groupDetails?.archived ? (
+                      <Stack.Toolbar.MenuAction
+                        icon="tray.and.arrow.up"
+                        onPress={handleUnarchiveGroup}
+                      >
+                        Unarchive
+                      </Stack.Toolbar.MenuAction>
+                    ) : (
+                      <Stack.Toolbar.MenuAction
+                        icon="archivebox"
+                        onPress={handleArchiveGroup}
+                      >
+                        Archive
+                      </Stack.Toolbar.MenuAction>
+                    ))}
+                  {isOwner && (
+                    <Stack.Toolbar.MenuAction
+                      icon="trash"
+                      destructive
+                      onPress={() => setDeleteSheetOpen(true)}
+                    >
+                      Delete Group
+                    </Stack.Toolbar.MenuAction>
+                  )}
+                </Stack.Toolbar.Menu>
+              ]
         }
         androidActions={renderGroupAndroidActions()}
       >
@@ -906,7 +915,7 @@ export default function GroupDetailsScreen() {
                       expenses.
                     </Text>
                   </VStack>
-                  {isAdmin && (
+                  {isOwner && (
                     <FormButton
                       text="Unarchive"
                       loading={archiving}
@@ -1175,7 +1184,7 @@ export default function GroupDetailsScreen() {
                       <EmptyList
                         type={EmptyType.EXPENSE}
                         content=" This group has no other members yet. Add members from
-                        Info → Edit Members to start splitting expenses."
+                        the Members tab to start splitting expenses."
                       />
                     )
                   }
@@ -1183,7 +1192,10 @@ export default function GroupDetailsScreen() {
                 />
               </VStack>
             )}
-            {tab === "Info" && <GroupDetailsTab />}
+            {tab === "Members" && <GroupMembersTab />}
+            {tab === "Info" && (
+              <GroupDetailsTab onViewMembers={() => setTab("Members")} />
+            )}
             {tab === "Stats" && groupId && userDetails && (
               <GroupStatsTab
                 groupId={groupId}

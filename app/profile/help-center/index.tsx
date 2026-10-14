@@ -95,7 +95,17 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Can I add members after a group is created?",
         answer:
-          "Yes — the group admin can. Open the group, go to the Members section in the Group Details tab, and tap Edit Members to add or remove people. Only the admin sees the Edit Members option; other members can leave on their own but can't change the roster."
+          "Yes — any admin can. Open the group, go to its Members tab, and tap Edit to add or remove people. Only admins see that option; other members can leave on their own but can't change the roster."
+      },
+      {
+        question: "Can a group have more than one admin?",
+        answer:
+          "Yes. The person who created the group is its owner, and they can make any member an admin: open the group, go to its Members tab, tap the ⋯ button next to their name, and choose Make admin. Admins can add or remove members and share or reset the invite link — handy when you don't want to be the only one keeping the roster up to date. They appear under the Admins tab, with you listed first as the owner. Editing the group's details, archiving it, deleting it, and choosing who's an admin stay with the owner. Admins can't remove each other; only the owner can, from the same ⋯ menu on the Admins tab."
+      },
+      {
+        question: "What happens to the group if the owner leaves?",
+        answer:
+          "The owner has to hand the group over before they can leave — when they tap Leave Group they're asked to pick who takes over, with existing admins listed first. If they're the only member left, leaving deletes the group and all its data instead."
       },
       {
         question: "Can a group be in a different currency?",
@@ -125,7 +135,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I invite someone to my group?",
         answer:
-          "Open the group and tap the share icon in the top-right corner (available to the group admin). Ambagan creates a unique invite link and a matching QR code for the group. Tap Share Invite Link to send it through any app, or Download QR to save the QR card as an image. Anyone with the link or QR can join, so only share it with people you want in the group."
+          "Open the group and tap the share icon in the top-right corner (available to the group's owner and its admins). Ambagan creates a unique invite link and a matching QR code for the group. Tap Share Invite Link to send it through any app, or Download QR to save the QR card as an image. Anyone with the link or QR can join, so only share it with people you want in the group."
       },
       {
         question: "How do I join a group I've been invited to?",
@@ -145,12 +155,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I reset a group's invite link?",
         answer:
-          "Open the group, tap the share icon, then tap Link Expiration under 'Reset invite link'. Choose how long the new link stays valid — Never, 1 hour, 24 hours, or 7 days — and tap Reset Link. A brand-new link and QR are generated and the old one stops working immediately. Reset the link if it has been shared too widely. Only the group admin can reset it, and the group must be active (not archived)."
+          "Open the group, tap the share icon, then tap Link Expiration under 'Reset invite link'. Choose how long the new link stays valid — Never, 1 hour, 24 hours, or 7 days — and tap Reset Link. A brand-new link and QR are generated and the old one stops working immediately. Reset the link if it has been shared too widely. Only the group's owner or an admin can reset it, and the group must be active (not archived)."
       },
       {
         question: "Why does it say the invite link has expired?",
         answer:
-          "Invite links can be set to expire after a chosen time. Once expired, the link and QR stop working and the Share and Download buttons are disabled. The group admin can generate a fresh link anytime from the Share Group screen by resetting the invite link. If someone gave you a link that's invalid or expired, ask them to share a new one."
+          "Invite links can be set to expire after a chosen time. Once expired, the link and QR stop working and the Share and Download buttons are disabled. The group's owner or an admin can generate a fresh link anytime from the Share Group screen by resetting the invite link. If someone gave you a link that's invalid or expired, ask them to share a new one."
       }
     ]
   },
@@ -489,7 +499,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Which features work offline and which need a connection?",
         answer:
-          "You can keep using most of Ambagan without a connection, and actions you take offline sync automatically when you're back online. Works offline: viewing your groups, books, expenses, settlements, friends, and notifications from your last synced data; adding, editing, and deleting expenses (attached receipts sync on reconnect); adding, editing, and deleting personal expenses in a book; marking a personal expense as paid or pending; saving an expense as a draft; creating a group and editing its name or category; creating a book and editing its name, category, budget, or linked group; archiving or restoring a group or a book; adding or removing members if you're the admin; adding or removing favorites; changing the app appearance and settlement view; toggling the daily reminder; and sharing an invite link or downloading a group QR code. Needs a connection: settling up (request, approve, reject, or mark as settled); finalizing a draft; setting up or managing a recurring expense (pause, resume, or delete a series); joining a group or scanning a QR to join; scanning a receipt; resetting a group's invite link; leaving a group or permanently deleting a group or book; opening Spending Analytics; uploading a profile, group, or book photo; editing your profile or account and changing your password; changing your notification preferences; and signing out. If you try something that needs a connection while offline, Ambagan shows a short message instead of leaving you stuck.",
+          "You can keep using most of Ambagan without a connection, and actions you take offline sync automatically when you're back online. Works offline: viewing your groups, books, expenses, settlements, friends, and notifications from your last synced data; adding, editing, and deleting expenses (attached receipts sync on reconnect); adding, editing, and deleting personal expenses in a book; marking a personal expense as paid or pending; saving an expense as a draft; creating a group and editing its name or category; creating a book and editing its name, category, budget, or linked group; archiving or restoring a group or a book; adding or removing members if you're the owner or an admin; adding or removing favorites; changing the app appearance and settlement view; toggling the daily reminder; and sharing an invite link or downloading a group QR code. Needs a connection: settling up (request, approve, reject, or mark as settled); finalizing a draft; setting up or managing a recurring expense (pause, resume, or delete a series); joining a group or scanning a QR to join; scanning a receipt; resetting a group's invite link; making a member an admin or removing their admin; leaving a group or permanently deleting a group or book; opening Spending Analytics; uploading a profile, group, or book photo; editing your profile or account and changing your password; changing your notification preferences; and signing out. If you try something that needs a connection while offline, Ambagan shows a short message instead of leaving you stuck.",
         content: <OfflineFeatureList />
       },
       {
@@ -573,7 +583,7 @@ const OFFLINE_CAPABLE: string[] = [
   "Create a book and edit its name, category, budget, or linked group",
   "Archive or restore a group",
   "Archive or restore a book",
-  "Add or remove members (group admin)",
+  "Add or remove members (group owner or admin)",
   "Add or remove favorites",
   "Change app appearance (theme) and settlement view",
   "Toggle the daily settlement reminder",
@@ -587,6 +597,7 @@ const OFFLINE_BLOCKED: string[] = [
   "Join a group or scan a QR code to join",
   "Scan a receipt (the receipt reader needs a connection)",
   "Reset a group's invite link or change its expiration",
+  "Make a member an admin, or remove their admin",
   "Leave a group, or permanently delete a group or book",
   "Open Spending Analytics",
   "Upload a profile photo, group cover photo, or book cover photo",

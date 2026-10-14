@@ -1,35 +1,42 @@
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
-import EmptyList from "@/components/EmptyList";
-import FormButton from "@/components/FormButton";
 import { Box } from "@/components/ui/box";
-import { Button } from "@/components/ui/button";
+import { Pressable } from "@/components/ui/pressable";
 import { Divider } from "@/components/ui/divider";
-import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { groupEntryCurrency } from "@/features/group/utils/groupCurrency";
+import { groupAdmins } from "@/features/group/utils/groupRoles";
 import states from "@/states";
-import { EmptyType } from "@/types/general";
-import { Member } from "@/types/groups";
 import { categories, currencies } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
-import { getUserSubtitle } from "@/utils/userDisplay";
-import React, { Fragment, useMemo, useState } from "react";
-import EditMembersSheet from "./EditMemberSheet";
+import { getSecondaryHex } from "@/utils/getColorHex";
+import { ChevronRight } from "lucide-react-native";
+import React, { Fragment, useMemo } from "react";
+import { useColorScheme } from "react-native";
 
-export default function GroupDetailsTab() {
-  const { details, memberList } = states.group.getState();
+/** The group's metadata. The roster lives on its own tab — see
+ *  {@link GroupMembersTab} — so `onViewMembers` lets the Members row here jump
+ *  there rather than dead-end on a count. */
+export default function GroupDetailsTab({
+  onViewMembers
+}: {
+  onViewMembers?: () => void;
+}) {
+  // Subscribed (not getState()) so a roster edit repaints the counts here right
+  // away.
+  const { details, memberList } = states.group();
 
   if (!details) return null;
 
-  const [isEditMembersOpen, setIsEditMembersOpen] = useState(false);
-  const [tab, setTab] = useState<"members" | "admin">("members");
-
   const { details: userDetails } = states.user();
+  const colorScheme = useColorScheme() ?? "light";
 
-  // Only the group admin may edit the member roster (enforced by RLS too).
-  const isAdmin = details.admin.id === userDetails?.id;
+  const admins = useMemo(
+    () => groupAdmins(details, memberList),
+    [details, memberList]
+  );
 
   const category = useMemo(() => {
     if (!details) return null;
@@ -41,26 +48,26 @@ export default function GroupDetailsTab() {
     [details?.currency]
   );
 
-  const filteredMemberList = useMemo(() => {
-    if (!details) return [];
-
-    if (tab === "members") {
-      return memberList.filter((m) => m.id !== details.admin.id);
-    } else {
-      return memberList.filter((m) => m.id === details.admin.id);
-    }
-  }, [memberList, tab, details]);
+  // Only interesting when it differs from the group's own currency — on every
+  // other group it would restate the row above it.
+  const entryCurrency = useMemo(() => {
+    const resolved = groupEntryCurrency({
+      currency: details?.currency,
+      default_expense_currency: details?.default_expense_currency
+    });
+    if (!resolved || resolved === details?.currency) return null;
+    return currencies.find((c) => c.value === resolved) ?? null;
+  }, [details?.default_expense_currency, details?.currency]);
 
   return (
     <Fragment>
       <VStack className="gap-y-6 px-4">
         <Box className="bg-secondary-100 rounded-xl overflow-hidden">
-          {/* Not "Default currency": it seeds new expenses, but it's also what
-              Stats and the settlement totals convert into, so calling it a
-              default understates it — the same undersell the create form's
-              helper text carried. */}
+          {/* The REPORTING currency — what Stats and the settlement totals
+              convert into. It also seeds new expenses unless the row below
+              overrides it, which is why this one isn't labelled "default". */}
           <DetailRow
-            label="Currency"
+            label={entryCurrency ? "Group currency" : "Currency"}
             value={
               <Text>
                 {currency ? currency.subtitle : (details.currency ?? "PHP")} (
@@ -68,6 +75,19 @@ export default function GroupDetailsTab() {
               </Text>
             }
           />
+          {entryCurrency && (
+            <>
+              <RowDivider />
+              <DetailRow
+                label="New expenses"
+                value={
+                  <Text>
+                    {entryCurrency.subtitle} ({entryCurrency.sign})
+                  </Text>
+                }
+              />
+            </>
+          )}
           <RowDivider />
           <DetailRow
             label="Category"
@@ -83,18 +103,28 @@ export default function GroupDetailsTab() {
             }
           />
           <RowDivider />
-          <DetailRow
-            label="Members"
-            value={
-              <Text>
-                {memberList.length}{" "}
-                {memberList.length === 1 ? "member" : "members"}
-              </Text>
-            }
-          />
+          <Pressable onPress={onViewMembers} disabled={!onViewMembers}>
+            <DetailRow
+              label="Members"
+              value={
+                <HStack className="items-center gap-x-1">
+                  <Text>
+                    {memberList.length}{" "}
+                    {memberList.length === 1 ? "member" : "members"}
+                  </Text>
+                  {!!onViewMembers && (
+                    <ChevronRight
+                      size={16}
+                      color={getSecondaryHex("text-secondary-950", colorScheme)}
+                    />
+                  )}
+                </HStack>
+              }
+            />
+          </Pressable>
           <RowDivider />
           <DetailRow
-            label="Admin"
+            label="Owner"
             value={
               <HStack className="gap-x-3 items-center">
                 <AppAvatar
@@ -109,60 +139,28 @@ export default function GroupDetailsTab() {
               </HStack>
             }
           />
+          {/* Only worth a row once someone else can manage the group — on a
+              single-admin group it would just restate the owner above. */}
+          {admins.length > 1 && (
+            <>
+              <RowDivider />
+              <DetailRow
+                label="Admins"
+                value={
+                  <Text>
+                    {admins.length} {admins.length === 1 ? "admin" : "admins"}
+                  </Text>
+                }
+              />
+            </>
+          )}
           <RowDivider />
           <DetailRow
             label="Created at"
             value={<Text>{formatDate(details?.created_at || "")}</Text>}
           />
         </Box>
-
-        <VStack className="gap-y-2">
-          <HStack className="items-center gap-x-2">
-            <Text bold className="text-xl flex-1">
-              Members
-            </Text>
-            {isAdmin && (
-              <Button variant="link" onPress={() => setIsEditMembersOpen(true)}>
-                <Text className="text-primary-400 font-medium">
-                  Edit Members
-                </Text>
-              </Button>
-            )}
-          </HStack>
-
-          <HStack className="gap-x-2">
-            <FormButton
-              text="Members"
-              size="sm"
-              variant={tab === "members" ? "solid" : "outline"}
-              className="flex-1"
-              onPress={() => setTab("members")}
-            />
-            <FormButton
-              text="Admin"
-              size="sm"
-              variant={tab === "admin" ? "solid" : "outline"}
-              className="flex-1"
-              onPress={() => setTab("admin")}
-            />
-          </HStack>
-
-          <FlatList
-            scrollEnabled={false}
-            data={filteredMemberList}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => <MemberItem item={item} />}
-            ItemSeparatorComponent={() => (
-              <Divider className="border-secondary-100" />
-            )}
-            ListEmptyComponent={() => <EmptyList type={EmptyType.MEMBER} />}
-          />
-        </VStack>
       </VStack>
-      <EditMembersSheet
-        isOpen={isEditMembersOpen}
-        onClose={() => setIsEditMembersOpen(false)}
-      />
     </Fragment>
   );
 }
@@ -187,26 +185,3 @@ const DetailRow = ({
     </HStack>
   );
 };
-
-function MemberItem({ item }: { item: Member }) {
-  const { details: userDetails } = states.user();
-  const isYou = item.id === userDetails?.id;
-  return (
-    <HStack className="items-center py-4 gap-y-4">
-      <HStack className="gap-x-3 items-center flex-1">
-        <AppAvatar name={item?.first_name} uri={item?.avatar!} size="md" />
-        <VStack>
-          <HStack className="gap-x-1 items-center">
-            <Text className="text-lg">
-              {item?.first_name} {item?.last_name}
-              {isYou && " (You)"}
-            </Text>
-          </HStack>
-          <Text className="text-sm text-secondary-950">
-            {getUserSubtitle(item)}
-          </Text>
-        </VStack>
-      </HStack>
-    </HStack>
-  );
-}

@@ -1,5 +1,8 @@
 import CategoryIcon from "@/components/CategoryIcon";
-import { CurrencySelectionSheet } from "@/components/CurrencySelection";
+import {
+  CURRENCY_SAME_AS,
+  CurrencySelectionSheet
+} from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
 import LoadingWrapper from "@/components/LoadingWrapper";
@@ -19,6 +22,7 @@ import UploadAvatar from "@/components/UploadAvatar";
 import CategorySheet, {
   groupCategoryMeta
 } from "@/features/expense/components/CategorySheet";
+import { normalizeEntryCurrency } from "@/features/group/utils/groupCurrency";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
@@ -39,19 +43,45 @@ export default function EditGroupScreen() {
     name: "",
     avatar: null as ImagePickerSuccessResult | null,
     category: GroupCategory.GENERAL as string,
-    currency: "PHP"
+    // The group's REPORTING currency; `defaultExpenseCurrency` is what Add
+    // Expense prefills. CURRENCY_SAME_AS = follow the reporting one.
+    currency: "PHP",
+    defaultExpenseCurrency: CURRENCY_SAME_AS
   });
   const [formErrors, setFormErrors] = useState({
     name: ""
   }) as any;
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [entryCurrencySheetOpen, setEntryCurrencySheetOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [defaultAvatar, setDefaultAvatar] = useState<string | null>(null);
 
   const currencyLabel = useMemo(
     () => currencies.find((c) => c.value === values.currency)?.label,
     [values.currency]
+  );
+
+  const entryCurrencyLabel = useMemo(
+    () =>
+      values.defaultExpenseCurrency
+        ? (currencies.find((c) => c.value === values.defaultExpenseCurrency)
+            ?.label ?? values.defaultExpenseCurrency)
+        : "Same as group currency",
+    [values.defaultExpenseCurrency]
+  );
+
+  // Pro-only — free groups are pinned to PHP on both, so the field would be
+  // inert. Mirrors the create form.
+  const showEntryCurrency = isPro;
+
+  // The sentinel is a UI value only; null is "follow the group currency" on the
+  // wire. Normalizing against the currency being saved in the SAME write means
+  // moving the group currency onto a pinned entry currency collapses the pin
+  // rather than freezing a copy that then drifts.
+  const defaultExpenseCurrency = normalizeEntryCurrency(
+    values.defaultExpenseCurrency,
+    values.currency
   );
 
   const params = useLocalSearchParams();
@@ -86,7 +116,9 @@ export default function EditGroupScreen() {
         name: response.name,
         avatar: null,
         category: response.category,
-        currency: response.currency ?? "PHP"
+        currency: response.currency ?? "PHP",
+        defaultExpenseCurrency:
+          response.default_expense_currency ?? CURRENCY_SAME_AS
       });
       setDefaultAvatar(response.avatar || null);
     } catch (error) {
@@ -103,7 +135,10 @@ export default function EditGroupScreen() {
           name: fromState.name,
           avatar: null,
           category: fromState.category,
-          currency: fromState.currency ?? "PHP"
+          // A group cached before the currency split shipped has neither field.
+          currency: fromState.currency ?? "PHP",
+          defaultExpenseCurrency:
+            fromState.default_expense_currency ?? CURRENCY_SAME_AS
         });
         setDefaultAvatar(fromState.avatar || null);
       } else {
@@ -124,7 +159,8 @@ export default function EditGroupScreen() {
       name: "",
       avatar: null,
       category: GroupCategory.GENERAL,
-      currency: "PHP"
+      currency: "PHP",
+      defaultExpenseCurrency: CURRENCY_SAME_AS
     });
   };
 
@@ -146,6 +182,7 @@ export default function EditGroupScreen() {
         name: values.name,
         category: values.category,
         currency: values.currency,
+        default_expense_currency: defaultExpenseCurrency,
         avatar: values.avatar
       });
 
@@ -238,7 +275,7 @@ export default function EditGroupScreen() {
 
               <FormControl size="md">
                 <FormControlLabel>
-                  <FormControlLabelText>Currency</FormControlLabelText>
+                  <FormControlLabelText>Group currency</FormControlLabelText>
                 </FormControlLabel>
                 <SelectField
                   onPress={() =>
@@ -251,11 +288,36 @@ export default function EditGroupScreen() {
                 </SelectField>
                 <FormControlHelper>
                   <FormControlHelperText>
-                    New expenses start in it, and totals convert to it. Existing
-                    expenses keep theirs.
+                    Totals, stats and balances convert to it, for every member.
+                    Existing expenses keep the currency they were entered in.
                   </FormControlHelperText>
                 </FormControlHelper>
               </FormControl>
+
+              {/* What Add Expense prefills. Unlike the book equivalent this is
+                  a shared setting — the admin picks it and every member's Add
+                  Expense follows, which the helper text has to say outright. */}
+              {showEntryCurrency && (
+                <FormControl size="md">
+                  <FormControlLabel>
+                    <FormControlLabelText>
+                      Default for new expenses
+                    </FormControlLabelText>
+                  </FormControlLabel>
+                  <SelectField onPress={() => setEntryCurrencySheetOpen(true)}>
+                    <Text className="text-lg" numberOfLines={1}>
+                      {entryCurrencyLabel}
+                    </Text>
+                  </SelectField>
+                  <FormControlHelper>
+                    <FormControlHelperText>
+                      {defaultExpenseCurrency
+                        ? `New expenses start in ${defaultExpenseCurrency} for everyone, counted toward the group's ${values.currency} totals.`
+                        : "New expenses start in the group currency."}
+                    </FormControlHelperText>
+                  </FormControlHelper>
+                </FormControl>
+              )}
             </VStack>
           </LoadingWrapper>
         </ScrollView>
@@ -271,9 +333,24 @@ export default function EditGroupScreen() {
 
       <CurrencySelectionSheet
         isOpen={currencySheetOpen}
+        title="Group Currency"
         currency={values.currency}
         onClose={() => setCurrencySheetOpen(false)}
         onCurrencyChange={(value) => setValues({ ...values, currency: value })}
+      />
+
+      <CurrencySelectionSheet
+        isOpen={entryCurrencySheetOpen}
+        title="New Expenses"
+        currency={values.defaultExpenseCurrency}
+        sameAs={{
+          label: "Same as group currency",
+          subtitle: currencyLabel ?? values.currency
+        }}
+        onClose={() => setEntryCurrencySheetOpen(false)}
+        onCurrencyChange={(value) =>
+          setValues({ ...values, defaultExpenseCurrency: value })
+        }
       />
 
       <UpgradeSheet

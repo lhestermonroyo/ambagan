@@ -1,7 +1,8 @@
 import { createNotification } from "@/features/notifications/services/notification.service";
 import states from "@/states";
 import { NotificationType } from "@/types/notifications";
-import { Group, Member } from "@/types/groups";
+import { Group, GroupRole, Member } from "@/types/groups";
+import { normalizeEntryCurrency } from "@/features/group/utils/groupCurrency";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
 import * as offlineQueue from "@/utils/offlineQueue";
@@ -18,14 +19,17 @@ export const saveGroup = async ({
   avatar,
   category,
   currency,
+  default_expense_currency,
   admin_id,
   member_ids,
   id
 }: {
   name: string;
   category: string;
-  /** The group's home currency (free = "PHP"; Pro can pick). */
+  /** The group's REPORTING currency (free = "PHP"; Pro can pick). */
   currency: string;
+  /** What Add Expense prefills. Null/omitted = follow `currency`. */
+  default_expense_currency?: string | null;
   avatar: ImagePickerSuccessResult | null;
   admin_id: string;
   member_ids: string[];
@@ -59,6 +63,11 @@ export const saveGroup = async ({
       name,
       category,
       currency,
+      // Normalized, never stored equal to `currency` — see normalizeEntryCurrency.
+      default_expense_currency: normalizeEntryCurrency(
+        default_expense_currency,
+        currency
+      ),
       avatar: avatarUrl,
       admin_id
     }
@@ -82,7 +91,12 @@ export const saveGroup = async ({
       return supabase.from(tables.GROUP_MEMBERS_TBL).upsert(
         {
           group_id: groupId,
-          member_id: id
+          member_id: id,
+          // The owner's own row carries role "admin" so the client can list a
+          // group's admins as a plain filter on the roster. It is NOT what
+          // makes them the owner — that's groups_tbl.admin_id, which RLS reads
+          // directly (see migrations/2026-08-19_group_co_admins.sql).
+          role: id === admin_id ? GroupRole.ADMIN : GroupRole.MEMBER
         },
         { onConflict: "group_id,member_id", ignoreDuplicates: true }
       );
@@ -125,24 +139,53 @@ export const saveGroup = async ({
   };
 };
 
+/** The entry currency a group currently holds, read from whatever the app
+ *  already has in memory. Only used on the offline path, where the queued op
+ *  can't say "leave this column alone" — see updateGroup. */
+const currentEntryCurrency = (groupId: string): string | null => {
+  const state = states.group.getState();
+  const group =
+    state.details?.id === groupId
+      ? state.details
+      : state.list.find((g) => g.id === groupId);
+  return group?.default_expense_currency ?? null;
+};
+
 export const updateGroup = async (
   groupId: string,
   payload: {
     name: string;
     category: string;
     currency: string;
+    /** Omit to leave the stored value alone; null/"" clears it back to
+     *  "same as the group currency". */
+    default_expense_currency?: string | null;
     avatar: ImagePickerSuccessResult | null;
   }
 ) => {
-  // Offline → queue name/category/currency (avatar uploads are blocked offline,
-  // so it stays null) + optimistic cache. Folds into a still-pending create.
+  // Offline → queue name/category/currencies (avatar uploads are blocked
+  // offline, so it stays null) + optimistic cache. Folds into a still-pending
+  // create.
   if (!(await offlineQueue.isOnline())) {
     const uid = states.user.getState().details?.id;
     if (uid) {
+      // The queue op carries a concrete value, so unlike the online path below
+      // it has no way to express "don't touch this column". Resolve the absent
+      // case here instead — from the group we already hold — or an offline edit
+      // that never mentioned the entry currency would silently clear it.
+      const entryCurrency =
+        payload.default_expense_currency !== undefined
+          ? payload.default_expense_currency
+          : currentEntryCurrency(groupId);
+
       await offlineQueue.queueUpdateGroup(uid, groupId, {
         name: payload.name,
         category: payload.category,
         currency: payload.currency,
+        default_expense_currency: normalizeEntryCurrency(
+          entryCurrency,
+          payload.currency
+        ),
         avatar: null
       });
     }
@@ -166,10 +209,11 @@ export const updateGroup = async (
   }
 
   if (groupData.admin_id !== user.data.user.id) {
-    throw new Error("Only the group admin can update the group");
+    throw new Error("Only the group owner can update the group");
   }
 
-  const { name, category, currency, avatar } = payload;
+  const { name, category, currency, default_expense_currency, avatar } =
+    payload;
 
   let avatarUrl: string | null = null;
 
@@ -186,6 +230,19 @@ export const updateGroup = async (
     category,
     currency
   };
+
+  // Written whenever the caller passed the key at all — including as null, which
+  // is a real value here ("follow the group currency") and must be able to clear
+  // a previously pinned code. `undefined` means "not editing this", so the
+  // column is left untouched rather than silently reset. Re-normalized against
+  // the currency being saved in the same write, so changing the group currency
+  // to match a pinned entry currency collapses the pin instead of freezing it.
+  if (default_expense_currency !== undefined) {
+    updateData.default_expense_currency = normalizeEntryCurrency(
+      default_expense_currency,
+      currency
+    );
+  }
 
   if (avatarUrl) {
     updateData.avatar = avatarUrl;
@@ -234,7 +291,7 @@ export const deleteGroup = async (groupId: string) => {
   }
 
   if (groupData.admin_id !== user.data.user.id) {
-    throw new Error("Only the group admin can delete the group");
+    throw new Error("Only the group owner can delete the group");
   }
 
   const { count: unsettledCount, error: unsettledError } = await supabase
@@ -325,6 +382,7 @@ export const getGroupsByUserId = async (userId: string) => {
           name,
           category,
           currency,
+          default_expense_currency,
           avatar,
           admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
           archived,
@@ -392,7 +450,7 @@ export const getGroupsByUserIdPaginated = async (
     let query = supabase
       .from(tables.GROUPS_TBL)
       .select(
-        `id, created_at, name, category, currency, avatar, archived,
+        `id, created_at, name, category, currency, default_expense_currency, avatar, archived,
          admin:admin_id (id, email, phone, first_name, last_name, avatar, plan),
          ${tables.GROUP_MEMBERS_TBL}!inner(member_id),
          expenses:${tables.EXPENSES_TBL}(count)`,

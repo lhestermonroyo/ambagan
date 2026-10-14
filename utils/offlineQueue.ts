@@ -12,7 +12,7 @@ import {
   PersonalBookTotal,
   PersonalExpense
 } from "@/types/books";
-import { Group, Member } from "@/types/groups";
+import { Group, GroupRole, Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
 import NetInfo from "@react-native-community/netinfo";
 import "react-native-get-random-values";
@@ -85,6 +85,8 @@ export type CreateGroupArgs = {
   name: string;
   category: string;
   currency: string;
+  /** What Add Expense prefills. Null = follow `currency`. */
+  default_expense_currency: string | null;
   avatar: null;
   admin_id: string;
   member_ids: string[];
@@ -99,6 +101,11 @@ export type UpdateGroupArgs = {
   name: string;
   category: string;
   currency: string;
+  /** What Add Expense prefills. Null = follow `currency`. Always a real code or
+   *  null by the time it reaches the queue — the CURRENCY_SAME_AS sentinel the
+   *  picker emits is normalized away in the service, so nothing has to survive
+   *  a round trip through SQLite as an empty string. */
+  default_expense_currency: string | null;
   avatar: null;
 };
 
@@ -1103,11 +1110,17 @@ async function removeExpenseOptimistic(groupId: string, expenseId: string) {
   }
 }
 
-/** Patch a group's name/category in the live list + caches (offline edit). */
+/** Patch a group's name/category/currencies in the live list + caches (offline
+ *  edit). */
 async function updateGroupOptimistic(
   userId: string,
   groupId: string,
-  patch: { name: string; category: string; currency: string }
+  patch: {
+    name: string;
+    category: string;
+    currency: string;
+    default_expense_currency: string | null;
+  }
 ) {
   const apply = (g: any) =>
     g.id === groupId ? { ...g, ...patch, pending: true } : g;
@@ -1437,7 +1450,8 @@ export async function queueUpdateGroup(
         ...createOp.payload.args,
         name: args.name,
         category: args.category,
-        currency: args.currency
+        currency: args.currency,
+        default_expense_currency: args.default_expense_currency
       }
     };
     await updateQueuePayload(createOp.id, patched);
@@ -1448,7 +1462,8 @@ export async function queueUpdateGroup(
   await updateGroupOptimistic(userId, groupId, {
     name: args.name,
     category: args.category,
-    currency: args.currency
+    currency: args.currency,
+    default_expense_currency: args.default_expense_currency
   });
 }
 
@@ -1788,6 +1803,8 @@ export function buildOptimisticGroup(params: {
   name: string;
   category: string;
   currency: string;
+  /** Already normalized by the caller — null = follow `currency`. */
+  default_expense_currency: string | null;
   admin: UserPreview;
   members: UserPreview[];
 }): Group & { members: Member[] } {
@@ -1800,6 +1817,7 @@ export function buildOptimisticGroup(params: {
     name: params.name,
     category: params.category,
     currency: params.currency,
+    default_expense_currency: params.default_expense_currency,
     avatar: null,
     archived: false,
     expense_count: 0,
@@ -1807,7 +1825,11 @@ export function buildOptimisticGroup(params: {
     members: params.members.map((m) => ({
       ...m,
       group_id: params.clientId,
-      joined_at: now
+      joined_at: now,
+      // Mirrors what createGroup writes on sync, so the owner shows up in the
+      // group's admin list straight away rather than only after the first
+      // online refresh.
+      role: m.id === params.admin.id ? GroupRole.ADMIN : GroupRole.MEMBER
     }))
   };
 }

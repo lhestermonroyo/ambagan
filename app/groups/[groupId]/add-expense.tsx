@@ -62,6 +62,7 @@ import { EmptyType } from "@/types/general";
 import { Group, Member } from "@/types/groups";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
+import { groupEntryCurrency } from "@/features/group/utils/groupCurrency";
 import { BASE_CURRENCY } from "@/utils/fx";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
@@ -286,16 +287,20 @@ export default function AddExpenseScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGroup?.id]);
 
-  // Default the currency to the resolved group's own currency (a Pro "Japan
-  // Trip" group is JPY-first). A scanned currency always wins; free groups are
-  // "PHP" so this is a no-op for them. Fires when the selected group changes,
-  // mirroring the book add-expense flow.
+  // Default the currency to the resolved group's ENTRY currency — its
+  // `default_expense_currency` when the admin pinned one, and its reporting
+  // currency otherwise (see groupEntryCurrency). That's what makes a trip
+  // reported in PHP still open Add Expense in JPY. A scanned currency always
+  // wins; free groups are "PHP" on both so this is a no-op for them. Fires when
+  // the selected group changes, mirroring the book add-expense flow.
   useEffect(() => {
     if (seed.scannedCurrency) return;
-    // A group cached before group-currency shipped has no `currency` — fall back
-    // to the home currency so we never set `undefined`.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (selectedGroup) setCurrency(selectedGroup.currency ?? BASE_CURRENCY);
+    // A group cached before group-currency shipped has neither column — fall
+    // back to the home currency so we never set `undefined`.
+    if (selectedGroup) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCurrency(groupEntryCurrency(selectedGroup) ?? BASE_CURRENCY);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGroup?.id]);
 

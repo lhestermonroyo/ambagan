@@ -1,5 +1,8 @@
 import CategoryIcon from "@/components/CategoryIcon";
-import { CurrencySelectionSheet } from "@/components/CurrencySelection";
+import {
+  CURRENCY_SAME_AS,
+  CurrencySelectionSheet
+} from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
 import SelectField from "@/components/SelectField";
@@ -24,6 +27,7 @@ import CategorySheet, {
 } from "@/features/expense/components/CategorySheet";
 import MemberItem from "@/features/group/components/MemberItem";
 import MembersSelectionSheet from "@/features/group/components/MembersSelectionSheet";
+import { normalizeEntryCurrency } from "@/features/group/utils/groupCurrency";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
@@ -49,15 +53,23 @@ export default function CreateGroupScreen() {
     name: "",
     avatar: null as ImagePickerSuccessResult | null,
     category: GroupCategory.GENERAL as string,
-    // Every group starts in the app's home currency. Pro users can change it
-    // here; for free users the selection is locked, pinning them to PHP.
-    currency: BASE_CURRENCY
+    // The group's REPORTING currency — what the stats tab, member breakdown and
+    // To Collect / To Pay totals convert into. Every group starts in the app's
+    // home currency. Pro users can change it here; for free users the selection
+    // is locked, pinning them to PHP.
+    currency: BASE_CURRENCY,
+    // What Add Expense prefills — separate from `currency` so a trip can be
+    // reported in the currency the members think in and entered in the one
+    // they're actually spending. CURRENCY_SAME_AS (the default) = follow
+    // `currency`, and is stored as null so a later currency edit carries over.
+    defaultExpenseCurrency: CURRENCY_SAME_AS
   });
   const [formErrors, setFormErrors] = useState({
     name: ""
   }) as any;
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const [entryCurrencySheetOpen, setEntryCurrencySheetOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [openSelectMembers, setOpenSelectMembers] = useState(false);
   const [tab, setTab] = useState<"members" | "admin">("members");
@@ -67,6 +79,30 @@ export default function CreateGroupScreen() {
   const currencyLabel = useMemo(
     () => currencies.find((c) => c.value === values.currency)?.label,
     [values.currency]
+  );
+
+  const entryCurrencyLabel = useMemo(
+    () =>
+      values.defaultExpenseCurrency
+        ? (currencies.find((c) => c.value === values.defaultExpenseCurrency)
+            ?.label ?? values.defaultExpenseCurrency)
+        : "Same as group currency",
+    [values.defaultExpenseCurrency]
+  );
+
+  // The entry-currency field only earns its place once the two can actually
+  // differ — which needs Pro (free groups are pinned to PHP on both). Shown to
+  // any Pro user rather than only after the group currency moves off PHP, so a
+  // PHP-reported trip abroad — the whole point of the field — is reachable
+  // without first having to change something else.
+  const showEntryCurrency = isPro;
+
+  // The sentinel is a UI value only — null is what "follow the group currency"
+  // means on the wire, and normalizing here keeps a pinned code equal to the
+  // group currency from freezing into the row.
+  const defaultExpenseCurrency = normalizeEntryCurrency(
+    values.defaultExpenseCurrency,
+    values.currency
   );
 
   const router = useRouter();
@@ -139,6 +175,7 @@ export default function CreateGroupScreen() {
         name: values.name,
         category: values.category,
         currency: values.currency,
+        default_expense_currency: defaultExpenseCurrency,
         admin: admin[0],
         members: memberPreviews
       });
@@ -149,6 +186,7 @@ export default function CreateGroupScreen() {
           name: values.name,
           category: values.category,
           currency: values.currency,
+          default_expense_currency: defaultExpenseCurrency,
           avatar: null,
           admin_id: admin[0].id,
           member_ids: memberPreviews.map((member) => member.id)
@@ -180,6 +218,7 @@ export default function CreateGroupScreen() {
         avatar: values.avatar,
         category: values.category,
         currency: values.currency,
+        default_expense_currency: defaultExpenseCurrency,
         admin_id: admin[0].id,
         member_ids: resolvedMembers.concat(admin).map((member) => member.id)
       });
@@ -264,9 +303,13 @@ export default function CreateGroupScreen() {
               </SelectField>
             </FormControl>
 
+            {/* The group's REPORTING currency. Kept alongside name and
+                category rather than tucked away: it's what every figure on the
+                group is denominated in, so it's part of what the group IS
+                rather than a setting on it. */}
             <FormControl size="md">
               <FormControlLabel>
-                <FormControlLabelText>Currency</FormControlLabelText>
+                <FormControlLabelText>Group currency</FormControlLabelText>
               </FormControlLabel>
               <SelectField
                 onPress={() =>
@@ -279,10 +322,37 @@ export default function CreateGroupScreen() {
               </SelectField>
               <FormControlHelper>
                 <FormControlHelperText>
-                  New expenses start in it, and totals convert to it.
+                  Totals, stats and balances convert to it.
                 </FormControlHelperText>
               </FormControlHelper>
             </FormControl>
+
+            {/* What Add Expense prefills. Pro-only, since free groups are
+                pinned to PHP on both counts and the field would be inert.
+                Sits inline rather than behind a disclosure — the group form has
+                nothing else optional to collapse alongside it (see the v1.5
+                backlog). */}
+            {showEntryCurrency && (
+              <FormControl size="md">
+                <FormControlLabel>
+                  <FormControlLabelText>
+                    Default for new expenses
+                  </FormControlLabelText>
+                </FormControlLabel>
+                <SelectField onPress={() => setEntryCurrencySheetOpen(true)}>
+                  <Text className="text-lg" numberOfLines={1}>
+                    {entryCurrencyLabel}
+                  </Text>
+                </SelectField>
+                <FormControlHelper>
+                  <FormControlHelperText>
+                    {defaultExpenseCurrency
+                      ? `New expenses start in ${defaultExpenseCurrency} for everyone, counted toward the group's ${values.currency} totals.`
+                      : "New expenses start in the group currency."}
+                  </FormControlHelperText>
+                </FormControlHelper>
+              </FormControl>
+            )}
 
             <FormControl size="md">
               <VStack className="gap-y-2">
@@ -370,9 +440,24 @@ export default function CreateGroupScreen() {
 
       <CurrencySelectionSheet
         isOpen={currencySheetOpen}
+        title="Group Currency"
         currency={values.currency}
         onClose={() => setCurrencySheetOpen(false)}
         onCurrencyChange={(value) => setValues({ ...values, currency: value })}
+      />
+
+      <CurrencySelectionSheet
+        isOpen={entryCurrencySheetOpen}
+        title="New Expenses"
+        currency={values.defaultExpenseCurrency}
+        sameAs={{
+          label: "Same as group currency",
+          subtitle: currencyLabel ?? values.currency
+        }}
+        onClose={() => setEntryCurrencySheetOpen(false)}
+        onCurrencyChange={(value) =>
+          setValues({ ...values, defaultExpenseCurrency: value })
+        }
       />
 
       <UpgradeSheet
