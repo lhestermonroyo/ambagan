@@ -6,7 +6,7 @@ export type SettlementView = "full" | "compact" | "arrow";
 
 /**
  * Which page of the Overview's hero pager opens by default — the group net
- * balance, or month-to-date personal spending. Both pages stay one swipe away
+ * balance, or Individual expense totals. Both pages stay one swipe away
  * either way; this only decides where a launch lands.
  */
 export type HeroView = "balance" | "personal";

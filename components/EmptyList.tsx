@@ -1,7 +1,7 @@
 import { EmptyType } from "@/types/general";
+import states from "@/states";
 import { emptyTypes } from "@/utils/constants";
-import { useColorScheme } from "nativewind";
-import { Image } from "react-native";
+import { Image, useColorScheme } from "react-native";
 import { Text } from "./ui/text";
 import { VStack } from "./ui/vstack";
 
@@ -109,10 +109,11 @@ const EmptyList = ({
   // Optional copy override — falls back to the default text for `type`.
   content?: string;
 }) => {
-  // nativewind's, not react-native's: App Appearance (Light/Dark/System) is
-  // applied by GluestackUIProvider via nativewind's setColorScheme, so the
-  // react-native hook reports the OS scheme and ignores the in-app choice.
-  const { colorScheme } = useColorScheme();
+  // Respect the app override while keeping theme subscriptions tied to the
+  // component lifecycle, including empty states discarded during navigation.
+  const systemScheme = useColorScheme();
+  const { appearanceMode } = states.user();
+  const colorScheme = appearanceMode === "system" ? systemScheme : appearanceMode;
   const empty = emptyTypes.find((item) => item.type === type);
   const imageKey = TYPE_TO_IMAGE[type];
   const source = IMAGES[imageKey][colorScheme === "dark" ? "dark" : "light"];

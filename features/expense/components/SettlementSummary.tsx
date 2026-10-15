@@ -15,6 +15,8 @@ import SettlementBreakdown from "./SettlementBreakdown";
 /** The member repays the original expense payer, so the arrow always follows
  *  member → payer regardless of which participant opened the sheet. */
 export default function SettlementSummary({ payment }: { payment: Payment }) {
+  if (!payment) return null;
+
   const { details: userDetails } = states.user();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const senderIsYou = payment.member.id === userDetails?.id;
@@ -27,7 +29,12 @@ export default function SettlementSummary({ payment }: { payment: Payment }) {
   const recipientLabel = recipientIsYou
     ? `${userDetails?.first_name || payment.payer.first_name} (You)`
     : recipient;
-  const verb = payment.status === PaymentStatus.SETTLED ? "paid" : senderIsYou ? "pay" : "pays";
+  const verb =
+    payment.status === PaymentStatus.SETTLED
+      ? "paid"
+      : senderIsYou
+        ? "pay"
+        : "pays";
 
   return (
     <VStack className="rounded-2xl border border-secondary-200 bg-secondary-100 overflow-hidden">
@@ -40,12 +47,18 @@ export default function SettlementSummary({ payment }: { payment: Payment }) {
               size="lg"
               isPlaceholder={payment.member.is_placeholder}
             />
-            <Text className="text-sm text-secondary-950 text-center" numberOfLines={2}>
+            <Text
+              className="text-sm text-secondary-950 text-center"
+              numberOfLines={2}
+            >
               {senderLabel}
             </Text>
           </VStack>
           <Box className="mt-4 h-8 w-8 items-center justify-center">
-            <ArrowRight size={24} color={getPrimaryHex("text-primary-500", scheme)} />
+            <ArrowRight
+              size={24}
+              color={getPrimaryHex("text-primary-500", scheme)}
+            />
           </Box>
           <VStack className="w-20 items-center gap-y-2">
             <AppAvatar
@@ -54,14 +67,21 @@ export default function SettlementSummary({ payment }: { payment: Payment }) {
               size="lg"
               isPlaceholder={payment.payer.is_placeholder}
             />
-            <Text className="text-sm text-secondary-950 text-center" numberOfLines={2}>
+            <Text
+              className="text-sm text-secondary-950 text-center"
+              numberOfLines={2}
+            >
               {recipientLabel}
             </Text>
           </VStack>
         </HStack>
 
         <VStack className="w-full items-center gap-y-1">
-          <Text bold accessibilityRole="header" className="text-sm text-secondary-950 uppercase tracking-wide text-center">
+          <Text
+            bold
+            accessibilityRole="header"
+            className="text-sm text-secondary-950 uppercase tracking-wide text-center"
+          >
             {sender} {verb} {recipient}
           </Text>
           <Text

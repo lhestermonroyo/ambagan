@@ -17,7 +17,7 @@ export const PRO_FEATURES: {
     icon: "bolt",
     title: "No daily expense limit",
     description:
-      "Add unlimited group and personal expenses — no 5-a-day cap on either."
+      "Add unlimited group and individual expenses — no 5-a-day cap on either."
   },
   {
     icon: "event-repeat",

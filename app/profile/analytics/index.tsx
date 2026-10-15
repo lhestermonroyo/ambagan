@@ -155,8 +155,8 @@ const emptyMessage = (
   const ranged = dateRange !== "All";
   if (scope === "personal") {
     return ranged
-      ? "No personal expenses in the selected date range."
-      : "No personal expenses yet. Add one in a book to see it here.";
+      ? "No individual expenses in the selected date range."
+      : "No individual expenses yet. Add one in an Individual entry to see it here.";
   }
   if (scope === "groups") {
     return ranged

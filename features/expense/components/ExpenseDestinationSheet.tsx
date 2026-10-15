@@ -71,8 +71,8 @@ export default function ExpenseDestinationSheet({
           <ListDivider />
           <Option
             icon={<NotebookPen color={iconColor} />}
-            title="Personal expense"
-            description="Track your own spending in a book."
+            title="Individual Expense"
+            description="Track your own spending in an Individual entry."
             onPress={onSelectPersonal}
           />
         </VStack>

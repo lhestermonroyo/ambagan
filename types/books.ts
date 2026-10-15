@@ -139,19 +139,10 @@ export type PersonalRecurring = {
   is_active: boolean;
 };
 
-/** Monthly personal spending and a matching comparison window. */
+/** All recorded expenses across the user's Individual entries. */
 export type PersonalOverview = {
-  /** This calendar month to date, per currency, paid vs pending. Named for the
-   *  window rather than `current`, which the React Compiler's lint reads as a
-   *  ref access and bails on. */
-  thisMonth: PersonalBookTotal[];
-  /**
-   * LAST month truncated to the same day — month-to-date against month-to-date,
-   * so a comparison made on the 2nd isn't measured against a full month and
-   * doesn't report a 90% drop. Clamped when last month is shorter (Mar 31 has
-   * no counterpart in February).
-   */
-  lastMonth: PersonalBookTotal[];
+  /** All dates and Individual entries, including archived ones, by currency. */
+  totals: PersonalBookTotal[];
 };
 
 export type BookState = {

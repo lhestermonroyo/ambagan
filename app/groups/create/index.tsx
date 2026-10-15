@@ -1,9 +1,6 @@
 import CategoryIcon from "@/components/CategoryIcon";
 import ConfirmationSheet from "@/components/ConfirmationSheet";
-import {
-  CURRENCY_SAME_AS,
-  CurrencySelectionSheet
-} from "@/components/CurrencySelection";
+import { CurrencySelectionSheet } from "@/components/CurrencySelection";
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
 import SelectField from "@/components/SelectField";
@@ -29,7 +26,6 @@ import CategorySheet, {
 import GroupMemberRow from "@/features/group/components/GroupMemberRow";
 import MemberActionsSheet from "@/features/group/components/MemberActionsSheet";
 import MembersSelectionSheet from "@/features/group/components/MembersSelectionSheet";
-import { normalizeEntryCurrency } from "@/features/group/utils/groupCurrency";
 import useAppToast from "@/hooks/use-app-toast";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
@@ -38,10 +34,12 @@ import { GroupCategory, GroupMode, GroupRole, Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
 import { categories, currencies } from "@/utils/constants";
 import { BASE_CURRENCY } from "@/utils/fx";
+import { getPrimaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Info } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { Platform, useColorScheme } from "react-native";
 import "react-native-get-random-values";
@@ -65,19 +63,13 @@ export default function CreateGroupScreen() {
     // To Collect / To Pay totals convert into. Every group starts in the app's
     // home currency. Pro users can change it here; for free users the selection
     // is locked, pinning them to PHP.
-    currency: BASE_CURRENCY,
-    // What Add Expense prefills — separate from `currency` so a trip can be
-    // reported in the currency the members think in and entered in the one
-    // they're actually spending. CURRENCY_SAME_AS (the default) = follow
-    // `currency`, and is stored as null so a later currency edit carries over.
-    defaultExpenseCurrency: CURRENCY_SAME_AS
+    currency: BASE_CURRENCY
   });
   const [formErrors, setFormErrors] = useState({
     name: ""
   }) as any;
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
-  const [entryCurrencySheetOpen, setEntryCurrencySheetOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [openSelectMembers, setOpenSelectMembers] = useState(false);
   const [members, setMembers] = useState<UserPreview[]>([]);
@@ -106,30 +98,6 @@ export default function CreateGroupScreen() {
   const currencyLabel = useMemo(
     () => currencies.find((c) => c.value === values.currency)?.label,
     [values.currency]
-  );
-
-  const entryCurrencyLabel = useMemo(
-    () =>
-      values.defaultExpenseCurrency
-        ? (currencies.find((c) => c.value === values.defaultExpenseCurrency)
-            ?.label ?? values.defaultExpenseCurrency)
-        : "Same as currency",
-    [values.defaultExpenseCurrency]
-  );
-
-  // The entry-currency field only earns its place once the two can actually
-  // differ — which needs Pro (free groups are pinned to PHP on both). Shown to
-  // any Pro user rather than only after the group currency moves off PHP, so a
-  // PHP-reported trip abroad — the whole point of the field — is reachable
-  // without first having to change something else.
-  const showEntryCurrency = isPro;
-
-  // The sentinel is a UI value only — null is what "follow the group currency"
-  // means on the wire, and normalizing here keeps a pinned code equal to the
-  // group currency from freezing into the row.
-  const defaultExpenseCurrency = normalizeEntryCurrency(
-    values.defaultExpenseCurrency,
-    values.currency
   );
 
   const router = useRouter();
@@ -198,12 +166,14 @@ export default function CreateGroupScreen() {
     setFormErrors(nextErrors);
     if (nextErrors.name) return;
 
+    // New expenses follow the reporting currency. A separate default can be
+    // configured later in Edit Group or Edit Individual.
     if (individual) {
       if (!user.details?.id || submitting) return;
       setSubmitting(true);
       const args = {
         name: values.name.trim(), category: values.category,
-        currency: values.currency, default_expense_currency: defaultExpenseCurrency,
+        currency: values.currency, default_expense_currency: null,
         budget: null,
         budget_period: "monthly" as const, user_id: user.details.id,
         group_id: null, avatar: values.avatar
@@ -213,7 +183,7 @@ export default function CreateGroupScreen() {
           const clientId = uuid();
           const optimistic = offlineQueue.buildOptimisticBook({
             clientId, name: args.name, category: args.category, currency: args.currency,
-            defaultExpenseCurrency, budget: args.budget, budgetPeriod: args.budget_period,
+            defaultExpenseCurrency: null, budget: args.budget, budgetPeriod: args.budget_period,
             groupId: null, userId: user.details.id
           });
           await offlineQueue.queueCreateBook(user.details.id, { ...args, avatar: null }, optimistic);
@@ -263,7 +233,7 @@ export default function CreateGroupScreen() {
           name: values.name,
           category: values.category,
           currency: values.currency,
-          default_expense_currency: defaultExpenseCurrency,
+          default_expense_currency: null,
           admin: owner,
           members: memberPreviews,
           admin_member_ids: [...adminMemberIds]
@@ -275,7 +245,7 @@ export default function CreateGroupScreen() {
             name: values.name,
             category: values.category,
             currency: values.currency,
-            default_expense_currency: defaultExpenseCurrency,
+            default_expense_currency: null,
             avatar: null,
             admin_id: owner.id,
             member_ids: memberPreviews.map((member) => member.id),
@@ -305,7 +275,7 @@ export default function CreateGroupScreen() {
         avatar: values.avatar,
         category: values.category,
         currency: values.currency,
-        default_expense_currency: defaultExpenseCurrency,
+        default_expense_currency: null,
         admin_id: owner.id,
         member_ids: [owner.id, ...resolvedMembers.map((member) => member.id)],
         // Contact resolution preserves order but can replace a temporary ID.
@@ -420,47 +390,32 @@ export default function CreateGroupScreen() {
 
             <FormControl size="md">
               <FormControlLabel><FormControlLabelText>Mode</FormControlLabelText></FormControlLabel>
-              <HStack className="gap-x-2">
-                <FormButton text="Group" size="sm" className="flex-1"
-                  variant={individual ? "outline" : "solid"}
-                  disabled={submitting}
-                  onPress={() => setMode(GroupMode.GROUP)} />
-                <FormButton text="Individual" size="sm" className="flex-1"
-                  variant={individual ? "solid" : "outline"}
-                  disabled={submitting}
-                  onPress={requestIndividualMode} />
-              </HStack>
-              <FormControlHelper><FormControlHelperText>
-                {individual ? "Track your own expenses. Only you can access this entry." : "Split expenses and settle up with other people."}
-              </FormControlHelperText></FormControlHelper>
+              <VStack className="gap-y-4">
+                <HStack className="gap-x-2">
+                  <FormButton text="Group" size="sm" className="flex-1"
+                    variant={individual ? "outline" : "solid"}
+                    disabled={submitting}
+                    onPress={() => setMode(GroupMode.GROUP)} />
+                  <FormButton text="Individual" size="sm" className="flex-1"
+                    variant={individual ? "solid" : "outline"}
+                    disabled={submitting}
+                    onPress={requestIndividualMode} />
+                </HStack>
+                <VStack className="p-4 bg-primary-50 rounded-xl">
+                  <HStack className="gap-x-2 items-start">
+                    <Info
+                      size={20}
+                      color={getPrimaryHex("text-primary-500", colorScheme)}
+                    />
+                    <Text className="flex-1 text-primary-500">
+                      {individual
+                        ? "Track your own expenses. Only you can access this entry."
+                        : "Split expenses and settle up with other people."}
+                    </Text>
+                  </HStack>
+                </VStack>
+              </VStack>
             </FormControl>
-
-            {/* What Add Expense prefills. Pro-only, since free groups are
-                pinned to PHP on both counts and the field would be inert.
-                Sits inline rather than behind a disclosure — the group form has
-                nothing else optional to collapse alongside it (see the v1.5
-                backlog). */}
-            {showEntryCurrency && (
-              <FormControl size="md">
-                <FormControlLabel>
-                  <FormControlLabelText>
-                    Default for new expenses
-                  </FormControlLabelText>
-                </FormControlLabel>
-                <SelectField onPress={() => setEntryCurrencySheetOpen(true)}>
-                  <Text className="text-lg" numberOfLines={1}>
-                    {entryCurrencyLabel}
-                  </Text>
-                </SelectField>
-                <FormControlHelper>
-                  <FormControlHelperText>
-                    {defaultExpenseCurrency
-                      ? `New expenses start in ${defaultExpenseCurrency}, counted toward the ${values.currency} totals.`
-                      : "New expenses start in the selected currency."}
-                  </FormControlHelperText>
-                </FormControlHelper>
-              </FormControl>
-            )}
 
             {!individual && <FormControl size="md">
               <VStack className="gap-y-2">
@@ -550,20 +505,6 @@ export default function CreateGroupScreen() {
         currency={values.currency}
         onClose={() => setCurrencySheetOpen(false)}
         onCurrencyChange={(value) => setValues({ ...values, currency: value })}
-      />
-
-      <CurrencySelectionSheet
-        isOpen={entryCurrencySheetOpen}
-        title="New Expenses"
-        currency={values.defaultExpenseCurrency}
-        sameAs={{
-          label: "Same as currency",
-          subtitle: currencyLabel ?? values.currency
-        }}
-        onClose={() => setEntryCurrencySheetOpen(false)}
-        onCurrencyChange={(value) =>
-          setValues({ ...values, defaultExpenseCurrency: value })
-        }
       />
 
       <UpgradeSheet

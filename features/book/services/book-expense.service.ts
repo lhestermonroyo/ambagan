@@ -402,78 +402,34 @@ function sumByCurrencyAndStatus(
     .sort((a, b) => b.paid + b.pending - (a.paid + a.pending));
 }
 
-/**
- * The two windows the Overview card compares: this calendar month to date, and
- * the SAME stretch of last month. Truncating the comparison window is the whole
- * point — a full previous month measured against two days of this one would
- * report a collapse in spending every time the month turned over.
- *
- * `prevEnd` is exclusive, and the day is clamped to last month's length so the
- * 31st of a long month doesn't silently fall off the end of a short one.
- */
-function monthWindows(now: Date = new Date()) {
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  // Day 0 of this month is the last day of the previous one.
-  const daysInPrevMonth = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    0
-  ).getDate();
-  // +1 because the bound is exclusive; the overflow when the clamped day IS
-  // last month's last day rolls to the 1st of this month, which is correct.
-  const prevEnd = new Date(
-    now.getFullYear(),
-    now.getMonth() - 1,
-    Math.min(now.getDate(), daysInPrevMonth) + 1
-  );
-  return { startOfMonth, startOfPrevMonth, prevEnd };
-}
-
-/** Month-to-date personal spending and the same stretch of last month. */
+/** All recorded expenses across every Individual entry, split by status. */
 export const getPersonalOverview = async (
   userId: string
 ): Promise<PersonalOverview> => {
   try {
-    const { startOfMonth, startOfPrevMonth, prevEnd } = monthWindows();
+    // Page through every expense so the API's row limit cannot truncate totals.
+    // No date or archive filter: archived Individual entries remain recorded.
+    const pageSize = 1000;
+    const rows: { amount: number; currency: string; status: string }[] = [];
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await supabase
+        .from(tables.PERSONAL_EXPENSES_TBL)
+        .select("amount, currency, status")
+        .eq("user_id", userId)
+        .order("id", { ascending: true })
+        .range(offset, offset + pageSize - 1);
 
-    // One fetch covering both windows — the previous month is the wider bound,
-    // and the split happens below.
-    const expenseResult = await supabase
-      .from(tables.PERSONAL_EXPENSES_TBL)
-      .select("book_id, amount, currency, status, expense_date")
-      .eq("user_id", userId)
-      .gte("expense_date", startOfPrevMonth.toISOString());
-
-    if (expenseResult.error) throw expenseResult.error;
-
-    const rows = (expenseResult.data ?? []) as {
-      book_id: string;
-      amount: number;
-      currency: string;
-      status: string;
-      expense_date: string;
-    }[];
-
-    const currentRows: typeof rows = [];
-    const previousRows: typeof rows = [];
-    for (const row of rows) {
-      const date = new Date(row.expense_date);
-      if (date >= startOfMonth) currentRows.push(row);
-      else if (date < prevEnd) previousRows.push(row);
-      // Between prevEnd and startOfMonth: later in last month than we've got
-      // this month. Deliberately dropped — counting it would put the comparison
-      // back on uneven windows.
+      if (error) throw error;
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < pageSize) break;
     }
 
     const overview: PersonalOverview = {
-      thisMonth: sumByCurrencyAndStatus(currentRows),
-      lastMonth: sumByCurrencyAndStatus(previousRows)
+      totals: sumByCurrencyAndStatus(rows)
     };
 
-    // Snapshot so the Overview card shows the last value offline.
     cacheService.savePersonalOverview(userId, overview).catch(() => {});
-
     return overview;
   } catch (error) {
     const cached = await cacheService.getPersonalOverview(userId);

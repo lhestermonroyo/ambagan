@@ -410,7 +410,7 @@ export default function AddPersonalExpenseScreen() {
       setDailyCount(count);
       if (count >= PERSONAL_EXPENSE_LIMIT) {
         setUpgradeDescription(
-          "You've reached your 5 personal expenses for today. Upgrade to Pro for unlimited expenses."
+          "You've reached your 5 individual expenses for today. Upgrade to Pro for unlimited expenses."
         );
         setUpgradeOpen(true);
         return;
@@ -532,7 +532,7 @@ export default function AddPersonalExpenseScreen() {
       }
       handleSaved();
     } catch (error) {
-      console.error("Failed to save personal expense:", error);
+      console.error("Failed to save individual expense:", error);
       toast({
         title: isEdit ? "Update Failed" : "Add Expense Failed",
         description: "An error occurred. Please try again.",
@@ -543,7 +543,7 @@ export default function AddPersonalExpenseScreen() {
     }
   };
 
-  // Delete (edit mode only) — the personal expense list has no swipe actions, so
+  // Delete (edit mode only) — the individual expense list has no swipe actions, so
   // this header action is the single delete path. Offline → queue + optimistic
   // cache removal (adjusts the cached book totals), same as the online delete.
   const handleDelete = async () => {
@@ -574,7 +574,7 @@ export default function AddPersonalExpenseScreen() {
       setDeleteOpen(false);
       router.back();
     } catch (error) {
-      console.error("Failed to delete personal expense:", error);
+      console.error("Failed to delete individual expense:", error);
       toast({
         title: "Error",
         description: "Failed to delete expense. Please try again.",

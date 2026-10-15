@@ -82,7 +82,7 @@ export default function LinkedGroupSheet({
       </Pressable>
       <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
         Adds your share of the group&apos;s expenses to this Individual entry&apos;s total.
-        Your personal expenses stay private.
+        Your individual expenses stay private.
       </Text>
 
       <RadioGroup

@@ -3,6 +3,8 @@ import AndroidHeaderMenu, {
   type AndroidHeaderMenuItem
 } from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
+import CurrencyCountButton from "@/components/CurrencyCountButton";
+import HeroAmount from "@/components/HeroAmount";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
@@ -15,6 +17,7 @@ import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
+import { Divider } from "@/components/ui/divider";
 import { Fab } from "@/components/ui/fab";
 import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
@@ -34,6 +37,7 @@ import CategorySheet, {
   categoryFilterOptions
 } from "@/features/expense/components/CategorySheet";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
+import { amountTextSize } from "@/features/expense/utils/amountTextSize";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
   CustomDateRange,
@@ -66,6 +70,8 @@ import {
   ArchiveRestore,
   CalendarRange,
   ChevronDown,
+  CircleCheck,
+  Clock,
   ListPlus,
   Pencil,
   Plus,
@@ -539,10 +545,21 @@ export default function BookDetailScreen() {
     currency: t.currency,
     amount: t.paid + t.pending
   }));
+  const paidByCurrency = displayTotals.map((t) => ({
+    currency: t.currency,
+    amount: t.paid
+  }));
+  const pendingByCurrency = displayTotals.map((t) => ({
+    currency: t.currency,
+    amount: t.pending
+  }));
   const compactTotal = useConvertedTotal(recordedByCurrency, primaryCurrency);
+  const compactPaid = useConvertedTotal(paidByCurrency, primaryCurrency);
+  const compactPending = useConvertedTotal(pendingByCurrency, primaryCurrency);
+  const totalAmountText = `${compactTotal.convertedCurrencies.length > 0 ? "≈ " : ""}${formatAmount(compactTotal.total, primaryCurrency)}`;
 
   // Header, tabs and total card scroll out before the compact summary appears.
-  const COMPACT_THRESHOLD = 230;
+  const COMPACT_THRESHOLD = 320;
   const compactOpacity = scrollY.interpolate({
     inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
     outputRange: [0, 1],
@@ -821,20 +838,60 @@ export default function BookDetailScreen() {
 
             {tab === "Expenses" && (
               <VStack className="gap-y-6 pb-4">
-                <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-1">
-                  <Text bold className="text-sm text-secondary-950 uppercase">
-                    Total expenses
-                  </Text>
-                  <CurrencyAmountDisplay
-                    items={recordedByCurrency}
+                <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-4">
+                  <HeroAmount
                     label="Total expenses"
-                    subtitle="All recorded expenses, by currency"
-                    primaryCurrency={primaryCurrency}
-                    convertTo={primaryCurrency}
-                    totalLabel="Total expenses"
-                    amountClassName="text-background-950"
-                    fitAmount
+                    amountText={totalAmountText}
+                    amountSize={amountTextSize("text-3xl", totalAmountText, 12)}
+                    currency={primaryCurrency}
+                    chip={
+                      <CurrencyCountButton
+                        items={recordedByCurrency}
+                        title="Total expenses"
+                        subtitle="All recorded expenses, by currency"
+                        convertTo={primaryCurrency}
+                        totalLabel="Total expenses"
+                      />
+                    }
                   />
+                  <Divider />
+                  <HStack className="items-stretch">
+                    <VStack className="flex-1 gap-y-2">
+                      <HStack className="items-center gap-x-2">
+                        <Box className="bg-success-50 p-1.5 rounded-full">
+                          <CircleCheck size={14} color="#2A7948" />
+                        </Box>
+                        <Text className="text-secondary-950 text-sm uppercase">Paid</Text>
+                      </HStack>
+                      <CurrencyAmountDisplay
+                        items={paidByCurrency}
+                        label="Paid"
+                        subtitle="Paid expenses, by currency"
+                        primaryCurrency={primaryCurrency}
+                        convertTo={primaryCurrency}
+                        totalLabel="Total paid"
+                        fitAmount
+                      />
+                    </VStack>
+                    <Divider orientation="vertical" className="mx-4" />
+                    <VStack className="flex-1 gap-y-2">
+                      <HStack className="items-center gap-x-2">
+                        <Box className="bg-warning-50 p-1.5 rounded-full">
+                          <Clock size={14} color="#D76C1F" />
+                        </Box>
+                        <Text className="text-secondary-950 text-sm uppercase">Pending</Text>
+                      </HStack>
+                      <CurrencyAmountDisplay
+                        items={pendingByCurrency}
+                        label="Pending"
+                        subtitle="Pending expenses, by currency"
+                        primaryCurrency={primaryCurrency}
+                        convertTo={primaryCurrency}
+                        totalLabel="Total pending"
+                        fitAmount
+                      />
+                    </VStack>
+                  </HStack>
                 </VStack>
 
                 {/* Recurring-expenses entry card — taps through to the standalone
@@ -1123,18 +1180,29 @@ export default function BookDetailScreen() {
             }}
           >
             <HStack className="px-6 py-3 gap-x-4 items-center justify-center">
-              <VStack className="items-center flex-1">
-                <Text
-                  className="text-secondary-950 text-sm uppercase tracking-widest"
-                  numberOfLines={1}
-                >
-                  Total expenses
-                </Text>
-                <Text bold className="text-lg" numberOfLines={1}>
-                  {compactTotal.convertedCurrencies.length > 0 ? "≈ " : ""}
-                  {formatAmount(compactTotal.total, primaryCurrency)}
-                </Text>
-              </VStack>
+              {[
+                { label: "Total", summary: compactTotal },
+                { label: "Paid", summary: compactPaid },
+                { label: "Pending", summary: compactPending }
+              ].map(({ label, summary }, index) => {
+                const amountText = `${summary.convertedCurrencies.length > 0 ? "≈ " : ""}${formatAmount(summary.total, primaryCurrency)}`;
+                return (
+                  <Fragment key={label}>
+                    {index > 0 && <Text className="text-secondary-200">|</Text>}
+                    <VStack className="items-center flex-1">
+                      <Text
+                        className="text-secondary-950 text-sm uppercase tracking-widest"
+                        numberOfLines={1}
+                      >
+                        {label}
+                      </Text>
+                      <Text bold className={amountTextSize("text-lg", amountText, 11)} numberOfLines={1}>
+                        {amountText}
+                      </Text>
+                    </VStack>
+                  </Fragment>
+                );
+              })}
             </HStack>
           </Animated.View>
         )}
@@ -1174,7 +1242,7 @@ export default function BookDetailScreen() {
         isOpen={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         title="Delete Individual"
-        description="Permanently deleting this Individual entry will remove all of its personal expenses. This cannot be undone."
+        description="Permanently deleting this Individual entry will remove all of its individual expenses. This cannot be undone."
         confirmText="Delete"
         isDelete
         loading={deleting}

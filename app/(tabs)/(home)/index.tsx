@@ -23,9 +23,9 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { groupEntryHref, groupEntryKey, isIndividualGroup } from "@/features/group/utils/groupMode";
 import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
-import PersonalSpendingPane, {
-  usePersonalSpendSummary
-} from "@/features/book/components/PersonalSpendingPane";
+import IndividualTotalsPane, {
+  useIndividualTotalsSummary
+} from "@/features/book/components/IndividualTotalsPane";
 import ExpenseDestinationSheet from "@/features/expense/components/ExpenseDestinationSheet";
 import NetBalanceDisplay, {
   HERO_MAX_CHARS
@@ -186,10 +186,10 @@ export default function HomeScreen() {
   );
   const compactPay = useConvertedTotal(displayStats.toPay, BASE_CURRENCY);
 
-  // Personal spending is the hero's second page, and the compact bar mirrors
+  // Individual Totals is the hero's second page, and the compact bar mirrors
   // whichever page is showing — so these figures are derived here rather than
   // left inside the page, on the same terms it renders them.
-  const personalSummary = usePersonalSpendSummary(personalOverview);
+  const personalSummary = useIndividualTotalsSummary(personalOverview);
 
   const { width: heroPageWidth } = useWindowDimensions();
   const heroScrollX = useRef(new Animated.Value(0)).current;
@@ -311,7 +311,7 @@ export default function HomeScreen() {
       const overview = await services.bookExpense.getPersonalOverview(userId);
       setPersonalOverview(overview);
     } catch (error) {
-      console.error("Failed to fetch personal spending:", error);
+      console.error("Failed to fetch Individual totals:", error);
     } finally {
       setLoading((prev) => ({ ...prev, personal: false }));
     }
@@ -395,7 +395,7 @@ export default function HomeScreen() {
 
     // The two recent-activity sections share one loading flag, so they're
     // fetched side by side — and caught independently, so a failure on one side
-    // (e.g. personal expenses offline) still fills the other.
+    // (e.g. individual expenses offline) still fills the other.
     await Promise.all([
       (async () => {
         try {
@@ -424,7 +424,7 @@ export default function HomeScreen() {
           );
           setPersonalExpenses(recent);
         } catch (error) {
-          console.error("Failed to fetch recent personal expenses:", error);
+          console.error("Failed to fetch recent individual expenses:", error);
         }
       })()
     ]);
@@ -549,7 +549,6 @@ export default function HomeScreen() {
     router.push("/scan" as any);
   }, [ensureOnline, router]);
 
-  const handleOpenBooks = useCallback(() => router.push("/groups"), [router]);
   const handleOpenHelp = useCallback(
     () => router.push("/profile/help-center"),
     [router]
@@ -735,11 +734,10 @@ export default function HomeScreen() {
                     </VStack>
 
                     <Box style={{ width: heroPageWidth }} className="px-4">
-                      <PersonalSpendingPane
+                      <IndividualTotalsPane
                         overview={personalOverview}
                         isLoading={loading.personal}
                         amountSize={heroAmountSize}
-                        onPress={handleOpenBooks}
                       />
                     </Box>
                   </Animated.ScrollView>
@@ -751,7 +749,7 @@ export default function HomeScreen() {
                     activePage={heroPage}
                     onGoToPage={goToHeroPage}
                     prevLabel="Show net balance"
-                    nextLabel="Show personal spending"
+                    nextLabel="Show Individual totals"
                   />
                 </VStack>
 
@@ -899,7 +897,7 @@ export default function HomeScreen() {
 
         {/* Compact hero bar — pinned just under the native header, fades in as
           the hero scrolls away. It mirrors whichever hero page was left showing,
-          so scrolling away from personal spending doesn't silently hand back a
+          so scrolling away from Individual totals doesn't silently hand back a
           net balance. Purely informational, so it stays non-interactive and lets
           scroll/touches pass through to the list. */}
         <Animated.View
@@ -913,11 +911,19 @@ export default function HomeScreen() {
           <HStack className="px-6 py-3 gap-x-4 items-center justify-center">
             {heroPage === HERO_PERSONAL ? (
               <>
-                <CompactStat label="Spent" value={personalSummary.amountText} />
+                <CompactStat
+                  label="Total"
+                  value={personalOverview ? personalSummary.amountText : "—"}
+                />
                 <CompactDivider />
                 <CompactStat
-                  label="vs Last"
-                  value={personalSummary.trend.value}
+                  label="Paid"
+                  value={personalOverview ? personalSummary.paidText : "—"}
+                />
+                <CompactDivider />
+                <CompactStat
+                  label="Pending"
+                  value={personalOverview ? personalSummary.pendingText : "—"}
                 />
               </>
             ) : (

@@ -58,9 +58,9 @@ export default function HeroViewSheet({
       },
       {
         icon: <Wallet color={getPrimaryHex("text-primary-400", colorScheme)} />,
-        label: "Personal Spending",
+        label: "Individual Totals",
         value: "personal",
-        description: "This month's own spending, trend and budgets"
+        description: "Total expenses, paid and pending across all Individual entries"
       }
     ],
     [colorScheme]

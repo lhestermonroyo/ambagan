@@ -490,7 +490,7 @@ export default function GroupsScreen() {
                 <EmptyList
                   type={activeTab === GroupMode.INDIVIDUAL ? EmptyType.BOOK : EmptyType.GROUP}
                   content={activeTab === GroupMode.INDIVIDUAL
-                    ? activeFilter === "archived" ? "No archived Individual entries." : "No Individual entries yet. Create one to record your personal expenses."
+                    ? activeFilter === "archived" ? "No archived Individual entries." : "No Individual entries yet. Create one to record your individual expenses."
                     : undefined}
                 />
               )}

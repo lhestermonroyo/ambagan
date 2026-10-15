@@ -91,7 +91,7 @@ export default function ProfileScreen() {
         ? "Arrow"
         : "Full";
 
-  const heroViewLabel = heroView === "personal" ? "Personal" : "Balance";
+  const heroViewLabel = heroView === "personal" ? "Individual Totals" : "Net Balance";
 
   const isPro = userDetails?.plan === "pro";
 
@@ -182,7 +182,7 @@ export default function ProfileScreen() {
               />
             ),
             label: "Overview Hero",
-            description: "Open on net balance or personal spending",
+            description: "Open on Net Balance or Individual Totals",
             value: <Text className="text-lg font-medium">{heroViewLabel}</Text>,
             onPress: () => setHeroViewOpen(true)
           }

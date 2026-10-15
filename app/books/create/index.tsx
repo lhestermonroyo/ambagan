@@ -414,7 +414,7 @@ function EditIndividualScreen() {
                 <FormControlHelper>
                   <FormControlHelperText>
                     Adds your share of the group&apos;s expenses to this
-                    Individual entry&apos;s total. Your personal expenses stay private.
+                    Individual entry&apos;s total. Your individual expenses stay private.
                   </FormControlHelperText>
                 </FormControlHelper>
               </FormControl>

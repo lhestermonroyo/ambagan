@@ -1,14 +1,15 @@
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
 import { Box } from "@/components/ui/box";
-import { Pressable } from "@/components/ui/pressable";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
+import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { groupEntryCurrency } from "@/features/group/utils/groupCurrency";
 import { groupAdmins } from "@/features/group/utils/groupRoles";
 import states from "@/states";
+import { Group, Member } from "@/types/groups";
 import { categories, currencies } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
 import { getSecondaryHex } from "@/utils/getColorHex";
@@ -27,10 +28,33 @@ export default function GroupDetailsTab({
   // Subscribed (not getState()) so a roster edit repaints the counts here right
   // away.
   const { details, memberList } = states.group();
-
-  if (!details) return null;
-
   const { details: userDetails } = states.user();
+
+  // Clearing the store during back navigation unmounts the populated view.
+  // This wrapper always calls the same two store hooks, even while loading.
+  if (!details || !memberList || !userDetails) return null;
+
+  return (
+    <GroupDetailsContent
+      details={details}
+      memberList={memberList}
+      userId={userDetails.id}
+      onViewMembers={onViewMembers}
+    />
+  );
+}
+
+function GroupDetailsContent({
+  details,
+  memberList,
+  userId,
+  onViewMembers
+}: {
+  details: Group;
+  memberList: Member[];
+  userId: string;
+  onViewMembers?: () => void;
+}) {
   const colorScheme = useColorScheme() ?? "light";
 
   const admins = useMemo(
@@ -136,7 +160,7 @@ export default function GroupDetailsTab({
                 />
                 <Text>
                   {`${details?.admin.first_name} ${details?.admin.last_name}`}
-                  {details.admin.id === userDetails?.id && " (You)"}
+                  {details.admin.id === userId && " (You)"}
                 </Text>
               </HStack>
             }

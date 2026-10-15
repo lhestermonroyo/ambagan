@@ -166,7 +166,7 @@ export default function ScanReceiptView({
    * rather than at submit, where the OCR round trip and the destination choice
    * have already been paid for.
    *
-   * Group and personal expenses are counted against separate buckets, so the
+   * Group and individual expenses are counted against separate buckets, so the
    * generic scanner blocks only when every destination it could offer is out of
    * room: a full group bucket doesn't matter to someone who was going to file
    * this in a book. With nothing to file into yet, it falls back to "both full",
@@ -185,7 +185,7 @@ export default function ScanReceiptView({
       const count = await resolvePersonalDailyCount(userDetails.id);
       if (count < PERSONAL_EXPENSE_LIMIT) return false;
       setUpgradeDescription(
-        "You've reached your 5 personal expenses for today. Upgrade to Pro to keep scanning receipts."
+        "You've reached your 5 individual expenses for today. Upgrade to Pro to keep scanning receipts."
       );
     } else {
       await destinationsLoaded.current;

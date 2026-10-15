@@ -46,7 +46,7 @@ export default function AnalyticsContainersCard({
                     {container.name}
                   </Text>
                   <Text className="text-sm text-secondary-950">
-                    {container.source === "personal" ? "Book" : "Group"}
+                    {container.source === "personal" ? "Individual" : "Group"}
                   </Text>
                 </VStack>
                 <Text bold className="text-lg" numberOfLines={1}>
