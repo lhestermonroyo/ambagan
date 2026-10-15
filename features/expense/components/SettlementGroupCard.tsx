@@ -44,7 +44,7 @@ export default function SettlementGroupCard({
   };
 
   return (
-    <Box className="rounded-xl border border-secondary-200 overflow-hidden bg-background-0">
+    <Box className="rounded-xl overflow-hidden bg-background-0">
       <Pressable onPress={toggle}>
         <HStack className="items-center gap-x-3 p-4 bg-background-50">
           <Text

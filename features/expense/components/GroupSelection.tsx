@@ -23,7 +23,7 @@ import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { Group } from "@/types/groups";
 import { formatDate } from "@/utils/formatDate";
-import { getSecondaryHex } from "@/utils/getColorHex";
+import { getOnSolidHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
 import { CircleIcon, UserStar } from "lucide-react-native";
 import { useColorScheme as useAppColorScheme } from "nativewind";
@@ -54,7 +54,7 @@ export default function GroupSelection({
   if (!group)
     return (
       <PressableListItem
-        className="p-4 border border-background-200 rounded-lg"
+        className="p-4 rounded-lg"
         onPress={() => router.push("/groups/create")}
       >
         <HStack className="gap-x-4 justify-center items-center">
@@ -83,7 +83,7 @@ export default function GroupSelection({
   return (
     <Fragment>
       {isLocked ? (
-        <Box className="p-4 border border-background-200 rounded-lg">
+        <Box className="p-4 rounded-lg bg-secondary-100">
           <HStack className="gap-x-4 justify-center items-center">
             <VStack className="flex-1 gap-y-4">
               <HStack className="gap-x-3 items-center">
@@ -218,7 +218,7 @@ function GroupItem({ group, onPress }: { group: Group; onPress: () => void }) {
             <Box className="absolute right-0 bottom-0 z-10 bg-primary-600 rounded-full p-1">
               <UserStar
                 size={12}
-                color={getSecondaryHex("text-secondary-0", colorScheme)}
+                color={getOnSolidHex(colorScheme)}
               />
             </Box>
           )}

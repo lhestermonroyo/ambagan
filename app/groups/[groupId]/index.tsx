@@ -61,7 +61,7 @@ import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { formatLastUpdate, getDateGroupTitle } from "@/utils/formatDate";
 import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getPrimaryHex, getSecondaryHex, getOnSolidHex } from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
 import {
   Stack,
@@ -836,12 +836,12 @@ export default function GroupDetailsScreen() {
                   {fabOpen ? (
                     <X
                       size={24}
-                      color={getSecondaryHex("text-secondary-0", colorScheme)}
+                      color={getOnSolidHex(colorScheme)}
                     />
                   ) : (
                     <Plus
                       size={24}
-                      color={getSecondaryHex("text-secondary-0", colorScheme)}
+                      color={getOnSolidHex(colorScheme)}
                     />
                   )}
                 </Fab>

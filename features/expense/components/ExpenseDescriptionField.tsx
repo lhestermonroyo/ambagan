@@ -21,7 +21,7 @@ export default function ExpenseDescriptionField({
   return (
     <VStack className="gap-y-1">
       <Box
-        className={`bg-secondary-100 border rounded-xl px-4 py-3 ${errorMessage ? "border-error-300" : "border-background-200"}`}
+        className={`bg-secondary-100 rounded-xl px-4 py-3 ${errorMessage ? "border border-error-300" : ""}`}
       >
         <Text className="text-xs uppercase tracking-widest text-secondary-950 mb-2">
           Description

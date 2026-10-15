@@ -135,7 +135,7 @@ const buttonTextStyle = tva({
       link: 'data-[hover=true]:underline data-[active=true]:underline',
       outline: '',
       solid:
-        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0'
+        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0 dark:text-white dark:data-[hover=true]:text-white dark:data-[active=true]:text-white'
     },
     size: {
       xs: 'text-xs',
@@ -150,25 +150,25 @@ const buttonTextStyle = tva({
       variant: 'solid',
       action: 'primary',
       class:
-        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0'
+        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0 dark:text-white dark:data-[hover=true]:text-white dark:data-[active=true]:text-white'
     },
     {
       variant: 'solid',
       action: 'secondary',
       class:
-        'text-typography-800 data-[hover=true]:text-typography-800 data-[active=true]:text-typography-800'
+        'text-typography-800 data-[hover=true]:text-typography-800 data-[active=true]:text-typography-800 dark:text-white dark:data-[hover=true]:text-white dark:data-[active=true]:text-white'
     },
     {
       variant: 'solid',
       action: 'positive',
       class:
-        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0'
+        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0 dark:text-white dark:data-[hover=true]:text-white dark:data-[active=true]:text-white'
     },
     {
       variant: 'solid',
       action: 'negative',
       class:
-        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0'
+        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0 dark:text-white dark:data-[hover=true]:text-white dark:data-[active=true]:text-white'
     },
     {
       variant: 'outline',
@@ -204,7 +204,7 @@ const buttonIconStyle = tva({
       link: 'data-[hover=true]:underline data-[active=true]:underline',
       outline: '',
       solid:
-        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0'
+        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0 dark:text-white dark:data-[hover=true]:text-white dark:data-[active=true]:text-white'
     },
     size: {
       xs: 'h-3.5 w-3.5',
@@ -230,25 +230,25 @@ const buttonIconStyle = tva({
       variant: 'solid',
       action: 'primary',
       class:
-        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0'
+        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0 dark:text-white dark:data-[hover=true]:text-white dark:data-[active=true]:text-white'
     },
     {
       variant: 'solid',
       action: 'secondary',
       class:
-        'text-typography-800 data-[hover=true]:text-typography-800 data-[active=true]:text-typography-800'
+        'text-typography-800 data-[hover=true]:text-typography-800 data-[active=true]:text-typography-800 dark:text-white dark:data-[hover=true]:text-white dark:data-[active=true]:text-white'
     },
     {
       variant: 'solid',
       action: 'positive',
       class:
-        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0'
+        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0 dark:text-white dark:data-[hover=true]:text-white dark:data-[active=true]:text-white'
     },
     {
       variant: 'solid',
       action: 'negative',
       class:
-        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0'
+        'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0 dark:text-white dark:data-[hover=true]:text-white dark:data-[active=true]:text-white'
     }
   ]
 });

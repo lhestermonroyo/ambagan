@@ -10,7 +10,7 @@ import { VStack } from "@/components/ui/vstack";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
 import { formatLastUpdate } from "@/utils/formatDate";
-import { getSecondaryHex } from "@/utils/getColorHex";
+import { getOnSolidHex } from "@/utils/getColorHex";
 import { UserStar } from "lucide-react-native";
 import { useMemo } from "react";
 import { useColorScheme } from "react-native";
@@ -49,7 +49,7 @@ export default function GroupItem({
             <Box className="absolute right-0 bottom-0 z-10 bg-primary-600 rounded-full p-1">
               <UserStar
                 size={12}
-                color={getSecondaryHex("text-secondary-0", colorScheme)}
+                color={getOnSolidHex(colorScheme)}
               />
             </Box>
           )}

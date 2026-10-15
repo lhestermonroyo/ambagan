@@ -15,7 +15,7 @@ import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { formatDate } from "@/utils/formatDate";
-import { getSecondaryHex } from "@/utils/getColorHex";
+import { getSecondaryHex, getOnSolidHex } from "@/utils/getColorHex";
 import { Image } from "expo-image";
 import { Expand, ReceiptText } from "lucide-react-native";
 import { Fragment, ReactNode, useState } from "react";
@@ -367,7 +367,7 @@ export default function ReviewRequestPaidSheet({
           </Box>
 
           {payment.proof_of_payment ? (
-            <Box className="relative w-full bg-background-100 rounded-xl">
+            <Box className="relative w-full bg-secondary-100 rounded-xl">
               <Image
                 source={{ uri: payment.proof_of_payment }}
                 contentFit="contain"
@@ -380,12 +380,12 @@ export default function ReviewRequestPaidSheet({
               >
                 <Expand
                   size={18}
-                  color={getSecondaryHex("text-secondary-0", colorScheme)}
+                  color={getOnSolidHex(colorScheme)}
                 />
               </Button>
             </Box>
           ) : (
-            <Box className="w-full aspect-square rounded-xl border border-secondary-300 items-center justify-center">
+            <Box className="w-full aspect-square rounded-xl bg-secondary-100 items-center justify-center">
               <VStack className="gap-y-2 items-center">
                 <ReceiptText
                   size={36}

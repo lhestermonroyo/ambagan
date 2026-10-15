@@ -52,7 +52,7 @@ const fabStyle = tva({
 });
 
 const fabLabelStyle = tva({
-  base: 'text-typography-50 font-normal font-body tracking-md text-left mx-2',
+  base: 'text-typography-50 dark:text-white font-normal font-body tracking-md text-left mx-2',
   variants: {
     isTruncated: {
       true: '',
@@ -99,7 +99,7 @@ const fabLabelStyle = tva({
 });
 
 const fabIconStyle = tva({
-  base: 'text-typography-50 fill-none',
+  base: 'text-typography-50 dark:text-white fill-none',
   variants: {
     size: {
       '2xs': 'h-3 w-3',

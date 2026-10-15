@@ -411,7 +411,7 @@ export default function GroupsScreen() {
                       <>
                         <ConfirmIconButton
                           icon="unarchive"
-                          iconClassName="text-background-0"
+                          iconClassName="text-background-0 dark:text-white"
                           variant="solid"
                           className="rounded-full h-[40] w-[40] p-0"
                           confirmTitle={isIndividualGroup(item) ? "Restore Individual" : "Restore Group"}
@@ -424,7 +424,7 @@ export default function GroupsScreen() {
                         />
                         <ConfirmIconButton
                           icon="delete"
-                          iconClassName="text-background-0"
+                          iconClassName="text-background-0 dark:text-white"
                           variant="solid"
                           action="negative"
                           className="rounded-full h-[40] w-[40] p-0"
@@ -448,11 +448,11 @@ export default function GroupsScreen() {
                             rowMap[groupEntryKey(item)]?.closeRow();
                           }}
                         >
-                          <Icon as="edit" className="text-background-0" />
+                          <Icon as="edit" className="text-background-0 dark:text-white" />
                         </Button>
                         <ConfirmIconButton
                           icon="archive"
-                          iconClassName="text-background-0"
+                          iconClassName="text-background-0 dark:text-white"
                           variant="solid"
                           className="rounded-full h-[40] w-[40] p-0"
                           confirmTitle={isIndividualGroup(item) ? "Archive Individual" : "Archive Group"}
@@ -465,7 +465,7 @@ export default function GroupsScreen() {
                         />
                         <ConfirmIconButton
                           icon="delete"
-                          iconClassName="text-background-0"
+                          iconClassName="text-background-0 dark:text-white"
                           variant="solid"
                           action="negative"
                           className="rounded-full h-[40] w-[40] p-0"

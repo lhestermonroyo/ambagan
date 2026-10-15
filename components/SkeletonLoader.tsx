@@ -56,7 +56,7 @@ function SkeletonDivider({ color }: { color: string }) {
 // instant while only the data-dependent fields load.
 // ─────────────────────────────────────────────
 
-// Mirrors the Payer field: bordered box | avatar(40) + name/subtitle | chevron.
+// Mirrors the Payer field: panel | avatar(40) + name/subtitle | chevron.
 export function PayerFieldSkeleton() {
   const scheme = useColorScheme() ?? "light";
   const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
@@ -66,7 +66,7 @@ export function PayerFieldSkeleton() {
     <Animated.View
       style={[
         animStyle,
-        { borderWidth: 1, borderColor: color, borderRadius: 8, padding: 16 }
+        { borderRadius: 8, padding: 16 }
       ]}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -92,7 +92,7 @@ export function GroupCardSkeleton() {
     <Animated.View
       style={[
         animStyle,
-        { borderWidth: 1, borderColor: color, borderRadius: 8, padding: 16 }
+        { borderRadius: 8, padding: 16 }
       ]}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -152,7 +152,7 @@ export function ExpenseFormStepSkeleton() {
 // hydrated from the expense being loaded.
 // ─────────────────────────────────────────────
 
-// Mirrors the Book field: label + bordered row with avatar(24) + book name.
+// Mirrors the Book field: label + row with avatar(24) + book name.
 function BookFieldBones({ color }: { color: string }) {
   return (
     <View style={{ gap: 8 }}>
@@ -160,8 +160,6 @@ function BookFieldBones({ color }: { color: string }) {
       <View
         style={{
           height: 56,
-          borderWidth: 1,
-          borderColor: color,
           borderRadius: 8,
           paddingHorizontal: 16,
           flexDirection: "row",
@@ -215,14 +213,12 @@ export function PersonalExpenseFormSkeleton() {
         <Bone w="100%" h={80} radius={8} color={color} />
       </View>
 
-      {/* Status: label + bordered select row with a leading icon */}
+      {/* Status: label + select row with a leading icon */}
       <View style={{ gap: 8 }}>
         <Bone w={44} h={12} color={color} />
         <View
           style={{
             height: 56,
-            borderWidth: 1,
-            borderColor: color,
             borderRadius: 8,
             paddingHorizontal: 16,
             flexDirection: "row",
@@ -310,7 +306,7 @@ export function FriendListSkeleton({ count = 5 }: { count?: number }) {
 
 // ─────────────────────────────────────────────
 // FriendCard skeleton (horizontal dashboard cards)
-// Layout: bordered card | avatar(32) | name | amount
+// Layout: card | avatar(32) | name | amount
 // ─────────────────────────────────────────────
 function FriendCardSkeletonItem({ color }: { color: string }) {
   return (
@@ -318,8 +314,6 @@ function FriendCardSkeletonItem({ color }: { color: string }) {
       style={{
         minWidth: 160,
         borderRadius: 8,
-        borderWidth: 1,
-        borderColor: color,
         padding: 16,
         gap: 8
       }}

@@ -26,7 +26,7 @@ import {
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import { exportGroupSettlementsAsCsv } from "@/utils/exportCsv";
-import { getSecondaryHex } from "@/utils/getColorHex";
+import { getOnSolidHex } from "@/utils/getColorHex";
 import { CircleIcon, Download } from "lucide-react-native";
 import { useState } from "react";
 import { useColorScheme } from "react-native";
@@ -133,7 +133,7 @@ export default function ExportCsvSheet({
             icon={
               <Download
                 size={18}
-                color={getSecondaryHex("text-secondary-0", colorScheme)}
+                color={getOnSolidHex(colorScheme)}
               />
             }
             loading={exporting}

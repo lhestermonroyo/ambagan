@@ -679,7 +679,7 @@ function OfflineFeatureList() {
   );
 }
 
-// A single titled FAQ section rendered as a bordered accordion card. Shared by
+// A single titled FAQ section rendered as an accordion card. Shared by
 // the main list and the search results so the two never drift apart.
 // `defaultOpen` pre-expands items by question (used for the deep-linked offline
 // FAQ); `onLayout` lets the parent capture the section's Y to scroll to it.
@@ -697,7 +697,7 @@ function FaqSectionBlock({
       <Text bold className="text-secondary-950 uppercase text-sm">
         {section.title}
       </Text>
-      <Box className="rounded-xl overflow-hidden border border-secondary-500">
+      <Box className="rounded-xl overflow-hidden bg-secondary-100">
         <Accordion
           size="lg"
           variant="unfilled"

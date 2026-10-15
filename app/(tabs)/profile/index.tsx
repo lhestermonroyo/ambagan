@@ -19,7 +19,7 @@ import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getPrimaryHex, getSecondaryHex, getOnSolidHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
@@ -300,16 +300,16 @@ export default function ProfileScreen() {
                     />
                   </Box>
                   <VStack className="flex-1">
-                    <Text bold className="text-background-0 text-xl">
+                    <Text bold className="text-background-0 dark:text-white text-xl">
                       {isPro ? "You're on Pro!" : "Upgrade to Pro!"}
                     </Text>
-                    <Text className="text-background-0 opacity-80">
+                    <Text className="text-background-0 dark:text-white opacity-80">
                       {isPro
                         ? "Manage your active subscription"
                         : "No daily limits, CSV exports & more"}
                     </Text>
                   </VStack>
-                  <Icon as="chevron-right" className="text-secondary-0" />
+                  <Icon as="chevron-right" className="text-secondary-0 dark:text-white" />
                 </Box>
               </Pressable>
             </VStack>
@@ -341,7 +341,7 @@ export default function ProfileScreen() {
                   icon={
                     <LogOut
                       size={18}
-                      color={getSecondaryHex("text-secondary-0", colorScheme)}
+                      color={getOnSolidHex(colorScheme)}
                     />
                   }
                 />

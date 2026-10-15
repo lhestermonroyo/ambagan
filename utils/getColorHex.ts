@@ -6,6 +6,9 @@ import { ColorSchemeName } from "react-native";
 const normalizeScheme = (colorScheme: ColorSchemeName): "light" | "dark" =>
   colorScheme === "dark" ? "dark" : "light";
 
+export const getOnSolidHex = (colorScheme: ColorSchemeName = "light") =>
+  normalizeScheme(colorScheme) === "dark" ? "#FFFFFF" : "#FDFDFD";
+
 export const getSuccessHex = (
   className: keyof (typeof successColorMap)["light" | "dark"],
   colorScheme: ColorSchemeName = "light"

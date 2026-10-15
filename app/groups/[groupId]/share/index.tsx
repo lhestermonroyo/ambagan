@@ -11,11 +11,7 @@ import LinkExpirationSheet from "@/features/group/components/LinkExpirationSheet
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import states from "@/states";
-import {
-  getErrorHex,
-  getPrimaryHex,
-  getSecondaryHex
-} from "@/utils/getColorHex";
+import { getErrorHex, getPrimaryHex, getOnSolidHex } from "@/utils/getColorHex";
 import { format } from "date-fns";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -371,7 +367,7 @@ export default function ShareGroupScreen() {
             </VStack>
 
             <Box className="items-center py-2">
-              <Box className="rounded-2xl overflow-hidden border border-secondary-500">
+              <Box className="rounded-2xl overflow-hidden bg-secondary-100">
                 <InviteCardSvg
                   card={card}
                   creatorName={creatorName}
@@ -401,7 +397,7 @@ export default function ShareGroupScreen() {
                 icon={
                   <Share2
                     size={18}
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                    color={getOnSolidHex(colorScheme)}
                   />
                 }
               />
@@ -433,7 +429,7 @@ export default function ShareGroupScreen() {
               </VStack>
 
               <PressableListItem
-                className="p-4 border border-background-200 rounded-lg"
+                className="p-4 rounded-lg"
                 onPress={() => setExpirationSheetOpen(true)}
               >
                 <HStack className="items-center justify-between">

@@ -975,7 +975,7 @@ export default function AddExpenseScreen() {
               <FormButton
                 text="Create Group"
                 iconEnd={
-                  <Icon as="chevron-right" className="text-background-0" />
+                  <Icon as="chevron-right" className="text-background-0 dark:text-white" />
                 }
                 onPress={() => router.push("/groups/create")}
               />
@@ -1076,10 +1076,10 @@ export default function AddExpenseScreen() {
               <FormControl size="md">
                 <VStack
                   className={cn(
-                    "border rounded-xl overflow-hidden bg-secondary-100",
+                    "rounded-xl overflow-hidden bg-secondary-100",
                     !splitValid || !payersValid
-                      ? "border-error-300"
-                      : "border-background-200"
+                      ? "border border-error-300"
+                      : undefined
                   )}
                 >
                   <PressableListItem
@@ -1240,7 +1240,7 @@ export default function AddExpenseScreen() {
               // fetch. Explain it instead of leaving a silently-disabled submit,
               // and keep a way to switch to a group we *can* load (the changer
               // normally lives inside the split card, which is hidden here).
-              <VStack className="border border-background-200 rounded-lg p-4 gap-y-3 items-center">
+              <VStack className="bg-secondary-100 rounded-lg p-4 gap-y-3 items-center">
                 <Icon as="cloud-off" size={40} className="text-secondary-400" />
                 <VStack className="gap-y-1 items-center">
                   <Text bold className="text-center">

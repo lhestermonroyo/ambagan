@@ -54,7 +54,7 @@ const radioGroupStyle = tva({
 });
 
 const radioIconStyle = tva({
-  base: 'rounded-full justify-center items-center text-background-0 fill-background-0',
+  base: 'rounded-full justify-center items-center text-background-0 fill-background-0 dark:text-white dark:fill-white',
 
   parentVariants: {
     size: {

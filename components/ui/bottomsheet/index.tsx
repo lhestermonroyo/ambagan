@@ -38,7 +38,7 @@ const bottomSheetIndicatorStyle = tva({
 });
 
 const bottomSheetItemStyle = tva({
-  base: 'p-3 flex-row items-center rounded-sm w-full disabled:opacity-0.4 web:pointer-events-auto disabled:cursor-not-allowed hover:bg-background-50 active:bg-background-100 focus:bg-background-100 web:focus-visible:bg-background-100',
+  base: 'p-3 flex-row items-center rounded-sm w-full disabled:opacity-0.4 web:pointer-events-auto disabled:cursor-not-allowed hover:bg-background-50 active:bg-secondary-100 focus:bg-secondary-100 web:focus-visible:bg-secondary-100',
 });
 
 const BottomSheetContext = createContext<{

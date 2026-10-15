@@ -65,7 +65,7 @@ const AppAvatar = ({
         </AvatarBadge>
       )}
       {isPlaceholder && (
-        <Box className="absolute right-0 bottom-0 z-10 bg-background-100 rounded-full p-1">
+        <Box className="absolute right-0 bottom-0 z-10 bg-secondary-100 rounded-full p-1">
           <Icon as="schedule" size={12} className="text-secondary-950" />
         </Box>
       )}

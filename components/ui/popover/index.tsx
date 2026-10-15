@@ -59,7 +59,7 @@ const popoverStyle = tva({
 });
 
 const popoverArrowStyle = tva({
-  base: 'bg-background-0 z-[1] border absolute overflow-hidden h-3.5 w-3.5 border-outline-100',
+  base: 'bg-background-0 z-[1] absolute overflow-hidden h-3.5 w-3.5',
   variants: {
     placement: {
       'top left':
@@ -95,11 +95,11 @@ const popoverBackdropStyle = tva({
 });
 
 const popoverCloseButtonStyle = tva({
-  base: 'group/popover-close-button z-[1] rounded-sm data-[focus-visible=true]:web:bg-background-100 web:outline-0 web:cursor-pointer',
+  base: 'group/popover-close-button z-[1] rounded-sm data-[focus-visible=true]:web:bg-secondary-100 web:outline-0 web:cursor-pointer',
 });
 
 const popoverContentStyle = tva({
-  base: 'bg-background-0 rounded-lg overflow-hidden border border-outline-100 w-full',
+  base: 'bg-background-0 rounded-lg overflow-hidden w-full',
   parentVariants: {
     size: {
       xs: 'max-w-[360px] p-3.5',

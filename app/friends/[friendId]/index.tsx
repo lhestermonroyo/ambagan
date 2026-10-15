@@ -56,7 +56,7 @@ import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getPrimaryHex, getSecondaryHex, getOnSolidHex } from "@/utils/getColorHex";
 import {
   Stack,
   useFocusEffect,
@@ -733,10 +733,7 @@ export default function FriendDetailScreen() {
                         text="Mark All as Settled"
                         icon={
                           <CheckCheck
-                            color={getSecondaryHex(
-                              "text-secondary-0",
-                              colorScheme
-                            )}
+                            color={getOnSolidHex(colorScheme)}
                           />
                         }
                         onPress={() =>

@@ -95,10 +95,10 @@ export default function AboutScreen() {
       <ScrollView className="flex-1">
         <VStack className="gap-y-6 pb-8">
           <Box className="bg-primary-400 items-center justify-center py-10 gap-y-2">
-            <Text bold className="text-4xl text-background-0">
+            <Text bold className="text-4xl text-background-0 dark:text-white">
               ambagan
             </Text>
-            <Text className="text-background-0 opacity-80">
+            <Text className="text-background-0 dark:text-white opacity-80">
               Version {VERSION}
             </Text>
           </Box>

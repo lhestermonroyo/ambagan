@@ -35,7 +35,7 @@ export default function WelcomeScreen() {
         <VStack className="flex-1 justify-end gap-y-6">
           <Logo type="splash" />
           <VStack className="gap-y-2">
-            <Text bold className="text-background-0 text-3xl">
+            <Text bold className="text-background-0 dark:text-white text-3xl">
               Split expenses effortlessly
             </Text>
             <Box className="w-2 h-2 rounded-full bg-primary-400" />

@@ -2,7 +2,7 @@ import ImagePickerSheet from "@/components/ImagePickerSheet";
 import ImageViewerSheet from "@/features/expense/components/ImageViewerSheet";
 import useAppToast from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
-import { getSecondaryHex } from "@/utils/getColorHex";
+import { getSecondaryHex, getOnSolidHex } from "@/utils/getColorHex";
 import * as ImagePicker from "expo-image-picker";
 import { Edit3, Expand, Upload } from "lucide-react-native";
 import { useState } from "react";
@@ -58,7 +58,7 @@ const UploadImage = ({
       <>
         <Pressable
           onPress={openPicker}
-          className="border-dashed border-2 border-background-200 rounded-3xl h-32 w-full justify-center items-center flex"
+          className="bg-secondary-100 rounded-3xl h-32 w-full justify-center items-center flex"
         >
           <VStack className="items-center gap-y-2">
             <Upload
@@ -84,7 +84,7 @@ const UploadImage = ({
 
   return (
     <>
-      <Box className="relative w-full bg-background-100 rounded-3xl">
+      <Box className="relative w-full bg-secondary-100 rounded-3xl">
         <Image
           source={{ uri: image }}
           alt={title}
@@ -97,7 +97,7 @@ const UploadImage = ({
         >
           <Expand
             size={18}
-            color={getSecondaryHex("text-secondary-0", colorScheme)}
+            color={getOnSolidHex(colorScheme)}
           />
         </Button>
         <Button
@@ -106,7 +106,7 @@ const UploadImage = ({
         >
           <Edit3
             size={18}
-            color={getSecondaryHex("text-secondary-0", colorScheme)}
+            color={getOnSolidHex(colorScheme)}
           />
         </Button>
       </Box>

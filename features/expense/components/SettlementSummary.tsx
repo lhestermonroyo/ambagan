@@ -37,7 +37,7 @@ export default function SettlementSummary({ payment }: { payment: Payment }) {
         : "pays";
 
   return (
-    <VStack className="rounded-2xl border border-secondary-200 bg-secondary-100 overflow-hidden">
+    <VStack className="rounded-2xl bg-secondary-100 overflow-hidden">
       <VStack className="p-6 gap-y-4 items-center">
         <HStack className="self-center items-start justify-center gap-x-2">
           <VStack className="w-20 items-center gap-y-2">

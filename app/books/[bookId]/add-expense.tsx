@@ -692,7 +692,7 @@ export default function AddPersonalExpenseScreen() {
             <FormButton
               text="Create Individual"
               iconEnd={
-                <Icon as="chevron-right" className="text-background-0" />
+                <Icon as="chevron-right" className="text-background-0 dark:text-white" />
               }
               onPress={() => router.replace("/books/create")}
             />
@@ -795,7 +795,7 @@ export default function AddPersonalExpenseScreen() {
 
             {!bookResolved && <BookFieldSkeleton />}
             {selectedBook && (
-              <VStack className="bg-secondary-100 border border-background-200 rounded-xl overflow-hidden">
+              <VStack className="bg-secondary-100 rounded-xl overflow-hidden">
                 {isLocked || isEdit ? (
                   <Box className="p-4">
                     <HStack className="items-center gap-x-3">

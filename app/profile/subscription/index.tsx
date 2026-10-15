@@ -397,8 +397,8 @@ export default function SubscriptionScreen() {
                         <Box
                           className={`rounded-2xl p-4 ${
                             isSelected
-                              ? "bg-primary-0 border border-primary-200"
-                              : "bg-background-50 border border-background-50"
+                              ? "bg-primary-0"
+                              : "bg-secondary-100"
                           }`}
                         >
                           <HStack className="items-center justify-between">
@@ -414,7 +414,7 @@ export default function SubscriptionScreen() {
                                   <Box className="bg-success-400 px-2 py-0.5 rounded-full">
                                     <Text
                                       bold
-                                      className="text-background-0 text-xs"
+                                      className="text-background-0 dark:text-white text-xs"
                                     >
                                       {plan.badge}
                                     </Text>

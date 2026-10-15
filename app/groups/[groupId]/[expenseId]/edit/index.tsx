@@ -1024,10 +1024,10 @@ function ScrollableContent(props: {
           <FormControl size="md">
             <VStack
               className={cn(
-                "border rounded-lg overflow-hidden",
+                "bg-secondary-100 rounded-lg overflow-hidden",
                 !splitValid || !payersValid
-                  ? "border-error-300"
-                  : "border-background-200"
+                  ? "border border-error-300"
+                  : undefined
               )}
             >
               {/* Group name (locked — editing can't move an expense's group). */}

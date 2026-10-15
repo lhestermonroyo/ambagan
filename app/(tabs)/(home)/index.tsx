@@ -21,11 +21,10 @@ import {
 } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { groupEntryHref, groupEntryKey, isIndividualGroup } from "@/features/group/utils/groupMode";
-import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
 import IndividualTotalsPane, {
   useIndividualTotalsSummary
 } from "@/features/book/components/IndividualTotalsPane";
+import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
 import ExpenseDestinationSheet from "@/features/expense/components/ExpenseDestinationSheet";
 import NetBalanceDisplay, {
   HERO_MAX_CHARS
@@ -38,6 +37,11 @@ import {
 } from "@/features/expense/utils/amountTextSize";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
+import {
+  groupEntryHref,
+  groupEntryKey,
+  isIndividualGroup
+} from "@/features/group/utils/groupMode";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 import services from "@/services";
@@ -455,7 +459,10 @@ export default function HomeScreen() {
       // with rendering or navigation.
       if (!isInitialized && userId) {
         InteractionManager.runAfterInteractions(() => {
-          prefetchGroupDetails(userId, response.filter(g => !isIndividualGroup(g))).catch(() => {});
+          prefetchGroupDetails(
+            userId,
+            response.filter((g) => !isIndividualGroup(g))
+          ).catch(() => {});
         });
       }
     } catch (error) {
@@ -1082,8 +1089,8 @@ const FriendCard = React.memo(function FriendCard({
       {({ pressed }) => (
         <Box
           className={cn(
-            pressed ? "bg-secondary-100" : "bg-secondary-50",
-            "w-48 border border-secondary-500 rounded-lg p-4"
+            pressed ? "bg-secondary-200" : "bg-secondary-100",
+            "w-48 rounded-lg p-4"
           )}
         >
           <VStack className="gap-y-2">

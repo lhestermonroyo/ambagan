@@ -56,7 +56,7 @@ import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { formatLastUpdate, getDateGroupTitle } from "@/utils/formatDate";
 import { useConvertedTotal } from "@/utils/fx";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getPrimaryHex, getSecondaryHex, getOnSolidHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { format, parseISO } from "date-fns";
 import {
@@ -771,12 +771,12 @@ export default function BookDetailScreen() {
                 {fabOpen ? (
                   <X
                     size={24}
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                    color={getOnSolidHex(colorScheme)}
                   />
                 ) : (
                   <Plus
                     size={24}
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                    color={getOnSolidHex(colorScheme)}
                   />
                 )}
               </Fab>

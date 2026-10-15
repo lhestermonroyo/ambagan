@@ -34,7 +34,7 @@ import {
   useConverter,
   useForeignCurrencies
 } from "@/utils/fx";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getPrimaryHex, getOnSolidHex } from "@/utils/getColorHex";
 import { ChevronDown, Download } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
@@ -444,7 +444,7 @@ export default function GroupStatsTab({
                   icon={
                     <Download
                       size={18}
-                      color={getSecondaryHex("text-secondary-0", colorScheme)}
+                      color={getOnSolidHex(colorScheme)}
                     />
                   }
                   loading={exporting}

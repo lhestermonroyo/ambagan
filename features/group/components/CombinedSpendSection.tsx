@@ -123,7 +123,7 @@ export default function CombinedSpendSection({
       <>
         <Divider />
         <PressableListItem
-          className="p-4 border border-background-200 rounded-lg"
+          className="p-4 rounded-lg"
           disabled={linking}
           onPress={openPicker}
         >
