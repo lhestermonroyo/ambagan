@@ -30,6 +30,7 @@ import CategorySheet, {
 import ExpenseOptions, {
   ExpenseOptionChip
 } from "@/features/expense/components/ExpenseOptions";
+import ExpenseSplitBreakdown from "@/features/expense/components/ExpenseSplitBreakdown";
 import PayerContributionSheet from "@/features/expense/components/PayerContributionSheet";
 import SplitExpenseSheet from "@/features/expense/components/SplitExpenseSheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
@@ -1135,43 +1136,12 @@ function ScrollableContent(props: {
                 </Text>
               )}
 
-              {/* Per-person breakdown: name + % + amount. */}
-              <PressableListItem
-                onPress={() => setShowBreakdown((prev) => !prev)}
-                className="px-4 py-3 border-t border-background-200"
-              >
-                <HStack className="items-center justify-center gap-x-1">
-                  <Text bold className="text-sm text-primary-500">
-                    {showBreakdown ? "Hide breakdown" : "Show breakdown"}
-                  </Text>
-                  <Icon
-                    as={showBreakdown ? "expand-less" : "expand-more"}
-                    size={18}
-                    className="text-primary-500"
-                  />
-                </HStack>
-              </PressableListItem>
-
-              {showBreakdown && (
-                <VStack className="border-t border-background-200 gap-y-2 py-2">
-                  {breakdownRows.map((row) => (
-                    <HStack
-                      key={row.id}
-                      className="justify-between items-center gap-x-2 px-4 py-2"
-                    >
-                      <Text className="flex-1" numberOfLines={1}>
-                        {row.name}
-                      </Text>
-                      <Text className="text-secondary-950 text-sm w-14 text-right">
-                        {row.percentage.toFixed(1)}%
-                      </Text>
-                      <Text bold className="text-right">
-                        {formatAmount(row.amount, currency)}
-                      </Text>
-                    </HStack>
-                  ))}
-                </VStack>
-              )}
+              <ExpenseSplitBreakdown
+                expanded={showBreakdown}
+                onToggle={() => setShowBreakdown((prev) => !prev)}
+                rows={breakdownRows}
+                currency={currency}
+              />
             </VStack>
           </FormControl>
         ) : null}

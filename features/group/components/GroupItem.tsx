@@ -79,9 +79,9 @@ export default function GroupItem({
           {individual ? (
             <Badge
               size="sm"
-              className="rounded-full bg-secondary-100 shrink-0"
+              className="rounded-full bg-primary-100 shrink-0"
             >
-              <BadgeText className="text-xs text-secondary-950 normal-case">
+              <BadgeText className="text-xs text-primary-600 normal-case">
                 Individual
               </BadgeText>
             </Badge>

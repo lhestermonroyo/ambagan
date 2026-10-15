@@ -35,6 +35,7 @@ import CategorySheet, {
 import ExpenseOptions, {
   ExpenseOptionChip
 } from "@/features/expense/components/ExpenseOptions";
+import ExpenseSplitBreakdown from "@/features/expense/components/ExpenseSplitBreakdown";
 import { GroupSelectionActionSheet } from "@/features/expense/components/GroupSelection";
 import PayerContributionSheet from "@/features/expense/components/PayerContributionSheet";
 import RecurrenceSheet from "@/features/expense/components/RecurrenceSheet";
@@ -51,6 +52,7 @@ import {
   getAmountPerPerson,
   getPercentagePerPerson
 } from "@/features/expense/utils/split.util";
+import { groupEntryCurrency } from "@/features/group/utils/groupCurrency";
 import { defaultExpenseGroup } from "@/features/group/utils/groupMembers";
 import useAppToast from "@/hooks/use-app-toast";
 import { useNetwork } from "@/hooks/useNetwork";
@@ -62,7 +64,6 @@ import { EmptyType } from "@/types/general";
 import { Group, Member } from "@/types/groups";
 import { cacheService } from "@/utils/cacheService";
 import { currencies, DAILY_EXPENSE_LIMIT, splitTypes } from "@/utils/constants";
-import { groupEntryCurrency } from "@/features/group/utils/groupCurrency";
 import { BASE_CURRENCY } from "@/utils/fx";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
@@ -1238,43 +1239,12 @@ export default function AddExpenseScreen() {
                     </Text>
                   )}
 
-                  {/* Per-person breakdown: name + % + amount. */}
-                  <PressableListItem
-                    onPress={() => setShowBreakdown((prev) => !prev)}
-                    className="px-4 py-3 border-t border-background-200"
-                  >
-                    <HStack className="items-center justify-center gap-x-1">
-                      <Text bold className="text-sm text-primary-500">
-                        {showBreakdown ? "Hide breakdown" : "Show breakdown"}
-                      </Text>
-                      <Icon
-                        as={showBreakdown ? "expand-less" : "expand-more"}
-                        size={18}
-                        className="text-primary-500"
-                      />
-                    </HStack>
-                  </PressableListItem>
-
-                  {showBreakdown && (
-                    <VStack className="border-t border-background-200 gap-y-2 py-2">
-                      {breakdownRows.map((row) => (
-                        <HStack
-                          key={row.id}
-                          className="justify-between items-center gap-x-2 px-4 py-2"
-                        >
-                          <Text className="flex-1" numberOfLines={1}>
-                            {row.name}
-                          </Text>
-                          <Text className="text-secondary-950 text-sm w-14 text-right">
-                            {row.percentage.toFixed(1)}%
-                          </Text>
-                          <Text bold className="text-right">
-                            {formatAmount(row.amount, currency)}
-                          </Text>
-                        </HStack>
-                      ))}
-                    </VStack>
-                  )}
+                  <ExpenseSplitBreakdown
+                    expanded={showBreakdown}
+                    onToggle={() => setShowBreakdown((prev) => !prev)}
+                    rows={breakdownRows}
+                    currency={currency}
+                  />
                 </VStack>
               </FormControl>
             ) : (

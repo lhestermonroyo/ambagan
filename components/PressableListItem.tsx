@@ -18,9 +18,9 @@ const PressableListItem = ({
       {({ pressed }) => (
         <Box
           className={cn(
+            className,
             pressed ? "bg-background-50" : "bg-background-0",
-            disabled && "opacity-50",
-            className
+            disabled && "opacity-50"
           )}
         >
           {children}
