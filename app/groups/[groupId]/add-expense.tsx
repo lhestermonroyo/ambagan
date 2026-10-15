@@ -1,13 +1,10 @@
-import AmountInput from "@/components/AmountInput";
 import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
-import CurrencySelection from "@/components/CurrencySelection";
 import DailyLimitBadge from "@/components/DailyLimitBadge";
 import DatePickerModal from "@/components/DatePickerModal";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
-import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
 import SelectField from "@/components/SelectField";
@@ -18,8 +15,6 @@ import {
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
-  FormControlError,
-  FormControlErrorText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -32,6 +27,8 @@ import UploadImage from "@/components/UploadImage";
 import CategorySheet, {
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
+import ExpenseAmountField from "@/features/expense/components/ExpenseAmountField";
+import ExpenseDescriptionField from "@/features/expense/components/ExpenseDescriptionField";
 import ExpenseOptions, {
   ExpenseOptionChip
 } from "@/features/expense/components/ExpenseOptions";
@@ -1044,45 +1041,26 @@ export default function AddExpenseScreen() {
       >
         <ScrollView className="flex-1 px-4">
           <VStack className="gap-y-6 pt-2 pb-4">
-            <FormControl size="md" isInvalid={!!amountError}>
-              <FormControlLabel>
-                <FormControlLabelText>Amount</FormControlLabelText>
-              </FormControlLabel>
-              <HStack className="gap-x-2 items-end h-14">
-                <CurrencySelection
-                  currency={currency}
-                  onCurrencyChange={setCurrency}
-                  locked={!isPro}
-                  onLockedPress={() => {
-                    setUpgradeDescription(
-                      "Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
-                    );
-                    setUpgradeSheetOpen(true);
-                  }}
-                />
-                <VStack className="flex-1">
-                  <AmountInput
-                    className="h-full"
-                    placeholder="0.00"
-                    value={amount}
-                    onChangeText={setAmount}
-                  />
-                </VStack>
-              </HStack>
-              {amountError && (
-                <FormControlError>
-                  <FormControlErrorText>{amountError}</FormControlErrorText>
-                </FormControlError>
-              )}
-            </FormControl>
+            <ExpenseAmountField
+              value={amount}
+              onChangeText={setAmount}
+              currency={currency}
+              onCurrencyChange={setCurrency}
+              reportingCurrency={selectedGroup.currency}
+              locked={!isPro}
+              onLockedPress={() => {
+                setUpgradeDescription(
+                  "Multi-currency expenses are a Pro feature. Upgrade to split bills in any currency."
+                );
+                setUpgradeSheetOpen(true);
+              }}
+              errorMessage={amountError}
+            />
 
-            <FormTextarea
-              label="Description"
+            <ExpenseDescriptionField
               placeholder="Enter description (e.g., Dinner at KFC Baguio)"
               value={description}
               onChangeText={setDescription}
-              autoCapitalize="none"
-              size="sm"
               errorMessage={descriptionError}
             />
 
@@ -1098,50 +1076,51 @@ export default function AddExpenseScreen() {
               <FormControl size="md">
                 <VStack
                   className={cn(
-                    "border rounded-lg overflow-hidden",
+                    "border rounded-xl overflow-hidden bg-secondary-100",
                     !splitValid || !payersValid
                       ? "border-error-300"
                       : "border-background-200"
                   )}
                 >
-                  {/* Top: group name + group changer. Pressable only when the
-                      group isn't fixed by the route. */}
-                  {!isLocked ? (
-                    <PressableListItem
-                      onPress={() => setGroupPickerOpen(true)}
-                      className="p-4"
-                    >
-                      <HStack className="items-center gap-x-2">
+                  <PressableListItem
+                    surface="muted"
+                    onPress={() => setGroupPickerOpen(true)}
+                    disabled={isLocked}
+                    dimDisabled={false}
+                    className="p-4"
+                  >
+                    <HStack className="items-center gap-x-3">
+                      <AppAvatar
+                        name={selectedGroup.name}
+                        uri={selectedGroup.avatar || undefined}
+                        size="md"
+                      />
+                      <VStack className="flex-1 min-w-0">
+                        <Text className="text-sm text-secondary-950">
+                          Trip / Group
+                        </Text>
                         <Text
-                          bold
-                          className="text-sm text-secondary-950 uppercase flex-1"
+                          className="text-base font-medium"
                           numberOfLines={1}
                         >
-                          {selectedGroup?.name}
+                          {selectedGroup.name}
                         </Text>
+                      </VStack>
+                      {!isLocked && (
                         <Icon
-                          as="unfold-more"
+                          as="chevron-right"
                           size={18}
-                          className="text-sm text-secondary-950"
+                          className="text-secondary-950"
                         />
-                      </HStack>
-                    </PressableListItem>
-                  ) : (
-                    <Box className="p-4">
-                      <Text
-                        bold
-                        className="text-sm text-secondary-950 uppercase"
-                        numberOfLines={1}
-                      >
-                        {selectedGroup?.name}
-                      </Text>
-                    </Box>
-                  )}
+                      )}
+                    </HStack>
+                  </PressableListItem>
 
                   {/* Paid by → the payer contribution sheet. */}
                   <PressableListItem
                     onPress={handleOpenPayerSheet}
-                    className="h-20 justify-center px-4 border-t border-background-200"
+                    surface="muted"
+                    className="min-h-[76px] justify-center px-4 py-3 border-t border-background-200"
                   >
                     <HStack className="items-center gap-x-3">
                       {isMultiPayer ? (
@@ -1171,7 +1150,10 @@ export default function AddExpenseScreen() {
                         <Text className="text-sm text-secondary-950">
                           Paid by
                         </Text>
-                        <Text className="text-lg" numberOfLines={1}>
+                        <Text
+                          className="text-base font-medium"
+                          numberOfLines={1}
+                        >
                           {payerLabel}
                         </Text>
                       </VStack>
@@ -1195,7 +1177,8 @@ export default function AddExpenseScreen() {
                       and belong in the breakdown below. */}
                   <PressableListItem
                     onPress={handleOpenSplitSheet}
-                    className="h-20 justify-center px-4 border-t border-background-200"
+                    surface="muted"
+                    className="min-h-[76px] justify-center px-4 py-3 border-t border-background-200"
                   >
                     <HStack className="items-center gap-x-3">
                       <AppAvatarGroup
@@ -1207,7 +1190,10 @@ export default function AddExpenseScreen() {
                         <Text className="text-sm text-secondary-950">
                           {splitTypeLabel}
                         </Text>
-                        <Text className="text-lg" numberOfLines={1}>
+                        <Text
+                          className="text-base font-medium"
+                          numberOfLines={1}
+                        >
                           {splitAmongText}
                         </Text>
                       </VStack>
@@ -1215,12 +1201,12 @@ export default function AddExpenseScreen() {
                         <VStack className="items-end">
                           <Text
                             bold
-                            className="text-2xl text-primary-500"
+                            className="text-lg text-primary-500"
                             numberOfLines={1}
                           >
                             {formatAmount(perIncluded, currency)}
                           </Text>
-                          <Text className="text-secondary-950 text-sm">
+                          <Text className="text-secondary-950 text-xs uppercase tracking-widest">
                             each
                           </Text>
                         </VStack>
@@ -1240,6 +1226,7 @@ export default function AddExpenseScreen() {
                   )}
 
                   <ExpenseSplitBreakdown
+                    surface="muted"
                     expanded={showBreakdown}
                     onToggle={() => setShowBreakdown((prev) => !prev)}
                     rows={breakdownRows}

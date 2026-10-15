@@ -3,7 +3,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { getPrimaryHex } from "@/utils/getColorHex";
+import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { ChevronDown } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -28,15 +28,18 @@ export default function ExpenseSplitBreakdown({
   expanded,
   onToggle,
   rows,
-  currency
+  currency,
+  surface = "default"
 }: {
   expanded: boolean;
   onToggle: () => void;
   rows: { id: string; name: string; amount: number; percentage: number }[];
   currency: string;
+  surface?: "default" | "muted";
 }) {
   const colorScheme = useColorScheme() ?? "light";
   const [contentHeight, setContentHeight] = useState(0);
+  const [hovered, setHovered] = useState(false);
   const height = useSharedValue(0);
   const progress = useSharedValue(0);
 
@@ -63,22 +66,41 @@ export default function ExpenseSplitBreakdown({
         onPress={onToggle}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
       >
         {({ pressed }) => (
           <Box
             className={cn(
               "px-4 py-3 border-t border-background-200",
-              pressed ? "bg-background-50" : "bg-background-0"
+              surface === "muted"
+                ? pressed || hovered
+                  ? "bg-secondary-200"
+                  : "bg-secondary-100"
+                : pressed
+                  ? "bg-background-50"
+                  : "bg-background-0"
             )}
           >
             <HStack className="items-center justify-center gap-x-1">
-              <Text bold className="text-sm text-primary-500">
+              <Text
+                bold={surface === "default"}
+                className={
+                  surface === "muted"
+                    ? "text-sm text-secondary-950"
+                    : "text-sm text-primary-500"
+                }
+              >
                 {expanded ? "Hide breakdown" : "Show breakdown"}
               </Text>
               <Animated.View style={chevronStyle}>
                 <ChevronDown
                   size={18}
-                  color={getPrimaryHex("text-primary-500", colorScheme)}
+                  color={
+                    surface === "muted"
+                      ? getSecondaryHex("text-secondary-950", colorScheme)
+                      : getPrimaryHex("text-primary-500", colorScheme)
+                  }
                 />
               </Animated.View>
             </HStack>
@@ -93,9 +115,14 @@ export default function ExpenseSplitBreakdown({
         importantForAccessibility={expanded ? "auto" : "no-hide-descendants"}
       >
         <VStack
-          className="border-t border-background-200 gap-y-2 py-2"
+          className={cn(
+            "border-t border-background-200 gap-y-2 py-2",
+            surface === "muted" && "bg-secondary-100"
+          )}
           style={{ position: "absolute", top: 0, left: 0, right: 0 }}
-          onLayout={(event) => setContentHeight(event.nativeEvent.layout.height)}
+          onLayout={(event) =>
+            setContentHeight(event.nativeEvent.layout.height)
+          }
         >
           {rows.map((row) => (
             <HStack

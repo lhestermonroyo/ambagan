@@ -1,14 +1,12 @@
-import ConfirmationSheet from "@/components/ConfirmationSheet";
-import AmountInput from "@/components/AmountInput";
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
-import CurrencySelection from "@/components/CurrencySelection";
+import ConfirmationSheet from "@/components/ConfirmationSheet";
 import DailyLimitBadge from "@/components/DailyLimitBadge";
 import DatePickerModal from "@/components/DatePickerModal";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
-import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
+import PressableListItem from "@/components/PressableListItem";
 import SelectField from "@/components/SelectField";
 import {
   BookFieldSkeleton,
@@ -18,8 +16,6 @@ import {
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
-  FormControlError,
-  FormControlErrorText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -36,6 +32,8 @@ import { bookEntryCurrency } from "@/features/book/utils/bookCurrency";
 import CategorySheet, {
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
+import ExpenseAmountField from "@/features/expense/components/ExpenseAmountField";
+import ExpenseDescriptionField from "@/features/expense/components/ExpenseDescriptionField";
 import ExpenseOptions, {
   ExpenseOptionChip
 } from "@/features/expense/components/ExpenseOptions";
@@ -212,7 +210,8 @@ export default function AddPersonalExpenseScreen() {
         if (active) {
           toast({
             title: "Error",
-            description: "Couldn't load this Individual entry. Please try again.",
+            description:
+              "Couldn't load this Individual entry. Please try again.",
             type: "error"
           });
           router.back();
@@ -765,121 +764,121 @@ export default function AddPersonalExpenseScreen() {
       >
         <ScrollView className="flex-1 px-4">
           <VStack className="gap-y-6 pt-2 pb-4">
-            <FormControl size="md" isInvalid={!!amountError}>
-              <FormControlLabel>
-                <FormControlLabelText>Amount</FormControlLabelText>
-              </FormControlLabel>
-              <HStack className="gap-x-2 items-end h-14">
-                <CurrencySelection
-                  currency={currency}
-                  onCurrencyChange={setCurrency}
-                  locked={!isPro}
-                  onLockedPress={() => {
-                    setUpgradeDescription(
-                      "Multi-currency expenses are a Pro feature. Upgrade to track spending in any currency."
-                    );
-                    setUpgradeOpen(true);
-                  }}
-                />
-                <VStack className="flex-1">
-                  <AmountInput
-                    className="h-full"
-                    placeholder="0.00"
-                    value={amount}
-                    onChangeText={(text) => {
-                      setAmount(text);
-                      if (amountError) setAmountError("");
-                    }}
-                  />
-                </VStack>
-              </HStack>
-              {amountError && (
-                <FormControlError>
-                  <FormControlErrorText>{amountError}</FormControlErrorText>
-                </FormControlError>
-              )}
-            </FormControl>
+            <ExpenseAmountField
+              value={amount}
+              onChangeText={(text) => {
+                setAmount(text);
+                if (amountError) setAmountError("");
+              }}
+              currency={currency}
+              onCurrencyChange={setCurrency}
+              reportingCurrency={selectedBook?.currency}
+              locked={!isPro}
+              onLockedPress={() => {
+                setUpgradeDescription(
+                  "Multi-currency expenses are a Pro feature. Upgrade to track spending in any currency."
+                );
+                setUpgradeOpen(true);
+              }}
+              errorMessage={amountError}
+            />
 
-            <FormTextarea
-              label="Description"
+            <ExpenseDescriptionField
               placeholder="Enter description (e.g., Lunch at Jollibee)"
               value={description}
-              onChangeText={(text: string) => {
+              onChangeText={(text) => {
                 setDescription(text);
                 if (descriptionError) setDescriptionError("");
               }}
-              autoCapitalize="none"
-              size="sm"
               errorMessage={descriptionError}
             />
 
-            {/* Status — paid vs an upcoming/unpaid bill. Never collapsed: it's
-                the field that decides whether this expense counts as spent or
-                still owed, so it sits with amount/description rather than
-                behind a chip. Hidden while a recurrence is set: a series has no
-                single status, and each materialized occurrence starts Paid. */}
-            {!recurrence && (
-              <FormControl size="md">
-                <FormControlLabel>
-                  <FormControlLabelText>Status</FormControlLabelText>
-                </FormControlLabel>
-                <SelectField
-                  onPress={() => setStatusSheetOpen(true)}
-                  leading={
-                    <Icon
-                      as={status === "paid" ? "check-circle" : "schedule"}
-                      className="text-secondary-950"
-                      size={22}
-                    />
-                  }
-                >
-                  <Text className="text-lg capitalize">{status}</Text>
-                </SelectField>
-              </FormControl>
-            )}
-
-            {/* Book — the destination. Never collapsed: picking the wrong book
-                is the one mistake this form can't walk back. Read-only whenever
-                the book is fixed (added from a book screen, or editing an
-                existing expense); changeable only on the unlocked entry from
-                Home / Scan. Skeletoned while the book is still resolving, so the
-                field doesn't pop in under the description. */}
             {!bookResolved && <BookFieldSkeleton />}
             {selectedBook && (
-              <FormControl size="md">
-                <FormControlLabel>
-                  <FormControlLabelText>Individual</FormControlLabelText>
-                </FormControlLabel>
+              <VStack className="bg-secondary-100 border border-background-200 rounded-xl overflow-hidden">
                 {isLocked || isEdit ? (
-                  <Box className="p-4 border border-background-200 rounded-lg">
+                  <Box className="p-4">
                     <HStack className="items-center gap-x-3">
                       <AppAvatar
-                        size="xs"
+                        size="md"
                         name={selectedBook.name}
                         uri={selectedBook.avatar || undefined}
                       />
-                      <Text className="text-lg" numberOfLines={1}>
-                        {selectedBook.name}
-                      </Text>
+                      <VStack className="flex-1 min-w-0">
+                        <Text className="text-sm text-secondary-950">
+                          Individual
+                        </Text>
+                        <Text
+                          className="text-base font-medium"
+                          numberOfLines={1}
+                        >
+                          {selectedBook.name}
+                        </Text>
+                      </VStack>
                     </HStack>
                   </Box>
                 ) : (
-                  <SelectField
+                  <PressableListItem
+                    surface="muted"
                     onPress={() => setBookPickerOpen(true)}
-                    leading={
+                    className="p-4"
+                  >
+                    <HStack className="items-center gap-x-3">
                       <AppAvatar
-                        size="xs"
+                        size="md"
                         name={selectedBook.name}
                         uri={selectedBook.avatar || undefined}
                       />
-                    }
-                  >
-                    <Text className="text-lg" numberOfLines={1}>
-                      {selectedBook.name}
-                    </Text>
-                  </SelectField>
+                      <VStack className="flex-1 min-w-0">
+                        <Text className="text-sm text-secondary-950">
+                          Individual
+                        </Text>
+                        <Text
+                          className="text-base font-medium"
+                          numberOfLines={1}
+                        >
+                          {selectedBook.name}
+                        </Text>
+                      </VStack>
+                      <Icon
+                        as="chevron-right"
+                        size={18}
+                        className="text-secondary-950"
+                      />
+                    </HStack>
+                  </PressableListItem>
                 )}
-              </FormControl>
+                {!recurrence && (
+                  <PressableListItem
+                    surface="muted"
+                    onPress={() => setStatusSheetOpen(true)}
+                    className="p-4 border-t border-background-200"
+                  >
+                    <HStack className="items-center gap-x-3">
+                      <Box className="w-8 items-center">
+                        <Icon
+                          as={status === "paid" ? "check-circle" : "schedule"}
+                          className="text-secondary-950"
+                          size={22}
+                        />
+                      </Box>
+                      <VStack className="flex-1">
+                        <Text className="text-sm text-secondary-950">
+                          Status
+                        </Text>
+                        <Text className="text-base font-medium capitalize">
+                          {status}
+                        </Text>
+                      </VStack>
+                      <Icon
+                        as="chevron-right"
+                        size={18}
+                        className="text-secondary-950"
+                      />
+                    </HStack>
+                  </PressableListItem>
+                )}
+              </VStack>
             )}
 
             {/* Everything below has a working default, so it collapses to the
