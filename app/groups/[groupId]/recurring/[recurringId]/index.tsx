@@ -264,10 +264,20 @@ export default function RecurringDetailsScreen() {
             <VStack className="flex-1 py-16">
               <EmptyList
                 type={EmptyType.EXPENSE}
+                actions={[
+                  {
+                    label: "Try Again",
+                    onPress: handleRefresh
+                  },
+                  {
+                    label: "Go Back",
+                    onPress: () => router.back()
+                  }
+                ]}
                 content={
-                  isOnline
-                    ? "This recurring expense couldn't be loaded. Pull back and try again."
-                    : "You're offline. Reconnect to view this recurring expense."
+                isOnline
+                ? "This recurring expense couldn't be loaded. Pull back and try again."
+                : "You're offline. Reconnect to view this recurring expense."
                 }
               />
             </VStack>
@@ -418,6 +428,7 @@ export default function RecurringDetailsScreen() {
                       amount: p.amount,
                       currency: item.currency
                     }))}
+                    onGoBack={() => router.back()}
                     memberById={memberById}
                     currentUserId={userId}
                   />
@@ -437,6 +448,7 @@ export default function RecurringDetailsScreen() {
                           ? s.percentage
                           : undefined
                     }))}
+                    onGoBack={() => router.back()}
                     memberById={memberById}
                     currentUserId={userId}
                   />
@@ -490,14 +502,26 @@ type SnapshotRow = {
 function SnapshotList({
   rows,
   memberById,
-  currentUserId
+  currentUserId,
+  onGoBack
 }: {
   rows: SnapshotRow[];
   memberById: Map<string, Member>;
   currentUserId?: string;
+  onGoBack: () => void;
 }) {
   if (!rows.length) {
-    return <EmptyList type={EmptyType.MEMBER} />;
+    return (
+      <EmptyList
+        type={EmptyType.MEMBER}
+        actions={[
+          {
+            label: "Back to Recurring Expenses",
+            onPress: onGoBack
+          }
+        ]}
+      />
+    );
   }
 
   // Surface the current user first, mirroring the one-time expense screen.

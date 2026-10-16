@@ -971,13 +971,16 @@ export default function AddExpenseScreen() {
               <EmptyList
                 type={EmptyType.GROUP}
                 content="You're not in a group yet. Join or create one to add an expense."
-              />
-              <FormButton
-                text="Create Group"
-                iconEnd={
-                  <Icon as="chevron-right" className="text-background-0 dark:text-white" />
-                }
-                onPress={() => router.push("/groups/create")}
+                actions={[
+                  {
+                    label: "Create Group",
+                    onPress: () => router.push("/groups/create")
+                  },
+                  {
+                    label: "View Groups",
+                    onPress: () => router.push("/groups")
+                  }
+                ]}
               />
             </VStack>
           </VStack>

@@ -312,7 +312,18 @@ export default function SplitSelection({
                 data={includedMembers}
                 keyExtractor={(item) => item.id}
                 ItemSeparatorComponent={ListDivider}
-                ListEmptyComponent={() => <EmptyList type={EmptyType.MEMBER} />}
+                ListEmptyComponent={() => (
+                  <EmptyList
+                    type={EmptyType.MEMBER}
+                    content="Choose who to include in this expense."
+                    actions={[
+                      {
+                        label: "Select Members",
+                        onPress: () => setMembersSheetOpen(true)
+                      }
+                    ]}
+                  />
+                )}
                 ListFooterComponent={() => <Box className="h-8" />}
                 renderItem={({ item: member }) => (
                   <MemberSplitItem

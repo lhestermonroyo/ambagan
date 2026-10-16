@@ -26,6 +26,7 @@ import { groupByCurrency } from "@/utils/currency";
 import { exportFriendSettlementsAsCsv } from "@/utils/exportCsv";
 import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
 import { getPrimaryHex, getOnSolidHex } from "@/utils/getColorHex";
+import { useRouter } from "expo-router";
 import { ChevronDown, Download } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
@@ -39,6 +40,7 @@ export default function FriendStatsTab({
   friendId: string;
   friendName: string;
 }) {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
   const { details: userDetails } = states.user();
@@ -233,6 +235,16 @@ export default function FriendStatsTab({
         <EmptyList
           type={EmptyType.SETTLEMENT_ALL}
           content="No settlements with this friend yet."
+          actions={[
+            {
+              label: "Add Group Expense",
+              onPress: () => router.push("/groups/[groupId]/add-expense")
+            },
+            {
+              label: "View Groups",
+              onPress: () => router.push("/groups")
+            }
+          ]}
         />
       </VStack>
     );
@@ -276,6 +288,15 @@ export default function FriendStatsTab({
           <EmptyList
             type={EmptyType.SETTLEMENT_ALL}
             content="No settlements with this friend in the selected date range."
+            actions={[
+              {
+                label: "View All Time",
+                onPress: () => {
+                  setDateRange("All");
+                  setCustomRange(null);
+                }
+              }
+            ]}
           />
         ) : (
           <VStack className="px-4 gap-y-4">

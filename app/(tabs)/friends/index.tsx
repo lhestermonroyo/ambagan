@@ -302,7 +302,17 @@ export default function FriendsScreen() {
                     {searchResults.length !== 1 ? "s" : ""}
                   </Text>
                 )}
-                ListEmptyComponent={() => <EmptyList type={EmptyType.SEARCH} />}
+                ListEmptyComponent={() => (
+                  <EmptyList
+                    type={EmptyType.SEARCH}
+                    actions={[
+                      {
+                        label: "Clear Search",
+                        onPress: handleCancelSearch
+                      }
+                    ]}
+                  />
+                )}
               />
             ) : mainTab === "balances" ? (
               <FlatList
@@ -319,7 +329,28 @@ export default function FriendsScreen() {
                   />
                 )}
                 ItemSeparatorComponent={ListDivider}
-                ListEmptyComponent={() => <EmptyList type={EmptyType.FRIEND} />}
+                ListEmptyComponent={() => (
+                  <EmptyList
+                    type={EmptyType.FRIEND}
+                    actions={balanceFilter !== "all"
+                      ? [
+                        {
+                          label: "View All Balances",
+                          onPress: () => setBalanceFilter("all")
+                        }
+                      ]
+                      : [
+                        {
+                          label: "Add Expense",
+                          onPress: () => router.push("/groups/[groupId]/add-expense")
+                        },
+                        {
+                          label: "Create Group",
+                          onPress: () => router.push("/groups/create")
+                        }
+                      ]}
+                  />
+                )}
               />
             ) : (
               // Contacts directory — favorites pinned, then everyone else.
@@ -364,6 +395,16 @@ export default function FriendsScreen() {
                         <EmptyList
                           type={EmptyType.FRIEND}
                           content="No contacts yet. People you share a group with will show up here."
+                          actions={[
+                            {
+                              label: "Create Group",
+                              onPress: () => router.push("/groups/create")
+                            },
+                            {
+                              label: "View Groups",
+                              onPress: () => router.push("/groups")
+                            }
+                          ]}
                         />
                       ) : null
                     }
@@ -414,7 +455,17 @@ export default function FriendsScreen() {
                   {searchResults.length !== 1 ? "s" : ""}
                 </Text>
               }
-              ListEmptyComponent={<EmptyList type={EmptyType.SEARCH} />}
+              ListEmptyComponent={
+                <EmptyList
+                  type={EmptyType.SEARCH}
+                  actions={[
+                    {
+                      label: "Clear Search",
+                      onPress: handleCancelSearch
+                    }
+                  ]}
+                />
+              }
             />
           ) : null}
         </SearchDrawer>

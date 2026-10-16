@@ -97,14 +97,20 @@ export function useAnalytics(
   start: Date | null,
   end: Date | null,
   scope: AnalyticsScope = "all"
-): { loading: boolean; error: boolean; data: AnalyticsData | null } {
+): {
+  loading: boolean;
+  error: boolean;
+  data: AnalyticsData | null;
+  refetch: () => void;
+} {
+  const [refreshToken, setRefreshToken] = useState(0);
   const startMs = start?.getTime() ?? null;
   const endMs = end?.getTime() ?? null;
   // Identifies the window a payload belongs to. Storing it WITH the rows (rather
   // than clearing state when the range changes) means a stale response is
   // ignored by construction — there's no render in between where last month's
   // figures sit under this week's heading.
-  const key = `${userId ?? ""}|${startMs}|${endMs}`;
+  const key = `${userId ?? ""}|${startMs}|${endMs}|${refreshToken}`;
 
   const [state, setState] = useState<{
     key: string;
@@ -343,7 +349,12 @@ export function useAnalytics(
     foreignCurrencies
   ]);
 
-  return { loading, error, data };
+  return {
+    loading,
+    error,
+    data,
+    refetch: () => setRefreshToken((value) => value + 1)
+  };
 }
 
 const filterByScope = (entries: AnalyticsEntry[], scope: AnalyticsScope) => {

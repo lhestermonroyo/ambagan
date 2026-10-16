@@ -5,6 +5,7 @@ import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
 import EmptyList from "@/components/EmptyList";
+import { useExpenseEmptyActions } from "@/features/expense/hooks/useExpenseEmptyActions";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
@@ -220,6 +221,10 @@ export default function GroupDetailsScreen() {
   });
   const params = useLocalSearchParams();
   const groupId = params.groupId as string | undefined;
+  const expenseEmptyActions = useExpenseEmptyActions({
+    groupId,
+    onViewMembers: () => setTab("Members")
+  });
 
   useEffect(() => {
     const incoming = params.tab as (typeof tabs)[number] | undefined;
@@ -961,7 +966,10 @@ export default function GroupDetailsScreen() {
             )}
 
             <Box className={tab !== "Settlements" ? "hidden" : ""}>
-              <GroupSettlements refreshTrigger={settlementRefreshTrigger} />
+              <GroupSettlements
+                refreshTrigger={settlementRefreshTrigger}
+                emptyActions={expenseEmptyActions}
+              />
             </Box>
             {tab === "Expenses" && (
               <VStack className="pb-2 gap-y-4">
@@ -1179,14 +1187,30 @@ export default function GroupDetailsScreen() {
                       <EmptyList
                         type={EmptyType.EXPENSE}
                         content="No expenses match your filters. Try adjusting your search, payer, category, or date range."
+                        actions={[
+                          {
+                            label: "Clear Filters",
+                            onPress: () => {
+                              setExpenseSearch("");
+                              setPayerFilter("All");
+                              setCategoryFilter(ALL_CATEGORIES);
+                              setExpenseDateRange("All");
+                              setExpenseCustomRange(null);
+                            }
+                          }
+                        ]}
                       />
                     ) : canAddExpense ? (
-                      <EmptyList type={EmptyType.EXPENSE} />
+                      <EmptyList
+                        type={EmptyType.EXPENSE}
+                        actions={expenseEmptyActions}
+                      />
                     ) : (
                       <EmptyList
                         type={EmptyType.EXPENSE}
                         content=" This group has no other members yet. Add members from
                         the Members tab to start splitting expenses."
+                        actions={expenseEmptyActions}
                       />
                     )
                   }

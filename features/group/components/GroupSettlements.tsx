@@ -1,4 +1,4 @@
-import EmptyList from "@/components/EmptyList";
+import EmptyList, { EmptyListAction } from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
@@ -76,9 +76,11 @@ if (
 }
 
 export default function GroupSettlements({
-  refreshTrigger = 0
+  refreshTrigger = 0,
+  emptyActions
 }: {
   refreshTrigger?: number;
+  emptyActions: EmptyListAction[];
 }) {
   const { details, settlementRefreshToken } = states.group();
   const { details: userDetails, settlementView } = states.user();
@@ -111,6 +113,21 @@ export default function GroupSettlements({
   const [dateRangeSheetOpen, setDateRangeSheetOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const actions: EmptyListAction[] =
+    searchQuery || dateRange !== "All" || settlementTab !== "All"
+      ? [
+          {
+            label: "Clear Filters",
+            onPress: () => {
+              setSearchQuery("");
+              setDateRange("All");
+              setCustomRange(null);
+              setSettlementTab("All");
+            }
+          },
+          ...emptyActions
+        ]
+      : emptyActions;
   const initializedRef = useRef(false);
 
   useFocusEffect(
@@ -641,7 +658,12 @@ export default function GroupSettlements({
                   </Box>
                 )}
                 ItemSeparatorComponent={ListDivider}
-                ListEmptyComponent={() => <EmptyList type={emptyType} />}
+                ListEmptyComponent={() => (
+                  <EmptyList
+                    type={emptyType}
+                    actions={actions}
+                  />
+                )}
                 ListFooterComponent={() => (
                   <>
                     {(settlementTab === "Settled" || settlementTab === "All") &&
@@ -658,7 +680,10 @@ export default function GroupSettlements({
                 stickySectionHeadersEnabled={true}
               />
             ) : settlementSections.length === 0 ? (
-              <EmptyList type={emptyType} />
+              <EmptyList
+                type={emptyType}
+                actions={actions}
+              />
             ) : (
               <VStack className="gap-y-3 px-4">
                 {settlementSections.map((section) => (

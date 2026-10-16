@@ -489,9 +489,36 @@ export default function GroupsScreen() {
               ListEmptyComponent={() => (
                 <EmptyList
                   type={activeTab === GroupMode.INDIVIDUAL ? EmptyType.BOOK : EmptyType.GROUP}
+                  actions={activeFilter !== "all"
+                    ? [
+                      {
+                        label: "View All",
+                        onPress: () => handleFilterChange("all")
+                      }
+                    ]
+                    : [
+                      {
+                        label: activeTab === GroupMode.INDIVIDUAL
+                          ? "Create Individual"
+                          : "Create Group",
+                        onPress: () => router.push(activeTab === GroupMode.INDIVIDUAL ? "/books/create" : "/groups/create")
+                      },
+                      ...(activeTab === GroupMode.GROUP
+                        ? [
+                          {
+                            label: "Scan to Join",
+                            onPress: handleScanToJoin
+                          }
+                        ]
+                        : [])
+                    ]}
                   content={activeTab === GroupMode.INDIVIDUAL
-                    ? activeFilter === "archived" ? "No archived Individual entries." : "No Individual entries yet. Create one to record your individual expenses."
-                    : undefined}
+                    ? activeFilter === "archived"
+                      ? "No archived Individual entries."
+                      : "No Individual entries yet. Create one to record your individual expenses."
+                    : activeFilter === "all"
+                      ? undefined
+                      : "No groups match this filter."}
                 />
               )}
               ListFooterComponent={() => (
@@ -622,7 +649,17 @@ export default function GroupsScreen() {
                         {searchResults.length !== 1 ? "s" : ""}
                       </Text>
                     }
-                    ListEmptyComponent={<EmptyList type={EmptyType.SEARCH} />}
+                    ListEmptyComponent={
+                      <EmptyList
+                        type={EmptyType.SEARCH}
+                        actions={[
+                          {
+                            label: "Clear Search",
+                            onPress: handleCancelSearch
+                          }
+                        ]}
+                      />
+                    }
                   />
                 )}
               </LoadingWrapper>

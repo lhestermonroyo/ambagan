@@ -268,7 +268,15 @@ export default function LeaveGroupSheet({
                             </Box>
                           )}
                           ListEmptyComponent={() => (
-                            <EmptyList type={EmptyType.MEMBER} />
+                            <EmptyList
+                              type={EmptyType.MEMBER}
+                              actions={[
+                                {
+                                  label: "Cancel",
+                                  onPress: onClose
+                                }
+                              ]}
+                            />
                           )}
                         />
                       </RadioGroup>

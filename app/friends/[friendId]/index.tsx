@@ -937,7 +937,32 @@ export default function FriendDetailScreen() {
                       ItemSeparatorComponent={ListDivider}
                       stickySectionHeadersEnabled={true}
                       ListEmptyComponent={() => (
-                        <EmptyList type={emptyType} content={emptyContent} />
+                        <EmptyList
+                          type={emptyType}
+                          content={emptyContent}
+                          actions={searchQuery || dateRange !== "All" || settlementTab !== "All"
+                            ? [
+                              {
+                                label: "Clear Filters",
+                                onPress: () => {
+                                  setSearchQuery("");
+                                  setDateRange("All");
+                                  setCustomRange(null);
+                                  setSettlementTab("All");
+                                }
+                              }
+                            ]
+                            : [
+                              {
+                                label: "Add Group Expense",
+                                onPress: () => router.push("/groups/[groupId]/add-expense")
+                              },
+                              {
+                                label: "View Groups",
+                                onPress: () => router.push("/groups")
+                              }
+                            ]}
+                        />
                       )}
                       ListFooterComponent={() =>
                         (settlementTab === "Settled" ||
@@ -952,7 +977,32 @@ export default function FriendDetailScreen() {
                       }
                     />
                   ) : sections.length === 0 ? (
-                    <EmptyList type={emptyType} content={emptyContent} />
+                    <EmptyList
+                      type={emptyType}
+                      content={emptyContent}
+                      actions={searchQuery || dateRange !== "All" || settlementTab !== "All"
+                        ? [
+                          {
+                            label: "Clear Filters",
+                            onPress: () => {
+                              setSearchQuery("");
+                              setDateRange("All");
+                              setCustomRange(null);
+                              setSettlementTab("All");
+                            }
+                          }
+                        ]
+                        : [
+                          {
+                            label: "Add Group Expense",
+                            onPress: () => router.push("/groups/[groupId]/add-expense")
+                          },
+                          {
+                            label: "View Groups",
+                            onPress: () => router.push("/groups")
+                          }
+                        ]}
+                    />
                   ) : (
                     <VStack className="gap-y-3 px-4">
                       {sections.map((section) => (

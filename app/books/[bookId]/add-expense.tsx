@@ -688,13 +688,12 @@ export default function AddPersonalExpenseScreen() {
             <EmptyList
               type={EmptyType.BOOK}
               content="No Individual entry yet. Create one to start tracking your spending."
-            />
-            <FormButton
-              text="Create Individual"
-              iconEnd={
-                <Icon as="chevron-right" className="text-background-0 dark:text-white" />
-              }
-              onPress={() => router.replace("/books/create")}
+              actions={[
+                {
+                  label: "Create Individual",
+                  onPress: () => router.replace("/books/create")
+                }
+              ]}
             />
           </VStack>
         </VStack>

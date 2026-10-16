@@ -1,4 +1,5 @@
-import EmptyList from "@/components/EmptyList";
+import EmptyList, { EmptyListAction } from "@/components/EmptyList";
+import { useExpenseEmptyActions } from "@/features/expense/hooks/useExpenseEmptyActions";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { VStack } from "@/components/ui/vstack";
@@ -23,6 +24,7 @@ export default function BookRecurring({
   loading = false,
   isOnline = true,
   emptyContent,
+  emptyActions,
   onItemPress
 }: {
   bookId: string;
@@ -31,11 +33,13 @@ export default function BookRecurring({
   isOnline?: boolean;
   /** Overrides the default empty-state copy (e.g. for a no-search-matches state). */
   emptyContent?: string;
+  emptyActions?: EmptyListAction[];
   /** Overrides the default navigate-to-detail behavior (used to close the search
    *  drawer before navigating). */
   onItemPress?: (item: PersonalRecurring) => void;
 }) {
   const router = useRouter();
+  const expenseEmptyActions = useExpenseEmptyActions({ bookId });
 
   const handlePress = (item: PersonalRecurring) => {
     if (onItemPress) return onItemPress(item);
@@ -54,11 +58,12 @@ export default function BookRecurring({
     return (
       <EmptyList
         type={EmptyType.EXPENSE}
+        actions={emptyActions ?? expenseEmptyActions}
         content={
-          emptyContent ??
-          (isOnline
-            ? "No recurring expenses yet. Set one up from the Add Expense screen by choosing a Repeat option."
-            : "You're offline. Reconnect to view recurring expenses.")
+        emptyContent ??
+        (isOnline
+        ? "No recurring expenses yet. Set one up from the Add Expense screen by choosing a Repeat option."
+        : "You're offline. Reconnect to view recurring expenses.")
         }
       />
     );

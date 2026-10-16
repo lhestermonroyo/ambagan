@@ -1,6 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
-import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import PressableListItem from "@/components/PressableListItem";
@@ -113,18 +112,17 @@ export default function ScanDestinationScreen() {
           <EmptyList
             type={EmptyType.GROUP}
             content="You don't have a group or an Individual entry yet — an expense needs somewhere to live. Create one and your scanned receipt will be waiting."
+            actions={[
+              {
+                label: "Create Group",
+                onPress: () => router.push("/groups/create")
+              },
+              {
+                label: "Create Individual",
+                onPress: () => router.push("/books/create")
+              }
+            ]}
           />
-          <VStack className="gap-y-2">
-            <FormButton
-              text="Create a Group"
-              onPress={() => router.push("/groups/create")}
-            />
-            <FormButton
-              variant="outline"
-              text="Create an Individual"
-              onPress={() => router.push("/books/create")}
-            />
-          </VStack>
         </VStack>
       ) : (
         <VStack className="flex-1">
@@ -157,6 +155,15 @@ export default function ScanDestinationScreen() {
                 <EmptyList
                   type={EmptyType.SEARCH}
                   content={`No group or Individual entry matches "${searchInput.trim()}".`}
+                  actions={[
+                    {
+                      label: "Clear Search",
+                      onPress: () => {
+                        setSearchInput("");
+                        setSearching(false);
+                      }
+                    }
+                  ]}
                 />
               </Box>
             ) : (

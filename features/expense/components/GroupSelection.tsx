@@ -131,6 +131,7 @@ export function GroupSelectionActionSheet({
   currentGroup: Group;
   onChangeGroup: (group: Group) => void;
 }) {
+  const router = useRouter();
   const [selectedGroup, setSelectedGroup] = useState(currentGroup.id);
 
   const { list: groupList } = states.group.getState();
@@ -192,7 +193,21 @@ export function GroupSelectionActionSheet({
           ItemSeparatorComponent={() => (
             <Divider className="border-secondary-200" />
           )}
-          ListEmptyComponent={() => <EmptyList type={EmptyType.GROUP} />}
+          ListEmptyComponent={() => (
+            <EmptyList
+              type={EmptyType.GROUP}
+              content="No groups are ready for an expense. Choose a group and add at least one other member."
+              actions={[
+                {
+                  label: "View Groups",
+                  onPress: () => {
+                    onClose();
+                    router.push("/groups");
+                  }
+                }
+              ]}
+            />
+          )}
         />
       </RadioGroup>
     </AppSheet>

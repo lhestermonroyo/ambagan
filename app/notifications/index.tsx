@@ -227,7 +227,15 @@ export default function NotificationsScreen() {
           stickySectionHeadersEnabled={true}
           ListEmptyComponent={() => (
             <VStack className="flex-1 items-center justify-center p-8">
-              <EmptyList type={EmptyType.NOTIFICATION} />
+              <EmptyList
+                type={EmptyType.NOTIFICATION}
+                actions={[
+                  {
+                    label: "View Groups",
+                    onPress: () => router.push("/groups")
+                  }
+                ]}
+              />
             </VStack>
           )}
           ListFooterComponent={

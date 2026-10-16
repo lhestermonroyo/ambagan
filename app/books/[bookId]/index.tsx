@@ -6,6 +6,7 @@ import AppAvatar from "@/components/AppAvatar";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import HeroAmount from "@/components/HeroAmount";
 import EmptyList from "@/components/EmptyList";
+import { useExpenseEmptyActions } from "@/features/expense/hooks/useExpenseEmptyActions";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
@@ -129,6 +130,7 @@ const moveTotalsBucket = (
 export default function BookDetailScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
+  const expenseEmptyActions = useExpenseEmptyActions({ bookId });
   const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
   const colorScheme = useColorScheme() ?? "light";
@@ -1124,9 +1126,24 @@ export default function BookDetailScreen() {
                       <EmptyList
                         type={EmptyType.EXPENSE}
                         content="No expenses match your filters. Try adjusting your search, category, or date range."
+                        actions={[
+                          {
+                            label: "Clear Filters",
+                            onPress: () => {
+                              setExpenseSearch("");
+                              setCategoryFilter(ALL_CATEGORIES);
+                              setStatusFilter("all");
+                              setExpenseDateRange("All");
+                              setExpenseCustomRange(null);
+                            }
+                          }
+                        ]}
                       />
                     ) : (
-                      <EmptyList type={EmptyType.EXPENSE} />
+                      <EmptyList
+                        type={EmptyType.EXPENSE}
+                        actions={expenseEmptyActions}
+                      />
                     )
                   }
                   ListFooterComponent={() => (

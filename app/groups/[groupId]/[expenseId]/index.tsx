@@ -473,10 +473,20 @@ export default function ExpenseDetailsScreen() {
             <VStack className="flex-1 py-16">
               <EmptyList
                 type={EmptyType.EXPENSE}
+                actions={[
+                  {
+                    label: "Try Again",
+                    onPress: () => init(groupId, expenseId)
+                  },
+                  {
+                    label: "Go Back",
+                    onPress: handleBack
+                  }
+                ]}
                 content={
-                  isOnline
-                    ? "This expense couldn't be loaded. Pull back and try again."
-                    : "This expense isn't available offline yet. It'll appear once you're back online and it syncs."
+                isOnline
+                ? "This expense couldn't be loaded. Pull back and try again."
+                : "This expense isn't available offline yet. It'll appear once you're back online and it syncs."
                 }
               />
             </VStack>
@@ -646,7 +656,15 @@ export default function ExpenseDetailsScreen() {
                         renderItem={({ item }) => <PayerItem payer={item} />}
                         ItemSeparatorComponent={ListDivider}
                         ListEmptyComponent={() => (
-                          <EmptyList type={EmptyType.MEMBER} />
+                          <EmptyList
+                            type={EmptyType.MEMBER}
+                            actions={[
+                              {
+                                label: "Back to Group",
+                                onPress: handleBack
+                              }
+                            ]}
+                          />
                         )}
                       />
                     </VStack>
@@ -665,7 +683,15 @@ export default function ExpenseDetailsScreen() {
                         )}
                         ItemSeparatorComponent={ListDivider}
                         ListEmptyComponent={() => (
-                          <EmptyList type={EmptyType.MEMBER} />
+                          <EmptyList
+                            type={EmptyType.MEMBER}
+                            actions={[
+                              {
+                                label: "Back to Group",
+                                onPress: handleBack
+                              }
+                            ]}
+                          />
                         )}
                       />
                     </VStack>

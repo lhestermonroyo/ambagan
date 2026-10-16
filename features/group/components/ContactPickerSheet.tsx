@@ -1,3 +1,5 @@
+import EmptyList from "@/components/EmptyList";
+import { EmptyType } from "@/types/general";
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
@@ -334,11 +336,31 @@ export default function ContactPickerSheet({
               }}
               ItemSeparatorComponent={ListDivider}
               ListEmptyComponent={() => (
-                <VStack className="p-4 items-center">
-                  <Text className="text-sm text-secondary-950">
-                    {loading ? "Loading contacts…" : "No contacts found."}
-                  </Text>
-                </VStack>
+                loading ? (
+                  <Text className="p-4 text-center text-sm text-secondary-950">Loading contacts…</Text>
+                ) : (
+                  <EmptyList
+                    type={searchInput.trim() ? EmptyType.SEARCH : EmptyType.USER}
+                    content={searchInput.trim() ? "No contacts match your search." : "No new contacts with a phone number to add."}
+                    actions={searchInput.trim()
+                      ? [
+                        {
+                          label: "Clear Search",
+                          onPress: () => setSearchInput("")
+                        }
+                      ]
+                      : [
+                        {
+                          label: "Refresh Contacts",
+                          onPress: loadContacts
+                        },
+                        {
+                          label: "Back to Members",
+                          onPress: onClose
+                        }
+                      ]}
+                  />
+                )
               )}
               ListFooterComponent={() => <Box className="h-4" />}
             />

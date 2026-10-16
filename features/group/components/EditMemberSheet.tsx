@@ -30,8 +30,8 @@ import * as offlineQueue from "@/utils/offlineQueue";
 import { normalizePhone } from "@/utils/phone";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { UserPlus } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
-import { Platform, useColorScheme } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Platform, TextInput, useColorScheme } from "react-native";
 import RecentFavoritesTab from "./RecentFavoritesTab";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
@@ -46,6 +46,7 @@ export default function EditMembersSheet({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [searching, setSearching] = useState(false);
+  const searchRef = useRef<TextInput>(null);
   const [searchInput, setSearchInput] = useState("");
   const [users, setUsers] = useState<UserPreview[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -507,6 +508,7 @@ export default function EditMembersSheet({
             <Box className="px-4">
               <SearchInput
                 placeholder="Search users"
+                inputRef={searchRef}
                 value={searchInput}
                 onChangeText={(val) => setSearchInput(val)}
                 onSetSearching={setSearching}
@@ -523,9 +525,32 @@ export default function EditMembersSheet({
               <RecentFavoritesTab tab={tab} onTabChange={setTab} />
             )}
           </VStack>
-          <ScrollView className="flex-1 w-full">
+          <ScrollView keyboardShouldPersistTaps="handled" className="flex-1 w-full">
             {displayUsers.length === 0 && (
-              <EmptyList type={emptyType} content={emptyText} />
+              <EmptyList
+                type={emptyType}
+                content={emptyText}
+                actions={[
+                  {
+                    label: searching
+                      ? "Clear Search"
+                      : "Search Users",
+                    onPress: () => {
+                      setSearchInput("");
+                      setSearching(false);
+                      searchRef.current?.focus();
+                    }
+                  },
+                  ...(CONTACTS_IMPORT_ENABLED
+                    ? [
+                      {
+                        label: "Add from Contacts",
+                        onPress: () => setContactPickerOpen(true)
+                      }
+                    ]
+                    : [])
+                ]}
+              />
             )}
             <FlatList
               scrollEnabled={false}

@@ -142,7 +142,21 @@ export default function LinkedGroupSheet({
           ItemSeparatorComponent={() => (
             <Divider className="border-secondary-200" />
           )}
-          ListEmptyComponent={() => <EmptyList type={EmptyType.GROUP} />}
+          ListEmptyComponent={() => (
+            <EmptyList
+              type={EmptyType.GROUP}
+              content="You can link a group later. Continue without linking for now."
+              actions={[
+                {
+                  label: "Continue Without Linking",
+                  onPress: () => {
+                    onSelect(null);
+                    onClose();
+                  }
+                }
+              ]}
+            />
+          )}
         />
       </RadioGroup>
     </AppSheet>

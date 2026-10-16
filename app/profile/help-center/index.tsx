@@ -878,7 +878,15 @@ export default function HelpCenterScreen() {
                   <FaqSectionBlock key={section.title} section={section} />
                 ))
               ) : (
-                <EmptyList type={EmptyType.SEARCH} />
+                <EmptyList
+                  type={EmptyType.SEARCH}
+                  actions={[
+                    {
+                      label: "Clear Search",
+                      onPress: handleCancelSearch
+                    }
+                  ]}
+                />
               )}
             </VStack>
           </ScrollView>

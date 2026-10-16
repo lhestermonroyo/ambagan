@@ -4,6 +4,14 @@ import { emptyTypes } from "@/utils/constants";
 import { Image, useColorScheme } from "react-native";
 import { Text } from "./ui/text";
 import { VStack } from "./ui/vstack";
+import FormButton from "./FormButton";
+
+export type EmptyListAction = {
+  label: string;
+  onPress: () => void;
+  variant?: "solid" | "outline";
+  disabled?: boolean;
+};
 
 const IMAGES = {
   book: {
@@ -103,11 +111,13 @@ const BOX: Partial<Record<ImageKey, typeof DEFAULT_BOX>> = {
 
 const EmptyList = ({
   type,
-  content
+  content,
+  actions = []
 }: {
   type: EmptyType;
   // Optional copy override — falls back to the default text for `type`.
   content?: string;
+  actions?: EmptyListAction[];
 }) => {
   // Respect the app override while keeping theme subscriptions tied to the
   // component lifecycle, including empty states discarded during navigation.
@@ -135,6 +145,20 @@ const EmptyList = ({
       <Text className="text-center text-secondary-950 px-4">
         {content ?? empty?.content}
       </Text>
+      {actions.length > 0 && (
+        <VStack className="w-full max-w-[320px] gap-y-2 px-4 pt-2">
+          {actions.map((action, index) => (
+            <FormButton
+              key={action.label}
+              text={action.label}
+              size="md"
+              variant={action.variant ?? (index === 0 ? "solid" : "outline")}
+              onPress={action.onPress}
+              disabled={action.disabled}
+            />
+          ))}
+        </VStack>
+      )}
     </VStack>
   );
 };

@@ -130,6 +130,7 @@ export default function RecurringExpensesScreen() {
         }
       >
         <GroupRecurring
+          emptyActions={!isOnline || loadFailed ? [{ label: "Try Again", onPress: handleRefresh }] : undefined}
           groupId={groupId}
           items={list}
           loading={loading}
@@ -167,7 +168,15 @@ export default function RecurringExpensesScreen() {
                   onItemPress={openFromSearch}
                 />
               ) : (
-                <EmptyList type={EmptyType.SEARCH} />
+                <EmptyList
+                  type={EmptyType.SEARCH}
+                  actions={[
+                    {
+                      label: "Clear Search",
+                      onPress: handleCancelSearch
+                    }
+                  ]}
+                />
               )}
             </VStack>
           </ScrollView>

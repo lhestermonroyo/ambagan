@@ -23,6 +23,7 @@ import DateRangeSheet, {
   getDateRangeBounds
 } from "@/features/group/components/DateRangeSheet";
 import InnerLayout from "@/layouts/InnerLayout";
+import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { getPrimaryHex } from "@/utils/getColorHex";
@@ -33,12 +34,9 @@ import { useColorScheme } from "react-native";
 
 export default function AnalyticsScreen() {
   const router = useRouter();
+  const ensureOnline = useEnsureOnline();
   const colorScheme = useColorScheme() ?? "light";
   const { details: userDetails } = states.user();
-
-  // Below the hooks on purpose — bailing before them would change the hook
-  // count between renders the moment the user details land.
-  if (!userDetails) return null;
 
   const [scope, setScope] = useState<AnalyticsScope>("all");
   const [dateRange, setDateRange] = useState<DateRangeOption>("1M");
@@ -50,7 +48,7 @@ export default function AnalyticsScreen() {
     [dateRange, customRange]
   );
 
-  const { loading, error, data } = useAnalytics(
+  const { loading, error, data, refetch } = useAnalytics(
     userDetails?.id,
     start,
     end,
@@ -64,6 +62,8 @@ export default function AnalyticsScreen() {
     !!data &&
     scope !== "personal" &&
     (data.fronted > 0 || data.frontedShare > 0);
+
+  if (!userDetails) return null;
 
   return (
     <InnerLayout title="Spending Analytics" onBack={() => router.back()}>
@@ -105,11 +105,44 @@ export default function AnalyticsScreen() {
               <EmptyList
                 type={EmptyType.ACTIVITY}
                 content="Couldn't load your analytics. Check your connection and try again."
+                actions={[
+                  {
+                    label: "Try Again",
+                    onPress: refetch
+                  }
+                ]}
               />
             ) : isEmpty ? (
               <EmptyList
                 type={EmptyType.ACTIVITY}
                 content={emptyMessage(scope, dateRange)}
+                actions={[
+                  ...(dateRange !== "All" || scope !== "all"
+                    ? [
+                      {
+                        label: "Clear Filters",
+                        onPress: () => {
+                          setDateRange("All");
+                          setCustomRange(null);
+                          setScope("all");
+                        }
+                      }
+                    ]
+                    : []),
+                  {
+                    label: "Add Expense",
+                    onPress: () => router.push(scope === "personal" ? "/books/[bookId]/add-expense" : "/groups/[groupId]/add-expense")
+                  },
+                  {
+                    label: "Scan Receipt",
+                    onPress: async () => {
+                      if (!(await ensureOnline(
+                        "You need an internet connection to scan a receipt. Please try again when you're back online."
+                      ))) return;
+                      router.push("/scan-receipt");
+                    }
+                  }
+                ]}
               />
             ) : (
               <>

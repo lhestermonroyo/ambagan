@@ -42,6 +42,7 @@ export default function BookRecurringScreen() {
   const [list, setList] = useState<PersonalRecurring[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchInput, setSearchInput] = useState("");
@@ -51,7 +52,9 @@ export default function BookRecurringScreen() {
     if (!bookId) return;
     try {
       setList(await services.bookRecurring.getPersonalRecurringByBookId(bookId));
+      setLoadFailed(false);
     } catch {
+      setLoadFailed(true);
       // Recurring reads aren't cached, so offline they simply fail — that's the
       // offline empty state, not an error worth a toast.
       if (isOnline) {
@@ -125,10 +128,12 @@ export default function BookRecurringScreen() {
         }
       >
         <BookRecurring
+          emptyActions={!isOnline || loadFailed ? [{ label: "Try Again", onPress: handleRefresh }] : undefined}
           bookId={bookId}
           items={list}
           loading={loading}
           isOnline={isOnline}
+          emptyContent={loadFailed && isOnline ? "Couldn't load recurring expenses. Try again." : undefined}
         />
       </ScrollView>
 
@@ -157,7 +162,15 @@ export default function BookRecurringScreen() {
                   onItemPress={openFromSearch}
                 />
               ) : (
-                <EmptyList type={EmptyType.SEARCH} />
+                <EmptyList
+                  type={EmptyType.SEARCH}
+                  actions={[
+                    {
+                      label: "Clear Search",
+                      onPress: handleCancelSearch
+                    }
+                  ]}
+                />
               )}
             </VStack>
           </ScrollView>

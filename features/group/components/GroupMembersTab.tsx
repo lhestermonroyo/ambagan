@@ -180,7 +180,19 @@ export default function GroupMembersTab() {
           ItemSeparatorComponent={() => (
             <Divider className="border-secondary-100" />
           )}
-          ListEmptyComponent={() => <EmptyList type={EmptyType.MEMBER} />}
+          ListEmptyComponent={() => (
+            <EmptyList
+              type={EmptyType.MEMBER}
+              actions={[
+                {
+                  label: isAdmin
+                    ? "Add Members"
+                    : "View Groups",
+                  onPress: () => isAdmin ? setIsEditMembersOpen(true) : router.push("/groups")
+                }
+              ]}
+            />
+          )}
         />
       </VStack>
 

@@ -1,3 +1,5 @@
+import EmptyList from "@/components/EmptyList";
+import { EmptyType } from "@/types/general";
 import AppAvatar from "@/components/AppAvatar";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
@@ -19,8 +21,8 @@ import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import { addRecentUser, getRecentUsers } from "@/utils/recentUsers";
 import { Heart } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
-import { ColorSchemeName, useColorScheme } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ColorSchemeName, TextInput, useColorScheme } from "react-native";
 
 export default function FavoritesSheet({
   isOpen,
@@ -32,6 +34,7 @@ export default function FavoritesSheet({
   const { details: userDetails } = states.user();
   const colorScheme = useColorScheme() ?? "light";
 
+  const searchRef = useRef<TextInput>(null);
   const [searchInput, setSearchInput] = useState("");
   const [searching, setSearching] = useState(false);
   const [tab, setTab] = useState<"friends" | "favorites">("friends");
@@ -124,6 +127,7 @@ export default function FavoritesSheet({
         <Box className="px-4">
           <SearchInput
             placeholder="Search users"
+                inputRef={searchRef}
             value={searchInput}
             onChangeText={setSearchInput}
             onSetSearching={setSearching}
@@ -132,11 +136,24 @@ export default function FavoritesSheet({
 
         {!searching && <RecentFavoritesTab tab={tab} onTabChange={setTab} />}
 
-        <ScrollView className="w-full">
+        <ScrollView keyboardShouldPersistTaps="handled" className="w-full">
           {displayUsers.length === 0 && (
-            <VStack className="p-4 justify-center items-center">
-              <Text className="text-sm text-secondary-950">{emptyLabel}</Text>
-            </VStack>
+            <EmptyList
+              type={searching ? EmptyType.SEARCH : tab === "favorites" ? EmptyType.FAVORITE : EmptyType.FRIEND}
+              content={emptyLabel}
+              actions={[
+                {
+                  label: searching
+                    ? "Clear Search"
+                    : "Search Users",
+                  onPress: () => {
+                    setSearchInput("");
+                    setSearching(false);
+                    searchRef.current?.focus();
+                  }
+                }
+              ]}
+            />
           )}
           <FlatList
             scrollEnabled={false}

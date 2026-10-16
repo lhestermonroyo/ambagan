@@ -2,6 +2,7 @@ import ApproxRateNote from "@/components/ApproxRateNote";
 import CategoryGauge from "@/components/CategoryGauge";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
+import { useExpenseEmptyActions } from "@/features/expense/hooks/useExpenseEmptyActions";
 import FormButton from "@/components/FormButton";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import { Card } from "@/components/ui/card";
@@ -48,6 +49,7 @@ export default function BookStatsTab({
   linkedGroupName?: string | null;
   linkedGroupCategory?: string;
 }) {
+  const expenseEmptyActions = useExpenseEmptyActions({ bookId });
   const colorScheme = useColorScheme() ?? "light";
   // Re-renders when a rate refresh lands, keeping the converted figures and the
   // vintage in the rate note in step.
@@ -243,7 +245,10 @@ export default function BookStatsTab({
   if (expenses.length === 0) {
     return (
       <VStack className="pt-6">
-        <EmptyList type={EmptyType.EXPENSE} />
+        <EmptyList
+          type={EmptyType.EXPENSE}
+          actions={expenseEmptyActions}
+        />
       </VStack>
     );
   }
@@ -281,6 +286,15 @@ export default function BookStatsTab({
           <EmptyList
             type={EmptyType.EXPENSE}
             content="No expenses in the selected date range."
+            actions={[
+              {
+                label: "View All Time",
+                onPress: () => {
+                  setDateRange("All");
+                  setCustomRange(null);
+                }
+              }
+            ]}
           />
         ) : (
           <VStack className="px-4 gap-y-4">
