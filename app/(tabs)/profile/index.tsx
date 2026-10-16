@@ -29,6 +29,7 @@ import {
   CircleQuestionMark,
   Copyright,
   Eye,
+  FlaskConical,
   LayoutDashboard,
   LayoutList,
   LogOut,
@@ -332,6 +333,20 @@ export default function ProfileScreen() {
                   />
                 </VStack>
               ))}
+
+              {__DEV__ && (
+                <VStack>
+                  <Text bold className="text-sm text-secondary-950 uppercase px-4 pt-4 pb-2">
+                    Development
+                  </Text>
+                  <MenuItem item={{
+                    icon: <FlaskConical color={getPrimaryHex("text-primary-400", colorScheme)} />,
+                    label: "Empty State Preview",
+                    description: "Simulate empty lists using your existing screens",
+                    onPress: () => router.push("/profile/empty-state-preview")
+                  }} />
+                </VStack>
+              )}
 
               <VStack className="px-4 mt-8 gap-y-4">
                 <FormButton

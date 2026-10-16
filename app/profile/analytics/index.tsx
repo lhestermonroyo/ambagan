@@ -1,3 +1,5 @@
+import useUserStore from "@/features/user/states/user.state";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import ApproxRateNote from "@/components/ApproxRateNote";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -23,8 +25,6 @@ import DateRangeSheet, {
   getDateRangeBounds
 } from "@/features/group/components/DateRangeSheet";
 import InnerLayout from "@/layouts/InnerLayout";
-import { useEnsureOnline } from "@/hooks/useEnsureOnline";
-import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
@@ -33,10 +33,10 @@ import { useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
 export default function AnalyticsScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const router = useRouter();
-  const ensureOnline = useEnsureOnline();
   const colorScheme = useColorScheme() ?? "light";
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
 
   const [scope, setScope] = useState<AnalyticsScope>("all");
   const [dateRange, setDateRange] = useState<DateRangeOption>("1M");
@@ -48,14 +48,14 @@ export default function AnalyticsScreen() {
     [dateRange, customRange]
   );
 
-  const { loading, error, data, refetch } = useAnalytics(
+  const { loading, error, data } = useAnalytics(
     userDetails?.id,
     start,
     end,
     scope
   );
 
-  const isEmpty = !data || data.expenseCount === 0;
+  const isEmpty = previewEmpty || !data || data.expenseCount === 0;
   // Fronting is a group-only idea, and a period where nothing was fronted has
   // nothing to say about it.
   const showFronting =
@@ -98,51 +98,18 @@ export default function AnalyticsScreen() {
           </HStack>
 
           <LoadingWrapper isLoading={loading} skeleton={<AnalyticsSkeleton />}>
-            {error ? (
+            {error && !previewEmpty ? (
               // No cache behind this screen, so a failed read is the only thing
               // an empty state could mean — say so rather than claiming the user
               // has no expenses.
               <EmptyList
                 type={EmptyType.ACTIVITY}
                 content="Couldn't load your analytics. Check your connection and try again."
-                actions={[
-                  {
-                    label: "Try Again",
-                    onPress: refetch
-                  }
-                ]}
               />
             ) : isEmpty ? (
               <EmptyList
                 type={EmptyType.ACTIVITY}
                 content={emptyMessage(scope, dateRange)}
-                actions={[
-                  ...(dateRange !== "All" || scope !== "all"
-                    ? [
-                      {
-                        label: "Clear Filters",
-                        onPress: () => {
-                          setDateRange("All");
-                          setCustomRange(null);
-                          setScope("all");
-                        }
-                      }
-                    ]
-                    : []),
-                  {
-                    label: "Add Expense",
-                    onPress: () => router.push(scope === "personal" ? "/books/[bookId]/add-expense" : "/groups/[groupId]/add-expense")
-                  },
-                  {
-                    label: "Scan Receipt",
-                    onPress: async () => {
-                      if (!(await ensureOnline(
-                        "You need an internet connection to scan a receipt. Please try again when you're back online."
-                      ))) return;
-                      router.push("/scan-receipt");
-                    }
-                  }
-                ]}
               />
             ) : (
               <>
@@ -188,13 +155,15 @@ const emptyMessage = (
   const ranged = dateRange !== "All";
   if (scope === "personal") {
     return ranged
-      ? "No individual expenses in the selected date range."
-      : "No individual expenses yet. Add one in an Individual entry to see it here.";
+      ? "No Individual expenses in this date range. Clear filters to see the rest."
+      : "Track your own spending. Add an Individual expense to see your totals.";
   }
   if (scope === "groups") {
     return ranged
-      ? "No group expenses in the selected date range."
-      : "No group expenses yet.";
+      ? "No group expenses in this date range. Clear filters to see the rest."
+      : "See how your group spends. Add a shared expense to get started.";
   }
-  return ranged ? "No expenses in the selected date range." : undefined;
+  return ranged
+    ? "No expenses in this date range. Clear filters to see the rest."
+    : "Get to know your spending. Add an expense or scan a receipt.";
 };

@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
 import ConfirmationSheet from "@/components/ConfirmationSheet";
@@ -65,6 +66,7 @@ import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
 export default function AddPersonalExpenseScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const params = useLocalSearchParams<{
     bookId: string;
     expenseId?: string;
@@ -680,20 +682,14 @@ export default function AddPersonalExpenseScreen() {
   // Unlocked entry (Home / Scan) but the user has no book yet — mirror the group
   // form's no-group state with a Create Book CTA. Replace so backing out of
   // create doesn't return to this empty form.
-  if (bookResolved && !selectedBook) {
+  if (previewEmpty || bookResolved && !selectedBook) {
     return (
       <FormLayout title="Add Expense" onBack={() => router.back()} footer={[]}>
         <VStack className="flex-1 p-4">
           <VStack className="items-center justify-center flex-1 gap-y-4">
             <EmptyList
               type={EmptyType.BOOK}
-              content="No Individual entry yet. Create one to start tracking your spending."
-              actions={[
-                {
-                  label: "Create Individual",
-                  onPress: () => router.replace("/books/create")
-                }
-              ]}
+              content="Track your own spending. Create your first Individual entry."
             />
           </VStack>
         </VStack>

@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import { EmptyType } from "@/types/general";
 import AppAvatar from "@/components/AppAvatar";
@@ -31,6 +32,7 @@ export default function FavoritesSheet({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const { details: userDetails } = states.user();
   const colorScheme = useColorScheme() ?? "light";
 
@@ -97,10 +99,10 @@ export default function FavoritesSheet({
   };
 
   const emptyLabel = searching
-    ? "No results found."
+    ? "No matches yet. Try another name or clear your search."
     : tab === "favorites"
-      ? "No favorites yet."
-      : "No friends yet.";
+      ? "Find a friend and tap the heart to keep them in favorites."
+      : "Search for someone to add to your favorites.";
 
   return (
     <AppSheet
@@ -137,27 +139,15 @@ export default function FavoritesSheet({
         {!searching && <RecentFavoritesTab tab={tab} onTabChange={setTab} />}
 
         <ScrollView keyboardShouldPersistTaps="handled" className="w-full">
-          {displayUsers.length === 0 && (
+          {(previewEmpty || displayUsers.length === 0) && (
             <EmptyList
               type={searching ? EmptyType.SEARCH : tab === "favorites" ? EmptyType.FAVORITE : EmptyType.FRIEND}
               content={emptyLabel}
-              actions={[
-                {
-                  label: searching
-                    ? "Clear Search"
-                    : "Search Users",
-                  onPress: () => {
-                    setSearchInput("");
-                    setSearching(false);
-                    searchRef.current?.focus();
-                  }
-                }
-              ]}
             />
           )}
           <FlatList
             scrollEnabled={false}
-            data={displayUsers}
+            data={previewEmpty ? [] : displayUsers}
             keyExtractor={(item) => item.id}
             ItemSeparatorComponent={ListDivider}
             renderItem={({ item }) => (

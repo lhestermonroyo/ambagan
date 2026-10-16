@@ -215,9 +215,11 @@ export default function GroupPersonalStats({
             <Text className="text-sm text-secondary-950">
               {loading
                 ? " "
-                : yourNet >= 0
-                  ? "you fronted extra"
-                  : "you owe the group"}
+                : yourNet === 0
+                  ? "all balanced"
+                  : yourNet > 0
+                    ? "you fronted extra"
+                    : "you owe the group"}
             </Text>
           </VStack>
         </HStack>

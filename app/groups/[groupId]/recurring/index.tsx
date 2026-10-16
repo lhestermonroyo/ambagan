@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import SearchDrawer from "@/components/SearchDrawer";
 import { Pressable } from "@/components/ui/pressable";
@@ -31,6 +32,7 @@ import { useColorScheme } from "react-native";
  * button that slides a search field down over the screen.
  */
 export default function RecurringExpensesScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const router = useRouter();
   const toast = useAppToast();
   const { isOnline } = useNetwork();
@@ -130,14 +132,13 @@ export default function RecurringExpensesScreen() {
         }
       >
         <GroupRecurring
-          emptyActions={!isOnline || loadFailed ? [{ label: "Try Again", onPress: handleRefresh }] : undefined}
           groupId={groupId}
           items={list}
           loading={loading}
           isOnline={isOnline}
           emptyContent={
             loadFailed
-              ? "Couldn't load recurring expenses. Pull down to try again."
+              ? "Couldn't load recurring expenses. Try again."
               : undefined
           }
         />
@@ -159,9 +160,9 @@ export default function RecurringExpensesScreen() {
           >
             <VStack className="pt-4 gap-y-2">
               <Text className="text-sm text-secondary-950 px-4" bold>
-                {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+                {previewEmpty ? 0 : filtered.length} result{previewEmpty || filtered.length !== 1 ? "s" : ""}
               </Text>
-              {filtered.length > 0 ? (
+              {!previewEmpty && filtered.length > 0 ? (
                 <GroupRecurring
                   groupId={groupId}
                   items={filtered}
@@ -170,12 +171,6 @@ export default function RecurringExpensesScreen() {
               ) : (
                 <EmptyList
                   type={EmptyType.SEARCH}
-                  actions={[
-                    {
-                      label: "Clear Search",
-                      onPress: handleCancelSearch
-                    }
-                  ]}
                 />
               )}
             </VStack>

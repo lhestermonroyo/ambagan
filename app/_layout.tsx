@@ -1,4 +1,5 @@
 import AppUpdateGate from "@/components/AppUpdateGate";
+import EmptyStatePreviewBanner from "@/components/EmptyStatePreviewBanner";
 import NetworkBanner from "@/components/NetworkBanner";
 import OfflineSync from "@/components/OfflineSync";
 import { Box } from "@/components/ui/box";
@@ -529,6 +530,7 @@ export default function RootLayout() {
                   shorter spacer lets UIKit shrink each header's own top inset,
                   landing its title/buttons back under the banner. */}
               {banner.visible && <Box style={{ height: banner.height - 4 }} />}
+              {__DEV__ && <EmptyStatePreviewBanner />}
               <Stack
                 screenOptions={{
                   headerShown: false,

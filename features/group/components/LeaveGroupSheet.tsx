@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -46,6 +47,7 @@ export default function LeaveGroupSheet({
   onClose: () => void;
   onLeave: (groupDeleted: boolean) => void;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const { details: groupDetails, memberList } = states.group.getState();
   const { details: userDetails } = states.user();
   const colorScheme = useColorScheme() ?? "light";
@@ -232,7 +234,7 @@ export default function LeaveGroupSheet({
                         <FlatList
                           className="rounded-xl overflow-hidden"
                           scrollEnabled={false}
-                          data={otherMembers}
+                          data={previewEmpty ? [] : otherMembers}
                           keyExtractor={(item) => item.id}
                           renderItem={({ item: member }) => (
                             <Radio
@@ -270,12 +272,7 @@ export default function LeaveGroupSheet({
                           ListEmptyComponent={() => (
                             <EmptyList
                               type={EmptyType.MEMBER}
-                              actions={[
-                                {
-                                  label: "Cancel",
-                                  onPress: onClose
-                                }
-                              ]}
+                              content="No one to transfer ownership to. Add another member before leaving."
                             />
                           )}
                         />

@@ -1,3 +1,5 @@
+import useUserStore from "@/features/user/states/user.state";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -12,7 +14,6 @@ import { Input, InputField, InputSlot } from "@/components/ui/input";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
 import { splitTypes } from "@/utils/constants";
@@ -83,6 +84,7 @@ export default function SplitSelection({
   showStepper = true,
   showHeader = true
 }: SplitExpenseStepProps) {
+  const previewEmpty = useEmptyStatePreview();
   const [tab, setTab] = useState<(typeof splitTypes)[number]["value"]>(
     initialTab ?? splitTypes[0].value
   );
@@ -309,22 +311,16 @@ export default function SplitSelection({
               )}
               <FlatList
                 scrollEnabled={false}
-                data={includedMembers}
+                data={previewEmpty ? [] : includedMembers}
                 keyExtractor={(item) => item.id}
                 ItemSeparatorComponent={ListDivider}
                 ListEmptyComponent={() => (
                   <EmptyList
                     type={EmptyType.MEMBER}
                     content="Choose who to include in this expense."
-                    actions={[
-                      {
-                        label: "Select Members",
-                        onPress: () => setMembersSheetOpen(true)
-                      }
-                    ]}
                   />
                 )}
-                ListFooterComponent={() => <Box className="h-8" />}
+                ListFooterComponent={previewEmpty ? null : (() => <Box className="h-8" />)}
                 renderItem={({ item: member }) => (
                   <MemberSplitItem
                     currency={currency}
@@ -436,7 +432,7 @@ function MemberSplitItem({
   onAmountChange: (amount: string) => void;
   onPercentageChange: (percentage: string) => void;
 }) {
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
   const isMe = member.id === userDetails?.id;
 
   const currencySign = useMemo(() => getCurrencySign(currency), [currency]);

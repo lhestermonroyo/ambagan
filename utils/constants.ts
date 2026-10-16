@@ -301,87 +301,87 @@ export const splitTypes = [
 export const emptyTypes = [
   {
     type: EmptyType.FRIEND,
-    content: "No friends with outstanding settlements yet.",
+    content: "Share a group expense to see who owes what.",
     icon: "👫"
   },
   {
     type: EmptyType.ACTIVITY,
-    content: "No activities yet.",
+    content: "Your spending activity starts with an expense.",
     icon: "📋"
   },
   {
     type: EmptyType.GROUP,
-    content: "No groups yet. Create or join a group to get started!",
+    content: "Split bills with friends. Create a group or scan an invite to join.",
     icon: "🏠"
   },
   {
     type: EmptyType.BOOK,
-    content: "No books yet. Create one to start tracking your personal spending!",
+    content: "Track your own spending. Create your first Individual entry.",
     icon: "📒"
   },
   {
     type: EmptyType.EXPENSE,
-    content: "No expenses yet. Start adding some!",
+    content: "Track your spending. Add an expense or scan a receipt.",
     icon: "💸"
   },
   {
     type: EmptyType.SETTLEMENT,
-    content: "No settlements yet.",
+    content: "Split an expense to see who owes what.",
     icon: "🤝"
   },
   {
     type: EmptyType.NOTIFICATION,
-    content: "No notifications yet.",
+    content: "You're all caught up. Group updates will appear here.",
     icon: "🔔"
   },
   {
     type: EmptyType.USER,
-    content: "No users found.",
+    content: "Find someone by searching their name or email.",
     icon: "👤"
   },
   {
     type: EmptyType.FAVORITE,
-    content: "No favorites yet.",
+    content: "Keep friends close. Search for someone to add to favorites.",
     icon: "❤️"
   },
   {
     type: EmptyType.SEARCH,
-    content: "No results found on your search.",
+    content: "No matches yet. Try another search or clear it to see everything.",
     icon: "😔"
   },
   {
     type: EmptyType.MEMBER,
-    content: "No members found.",
+    content: "Add people to your group to start splitting expenses.",
     icon: "👥"
   },
   {
     type: EmptyType.OUTSTANDING,
-    content: "You're all settled up with this person.",
+    content: "You're all settled up. Share another expense whenever you're ready.",
     icon: "🎉"
   },
   {
     type: EmptyType.HISTORY,
-    content: "No settled payments with this person yet.",
+    content: "Completed payments with this friend will appear here.",
     icon: "📭"
   },
   {
     type: EmptyType.SETTLEMENT_ALL,
-    content: "No settlements in this group yet.",
+    content: "Split an expense to see who owes what.",
     icon: "🤝"
   },
   {
     type: EmptyType.SETTLEMENT_PENDING,
-    content: "No pending settlements.",
+    content: "All clear. Payments waiting to be settled will appear here.",
     icon: "⏳"
   },
   {
     type: EmptyType.SETTLEMENT_REQUESTED,
-    content: "No requested settlements.",
+    content: "Payment requests will appear here when someone sends one.",
     icon: "📨"
   },
   {
     type: EmptyType.SETTLEMENT_SETTLED,
-    content: "No settled payments yet.",
+    content: "Completed payments will appear here once they're settled.",
     icon: "✅"
   }
 ];

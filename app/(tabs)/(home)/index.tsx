@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
@@ -96,6 +97,7 @@ const HERO_SHARED = 0;
 const HERO_PERSONAL = 1;
 
 export default function HomeScreen() {
+  const previewEmpty = useEmptyStatePreview();
   // Cold-launch landing screen: holds the native splash until this screen's
   // first frame is drawn, so the launch never flashes the bare window.
   useHideSplashOnFirstFrame();
@@ -801,7 +803,7 @@ export default function HomeScreen() {
                 isLoading={loading.friends}
                 skeleton={<FriendCardListSkeleton />}
               >
-                {friends.length > 0 ? (
+                {!previewEmpty && friends.length > 0 ? (
                   <HScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -817,7 +819,11 @@ export default function HomeScreen() {
                     </HStack>
                   </HScrollView>
                 ) : (
-                  <EmptyList type={EmptyType.FRIEND} />
+                  <EmptyList
+                    compact
+                    type={EmptyType.FRIEND}
+                    content="Split a group expense to see balances with friends."
+                  />
                 )}
               </LoadingWrapper>
             </VStack>
@@ -836,13 +842,17 @@ export default function HomeScreen() {
                 skeleton={<GroupListSkeleton count={3} />}
               >
                 <FlatList
-                  data={groupsPreview}
+                  data={previewEmpty ? [] : groupsPreview}
                   scrollEnabled={false}
                   keyExtractor={groupEntryKey}
                   renderItem={renderGroupItem}
                   ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
-                    <EmptyList type={EmptyType.GROUP} />
+                    <EmptyList
+                      compact
+                      type={EmptyType.GROUP}
+                      content="Your groups and Individual entries will appear here."
+                    />
                   )}
                 />
               </LoadingWrapper>
@@ -860,14 +870,18 @@ export default function HomeScreen() {
               >
                 <FlatList
                   key={settlementView}
-                  data={settlementsPreview}
+                  data={previewEmpty ? [] : settlementsPreview}
                   extraData={settlementView}
                   scrollEnabled={false}
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={renderSettlementItem}
                   ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
-                    <EmptyList type={EmptyType.ACTIVITY} />
+                    <EmptyList
+                      compact
+                      type={EmptyType.ACTIVITY}
+                      content="Payments from shared expenses will appear here."
+                    />
                   )}
                 />
               </LoadingWrapper>
@@ -884,13 +898,17 @@ export default function HomeScreen() {
                 skeleton={<SettlementListSkeleton count={3} />}
               >
                 <FlatList
-                  data={personalExpensesPreview}
+                  data={previewEmpty ? [] : personalExpensesPreview}
                   scrollEnabled={false}
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={renderPersonalExpenseItem}
                   ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
-                    <EmptyList type={EmptyType.EXPENSE} />
+                    <EmptyList
+                      compact
+                      type={EmptyType.EXPENSE}
+                      content="Your Individual expenses will appear here."
+                    />
                   )}
                 />
               </LoadingWrapper>

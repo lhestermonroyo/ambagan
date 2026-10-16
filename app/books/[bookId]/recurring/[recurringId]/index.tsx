@@ -240,19 +240,9 @@ export default function BookRecurringDetailsScreen() {
             <VStack className="flex-1 py-16">
               <EmptyList
                 type={EmptyType.EXPENSE}
-                actions={[
-                  {
-                    label: "Try Again",
-                    onPress: handleRefresh
-                  },
-                  {
-                    label: "Go Back",
-                    onPress: () => router.back()
-                  }
-                ]}
                 content={
                 isOnline
-                ? "This recurring expense couldn't be loaded. Pull back and try again."
+                ? "Couldn't load this recurring expense. Try again."
                 : "You're offline. Reconnect to view this recurring expense."
                 }
               />

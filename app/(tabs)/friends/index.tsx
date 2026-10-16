@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -38,6 +39,7 @@ const MAIN_TABS: { key: MainTab; label: string }[] = [
 ];
 
 export default function FriendsScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [friends, setFriends] = useState<FriendSummary[]>([]);
@@ -283,7 +285,7 @@ export default function FriendsScreen() {
             {isSearchActive ? (
               // Unified global search across balances + contacts.
               <FlatList
-                data={searchResults}
+                data={previewEmpty ? [] : searchResults}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
@@ -298,25 +300,19 @@ export default function FriendsScreen() {
                 ItemSeparatorComponent={ListDivider}
                 ListHeaderComponent={() => (
                   <Text className="text-sm text-secondary-950 px-4 pb-2" bold>
-                    {searchResults.length} result
-                    {searchResults.length !== 1 ? "s" : ""}
+                    {previewEmpty ? 0 : searchResults.length} result
+                    {previewEmpty || searchResults.length !== 1 ? "s" : ""}
                   </Text>
                 )}
                 ListEmptyComponent={() => (
                   <EmptyList
                     type={EmptyType.SEARCH}
-                    actions={[
-                      {
-                        label: "Clear Search",
-                        onPress: handleCancelSearch
-                      }
-                    ]}
                   />
                 )}
               />
             ) : mainTab === "balances" ? (
               <FlatList
-                data={balanceList}
+                data={previewEmpty ? [] : balanceList}
                 keyExtractor={(item) => item.friend.id}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
@@ -332,30 +328,16 @@ export default function FriendsScreen() {
                 ListEmptyComponent={() => (
                   <EmptyList
                     type={EmptyType.FRIEND}
-                    actions={balanceFilter !== "all"
-                      ? [
-                        {
-                          label: "View All Balances",
-                          onPress: () => setBalanceFilter("all")
-                        }
-                      ]
-                      : [
-                        {
-                          label: "Add Expense",
-                          onPress: () => router.push("/groups/[groupId]/add-expense")
-                        },
-                        {
-                          label: "Create Group",
-                          onPress: () => router.push("/groups/create")
-                        }
-                      ]}
+                    content={balanceFilter !== "all"
+                      ? "No balances match this filter. View all to see the rest."
+                      : "Share a group expense to see who owes what."}
                   />
                 )}
               />
             ) : (
               // Contacts directory — favorites pinned, then everyone else.
               <VStack className="gap-y-2">
-                {favoriteContacts.length > 0 && (
+                {!previewEmpty && favoriteContacts.length > 0 && (
                   <VStack className="gap-y-2">
                     <Text
                       bold
@@ -373,7 +355,7 @@ export default function FriendsScreen() {
                   </VStack>
                 )}
                 <VStack className="gap-y-2">
-                  {favoriteContacts.length > 0 && otherContacts.length > 0 && (
+                  {!previewEmpty && favoriteContacts.length > 0 && otherContacts.length > 0 && (
                     <Text
                       bold
                       className="text-sm text-secondary-950 uppercase px-4 pt-2"
@@ -382,29 +364,19 @@ export default function FriendsScreen() {
                     </Text>
                   )}
                   <FlatList
-                    data={otherContacts}
+                    data={previewEmpty ? [] : otherContacts}
                     keyExtractor={(item) => item.id}
                     scrollEnabled={false}
                     renderItem={renderContactRow}
                     ItemSeparatorComponent={ListDivider}
                     ListEmptyComponent={() =>
-                      favoriteContacts.length === 0 ? (
+                      previewEmpty || favoriteContacts.length === 0 ? (
                         // The FRIEND default is about outstanding settlements,
                         // which is the Balances tab's concern — an empty
                         // contacts directory just means no shared groups yet.
                         <EmptyList
                           type={EmptyType.FRIEND}
-                          content="No contacts yet. People you share a group with will show up here."
-                          actions={[
-                            {
-                              label: "Create Group",
-                              onPress: () => router.push("/groups/create")
-                            },
-                            {
-                              label: "View Groups",
-                              onPress: () => router.push("/groups")
-                            }
-                          ]}
+                          content="Meet your group here. People you split expenses with will appear here."
                         />
                       ) : null
                     }
@@ -432,7 +404,7 @@ export default function FriendsScreen() {
         >
           {isSearchActive ? (
             <FlatList
-              data={searchResults}
+              data={previewEmpty ? [] : searchResults}
               keyExtractor={(item) => item.id}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingBottom: 24 }}
@@ -451,19 +423,13 @@ export default function FriendsScreen() {
               ItemSeparatorComponent={ListDivider}
               ListHeaderComponent={
                 <Text className="text-sm text-secondary-950 px-4 py-2" bold>
-                  {searchResults.length} result
-                  {searchResults.length !== 1 ? "s" : ""}
+                  {previewEmpty ? 0 : searchResults.length} result
+                  {previewEmpty || searchResults.length !== 1 ? "s" : ""}
                 </Text>
               }
               ListEmptyComponent={
                 <EmptyList
                   type={EmptyType.SEARCH}
-                  actions={[
-                    {
-                      label: "Clear Search",
-                      onPress: handleCancelSearch
-                    }
-                  ]}
                 />
               }
             />

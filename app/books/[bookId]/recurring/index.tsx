@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import SearchDrawer from "@/components/SearchDrawer";
 import { Pressable } from "@/components/ui/pressable";
@@ -32,6 +33,7 @@ import { useColorScheme } from "react-native";
  * otherwise.
  */
 export default function BookRecurringScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const router = useRouter();
   const toast = useAppToast();
   const { isOnline } = useNetwork();
@@ -128,7 +130,6 @@ export default function BookRecurringScreen() {
         }
       >
         <BookRecurring
-          emptyActions={!isOnline || loadFailed ? [{ label: "Try Again", onPress: handleRefresh }] : undefined}
           bookId={bookId}
           items={list}
           loading={loading}
@@ -153,9 +154,9 @@ export default function BookRecurringScreen() {
           >
             <VStack className="pt-4 gap-y-2">
               <Text className="text-sm text-secondary-950 px-4" bold>
-                {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+                {previewEmpty ? 0 : filtered.length} result{previewEmpty || filtered.length !== 1 ? "s" : ""}
               </Text>
-              {filtered.length > 0 ? (
+              {!previewEmpty && filtered.length > 0 ? (
                 <BookRecurring
                   bookId={bookId}
                   items={filtered}
@@ -164,12 +165,6 @@ export default function BookRecurringScreen() {
               ) : (
                 <EmptyList
                   type={EmptyType.SEARCH}
-                  actions={[
-                    {
-                      label: "Clear Search",
-                      onPress: handleCancelSearch
-                    }
-                  ]}
                 />
               )}
             </VStack>

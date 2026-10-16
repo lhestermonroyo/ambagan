@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import SearchDrawer from "@/components/SearchDrawer";
 import {
@@ -741,6 +742,7 @@ function FaqSectionBlock({
 }
 
 export default function HelpCenterScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const tintColor = getPrimaryHex("text-primary-600", colorScheme ?? "light");
@@ -871,21 +873,15 @@ export default function HelpCenterScreen() {
           >
             <VStack className="p-4 gap-y-6">
               <Text className="text-sm text-secondary-950" bold>
-                {resultCount} result{resultCount !== 1 ? "s" : ""}
+                {previewEmpty ? 0 : resultCount} result{previewEmpty || resultCount !== 1 ? "s" : ""}
               </Text>
-              {resultCount > 0 ? (
+              {!previewEmpty && resultCount > 0 ? (
                 filteredSections.map((section) => (
                   <FaqSectionBlock key={section.title} section={section} />
                 ))
               ) : (
                 <EmptyList
                   type={EmptyType.SEARCH}
-                  actions={[
-                    {
-                      label: "Clear Search",
-                      onPress: handleCancelSearch
-                    }
-                  ]}
                 />
               )}
             </VStack>

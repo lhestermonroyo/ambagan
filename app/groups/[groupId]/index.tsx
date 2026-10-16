@@ -1,3 +1,5 @@
+import useUserStore from "@/features/user/states/user.state";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AndroidHeaderMenu, {
   type AndroidHeaderMenuItem
 } from "@/components/AndroidHeaderMenu";
@@ -85,7 +87,8 @@ import {
   Share2,
   Tag,
   Trash2,
-  X
+  X,
+  FilterX
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -111,6 +114,7 @@ if (
 const tabs = ["Settlements", "Expenses", "Stats", "Members", "Info"] as const;
 
 export default function GroupDetailsScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [settlementRefreshTrigger, setSettlementRefreshTrigger] = useState(0);
@@ -147,7 +151,7 @@ export default function GroupDetailsScreen() {
     settlementList,
     memberList
   } = states.group();
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
 
   const isPro = userDetails?.plan === "pro";
 
@@ -1162,7 +1166,7 @@ export default function GroupDetailsScreen() {
                 <SectionList
                   className="flex-1"
                   scrollEnabled={false}
-                  sections={formattedExpenseList}
+                  sections={previewEmpty ? [] : formattedExpenseList}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }: { item: ExpensePreview }) => (
                     <ExpenseItem
@@ -1186,10 +1190,11 @@ export default function GroupDetailsScreen() {
                     hasActiveFilters ? (
                       <EmptyList
                         type={EmptyType.EXPENSE}
-                        content="No expenses match your filters. Try adjusting your search, payer, category, or date range."
+                        content="No expenses match these filters. Clear them to see everything."
                         actions={[
                           {
                             label: "Clear Filters",
+                            icon: FilterX,
                             onPress: () => {
                               setExpenseSearch("");
                               setPayerFilter("All");
@@ -1208,13 +1213,12 @@ export default function GroupDetailsScreen() {
                     ) : (
                       <EmptyList
                         type={EmptyType.EXPENSE}
-                        content=" This group has no other members yet. Add members from
-                        the Members tab to start splitting expenses."
+                        content="Bring your group together. Add members to start splitting expenses."
                         actions={expenseEmptyActions}
                       />
                     )
                   }
-                  ListFooterComponent={() => <Box className="h-16" />}
+                  ListFooterComponent={previewEmpty ? null : (() => <Box className="h-16" />)}
                 />
               </VStack>
             )}
@@ -1358,7 +1362,7 @@ function ExpenseItem({
   expense: ExpensePreview;
   onOpen: () => void;
 }) {
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
 
   const sortedPayers = useMemo(() => {
     const list = expense.payer_list;

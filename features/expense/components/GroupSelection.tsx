@@ -1,3 +1,5 @@
+import useUserStore from "@/features/user/states/user.state";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -131,7 +133,7 @@ export function GroupSelectionActionSheet({
   currentGroup: Group;
   onChangeGroup: (group: Group) => void;
 }) {
-  const router = useRouter();
+  const previewEmpty = useEmptyStatePreview();
   const [selectedGroup, setSelectedGroup] = useState(currentGroup.id);
 
   const { list: groupList } = states.group.getState();
@@ -182,7 +184,7 @@ export function GroupSelectionActionSheet({
       >
         <FlatList
           className="flex-1"
-          data={selectableGroups}
+          data={previewEmpty ? [] : selectableGroups}
           renderItem={({ item }) => (
             <GroupItem
               group={item}
@@ -196,16 +198,7 @@ export function GroupSelectionActionSheet({
           ListEmptyComponent={() => (
             <EmptyList
               type={EmptyType.GROUP}
-              content="No groups are ready for an expense. Choose a group and add at least one other member."
-              actions={[
-                {
-                  label: "View Groups",
-                  onPress: () => {
-                    onClose();
-                    router.push("/groups");
-                  }
-                }
-              ]}
+              content="Ready to split? Choose a group and add at least one other member."
             />
           )}
         />
@@ -215,7 +208,7 @@ export function GroupSelectionActionSheet({
 }
 
 function GroupItem({ group, onPress }: { group: Group; onPress: () => void }) {
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
   const isCreator = group.admin.id === userDetails?.id;
   const colorScheme = useColorScheme() ?? "light";
 

@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList, { EmptyListAction } from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
@@ -56,7 +57,8 @@ import {
   ChevronDown,
   LayoutList,
   Search,
-  X
+  X,
+  FilterX
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -82,6 +84,7 @@ export default function GroupSettlements({
   refreshTrigger?: number;
   emptyActions: EmptyListAction[];
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const { details, settlementRefreshToken } = states.group();
   const { details: userDetails, settlementView } = states.user();
 
@@ -118,6 +121,7 @@ export default function GroupSettlements({
       ? [
           {
             label: "Clear Filters",
+            icon: FilterX,
             onPress: () => {
               setSearchQuery("");
               setDateRange("All");
@@ -643,7 +647,7 @@ export default function GroupSettlements({
             {viewBy === "By Date" ? (
               <SectionList
                 scrollEnabled={false}
-                sections={settlementSections}
+                sections={previewEmpty ? [] : settlementSections}
                 extraData={settlementView}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={({ item }) => (
@@ -661,10 +665,13 @@ export default function GroupSettlements({
                 ListEmptyComponent={() => (
                   <EmptyList
                     type={emptyType}
+                    content={searchQuery || dateRange !== "All"
+                      ? "No payments match these filters. Clear them to see everything."
+                      : undefined}
                     actions={actions}
                   />
                 )}
-                ListFooterComponent={() => (
+                ListFooterComponent={previewEmpty ? null : (() => (
                   <>
                     {(settlementTab === "Settled" || settlementTab === "All") &&
                       hasMoreSettled && (
@@ -676,12 +683,15 @@ export default function GroupSettlements({
                       )}
                     <Box className="h-16" />
                   </>
-                )}
+                ))}
                 stickySectionHeadersEnabled={true}
               />
-            ) : settlementSections.length === 0 ? (
+            ) : previewEmpty || settlementSections.length === 0 ? (
               <EmptyList
                 type={emptyType}
+                content={searchQuery || dateRange !== "All"
+                  ? "No payments match these filters. Clear them to see everything."
+                  : undefined}
                 actions={actions}
               />
             ) : (

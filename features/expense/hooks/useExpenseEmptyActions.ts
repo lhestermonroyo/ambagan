@@ -1,3 +1,4 @@
+import { LayoutList, ReceiptText, ScanLine, UsersRound } from "lucide-react-native";
 import type { EmptyListAction } from "@/components/EmptyList";
 import useBookStore from "@/features/book/states/book.state";
 import useGroupStore from "@/features/group/states/group.state";
@@ -29,13 +30,18 @@ export function useExpenseEmptyActions({
 
   if (group?.archived || book?.archived) {
     return [
-      { label: "View Groups", onPress: () => router.push("/groups") }
+      {
+        label: "View Groups",
+        icon: LayoutList,
+        onPress: () => router.push("/groups")
+      }
     ];
   }
   if (group && !hasEnoughMembersForExpense(group)) {
     return [
       {
         label: "View Members",
+        icon: UsersRound,
         onPress:
           onViewMembers ??
           (() => router.push({
@@ -53,11 +59,13 @@ export function useExpenseEmptyActions({
       : "/groups/[groupId]";
   return [
     {
-      label: "Add Expense",
+      label: "Add your First Expense",
+      icon: ReceiptText,
       onPress: () => router.push(`${base}/add-expense` as any)
     },
     {
       label: "Scan Receipt",
+      icon: ScanLine,
       onPress: async () => {
         if (
           !(await ensureOnline(

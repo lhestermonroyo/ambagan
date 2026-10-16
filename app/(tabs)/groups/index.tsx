@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import ConfirmIconButton from "@/components/ConfirmIconButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -29,7 +30,16 @@ import { EmptyType } from "@/types/general";
 import { GroupMode, type Group, type Member } from "@/types/groups";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ChevronDown, HousePlus, Plus, QrCode, Search, X } from "lucide-react-native";
+import {
+  BookPlus,
+  ChevronDown,
+  HousePlus,
+  LayoutList,
+  Plus,
+  QrCode,
+  Search,
+  X
+} from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
 import { Modal, RefreshControl, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -47,6 +57,7 @@ const initialFilters: Record<GroupMode, GroupFilter> = {
 };
 
 export default function GroupsScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -395,7 +406,7 @@ export default function GroupsScreen() {
             <SwipeListView
               className="flex-1"
               scrollEnabled={false}
-              data={groups}
+              data={previewEmpty ? [] : groups}
               keyExtractor={groupEntryKey}
               renderItem={({ item }) => (
                 <GroupItem
@@ -493,20 +504,23 @@ export default function GroupsScreen() {
                     ? [
                       {
                         label: "View All",
+                        icon: LayoutList,
                         onPress: () => handleFilterChange("all")
                       }
                     ]
                     : [
                       {
                         label: activeTab === GroupMode.INDIVIDUAL
-                          ? "Create Individual"
-                          : "Create Group",
+                          ? "Create your First Individual"
+                          : "Create your First Group",
+                        icon: activeTab === GroupMode.INDIVIDUAL ? BookPlus : HousePlus,
                         onPress: () => router.push(activeTab === GroupMode.INDIVIDUAL ? "/books/create" : "/groups/create")
                       },
                       ...(activeTab === GroupMode.GROUP
                         ? [
                           {
                             label: "Scan to Join",
+                            icon: QrCode,
                             onPress: handleScanToJoin
                           }
                         ]
@@ -514,14 +528,18 @@ export default function GroupsScreen() {
                     ]}
                   content={activeTab === GroupMode.INDIVIDUAL
                     ? activeFilter === "archived"
-                      ? "No archived Individual entries."
-                      : "No Individual entries yet. Create one to record your individual expenses."
-                    : activeFilter === "all"
-                      ? undefined
-                      : "No groups match this filter."}
+                      ? "Archived Individual entries will appear here."
+                      : "Track your own spending. Create your first Individual entry."
+                    : activeFilter === "archived"
+                      ? "Archived groups will appear here."
+                      : activeFilter === "created"
+                        ? "Groups you create will appear here."
+                        : activeFilter === "joined"
+                          ? "Groups you join will appear here."
+                          : "Split bills with friends. Create a group or scan an invite to join."}
                 />
               )}
-              ListFooterComponent={() => (
+              ListFooterComponent={previewEmpty ? null : (() => (
                 <>
                   {hasMore && (
                     <ListFooter
@@ -531,7 +549,7 @@ export default function GroupsScreen() {
                     />
                   )}
                 </>
-              )}
+              ))}
             />
           </LoadingWrapper>
         </ScrollView>
@@ -629,7 +647,7 @@ export default function GroupsScreen() {
                 ) : (
                   <FlatList
                     className="flex-1"
-                    data={searchResults}
+                    data={previewEmpty ? [] : searchResults}
                     keyExtractor={groupEntryKey}
                     keyboardShouldPersistTaps="handled"
                     contentContainerStyle={{ paddingBottom: 24 }}
@@ -645,8 +663,8 @@ export default function GroupsScreen() {
                     ItemSeparatorComponent={ListDivider}
                     ListHeaderComponent={
                       <Text className="text-sm text-secondary-950 px-4 py-2" bold>
-                        {searchResults.length} result
-                        {searchResults.length !== 1 ? "s" : ""}
+                        {previewEmpty ? 0 : searchResults.length} result
+                        {previewEmpty || searchResults.length !== 1 ? "s" : ""}
                       </Text>
                     }
                     ListEmptyComponent={
@@ -655,6 +673,7 @@ export default function GroupsScreen() {
                         actions={[
                           {
                             label: "Clear Search",
+                            icon: X,
                             onPress: handleCancelSearch
                           }
                         ]}

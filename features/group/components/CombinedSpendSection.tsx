@@ -10,6 +10,7 @@ import {
   useLinkedBookTotals
 } from "@/features/group/hooks/useCombinedSpend";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import services from "@/services";
 import states from "@/states";
 import { Book } from "@/types/books";
@@ -53,17 +54,26 @@ export default function CombinedSpendSection({
   cutoff: Date | null;
   until: Date | null;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const router = useRouter();
   const toast = useAppToast();
   const colorScheme = useColorScheme() ?? "light";
   const { details: userDetails } = states.user();
 
-  const { book, paid, pending, loading, refresh } = useLinkedBookTotals(
+  const {
+    book,
+    paid: linkedPaid,
+    pending: linkedPending,
+    loading,
+    refresh
+  } = useLinkedBookTotals(
     groupId,
     cutoff,
     until,
     targetCurrency
   );
+  const paid = previewEmpty ? { amount: 0, approx: false } : linkedPaid;
+  const pending = previewEmpty ? { amount: 0, approx: false } : linkedPending;
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [linkable, setLinkable] = useState<Book[]>([]);

@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import { SettlementListSkeleton } from "@/components/SkeletonLoader";
@@ -26,7 +27,6 @@ import { groupByCurrency } from "@/utils/currency";
 import { exportFriendSettlementsAsCsv } from "@/utils/exportCsv";
 import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
 import { getPrimaryHex, getOnSolidHex } from "@/utils/getColorHex";
-import { useRouter } from "expo-router";
 import { ChevronDown, Download } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
@@ -40,7 +40,7 @@ export default function FriendStatsTab({
   friendId: string;
   friendName: string;
 }) {
-  const router = useRouter();
+  const previewEmpty = useEmptyStatePreview();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
   const { details: userDetails } = states.user();
@@ -227,24 +227,14 @@ export default function FriendStatsTab({
     );
   }
 
-  if (settlements.length === 0) {
+  if (previewEmpty || settlements.length === 0) {
     return (
       <VStack className="pt-6">
         {/* Same reason as the Settlements tab: the type's default copy names a
             group, which this screen isn't. */}
         <EmptyList
           type={EmptyType.SETTLEMENT_ALL}
-          content="No settlements with this friend yet."
-          actions={[
-            {
-              label: "Add Group Expense",
-              onPress: () => router.push("/groups/[groupId]/add-expense")
-            },
-            {
-              label: "View Groups",
-              onPress: () => router.push("/groups")
-            }
-          ]}
+          content="Share a group expense with this friend to see your totals here."
         />
       </VStack>
     );
@@ -287,16 +277,7 @@ export default function FriendStatsTab({
         {filtered.length === 0 ? (
           <EmptyList
             type={EmptyType.SETTLEMENT_ALL}
-            content="No settlements with this friend in the selected date range."
-            actions={[
-              {
-                label: "View All Time",
-                onPress: () => {
-                  setDateRange("All");
-                  setCustomRange(null);
-                }
-              }
-            ]}
+            content="No payments in this date range. Try a different range."
           />
         ) : (
           <VStack className="px-4 gap-y-4">

@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppSheet from "@/components/AppSheet";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -47,6 +48,7 @@ export default function MembersSelectionSheet({
   members: UserPreview[];
   onSaveMembers: (members: UserPreview[]) => void;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const [searching, setSearching] = useState(false);
   const searchRef = useRef<TextInput>(null);
   const [searchInput, setSearchInput] = useState("");
@@ -182,10 +184,10 @@ export default function MembersSelectionSheet({
   };
 
   const emptyText = searching
-    ? "No results found on your search."
+    ? "No matches yet. Try another name or clear your search."
     : tab === "favorites"
-      ? "No favorites added yet."
-      : "No friends yet. Add members to a group to see them here.";
+      ? "Search for someone to add to this expense."
+      : "Who's joining? Search for someone to add.";
 
   const emptyType = searching
     ? EmptyType.SEARCH
@@ -297,36 +299,16 @@ export default function MembersSelectionSheet({
         </VStack>
         <ScrollView keyboardShouldPersistTaps="handled" className="flex-1 w-full">
           <LoadingWrapper isLoading={loading} skeleton={<FriendListSkeleton />}>
-            {displayUsers.length === 0 && (
+            {(previewEmpty || displayUsers.length === 0) && (
               <EmptyList
                 type={emptyType}
                 content={emptyText}
-                actions={[
-                  {
-                    label: searching
-                      ? "Clear Search"
-                      : "Search Users",
-                    onPress: () => {
-                      setSearchInput("");
-                      setSearching(false);
-                      searchRef.current?.focus();
-                    }
-                  },
-                  ...(CONTACTS_IMPORT_ENABLED
-                    ? [
-                      {
-                        label: "Add from Contacts",
-                        onPress: () => setContactPickerOpen(true)
-                      }
-                    ]
-                    : [])
-                ]}
               />
             )}
             <FlatList
               scrollEnabled={false}
               className="flex-1"
-              data={displayUsers}
+              data={previewEmpty ? [] : displayUsers}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => {
                 const isCreator = item.id === userDetails?.id;

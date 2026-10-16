@@ -2,6 +2,9 @@ import ApproxRateNote from "@/components/ApproxRateNote";
 import CategoryGauge from "@/components/CategoryGauge";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import FormButton from "@/components/FormButton";
+import useGroupStore from "@/features/group/states/group.state";
+import useUserStore from "@/features/user/states/user.state";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
@@ -25,7 +28,6 @@ import GroupPersonalStats from "@/features/group/components/GroupPersonalStats";
 import { useMemberSplits } from "@/features/group/hooks/useMemberSplits";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
-import states from "@/states";
 import { groupByCurrency } from "@/utils/currency";
 import { exportGroupSettlementsAsCsv } from "@/utils/exportCsv";
 import {
@@ -48,8 +50,10 @@ export default function GroupStatsTab({
   groupName: string;
   userId: string;
 }) {
-  const { expenseList, details: groupDetails } = states.group();
-  const { details: userDetails } = states.user();
+  const previewEmpty = useEmptyStatePreview();
+  const { expenseList: savedExpenses, details: groupDetails } = useGroupStore();
+  const { details: userDetails } = useUserStore();
+  const expenseList = previewEmpty ? [] : savedExpenses;
   const isPro = userDetails?.plan === "pro";
 
   // The group's own home currency is the one every card leads with (a JPY trip
@@ -85,6 +89,10 @@ export default function GroupStatsTab({
   // Member splits for the filtered expenses, fetched once and shared by the
   // personal "Your Activity" card and the group Member Breakdown below.
   const { splits, loading: splitsLoading } = useMemberSplits(filteredExpenses);
+  // A newly empty range can render before the split-fetch effect clears its
+  // previous result. Keep those old totals out of the empty charts.
+  const visibleSplits = filteredExpenses.length > 0 ? splits : [];
+  const visibleSplitsLoading = filteredExpenses.length > 0 && splitsLoading;
 
   // Drafts aren't posted spending yet, so nothing on this tab counts them. This
   // used to be applied per-card, which let the spending hero include drafts
@@ -276,8 +284,8 @@ export default function GroupStatsTab({
                with the current user's own share / paid / net. */
             <GroupPersonalStats
               expenses={filteredExpenses}
-              splits={splits}
-              loading={splitsLoading}
+              splits={visibleSplits}
+              loading={visibleSplitsLoading}
               userId={userId}
               groupId={groupId}
               groupCategory={groupDetails?.category}
@@ -358,72 +366,75 @@ export default function GroupStatsTab({
               {/* Per-member paid vs. share breakdown */}
               <GroupMemberBreakdown
                 expenses={filteredExpenses}
-                splits={splits}
-                loading={splitsLoading}
+                splits={visibleSplits}
+                loading={visibleSplitsLoading}
                 userId={userId}
                 primaryCurrency={primaryCurrency}
               />
 
               {/* Top Expenses */}
-              {topExpenses.length > 0 && (
-                <Card className="rounded-xl bg-secondary-100">
-                  <VStack className="gap-y-4">
-                    <VStack>
-                      <Text
-                        bold
-                        className="text-secondary-950 uppercase text-sm"
-                      >
-                        Top Expenses
-                      </Text>
-                      <Text className="text-sm text-secondary-950">
-                        {approx
-                          ? "Biggest expenses in this range, ranked across currencies."
-                          : "Biggest expenses in this range."}
-                      </Text>
-                    </VStack>
-                    <VStack className="gap-y-3">
-                      {topExpenses.map((expense, index) => {
-                        const lead = expense.payer_list[0]?.payer;
-                        const leadName = lead
-                          ? lead.id === userId
-                            ? `${lead.first_name} (You)`
-                            : lead.first_name
-                          : "";
-                        const others = expense.payer_list.length - 1;
-                        const payerLabel =
-                          others > 0 ? `${leadName} +${others}` : leadName;
-
-                        return (
-                          <HStack
-                            key={expense.id}
-                            className="items-center gap-x-3"
-                          >
-                            <Text className="w-4 text-sm text-secondary-950">
-                              {index + 1}
-                            </Text>
-                            <VStack className="flex-1">
-                              <Text numberOfLines={1}>
-                                {expense.description}
-                              </Text>
-                              {payerLabel ? (
-                                <Text
-                                  className="text-sm text-secondary-950"
-                                  numberOfLines={1}
-                                >
-                                  Paid by {payerLabel}
-                                </Text>
-                              ) : null}
-                            </VStack>
-                            <Text className="text-lg font-medium">
-                              {formatAmount(expense.amount, expense.currency)}
-                            </Text>
-                          </HStack>
-                        );
-                      })}
-                    </VStack>
+              <Card className="rounded-xl bg-secondary-100">
+                <VStack className="gap-y-4">
+                  <VStack>
+                    <Text
+                      bold
+                      className="text-secondary-950 uppercase text-sm"
+                    >
+                      Top Expenses
+                    </Text>
+                    <Text className="text-sm text-secondary-950">
+                      {approx
+                        ? "Biggest expenses in this range, ranked across currencies."
+                        : "Biggest expenses in this range."}
+                    </Text>
                   </VStack>
-                </Card>
-              )}
+                  <VStack className="gap-y-3">
+                    {topExpenses.length === 0 && (
+                      <Text className="text-sm text-secondary-950">
+                        Your biggest expenses will appear here.
+                      </Text>
+                    )}
+                    {topExpenses.map((expense, index) => {
+                      const lead = expense.payer_list[0]?.payer;
+                      const leadName = lead
+                        ? lead.id === userId
+                          ? `${lead.first_name} (You)`
+                          : lead.first_name
+                        : "";
+                      const others = expense.payer_list.length - 1;
+                      const payerLabel =
+                        others > 0 ? `${leadName} +${others}` : leadName;
+
+                      return (
+                        <HStack
+                          key={expense.id}
+                          className="items-center gap-x-3"
+                        >
+                          <Text className="w-4 text-sm text-secondary-950">
+                            {index + 1}
+                          </Text>
+                          <VStack className="flex-1">
+                            <Text numberOfLines={1}>
+                              {expense.description}
+                            </Text>
+                            {payerLabel ? (
+                              <Text
+                                className="text-sm text-secondary-950"
+                                numberOfLines={1}
+                              >
+                                Paid by {payerLabel}
+                              </Text>
+                            ) : null}
+                          </VStack>
+                          <Text className="text-lg font-medium">
+                            {formatAmount(expense.amount, expense.currency)}
+                          </Text>
+                        </HStack>
+                      );
+                    })}
+                  </VStack>
+                </VStack>
+              </Card>
 
               {/* Export */}
               <VStack className="gap-y-4">

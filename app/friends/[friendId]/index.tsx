@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
@@ -93,6 +94,7 @@ if (
 }
 
 export default function FriendDetailScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const { friendId, name, email, avatar, tab, settlementId } =
     useLocalSearchParams<{
       friendId: string;
@@ -562,16 +564,13 @@ export default function FriendDetailScreen() {
           ? EmptyType.SETTLEMENT_SETTLED
           : EmptyType.SETTLEMENT_ALL;
 
-  // SETTLEMENT_ALL's default copy says "in this group" — correct on the group
-  // screen it shares the type with, wrong here. Name the friend instead, and
-  // say what produces a settlement, since an empty All tab is usually someone
-  // wondering why nothing showed up. The other tabs' copy is already neutral.
+  // Filtered results need a reset prompt; an empty All tab explains how to begin.
   const emptyContent =
-    emptyType === EmptyType.SETTLEMENT_ALL
-      ? `No settlements with ${
-          decodedName.split(" ")[0] || "this friend"
-        } yet. They show up once you share a group expense.`
-      : undefined;
+    searchQuery || dateRange !== "All"
+      ? "No payments match these filters. Clear them to see everything."
+      : emptyType === EmptyType.SETTLEMENT_ALL
+        ? `Share a group expense with ${decodedName.split(" ")[0] || "this friend"} to see who owes what.`
+        : undefined;
 
   const handleItemPress = (item: PaymentPreview) => {
     // Viewing a settlement is allowed offline — the sheet's actions (mark
@@ -917,7 +916,7 @@ export default function FriendDetailScreen() {
                   {viewBy === "By Date" ? (
                     <SectionList
                       scrollEnabled={false}
-                      sections={sections}
+                      sections={previewEmpty ? [] : sections}
                       extraData={settlementView}
                       keyExtractor={(item) => item.id}
                       renderItem={({ item }) => (
@@ -940,31 +939,9 @@ export default function FriendDetailScreen() {
                         <EmptyList
                           type={emptyType}
                           content={emptyContent}
-                          actions={searchQuery || dateRange !== "All" || settlementTab !== "All"
-                            ? [
-                              {
-                                label: "Clear Filters",
-                                onPress: () => {
-                                  setSearchQuery("");
-                                  setDateRange("All");
-                                  setCustomRange(null);
-                                  setSettlementTab("All");
-                                }
-                              }
-                            ]
-                            : [
-                              {
-                                label: "Add Group Expense",
-                                onPress: () => router.push("/groups/[groupId]/add-expense")
-                              },
-                              {
-                                label: "View Groups",
-                                onPress: () => router.push("/groups")
-                              }
-                            ]}
                         />
                       )}
-                      ListFooterComponent={() =>
+                      ListFooterComponent={previewEmpty ? null : (() =>
                         (settlementTab === "Settled" ||
                           settlementTab === "All") &&
                         hasMoreSettled ? (
@@ -973,35 +950,12 @@ export default function FriendDetailScreen() {
                             loading={loadingMore}
                             onLoadMore={loadMoreSettled}
                           />
-                        ) : null
-                      }
+                        ) : null)}
                     />
-                  ) : sections.length === 0 ? (
+                  ) : previewEmpty || sections.length === 0 ? (
                     <EmptyList
                       type={emptyType}
                       content={emptyContent}
-                      actions={searchQuery || dateRange !== "All" || settlementTab !== "All"
-                        ? [
-                          {
-                            label: "Clear Filters",
-                            onPress: () => {
-                              setSearchQuery("");
-                              setDateRange("All");
-                              setCustomRange(null);
-                              setSettlementTab("All");
-                            }
-                          }
-                        ]
-                        : [
-                          {
-                            label: "Add Group Expense",
-                            onPress: () => router.push("/groups/[groupId]/add-expense")
-                          },
-                          {
-                            label: "View Groups",
-                            onPress: () => router.push("/groups")
-                          }
-                        ]}
                     />
                   ) : (
                     <VStack className="gap-y-3 px-4">

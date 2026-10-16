@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
 import AppSheet from "@/components/AppSheet";
 import EmptyList from "@/components/EmptyList";
@@ -48,6 +49,7 @@ export default function LinkedGroupSheet({
   selectedGroupId: string | null;
   onSelect: (groupId: string | null) => void;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const [selected, setSelected] = useState(selectedGroupId ?? NONE);
 
   return (
@@ -92,7 +94,7 @@ export default function LinkedGroupSheet({
       >
         <FlatList
           className="flex-1"
-          data={groups}
+          data={previewEmpty ? [] : groups}
           keyExtractor={(item) => (item as Group).id}
           ListHeaderComponent={
             <>
@@ -145,16 +147,7 @@ export default function LinkedGroupSheet({
           ListEmptyComponent={() => (
             <EmptyList
               type={EmptyType.GROUP}
-              content="You can link a group later. Continue without linking for now."
-              actions={[
-                {
-                  label: "Continue Without Linking",
-                  onPress: () => {
-                    onSelect(null);
-                    onClose();
-                  }
-                }
-              ]}
+              content="No groups to link yet. You can link one later."
             />
           )}
         />

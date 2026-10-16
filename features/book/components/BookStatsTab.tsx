@@ -1,8 +1,7 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import ApproxRateNote from "@/components/ApproxRateNote";
 import CategoryGauge from "@/components/CategoryGauge";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
-import EmptyList from "@/components/EmptyList";
-import { useExpenseEmptyActions } from "@/features/expense/hooks/useExpenseEmptyActions";
 import FormButton from "@/components/FormButton";
 import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
 import { Card } from "@/components/ui/card";
@@ -28,7 +27,6 @@ import {
 } from "@/features/group/hooks/useCombinedSpend";
 import services from "@/services";
 import { PersonalExpense } from "@/types/books";
-import { EmptyType } from "@/types/general";
 import { getRate, isConverted, useFxRates } from "@/utils/fx";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { ChevronDown } from "lucide-react-native";
@@ -49,7 +47,7 @@ export default function BookStatsTab({
   linkedGroupName?: string | null;
   linkedGroupCategory?: string;
 }) {
-  const expenseEmptyActions = useExpenseEmptyActions({ bookId });
+  const previewEmpty = useEmptyStatePreview();
   const colorScheme = useColorScheme() ?? "light";
   // Re-renders when a rate refresh lands, keeping the converted figures and the
   // vintage in the rate note in step.
@@ -89,11 +87,12 @@ export default function BookStatsTab({
   );
 
   const filtered = useMemo(() => {
+    if (previewEmpty) return [];
     if (!cutoff && !until) return expenses;
     return expenses.filter((e) =>
       isWithinRange(e.expense_date || e.created_at, cutoff, until)
     );
-  }, [expenses, cutoff, until]);
+  }, [previewEmpty, expenses, cutoff, until]);
 
   // Total spent, per currency (a trip book can mix PHP + JPY), split into paid
   // vs pending. Never converted — each currency is its own line, matching the
@@ -227,28 +226,19 @@ export default function BookStatsTab({
   // The group half of the roll-up, when this book is linked. Expressed in the
   // BOOK's currency here — the mirror of the group Stats tab, which does the
   // same sum in the group's currency.
-  const { share, loading: shareLoading } = useLinkedGroupShare(
+  const { share: linkedShare, loading: linkedShareLoading } = useLinkedGroupShare(
     linkedGroupId,
     cutoff,
     until,
     primaryCurrency
   );
+  const share = previewEmpty ? { amount: 0, approx: false } : linkedShare;
+  const shareLoading = !previewEmpty && linkedShareLoading;
 
   if (loading) {
     return (
       <VStack className="pt-2">
         <ExpenseListSkeleton />
-      </VStack>
-    );
-  }
-
-  if (expenses.length === 0) {
-    return (
-      <VStack className="pt-6">
-        <EmptyList
-          type={EmptyType.EXPENSE}
-          actions={expenseEmptyActions}
-        />
       </VStack>
     );
   }
@@ -282,224 +272,211 @@ export default function BookStatsTab({
           />
         </HStack>
 
-        {filtered.length === 0 ? (
-          <EmptyList
-            type={EmptyType.EXPENSE}
-            content="No expenses in the selected date range."
-            actions={[
-              {
-                label: "View All Time",
-                onPress: () => {
-                  setDateRange("All");
-                  setCustomRange(null);
-                }
-              }
-            ]}
-          />
-        ) : (
-          <VStack className="px-4 gap-y-4">
-            {/* Total spent — the gauge carries both the headline figure and
-                the category split, so this one card answers "how much" and
-                "on what" without the two competing for the same space. The
-                per-currency chip stays alongside it: the gauge is converted
-                and approximate by necessity, and the exact per-currency
-                figures have to stay one tap away. */}
+        <VStack className="px-4 gap-y-4">
+          {/* Total spent — the gauge carries both the headline figure and
+              the category split, so this one card answers "how much" and
+              "on what" without the two competing for the same space. The
+              per-currency chip stays alongside it: the gauge is converted
+              and approximate by necessity, and the exact per-currency
+              figures have to stay one tap away. */}
+          <Card className="rounded-xl bg-secondary-100">
+            <VStack className="gap-y-4">
+              <HStack className="items-center justify-between">
+                <Text bold className="text-secondary-950 uppercase text-sm">
+                  Total Spent
+                </Text>
+                <HStack className="items-center gap-x-2">
+                  <Text className="text-sm text-secondary-950">
+                    {primaryCurrency}
+                  </Text>
+                  {/* Opens in convertTo mode: the gauge above shows one
+                      converted figure, so the sheet has to show the exact
+                      per-currency amounts, what each is worth in the book
+                      currency, and a total that adds up to the gauge. Pending
+                      rides along per row but stays out of that total, which is
+                      paid spend only — same as the gauge. */}
+                  <CurrencyCountButton
+                    items={totalsByCurrency.map((t) => ({
+                      currency: t.currency,
+                      amount: t.paid,
+                      secondaryAmount: t.pending
+                    }))}
+                    title="Total Spent"
+                    subtitle="Paid, by currency"
+                    secondaryLabel="pending"
+                    convertTo={primaryCurrency}
+                    totalLabel="Total paid"
+                  />
+                </HStack>
+              </HStack>
+
+              <CategoryGauge
+                slices={spending.slices}
+                total={spending.paidTotal}
+                currency={primaryCurrency}
+                approx={spending.paidApprox}
+              />
+
+              <Divider />
+              <HStack className="items-stretch">
+                <VStack className="flex-1 gap-y-1">
+                  <Text className="text-sm text-secondary-950 uppercase">
+                    Pending
+                  </Text>
+                  <Text
+                    bold
+                    className="text-lg"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {spending.pendingApprox ? "≈ " : ""}
+                    {formatAmount(spending.pendingTotal, primaryCurrency)}
+                  </Text>
+                </VStack>
+                <Divider orientation="vertical" className="mx-3" />
+                <VStack className="flex-1 gap-y-1">
+                  <Text className="text-sm text-secondary-950 uppercase">
+                    Expenses
+                  </Text>
+                  <Text bold className="text-lg">
+                    {primaryStats.count}
+                  </Text>
+                </VStack>
+                <Divider orientation="vertical" className="mx-3" />
+                <VStack className="flex-1 gap-y-1">
+                  <Text className="text-sm text-secondary-950 uppercase">
+                    Avg
+                  </Text>
+                  <Text
+                    bold
+                    className="text-lg"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {convertedCurrencies.length > 0 ? "≈ " : ""}
+                    {formatAmount(primaryStats.average, primaryCurrency)}
+                  </Text>
+                </VStack>
+              </HStack>
+            </VStack>
+          </Card>
+
+          {/* Combined with the linked group — the mirror of the card on that
+              group's Stats tab, in the BOOK's currency instead of the group's.
+              Same rule as there: two lines that visibly sum, never one blended
+              figure, so a double-logged expense stays findable. */}
+          {linkedGroupId && (
             <Card className="rounded-xl bg-secondary-100">
               <VStack className="gap-y-4">
-                <HStack className="items-center justify-between">
+                <VStack>
                   <Text bold className="text-secondary-950 uppercase text-sm">
-                    Total Spent
+                    {combinedTotalLabel(linkedGroupCategory)}
                   </Text>
-                  <HStack className="items-center gap-x-2">
-                    <Text className="text-sm text-secondary-950">
-                      {primaryCurrency}
+                  <Text className="text-sm text-secondary-950">
+                    This Individual entry plus your share of{" "}
+                    {linkedGroupName ?? "the linked group"}.
+                  </Text>
+                </VStack>
+
+                <VStack className="gap-y-2">
+                  <HStack className="items-center justify-between gap-x-3">
+                    <Text
+                      className="text-sm text-secondary-950 flex-1"
+                      numberOfLines={1}
+                    >
+                      This Individual entry (paid)
                     </Text>
-                    {/* Opens in convertTo mode: the gauge above shows one
-                        converted figure, so the sheet has to show the exact
-                        per-currency amounts, what each is worth in the book
-                        currency, and a total that adds up to the gauge. Pending
-                        rides along per row but stays out of that total, which is
-                        paid spend only — same as the gauge. */}
-                    <CurrencyCountButton
-                      items={totalsByCurrency.map((t) => ({
-                        currency: t.currency,
-                        amount: t.paid,
-                        secondaryAmount: t.pending
-                      }))}
-                      title="Total Spent"
-                      subtitle="Paid, by currency"
-                      secondaryLabel="pending"
-                      convertTo={primaryCurrency}
-                      totalLabel="Total paid"
-                    />
+                    <Text numberOfLines={1} adjustsFontSizeToFit>
+                      {spending.paidApprox ? "≈ " : ""}
+                      {formatAmount(spending.paidTotal, primaryCurrency)}
+                    </Text>
                   </HStack>
-                </HStack>
-
-                <CategoryGauge
-                  slices={spending.slices}
-                  total={spending.paidTotal}
-                  currency={primaryCurrency}
-                  approx={spending.paidApprox}
-                />
-
-                <Divider />
-                <HStack className="items-stretch">
-                  <VStack className="flex-1 gap-y-1">
-                    <Text className="text-sm text-secondary-950 uppercase">
-                      Pending
+                  <HStack className="items-center justify-between gap-x-3">
+                    <Text
+                      className="text-sm text-secondary-950 flex-1"
+                      numberOfLines={1}
+                    >
+                      Your share (group)
                     </Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit>
+                      {shareLoading
+                        ? "—"
+                        : `${share.approx ? "≈ " : ""}${formatAmount(share.amount, primaryCurrency)}`}
+                    </Text>
+                  </HStack>
+                  <Divider />
+                  <HStack className="items-center justify-between">
+                    <Text bold>{combinedTotalLabel(linkedGroupCategory)}</Text>
                     <Text
                       bold
                       className="text-lg"
                       numberOfLines={1}
                       adjustsFontSizeToFit
                     >
-                      {spending.pendingApprox ? "≈ " : ""}
-                      {formatAmount(spending.pendingTotal, primaryCurrency)}
+                      {shareLoading
+                        ? "—"
+                        : `${spending.paidApprox || share.approx ? "≈ " : ""}${formatAmount(
+                            spending.paidTotal + share.amount,
+                            primaryCurrency
+                          )}`}
                     </Text>
-                  </VStack>
-                  <Divider orientation="vertical" className="mx-3" />
-                  <VStack className="flex-1 gap-y-1">
-                    <Text className="text-sm text-secondary-950 uppercase">
-                      Expenses
-                    </Text>
-                    <Text bold className="text-lg">
-                      {primaryStats.count}
-                    </Text>
-                  </VStack>
-                  <Divider orientation="vertical" className="mx-3" />
-                  <VStack className="flex-1 gap-y-1">
-                    <Text className="text-sm text-secondary-950 uppercase">
-                      Avg
-                    </Text>
-                    <Text
-                      bold
-                      className="text-lg"
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                    >
-                      {convertedCurrencies.length > 0 ? "≈ " : ""}
-                      {formatAmount(primaryStats.average, primaryCurrency)}
-                    </Text>
-                  </VStack>
-                </HStack>
+                  </HStack>
+                </VStack>
+
+                <Text className="text-sm text-secondary-950">
+                  Your share is what you consumed, not what you fronted — money
+                  you paid for others nets out when the group settles.
+                </Text>
               </VStack>
             </Card>
+          )}
 
-            {/* Combined with the linked group — the mirror of the card on that
-                group's Stats tab, in the BOOK's currency instead of the group's.
-                Same rule as there: two lines that visibly sum, never one blended
-                figure, so a double-logged expense stays findable. */}
-            {linkedGroupId && (
-              <Card className="rounded-xl bg-secondary-100">
-                <VStack className="gap-y-4">
-                  <VStack>
-                    <Text bold className="text-secondary-950 uppercase text-sm">
-                      {combinedTotalLabel(linkedGroupCategory)}
-                    </Text>
-                    <Text className="text-sm text-secondary-950">
-                      This Individual entry plus your share of{" "}
-                      {linkedGroupName ?? "the linked group"}.
-                    </Text>
-                  </VStack>
-
-                  <VStack className="gap-y-2">
-                    <HStack className="items-center justify-between gap-x-3">
-                      <Text
-                        className="text-sm text-secondary-950 flex-1"
-                        numberOfLines={1}
-                      >
-                        This Individual entry (paid)
-                      </Text>
-                      <Text numberOfLines={1} adjustsFontSizeToFit>
-                        {spending.paidApprox ? "≈ " : ""}
-                        {formatAmount(spending.paidTotal, primaryCurrency)}
-                      </Text>
-                    </HStack>
-                    <HStack className="items-center justify-between gap-x-3">
-                      <Text
-                        className="text-sm text-secondary-950 flex-1"
-                        numberOfLines={1}
-                      >
-                        Your share (group)
-                      </Text>
-                      <Text numberOfLines={1} adjustsFontSizeToFit>
-                        {shareLoading
-                          ? "—"
-                          : `${share.approx ? "≈ " : ""}${formatAmount(share.amount, primaryCurrency)}`}
-                      </Text>
-                    </HStack>
-                    <Divider />
-                    <HStack className="items-center justify-between">
-                      <Text bold>{combinedTotalLabel(linkedGroupCategory)}</Text>
-                      <Text
-                        bold
-                        className="text-lg"
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                      >
-                        {shareLoading
-                          ? "—"
-                          : `${spending.paidApprox || share.approx ? "≈ " : ""}${formatAmount(
-                              spending.paidTotal + share.amount,
-                              primaryCurrency
-                            )}`}
-                      </Text>
-                    </HStack>
-                  </VStack>
-
+          {/* Top Expenses */}
+          <Card className="rounded-xl bg-secondary-100">
+            <VStack className="gap-y-4">
+              <VStack>
+                <Text bold className="text-secondary-950 uppercase text-sm">
+                  Top Expenses
+                </Text>
+                <Text className="text-sm text-secondary-950">
+                  {convertedCurrencies.length > 0
+                    ? "Biggest expenses in this range, ranked across currencies."
+                    : "Biggest expenses in this range."}
+                </Text>
+              </VStack>
+              <VStack className="gap-y-3">
+                {topExpenses.length === 0 && (
                   <Text className="text-sm text-secondary-950">
-                    Your share is what you consumed, not what you fronted — money
-                    you paid for others nets out when the group settles.
+                    Your biggest paid expenses will appear here.
                   </Text>
-                </VStack>
-              </Card>
-            )}
-
-            {/* Top Expenses */}
-            {topExpenses.length > 0 && (
-              <Card className="rounded-xl bg-secondary-100">
-                <VStack className="gap-y-4">
-                  <VStack>
-                    <Text bold className="text-secondary-950 uppercase text-sm">
-                      Top Expenses
+                )}
+                {topExpenses.map((expense, index) => (
+                  <HStack key={expense.id} className="items-center gap-x-3">
+                    <Text className="w-4 text-sm text-secondary-950">
+                      {index + 1}
                     </Text>
-                    <Text className="text-sm text-secondary-950">
-                      {convertedCurrencies.length > 0
-                        ? "Biggest expenses in this range, ranked across currencies."
-                        : "Biggest expenses in this range."}
+                    <VStack className="flex-1">
+                      <Text numberOfLines={1}>{expense.description}</Text>
+                      <Text
+                        className="text-sm text-secondary-950"
+                        numberOfLines={1}
+                      >
+                        {expenseCategoryMeta(expense.category).label}
+                      </Text>
+                    </VStack>
+                    <Text className="text-lg font-medium">
+                      {formatAmount(expense.amount, expense.currency)}
                     </Text>
-                  </VStack>
-                  <VStack className="gap-y-3">
-                    {topExpenses.map((expense, index) => (
-                      <HStack key={expense.id} className="items-center gap-x-3">
-                        <Text className="w-4 text-sm text-secondary-950">
-                          {index + 1}
-                        </Text>
-                        <VStack className="flex-1">
-                          <Text numberOfLines={1}>{expense.description}</Text>
-                          <Text
-                            className="text-sm text-secondary-950"
-                            numberOfLines={1}
-                          >
-                            {expenseCategoryMeta(expense.category).label}
-                          </Text>
-                        </VStack>
-                        <Text className="text-lg font-medium">
-                          {formatAmount(expense.amount, expense.currency)}
-                        </Text>
-                      </HStack>
-                    ))}
-                  </VStack>
-                </VStack>
-              </Card>
-            )}
+                  </HStack>
+                ))}
+              </VStack>
+            </VStack>
+          </Card>
 
-            {/* One note for the whole tab — renders nothing when the book is
-                single-currency, so the common case is untouched. */}
-            <ApproxRateNote currencies={convertedCurrencies} className="px-1" />
-          </VStack>
-        )}
+          {/* One note for the whole tab — renders nothing when the book is
+              single-currency, so the common case is untouched. */}
+          <ApproxRateNote currencies={convertedCurrencies} className="px-1" />
+        </VStack>
       </VStack>
     </>
   );

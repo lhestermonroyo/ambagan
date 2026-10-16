@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
@@ -90,6 +91,7 @@ import { v4 as uuid } from "uuid";
  * separate Quick/Custom flows.
  */
 export default function AddExpenseScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const router = useRouter();
   const params = useLocalSearchParams();
   const groupId = params.groupId as string | undefined;
@@ -960,8 +962,8 @@ export default function AddExpenseScreen() {
   };
 
   // No group to add to — not just still loading the list.
-  if (!selectedGroup) {
-    const hasNoGroups = groupsInitialized && groupList.length === 0;
+  if (previewEmpty || !selectedGroup) {
+    const hasNoGroups = previewEmpty || groupsInitialized && groupList.length === 0;
 
     return (
       <FormLayout title="Add Expense" onBack={() => router.back()} footer={[]}>
@@ -970,17 +972,7 @@ export default function AddExpenseScreen() {
             <VStack className="items-center justify-center flex-1 gap-y-4">
               <EmptyList
                 type={EmptyType.GROUP}
-                content="You're not in a group yet. Join or create one to add an expense."
-                actions={[
-                  {
-                    label: "Create Group",
-                    onPress: () => router.push("/groups/create")
-                  },
-                  {
-                    label: "View Groups",
-                    onPress: () => router.push("/groups")
-                  }
-                ]}
+                content="Create or join a group to start splitting expenses."
               />
             </VStack>
           </VStack>

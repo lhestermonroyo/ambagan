@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import { EmptyType } from "@/types/general";
 import AppAvatar from "@/components/AppAvatar";
@@ -72,6 +73,7 @@ export default function ContactPickerSheet({
   knownUsers?: UserPreview[];
   onAdd: (members: UserPreview[]) => void;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const [permission, setPermission] =
     useState<Contacts.PermissionStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -287,7 +289,7 @@ export default function ContactPickerSheet({
           >
             <FlatList
               className="flex-1"
-              data={filtered}
+              data={previewEmpty ? [] : filtered}
               keyExtractor={(item) => item.key}
               renderItem={({ item }) => {
                 const linked = linkedUserFor(item);
@@ -341,28 +343,11 @@ export default function ContactPickerSheet({
                 ) : (
                   <EmptyList
                     type={searchInput.trim() ? EmptyType.SEARCH : EmptyType.USER}
-                    content={searchInput.trim() ? "No contacts match your search." : "No new contacts with a phone number to add."}
-                    actions={searchInput.trim()
-                      ? [
-                        {
-                          label: "Clear Search",
-                          onPress: () => setSearchInput("")
-                        }
-                      ]
-                      : [
-                        {
-                          label: "Refresh Contacts",
-                          onPress: loadContacts
-                        },
-                        {
-                          label: "Back to Members",
-                          onPress: onClose
-                        }
-                      ]}
+                    content={searchInput.trim() ? "No matches yet. Try another name or clear your search." : "No new contacts to add. Refresh after saving a contact with a phone number."}
                   />
                 )
               )}
-              ListFooterComponent={() => <Box className="h-4" />}
+              ListFooterComponent={previewEmpty ? null : (() => <Box className="h-4" />)}
             />
           </CheckboxGroup>
         </VStack>

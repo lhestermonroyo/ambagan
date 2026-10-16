@@ -1,3 +1,5 @@
+import useUserStore from "@/features/user/states/user.state";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AndroidHeaderMenu from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
@@ -47,6 +49,7 @@ import { Fragment, ReactNode, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
 export default function ExpenseDetailsScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const { details: groupDetails } = states.group();
   const {
     details: expenseDetails,
@@ -54,7 +57,7 @@ export default function ExpenseDetailsScreen() {
     memberSplitList,
     paymentSplitList
   } = states.expense();
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
@@ -473,20 +476,10 @@ export default function ExpenseDetailsScreen() {
             <VStack className="flex-1 py-16">
               <EmptyList
                 type={EmptyType.EXPENSE}
-                actions={[
-                  {
-                    label: "Try Again",
-                    onPress: () => init(groupId, expenseId)
-                  },
-                  {
-                    label: "Go Back",
-                    onPress: handleBack
-                  }
-                ]}
                 content={
                 isOnline
-                ? "This expense couldn't be loaded. Pull back and try again."
-                : "This expense isn't available offline yet. It'll appear once you're back online and it syncs."
+                ? "Couldn't load this expense. Try again."
+                : "This expense isn't saved offline yet. Reconnect and try again."
                 }
               />
             </VStack>
@@ -651,19 +644,14 @@ export default function ExpenseDetailsScreen() {
                       <FlatList
                         className="flex-1"
                         scrollEnabled={false}
-                        data={sortedPayerList}
+                        data={previewEmpty ? [] : sortedPayerList}
                         keyExtractor={(item) => item.id.toString()}
                         renderItem={({ item }) => <PayerItem payer={item} />}
                         ItemSeparatorComponent={ListDivider}
                         ListEmptyComponent={() => (
                           <EmptyList
                             type={EmptyType.MEMBER}
-                            actions={[
-                              {
-                                label: "Back to Group",
-                                onPress: handleBack
-                              }
-                            ]}
+                            content="No members to show for this expense. Head back to your group."
                           />
                         )}
                       />
@@ -676,7 +664,7 @@ export default function ExpenseDetailsScreen() {
                       <FlatList
                         className="flex-1"
                         scrollEnabled={false}
-                        data={sortedMemberSplits}
+                        data={previewEmpty ? [] : sortedMemberSplits}
                         keyExtractor={(item) => item.id.toString()}
                         renderItem={({ item }) => (
                           <MemberSplitItem memberSplit={item} />
@@ -685,12 +673,7 @@ export default function ExpenseDetailsScreen() {
                         ListEmptyComponent={() => (
                           <EmptyList
                             type={EmptyType.MEMBER}
-                            actions={[
-                              {
-                                label: "Back to Group",
-                                onPress: handleBack
-                              }
-                            ]}
+                            content="No members to show for this expense. Head back to your group."
                           />
                         )}
                       />
@@ -735,7 +718,7 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
   const isMe = memberSplit.member.id === userDetails?.id;
 
   return (
@@ -767,7 +750,7 @@ function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
 }
 
 function PayerItem({ payer }: { payer: ExpensePayer }) {
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
   const isMe = payer.payer.id === userDetails?.id;
 
   return (

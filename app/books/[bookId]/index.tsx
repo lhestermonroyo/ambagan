@@ -1,3 +1,5 @@
+import useBookStore from "@/features/book/states/book.state";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AndroidHeaderMenu, {
   type AndroidHeaderMenuItem
@@ -81,7 +83,8 @@ import {
   Search,
   Tag,
   Trash2,
-  X
+  X,
+  FilterX
 } from "lucide-react-native";
 import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -128,6 +131,7 @@ const moveTotalsBucket = (
 };
 
 export default function BookDetailScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
   const expenseEmptyActions = useExpenseEmptyActions({ bookId });
@@ -136,10 +140,11 @@ export default function BookDetailScreen() {
   const colorScheme = useColorScheme() ?? "light";
 
   const { details: userDetails } = states.user();
+  const { list: cachedBooks } = useBookStore();
   const isPro = userDetails?.plan === "pro";
 
   const [book, setBook] = useState<Book | null>(
-    states.book().list.find((b) => b.id === bookId) ?? null
+    cachedBooks.find((b) => b.id === bookId) ?? null
   );
   const [expenses, setExpenses] = useState<PersonalExpense[]>([]);
   const [totals, setTotals] = useState<PersonalBookTotal[]>([]);
@@ -1098,7 +1103,7 @@ export default function BookDetailScreen() {
                     so the row itself has no swipe actions. */}
                 <SectionList
                   scrollEnabled={false}
-                  sections={expenseSections}
+                  sections={previewEmpty ? [] : expenseSections}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }: { item: PersonalExpense }) => (
                     <PersonalExpenseItem
@@ -1125,10 +1130,11 @@ export default function BookDetailScreen() {
                     hasActiveFilters ? (
                       <EmptyList
                         type={EmptyType.EXPENSE}
-                        content="No expenses match your filters. Try adjusting your search, category, or date range."
+                        content="No expenses match these filters. Clear them to see everything."
                         actions={[
                           {
                             label: "Clear Filters",
+                            icon: FilterX,
                             onPress: () => {
                               setExpenseSearch("");
                               setCategoryFilter(ALL_CATEGORIES);
@@ -1146,7 +1152,7 @@ export default function BookDetailScreen() {
                       />
                     )
                   }
-                  ListFooterComponent={() => (
+                  ListFooterComponent={previewEmpty ? null : (() => (
                     <>
                       {/* Filtering swaps in the whole ledger, so there's
                           nothing left to page through. */}
@@ -1161,7 +1167,7 @@ export default function BookDetailScreen() {
                           tappable — same gap as the group Settlements tab. */}
                       <Box className="h-16" />
                     </>
-                  )}
+                  ))}
                 />
               </VStack>
             )}

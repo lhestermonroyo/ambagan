@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
@@ -18,6 +19,7 @@ import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { GroupRole, Member } from "@/types/groups";
 import { useRouter } from "expo-router";
+import { Share2, UsersRound } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { Platform, useColorScheme } from "react-native";
 import EditMembersSheet from "./EditMemberSheet";
@@ -36,6 +38,7 @@ import MemberActionsSheet from "./MemberActionsSheet";
  * each row's ellipsis menu, with contact details underneath the name.
  */
 export default function GroupMembersTab() {
+  const previewEmpty = useEmptyStatePreview();
   const { details, memberList } = states.group();
   const { details: userDetails } = states.user();
   const showToast = useAppToast();
@@ -152,7 +155,7 @@ export default function GroupMembersTab() {
       <VStack className="gap-y-4 px-4">
         <HStack className="items-center gap-x-2">
           <Text bold className="text-xl flex-1">
-            {roster.length} {roster.length === 1 ? "person" : "people"}
+            {previewEmpty ? 0 : roster.length} {!previewEmpty && roster.length === 1 ? "person" : "people"}
           </Text>
           {isAdmin && (
             <Button variant="link" onPress={() => setIsEditMembersOpen(true)}>
@@ -163,7 +166,7 @@ export default function GroupMembersTab() {
 
         <FlatList
           scrollEnabled={false}
-          data={roster}
+          data={previewEmpty ? [] : roster}
           keyExtractor={(item) => (item as Member).id.toString()}
           renderItem={({ item }) => (
             <GroupMemberRow
@@ -183,14 +186,27 @@ export default function GroupMembersTab() {
           ListEmptyComponent={() => (
             <EmptyList
               type={EmptyType.MEMBER}
-              actions={[
-                {
-                  label: isAdmin
-                    ? "Add Members"
-                    : "View Groups",
-                  onPress: () => isAdmin ? setIsEditMembersOpen(true) : router.push("/groups")
-                }
-              ]}
+              content={isAdmin
+                ? "Bring your group together. Add members to start splitting expenses."
+                : "Your group members will appear here once an admin adds them."}
+              actions={isAdmin
+                ? [
+                    {
+                      label: "Edit Members",
+                      icon: UsersRound,
+                      onPress: () => setIsEditMembersOpen(true)
+                    },
+                    ...(!details.archived && details.invite_token
+                      ? [
+                          {
+                            label: "Share Group",
+                            icon: Share2,
+                            onPress: () => router.push(`/groups/${details.id}/share`)
+                          }
+                        ]
+                      : [])
+                  ]
+                : []}
             />
           )}
         />

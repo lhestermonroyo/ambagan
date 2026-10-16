@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
@@ -24,6 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RefreshControl } from "react-native";
 
 export default function NotificationsScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadMoreLoading, setLoadMoreLoading] = useState(false);
@@ -210,7 +212,7 @@ export default function NotificationsScreen() {
         skeleton={<NotificationListSkeleton />}
       >
         <SectionList
-          sections={sections}
+          sections={previewEmpty ? [] : sections}
           keyExtractor={(item) => item.id}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
@@ -229,25 +231,17 @@ export default function NotificationsScreen() {
             <VStack className="flex-1 items-center justify-center p-8">
               <EmptyList
                 type={EmptyType.NOTIFICATION}
-                actions={[
-                  {
-                    label: "View Groups",
-                    onPress: () => router.push("/groups")
-                  }
-                ]}
               />
             </VStack>
           )}
-          ListFooterComponent={
-            list.length > 0 ? (
+          ListFooterComponent={previewEmpty ? null : (list.length > 0 ? (
               <ListFooter
                 hasNextPage={hasNextPage}
                 loading={loadMoreLoading}
                 onLoadMore={handleLoadMore}
                 showEndMessage
               />
-            ) : null
-          }
+            ) : null)}
         />
       </LoadingWrapper>
     </InnerLayout>
