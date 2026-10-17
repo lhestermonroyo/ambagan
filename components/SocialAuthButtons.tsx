@@ -13,20 +13,26 @@ import { SymbolView } from "expo-symbols";
 import { useColorScheme } from "nativewind";
 import { useState } from "react";
 import { Platform } from "react-native";
+import FormButton from "./FormButton";
+import Icon from "./Icon";
 import { Button, ButtonText } from "./ui/button";
 import { Image } from "./ui/image";
 
 type Provider = "google" | "apple";
 
 /**
- * "or continue with" divider + Google / Apple sign-in buttons. Dropped below the
- * form on the login and sign-up screens. Both providers use the native ID-token
+ * Email entry + Google / Apple sign-in buttons on the welcome screen.
+ * Both providers use the native ID-token
  * flow (auth.service.ts) → a Supabase session, then hand off to the existing
  * routeIntent machinery: setting routeIntent "splash" and replacing to "/" lets
  * app/index.tsx wait for fetchDetails to decide onboarding (new user) vs tabs
  * (returning user), instead of flashing a stale route.
  */
-export default function SocialAuthButtons() {
+export default function SocialAuthButtons({
+  onEmailLogin
+}: {
+  onEmailLogin: () => void;
+}) {
   const [loadingProvider, setLoadingProvider] = useState<Provider | null>(null);
 
   const router = useRouter();
@@ -106,7 +112,13 @@ export default function SocialAuthButtons() {
   };
 
   return (
-    <>
+    <VStack className="gap-y-4">
+      <FormButton
+        text="Login with Email"
+        icon={<Icon as="mail-outline" className="text-white" size={20} />}
+        disabled={!!loadingProvider}
+        onPress={onEmailLogin}
+      />
       <HStack className="items-center gap-x-3">
         <Box className="flex-1 h-px bg-background-200" />
         <Text className="text-base text-secondary-950">or continue with</Text>
@@ -130,7 +142,7 @@ export default function SocialAuthButtons() {
             />
           </Box>
           <ButtonText className="text-background-950 dark:text-background-950 dark:data-[hover=true]:text-background-950 dark:data-[active=true]:text-background-950">
-            Continue with Google
+            Login with Google
           </ButtonText>
         </Button>
 
@@ -169,11 +181,11 @@ export default function SocialAuthButtons() {
                 colorScheme === "dark" ? "text-black" : "text-white"
               )}
             >
-              Continue with Apple
+              Login with Apple
             </ButtonText>
           </Button>
         )}
       </VStack>
-    </>
+    </VStack>
   );
 }

@@ -435,7 +435,7 @@ export default function RootLayout() {
           ...prev,
           session: null,
           details: null,
-          routeIntent: "login"
+          routeIntent: "welcome"
         }));
         return;
       }

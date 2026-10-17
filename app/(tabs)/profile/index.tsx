@@ -244,7 +244,7 @@ export default function ProfileScreen() {
     }
 
     signOut();
-    router.replace("/(auth)/login");
+    router.replace("/(auth)/welcome");
   };
 
   return (

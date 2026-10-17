@@ -128,12 +128,13 @@ export default function SignUpScreen() {
     <AuthLayout
       title="Create Account"
       subtitle="Sign up to get started"
+      onBack={() => router.dismissTo("/(auth)/welcome")}
       footer={
         <HStack className="gap-x-1">
           <Text className="text-lg text-secondary-950">
             Already have an account?
           </Text>
-          <Link onPress={() => router.back()}>
+          <Link onPress={() => router.replace("/(auth)/login")}>
             <Text className="text-lg font-medium text-primary-400">Login</Text>
           </Link>
         </HStack>

@@ -117,7 +117,7 @@ export default function AccountSettingsScreen() {
       return;
     await services.auth.deleteAccount();
     signOut();
-    router.replace("/(auth)/login");
+    router.replace("/(auth)/welcome");
   };
 
   return (

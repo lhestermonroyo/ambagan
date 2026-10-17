@@ -1,80 +1,86 @@
-import FormButton from "@/components/FormButton";
 import Logo from "@/components/Logo";
+import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
+import { Image } from "@/components/ui/image";
+import { Link } from "@/components/ui/link";
+import { SafeAreaView } from "@/components/ui/safe-area-view";
+import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { getSecondaryHex } from "@/utils/getColorHex";
-import Constants from "expo-constants";
-import { useRouter } from "expo-router";
-import { Copyright } from "lucide-react-native";
-import {
-  ImageBackground,
-  StyleSheet,
-  useColorScheme,
-  View
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
+import { useRouter } from "expo-router";
+import { useWindowDimensions } from "react-native";
 
 export default function WelcomeScreen() {
-  // Cold-launch landing screen: holds the native splash until this screen's
-  // first frame is drawn, so the launch never flashes the bare window.
   useHideSplashOnFirstFrame();
   const router = useRouter();
-  const colorScheme = useColorScheme() ?? "light";
+  const { width } = useWindowDimensions();
+  const illustrationSize = Math.min(320, width - 32);
+  const circleSize = illustrationSize * 0.8;
 
   return (
-    <ImageBackground
-      source={require("@/assets/images/splash-bg.jpg")}
-      style={styles.bg}
-      resizeMode="cover"
-    >
-      <View style={styles.overlay} />
-      <SafeAreaView className="flex-1 px-4">
-        <VStack className="flex-1 justify-end gap-y-6">
-          <Logo type="splash" />
-          <VStack className="gap-y-2">
-            <Text bold className="text-background-0 dark:text-white text-3xl">
-              Split expenses effortlessly
-            </Text>
-            <Box className="w-2 h-2 rounded-full bg-primary-400" />
-            <Text className="text-background-300 text-lg">
-              Log a shared expense in seconds, see exactly who owes who, and
-              settle up with proof — fair and square.
-            </Text>
-          </VStack>
-          <VStack className="gap-y-4">
-            <FormButton
-              text="Get Started"
-              onPress={() => router.push("/(auth)/login")}
-            />
-            <HStack className="items-center justify-center gap-x-1">
-              <Copyright
-                size={12}
-                color={getSecondaryHex("text-secondary-950", colorScheme)}
+    <SafeAreaView className="flex-1 bg-background-0">
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ flexGrow: 1 }}
+        bounces={false}
+      >
+        <VStack className="grow px-4 py-6 gap-y-8">
+          <Logo type="auth" />
+
+          <VStack className="grow items-center justify-center gap-y-6 py-4">
+            <Box
+              className="relative items-center justify-center"
+              style={{
+                width: illustrationSize,
+                height: illustrationSize,
+                flexShrink: 0
+              }}
+            >
+              <Box
+                className="absolute bg-primary-0 dark:bg-primary-50"
+                style={{
+                  width: circleSize,
+                  height: circleSize,
+                  borderRadius: circleSize / 2
+                }}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
               />
-              <Text className="text-center text-sm text-secondary-950">
-                {new Date().getFullYear()} Ambagan • v
-                {Constants.expoConfig?.version ?? "1.0.0"}
+              <Image
+                source={require("@/assets/illustrations/ambagan-shared-expenses.png")}
+                size="full"
+                alt="Friends splitting a receipt beside a personal expense notebook"
+                resizeMode="contain"
+              />
+            </Box>
+
+            <VStack className="items-center gap-y-3">
+              <Text bold size="3xl" className="text-center">
+                Split bills, settle up, no awkward math.
               </Text>
-            </HStack>
+              <Text className="text-lg text-secondary-950 text-center">
+                Welcome to Ambagan. Split with your barkada, or track your own.
+                Keep every expense in one place.
+              </Text>
+            </VStack>
           </VStack>
+
+          <SocialAuthButtons
+            onEmailLogin={() => router.push("/(auth)/login")}
+          />
+
+          <HStack className="items-center justify-center flex-wrap gap-x-1">
+            <Text className="text-lg text-secondary-950">No account yet?</Text>
+            <Link onPress={() => router.push("/(auth)/sign-up")}>
+              <Text className="text-lg font-medium text-primary-400">
+                Sign Up
+              </Text>
+            </Link>
+          </HStack>
         </VStack>
-      </SafeAreaView>
-    </ImageBackground>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  bg: {
-    flex: 1
-  },
-  overlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0, 0, 0, 0.60)"
-  },
-  container: {
-    flex: 1
-  }
-});
