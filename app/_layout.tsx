@@ -368,23 +368,22 @@ export default function RootLayout() {
   // within seconds of coming back online instead of waiting for a cold launch.
   const refreshPlan = async (id: string) => {
     try {
-      const before = states.user.getState();
       const customerInfo = await services.purchase.getCustomerInfo();
-      // Pass the stored window so an unexpired (non-renewing) 2-week pass
-      // survives the sync; an expired one reverts to free.
+      // Reconcile confirmed receipts as well as recurring entitlements. This
+      // recovers a payment whose access write failed on a previous launch.
       const { plan, plan_expires_at } =
         await services.purchase.syncPlanToSupabase(customerInfo, {
-          currentWindowExpiresAt: before.details?.plan_expires_at ?? null
+          expectedUserId: id
         });
       states.user.setState((prev) => ({
         ...prev,
-        details: prev.details
+        details: prev.details?.id === id
           ? { ...prev.details, plan, plan_expires_at }
           : prev.details
       }));
 
       const after = states.user.getState();
-      if (after.details) {
+      if (after.details?.id === id) {
         await setCachedUserSession({
           userId: id,
           details: after.details,

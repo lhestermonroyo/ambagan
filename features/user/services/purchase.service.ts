@@ -1,6 +1,15 @@
 import { UserPlan } from "@/types/user";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
+import { latestExpiry, recoverPassExpiry } from "@/features/user/utils/passRecovery";
+import {
+  clearPendingPurchase,
+  preparePurchaseRecovery,
+  readPassProductIds,
+  readPendingPurchase,
+  rememberPassProducts,
+  rememberPendingPurchase
+} from "./purchase-recovery.storage";
 import Purchases, {
   CustomerInfo,
   LOG_LEVEL,
@@ -19,19 +28,32 @@ const PRO_ENTITLEMENT_ID = "Ambagan Pro";
 // which would block repurchase for the next trip). It is exposed as a CUSTOM
 // package in the RevenueCat offering — its identifier must match the dashboard.
 export const TWO_WEEK_PACKAGE_ID = "two_week_v1";
-const TWO_WEEK_DURATION_MS = 14 * 24 * 60 * 60 * 1000;
+const purchasesInFlight = new Set<string>();
 
-// A consumable pass grants no recurring store entitlement, so we own its access
-// window ourselves: plan_expires_at = (later of now / remaining window) + 14d.
-// Stacking from any unexpired window means repurchasing early never loses days.
-export const computeTwoWeekExpiry = (
-  currentExpiresAt?: string | null
-): string => {
-  const now = Date.now();
-  const current = currentExpiresAt ? new Date(currentExpiresAt).getTime() : 0;
-  const base = current > now ? current : now;
-  return new Date(base + TWO_WEEK_DURATION_MS).toISOString();
-};
+export class PurchaseActivationPendingError extends Error {
+  constructor() {
+    super("Your payment was received, but Pro activation is still pending. Retry activation without purchasing again.");
+    this.name = "PurchaseActivationPendingError";
+  }
+}
+
+export const isActivationPending = (error: unknown): boolean =>
+  error instanceof PurchaseActivationPendingError;
+
+async function authenticatedPurchaseUser(expectedUserId?: string): Promise<string> {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user || (expectedUserId && user.id !== expectedUserId)) {
+    throw new Error("The signed-in account changed. Sign in to the purchasing account to recover access.");
+  }
+  if (await Purchases.getAppUserID() !== user.id) {
+    throw new Error("Purchase account is not ready. Please sign in again.");
+  }
+  return user.id;
+}
+
+export async function hasPendingPurchase(userId: string): Promise<boolean> {
+  return !!(await readPendingPurchase(userId));
+}
 
 export const initializePurchases = (userId: string) => {
   const apiKey = __DEV__
@@ -46,6 +68,13 @@ export const initializePurchases = (userId: string) => {
 
 export const getOfferings = async (): Promise<PurchasesOffering | null> => {
   const offerings = await Purchases.getOfferings();
+  // Package IDs and store product IDs are different. Remember the real SKUs
+  // before a charge, so recovery still works if an offering later changes.
+  const all = [offerings.current, ...Object.values(offerings.all ?? {})];
+  const ids = all.flatMap((offering) => offering?.availablePackages
+    .filter((pkg) => pkg.identifier === TWO_WEEK_PACKAGE_ID)
+    .map((pkg) => pkg.product.identifier) ?? []);
+  await rememberPassProducts(ids);
   return offerings.current;
 };
 
@@ -86,8 +115,68 @@ export const showManageSubscriptions = async (): Promise<void> => {
 export const purchasePackage = async (
   pkg: PurchasesPackage
 ): Promise<CustomerInfo> => {
-  const { customerInfo } = await Purchases.purchasePackage(pkg);
-  return customerInfo;
+  const userId = await authenticatedPurchaseUser();
+  if (purchasesInFlight.has(userId)) throw new Error("A purchase is already in progress");
+  purchasesInFlight.add(userId);
+  try {
+    if (await readPendingPurchase(userId)) throw new PurchaseActivationPendingError();
+    const isPass = pkg.identifier === TWO_WEEK_PACKAGE_ID;
+    if (isPass) await rememberPassProducts([pkg.product.identifier]);
+    // Check the store as well as the local journal before charging. This covers
+    // a process exit immediately after payment, or storage failing after the
+    // preflight check but before confirmation could be persisted.
+    const existing = await getCustomerInfo();
+    let knownProducts = await readPassProductIds();
+    if (!knownProducts.size && existing.nonSubscriptionTransactions.length) {
+      await getOfferings();
+      knownProducts = await readPassProductIds();
+    }
+    const existingPassExpiry = recoverPassExpiry(existing.nonSubscriptionTransactions, knownProducts);
+    const existingEntitlement = existing.entitlements.active[PRO_ENTITLEMENT_ID];
+    if (existingEntitlement || (existingPassExpiry && Date.parse(existingPassExpiry) > Date.now())) {
+      const receipt = existing.nonSubscriptionTransactions
+        .filter((transaction) => knownProducts.has(transaction.productIdentifier))
+        .sort((a, b) => Date.parse(b.purchaseDate) - Date.parse(a.purchaseDate))[0];
+      await rememberPendingPurchase(userId, {
+        id: existingEntitlement
+          ? `subscription:${existingEntitlement.productIdentifier}`
+          : receipt.transactionIdentifier,
+        kind: existingEntitlement ? "subscription" : "pass",
+        productIdentifier: existingEntitlement?.productIdentifier ?? receipt.productIdentifier,
+        transaction: !existingEntitlement && receipt ? {
+          transactionIdentifier: receipt.transactionIdentifier,
+          productIdentifier: receipt.productIdentifier,
+          purchaseDate: receipt.purchaseDate
+        } : null
+      });
+      throw new PurchaseActivationPendingError();
+    }
+    await preparePurchaseRecovery(userId);
+
+    const { customerInfo, transaction } = await Purchases.purchasePackage(pkg);
+    // The native store transaction ID can differ from RevenueCat's history ID.
+    // Only history receipts participate in pass arithmetic. If CustomerInfo is
+    // not caught up yet, retain pending activation and refresh it on retry.
+    const previousIds = new Set(existing.nonSubscriptionTransactions.map((receipt) => receipt.transactionIdentifier));
+    const confirmedPass = isPass ? customerInfo.nonSubscriptionTransactions.find((receipt) =>
+      receipt.productIdentifier === pkg.product.identifier && !previousIds.has(receipt.transactionIdentifier)
+    ) : undefined;
+    // Save confirmation before the separate database call. Recovery belongs to
+    // the account that paid, even if the user signs out during the store dialog.
+    await rememberPendingPurchase(userId, {
+      id: transaction.transactionIdentifier,
+      kind: isPass ? "pass" : "subscription",
+      productIdentifier: pkg.product.identifier,
+      transaction: confirmedPass ? {
+        transactionIdentifier: confirmedPass.transactionIdentifier,
+        productIdentifier: confirmedPass.productIdentifier,
+        purchaseDate: confirmedPass.purchaseDate
+      } : null
+    });
+    return customerInfo;
+  } finally {
+    purchasesInFlight.delete(userId);
+  }
 };
 
 export const restorePurchases = async (): Promise<CustomerInfo> => {
@@ -95,6 +184,8 @@ export const restorePurchases = async (): Promise<CustomerInfo> => {
 };
 
 export const getCustomerInfo = async (): Promise<CustomerInfo> => {
+  // A retry should ask RevenueCat again rather than reuse a pre-purchase cache.
+  await Purchases.invalidateCustomerInfoCache();
   return Purchases.getCustomerInfo();
 };
 
@@ -108,84 +199,77 @@ export const isPurchaseCancelled = (error: unknown): boolean => {
 export const isProEntitlementActive = (customerInfo: CustomerInfo): boolean =>
   PRO_ENTITLEMENT_ID in customerInfo.entitlements.active;
 
-/**
- * Reconciles the user's plan with the store and our self-managed window.
- *
- * Resolution order:
- *  1. `setWindowExpiresAt` — an explicit fresh window (use right after buying
- *     the 2-week consumable: `computeTwoWeekExpiry()`). Authoritative for that
- *     purchase even if a store entitlement happens to be active.
- *  2. Active `Ambagan Pro` entitlement (auto-renewable monthly/yearly) — mirror
- *     the entitlement's own `expirationDate`. NOTE: we read the per-entitlement
- *     `expirationDate`, not `customerInfo.latestExpirationDate`, because the
- *     latter is frequently `null` right after a (sandbox) purchase even while
- *     the entitlement is active — that was the "pro but plan_expires_at null" bug.
- *  3. `currentWindowExpiresAt` — a window already stored on the user row (pass
- *     on launch/restore so an unexpired 2-week pass survives the sync).
- *  4. Otherwise → free.
- */
+/** Reconcile on purchase, restore, launch and reconnect. Transaction history
+ * determines pass expiry; repeating a sync cannot grant another fourteen days.
+ * Existing saved windows are retained for purchases made before this recovery
+ * mechanism shipped. No new database schema or server deployment is required. */
 export const syncPlanToSupabase = async (
   customerInfo: CustomerInfo,
-  options?: {
-    setWindowExpiresAt?: string | null;
-    currentWindowExpiresAt?: string | null;
-  }
+  options?: { expectedUserId?: string }
 ): Promise<{ plan: UserPlan; plan_expires_at: string | null }> => {
-  const entitlement = customerInfo.entitlements.active[PRO_ENTITLEMENT_ID];
-  const entitlementExpiry =
-    entitlement?.expirationDate ?? customerInfo.latestExpirationDate ?? null;
+  const userId = await authenticatedPurchaseUser(options?.expectedUserId);
+  const pending = await readPendingPurchase(userId);
+  const productIds = await readPassProductIds();
+  if (pending?.kind === "pass") productIds.add(pending.productIdentifier);
 
-  const setWindow = options?.setWindowExpiresAt ?? null;
-  const setWindowValid =
-    !!setWindow && new Date(setWindow).getTime() > Date.now();
-
-  const storedWindow = options?.currentWindowExpiresAt ?? null;
-  const storedWindowValid =
-    !!storedWindow && new Date(storedWindow).getTime() > Date.now();
-
-  let plan: UserPlan;
-  let plan_expires_at: string | null;
-
-  if (setWindowValid) {
-    // 1. Fresh 2-week pass just purchased — its window is authoritative.
-    plan = "pro";
-    plan_expires_at = setWindow;
-  } else if (entitlement) {
-    // 2. Auto-renewable subscription active — mirror its real expiry.
-    plan = "pro";
-    plan_expires_at = entitlementExpiry;
-  } else if (storedWindowValid) {
-    // 3. A previously-stamped 2-week window is still running.
-    plan = "pro";
-    plan_expires_at = storedWindow;
-  } else {
-    // 4. No active entitlement and no live window.
-    plan = "free";
-    plan_expires_at = null;
+  // A fresh install has no local SKU registry. Resolve it from the offering,
+  // then reconcile the account's historical receipts, not just new purchases.
+  if (!productIds.size && customerInfo.nonSubscriptionTransactions.length) {
+    await getOfferings();
+    for (const id of await readPassProductIds()) productIds.add(id);
+    if (!productIds.size) throw new Error("Pass products are unavailable. Retry activation later.");
   }
-
-  console.log("[syncPlanToSupabase] Syncing plan to Supabase", {
-    plan,
-    plan_expires_at,
-    entitlementActive: !!entitlement,
-    entitlementExpiry,
-    latestExpirationDate: customerInfo.latestExpirationDate ?? null,
-    setWindow,
-    storedWindow
+  const transactions = [...customerInfo.nonSubscriptionTransactions];
+  if (pending?.kind === "pass" && pending.transaction) transactions.push({
+    ...pending.transaction,
+    purchaseToken: null,
+    originalJson: null,
+    signature: null
   });
+  const passExpiry = recoverPassExpiry(transactions, productIds);
+  const entitlement = customerInfo.entitlements.active[PRO_ENTITLEMENT_ID];
+  const subscriptionExpiry = entitlement
+    ? entitlement.expirationDate ?? customerInfo.latestExpirationDate
+    : null;
 
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("User not authenticated");
+  // Compare-and-set avoids an older device or a concurrent reconnect overwriting
+  // a newer paid window. Each retry re-reads the authoritative user row.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: current, error: readError } = await supabase
+      .from(tables.USERS_TBL)
+      .select("plan, plan_expires_at")
+      .eq("id", userId)
+      .single();
+    if (readError) throw readError;
+    if (!current) throw new Error("Plan sync failed: no matching user row");
 
-  const { error, count } = await supabase
-    .from(tables.USERS_TBL)
-    .update({ plan, plan_expires_at }, { count: "exact" })
-    .eq("id", user.id);
+    const expiry = latestExpiry(passExpiry, subscriptionExpiry,
+      current.plan === "pro" ? current.plan_expires_at : null);
+    const unlimited = !!entitlement && !subscriptionExpiry;
+    const plan: UserPlan = unlimited || (expiry && Date.parse(expiry) > Date.now()) ? "pro" : "free";
+    const plan_expires_at = plan === "pro" && !unlimited ? expiry : null;
+    const pendingExpiry = pending?.kind === "pass"
+      ? passExpiry
+      : pending ? customerInfo.allExpirationDates?.[pending.productIdentifier] : null;
+    const pendingExpired = !!pendingExpiry && Date.parse(pendingExpiry) <= Date.now();
+    if (pending && !pendingExpired && (plan !== "pro" || (pending.kind === "subscription" && !entitlement))) {
+      throw new PurchaseActivationPendingError();
+    }
 
-  if (error) throw error;
-  if (!count) throw new Error("Plan sync failed: no matching user row updated");
+    await authenticatedPurchaseUser(userId);
+    let query = supabase.from(tables.USERS_TBL)
+      .update({ plan, plan_expires_at }, { count: "exact" })
+      .eq("id", userId)
+      .eq("plan", current.plan);
+    query = current.plan_expires_at === null
+      ? query.is("plan_expires_at", null)
+      : query.eq("plan_expires_at", current.plan_expires_at);
+    const { error, count } = await query;
+    if (error) throw error;
+    if (!count) continue;
 
-  return { plan, plan_expires_at };
+    if (pending) await clearPendingPurchase(userId, pending.id);
+    return { plan, plan_expires_at };
+  }
+  throw new Error("Your access changed while syncing. Retry activation.");
 };

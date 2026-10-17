@@ -15,11 +15,13 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { PRO_FEATURES } from "@/constants/proFeatures";
+import useUserState from "@/features/user/states/user.state";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { getPrimaryHex } from "@/utils/getColorHex";
+import { setCachedUserSession } from "@/utils/userCache";
 
 import { differenceInCalendarDays, format } from "date-fns";
 import { Stack, useRouter } from "expo-router";
@@ -77,13 +79,14 @@ const PLANS: {
 ];
 
 export default function SubscriptionScreen() {
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserState();
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
-  const [loadingOffering, setLoadingOffering] = useState(false);
+  const [loadingOffering, setLoadingOffering] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanType>("monthly");
+  const [activationPending, setActivationPending] = useState(false);
 
   const router = useRouter();
   const toast = useAppToast();
@@ -150,22 +153,89 @@ export default function SubscriptionScreen() {
   };
 
   useEffect(() => {
-    fetchOffering();
-  }, []);
+    const userId = userDetails?.id;
+    if (!userId) return;
+    let cancelled = false;
+    async function loadOffering(id: string) {
+      try {
+        const pending = await services.purchase.hasPendingPurchase(id);
+        if (cancelled) return;
+        setLoadingOffering(true);
+        setActivationPending(pending);
+        const current = await services.purchase.getOfferings();
+        if (!cancelled) setOffering(current);
+      } catch (error) {
+        console.error("Failed to fetch offerings:", error);
+      } finally {
+        if (!cancelled) setLoadingOffering(false);
+      }
+    }
+    void loadOffering(userId);
+    return () => { cancelled = true; };
+  }, [userDetails?.id]);
 
-  const fetchOffering = async () => {
-    setLoadingOffering(true);
+  const handleRestore = async (retryActivation = false) => {
+    const purchasingUserId = userDetails?.id;
+    if (!purchasingUserId) return;
+    setRestoring(true);
     try {
-      const current = await services.purchase.getOfferings();
-      setOffering(current);
-    } catch (error) {
-      console.error("Failed to fetch offerings:", error);
+      const customerInfo = retryActivation
+        ? await services.purchase.getCustomerInfo()
+        : await services.purchase.restorePurchases();
+      const { plan, plan_expires_at } =
+        await services.purchase.syncPlanToSupabase(customerInfo, {
+          expectedUserId: purchasingUserId
+        });
+
+      states.user.setState((prev) => ({
+        ...prev,
+        details: prev.details?.id === purchasingUserId
+          ? { ...prev.details, plan, plan_expires_at }
+          : prev.details
+      }));
+      const currentUser = states.user.getState();
+      if (currentUser.details?.id !== purchasingUserId) return;
+      await setCachedUserSession({
+        userId: currentUser.details.id,
+        details: currentUser.details,
+        appearanceMode: currentUser.appearanceMode
+      });
+      if (states.user.getState().details?.id !== purchasingUserId) return;
+      setActivationPending(false);
+
+      if (plan === "pro") {
+        router.push({
+          pathname: "/subscription-success",
+          params: { restored: "1" }
+        });
+      } else {
+        toast({
+          title: "No active Pro access",
+          description: "No active subscription or unexpired Pro pass was found for this account.",
+          type: "info"
+        });
+      }
+    } catch {
+      if (states.user.getState().details?.id !== purchasingUserId) return;
+      toast({
+        title: retryActivation ? "Activation pending" : "Restore Failed",
+        description: retryActivation || activationPending
+          ? "We couldn’t activate Pro yet. Your payment is saved; retry activation when your connection is available. Do not purchase again."
+          : "Could not restore purchase. Please try again.",
+        type: "error"
+      });
     } finally {
-      setLoadingOffering(false);
+      setRestoring(false);
     }
   };
 
   const handleSubscribe = async () => {
+    const purchasingUserId = userDetails?.id;
+    if (!purchasingUserId) return;
+    if (activationPending) {
+      await handleRestore(true);
+      return;
+    }
     if (!activePkg) {
       toast({
         title: "Product Unavailable",
@@ -177,24 +247,15 @@ export default function SubscriptionScreen() {
     }
 
     setPurchasing(true);
+    let purchaseConfirmed = false;
     try {
       const customerInfo = await services.purchase.purchasePackage(activePkg);
+      purchaseConfirmed = true;
 
-      // The 2-week pass is a consumable — it grants no recurring entitlement,
-      // so we stamp a 14-day window ourselves, stacking onto any unexpired
-      // window so an early repurchase never loses days. Auto-renewable plans
-      // let RevenueCat's active entitlement drive the expiry.
       const { plan, plan_expires_at } =
-        await services.purchase.syncPlanToSupabase(
-          customerInfo,
-          selectedPlan === "two_week"
-            ? {
-                setWindowExpiresAt: services.purchase.computeTwoWeekExpiry(
-                  userDetails?.plan_expires_at ?? null
-                )
-              }
-            : undefined
-        );
+        await services.purchase.syncPlanToSupabase(customerInfo, {
+          expectedUserId: purchasingUserId
+        });
 
       if (plan !== "pro") {
         throw new Error("Pro access was not activated after purchase");
@@ -202,10 +263,19 @@ export default function SubscriptionScreen() {
 
       states.user.setState((prev) => ({
         ...prev,
-        details: prev.details
+        details: prev.details?.id === purchasingUserId
           ? { ...prev.details, plan, plan_expires_at }
           : prev.details
       }));
+      const currentUser = states.user.getState();
+      if (currentUser.details?.id !== purchasingUserId) return;
+      await setCachedUserSession({
+        userId: currentUser.details.id,
+        details: currentUser.details,
+        appearanceMode: currentUser.appearanceMode
+      });
+      if (states.user.getState().details?.id !== purchasingUserId) return;
+      setActivationPending(false);
 
       router.push({
         pathname: "/subscription-success",
@@ -213,7 +283,17 @@ export default function SubscriptionScreen() {
       });
     } catch (error) {
       console.error("Purchase failed:", error);
+      if (states.user.getState().details?.id !== purchasingUserId) return;
       if (services.purchase.isPurchaseCancelled(error)) return;
+      if (purchaseConfirmed || services.purchase.isActivationPending(error)) {
+        setActivationPending(true);
+        toast({
+          title: "Payment received",
+          description: "Pro activation is pending. Tap Retry activation or Restore; you don’t need to purchase again.",
+          type: "info"
+        });
+        return;
+      }
       toast({
         title: "Purchase Failed",
         description: "Could not complete the purchase. Please try again.",
@@ -221,45 +301,6 @@ export default function SubscriptionScreen() {
       });
     } finally {
       setPurchasing(false);
-    }
-  };
-
-  const handleRestore = async () => {
-    setRestoring(true);
-    try {
-      const customerInfo = await services.purchase.restorePurchases();
-      const { plan, plan_expires_at } =
-        await services.purchase.syncPlanToSupabase(customerInfo, {
-          currentWindowExpiresAt: userDetails?.plan_expires_at ?? null
-        });
-
-      states.user.setState((prev) => ({
-        ...prev,
-        details: prev.details
-          ? { ...prev.details, plan, plan_expires_at }
-          : prev.details
-      }));
-
-      if (plan === "pro") {
-        router.push({
-          pathname: "/subscription-success",
-          params: { restored: "1" }
-        });
-      } else {
-        toast({
-          title: "No Purchase Found",
-          description: "No previous purchase found for this account.",
-          type: "info"
-        });
-      }
-    } catch {
-      toast({
-        title: "Restore Failed",
-        description: "Could not restore purchase. Please try again.",
-        type: "error"
-      });
-    } finally {
-      setRestoring(false);
     }
   };
 
@@ -290,7 +331,7 @@ export default function SubscriptionScreen() {
             tintColor={tintColor}
             disabled={purchasing || restoring}
             accessibilityLabel="Restore purchase"
-            onPress={handleRestore}
+            onPress={() => handleRestore()}
           >
             {restoring ? "Restoring..." : "Restore"}
           </Stack.Toolbar.Button>
@@ -302,7 +343,7 @@ export default function SubscriptionScreen() {
             className="pr-1"
             disabled={purchasing || restoring}
             aria-label="Restore purchase"
-            onPress={handleRestore}
+            onPress={() => handleRestore()}
           >
             <Text
               className="font-medium"
@@ -509,8 +550,8 @@ export default function SubscriptionScreen() {
 
           {!isPro && (
             <FormButton
-              text={ctaLabel()}
-              loading={purchasing}
+              text={activationPending ? "Retry activation" : ctaLabel()}
+              loading={purchasing || restoring}
               disabled={purchasing || restoring || loadingOffering}
               onPress={handleSubscribe}
             />
