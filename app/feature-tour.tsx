@@ -1,5 +1,5 @@
 import FeatureTourCarousel from "@/features/user/components/FeatureTour/FeatureTourCarousel";
-import states from "@/states";
+import useUserState from "@/features/user/states/user.state";
 import { setTourSeen } from "@/utils/featureTour";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
@@ -18,20 +18,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
  */
 export default function FeatureTourScreen() {
   const router = useRouter();
+  const userId = useUserState((state) => state.details?.id ?? state.session?.user.id);
 
-  // Marked seen on unmount, which is the one place every way out converges:
-  // Skip, "Get started", swipe-down, and Android back. Anything finer-grained
-  // would leave a dismissal path that re-nags on the next launch.
-  //
-  // The id is read from the store at teardown rather than subscribed to, so the
-  // effect can stay mount-scoped — keyed on the id it would write the flag
-  // early on any identity change while the tour is still open.
+  // Persist when the tour opens: a full reload or process exit can skip React
+  // cleanup entirely. Subscribe to the user so this also works when a restored
+  // tour route mounts before the account finishes loading.
   useEffect(() => {
-    return () => {
-      const id = states.user.getState().details?.id;
-      if (id) setTourSeen(id);
-    };
-  }, []);
+    if (userId) void setTourSeen(userId);
+  }, [userId]);
 
   return (
     <SafeAreaView className="flex-1 bg-background-0" edges={["top", "bottom"]}>

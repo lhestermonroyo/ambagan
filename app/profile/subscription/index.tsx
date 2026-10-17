@@ -400,10 +400,10 @@ export default function SubscriptionScreen() {
                         onPress={() => setSelectedPlan(plan.key)}
                       >
                         <Box
-                          className={`rounded-2xl p-4 ${
+                          className={`rounded-2xl border p-4 ${
                             isSelected
-                              ? "bg-primary-0"
-                              : "bg-secondary-100"
+                              ? "bg-primary-50 border-primary-200"
+                              : "bg-secondary-100 border-secondary-100"
                           }`}
                         >
                           <HStack className="items-center justify-between">
@@ -411,7 +411,7 @@ export default function SubscriptionScreen() {
                               <HStack className="items-center gap-x-2">
                                 <Text
                                   bold
-                                  className={`text-lg ${isSelected ? "text-primary-500" : ""}`}
+                                  className={`text-lg ${isSelected ? "text-primary-700" : ""}`}
                                 >
                                   {plan.label}
                                 </Text>
@@ -427,7 +427,9 @@ export default function SubscriptionScreen() {
                                 )}
                               </HStack>
                               {plan.sublabel && (
-                                <Text className="text-secondary-950 text-sm">
+                                <Text
+                                  className={`text-sm ${isSelected ? "text-primary-600" : "text-secondary-950"}`}
+                                >
                                   {plan.sublabel}
                                 </Text>
                               )}
@@ -436,11 +438,11 @@ export default function SubscriptionScreen() {
                             <HStack className="items-center gap-x-4">
                               <Text
                                 bold
-                                className={`text-xl ${isSelected ? "text-primary-500" : ""}`}
+                                className={`text-xl ${isSelected ? "text-primary-700" : ""}`}
                               >
                                 {priceLabel}
                                 <Text
-                                  className={`text-sm ${isSelected ? "text-primary-500" : "text-secondary-950"}`}
+                                  className={`text-sm ${isSelected ? "text-primary-600" : "text-secondary-950"}`}
                                 >
                                   {" "}
                                   {plan.fallbackSuffix}
@@ -490,18 +492,6 @@ export default function SubscriptionScreen() {
               scanning, linked spending totals, and notifications, with separate
               daily limits of 5 group expenses and 5 individual expenses.
             </Text>
-            {__DEV__ && (
-              <FormButton
-                text="Preview purchase success"
-                variant="outline"
-                onPress={() =>
-                  router.push({
-                    pathname: "/subscription-success",
-                    params: { plan: selectedPlan }
-                  })
-                }
-              />
-            )}
           </VStack>
         </VStack>
       </ScrollView>
