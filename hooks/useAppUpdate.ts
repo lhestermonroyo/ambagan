@@ -1,5 +1,6 @@
 import { getUpdateGate } from "@/features/user/services/app-version.service";
 import states from "@/states";
+import { useActionFeedbackState } from "@/features/user/states/actionFeedback.state";
 import { isUpdateSnoozed } from "@/utils/updatePrompt";
 import { useRootNavigationState, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
@@ -20,7 +21,9 @@ const RECHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
  * top of one of these would stack two modals; the gate waits instead, and the
  * effect below re-fires when focus comes back.
  */
-const BLOCKING_ROUTES = ["feature-tour", "update-available"];
+const BLOCKING_ROUTES = [
+  "feature-tour", "update-available", "subscription-success", "action-success"
+];
 
 /**
  * Decides whether this build is out of date and, if so, presents
@@ -39,6 +42,7 @@ export function useAppUpdate() {
   const { isOnline } = useNetwork();
   const gate = states.appUpdate((s) => s.gate);
   const setGate = states.appUpdate((s) => s.setGate);
+  const feedbackBusy = useActionFeedbackState((state) => !!state.request);
 
   const rootState = useRootNavigationState();
   const focusedRoute =
@@ -88,7 +92,7 @@ export function useAppUpdate() {
   // Presentation. Waits for a frame where nothing else is on top, so the prompt
   // lands after the feature tour rather than under it.
   useEffect(() => {
-    if (!gate || !focusedRoute) return;
+    if (!gate || !focusedRoute || feedbackBusy) return;
     if (BLOCKING_ROUTES.includes(focusedRoute)) return;
 
     // A REQUIRED prompt re-arms unconditionally. It can't normally be dismissed
@@ -109,5 +113,5 @@ export function useAppUpdate() {
       pathname: "/update-available",
       params: gate.status === "required" ? { forced: "1" } : {}
     });
-  }, [gate, focusedRoute, router]);
+  }, [gate, focusedRoute, router, feedbackBusy]);
 }

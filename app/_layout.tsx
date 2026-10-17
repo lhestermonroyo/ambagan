@@ -1,4 +1,6 @@
 import AppUpdateGate from "@/components/AppUpdateGate";
+import ActionFeedbackPresenter from "@/components/ActionFeedbackPresenter";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import EmptyStatePreviewBanner from "@/components/EmptyStatePreviewBanner";
 import NetworkBanner from "@/components/NetworkBanner";
 import OfflineSync from "@/components/OfflineSync";
@@ -87,6 +89,7 @@ export default function RootLayout() {
     "GoogleSans-BoldItalic": require("@/assets/fonts/GoogleSans-BoldItalic.ttf")
   });
   const router = useRouter();
+  const showFeedback = useActionFeedback();
   const { colorScheme } = useColorScheme();
   const isDark = (colorScheme ?? "light") === "dark";
 
@@ -476,6 +479,7 @@ export default function RootLayout() {
       if (!token) return;
       const groupId = await services.group.joinGroupByToken(token);
       await clearPendingInviteToken();
+      await showFeedback("group-joined", { afterPath: `/groups/${groupId}` });
       router.push(`/groups/${groupId}` as any);
     } catch {
       // silently ignore — stale/invalid token, don't block the user
@@ -564,6 +568,20 @@ export default function RootLayout() {
                   name="feature-tour"
                   options={{ presentation: "modal" }}
                 />
+                <Stack.Screen
+                  name="subscription-success"
+                  options={{
+                    presentation: "modal",
+                    animation: "slide_from_bottom"
+                  }}
+                />
+                <Stack.Screen
+                  name="action-success"
+                  options={{
+                    presentation: "modal",
+                    animation: "slide_from_bottom"
+                  }}
+                />
                 {/* The out-of-date-build prompt. Two presentations off one
                     route, because the two cases are genuinely different
                     screens to the user:
@@ -588,6 +606,7 @@ export default function RootLayout() {
                   }}
                 />
               </Stack>
+              <ActionFeedbackPresenter />
               <StatusBar style="auto" />
               <OfflineSync />
               <AppUpdateGate />

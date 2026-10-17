@@ -53,6 +53,7 @@ import {
 import { groupEntryCurrency } from "@/features/group/utils/groupCurrency";
 import { defaultExpenseGroup } from "@/features/group/utils/groupMembers";
 import useAppToast from "@/hooks/use-app-toast";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import { useNetwork } from "@/hooks/useNetwork";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
@@ -112,6 +113,7 @@ export default function AddExpenseScreen() {
   const isPro = currentUser?.plan === "pro";
 
   const toast = useAppToast();
+  const showFeedback = useActionFeedback();
   const { isOnline } = useNetwork();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
@@ -212,7 +214,8 @@ export default function AddExpenseScreen() {
       router.dismissAll();
       return;
     }
-    router.back();
+    if (router.canGoBack()) router.back();
+    else router.replace(selectedGroup ? `/groups/${selectedGroup.id}` : "/groups");
   };
 
   useEffect(() => {
@@ -782,12 +785,7 @@ export default function AddExpenseScreen() {
         paymentSplits
       );
 
-      toast({
-        title: "Recurring Expense Set",
-        description:
-          recurrenceSummary(recurrence) + " — we'll post it for you.",
-        type: "success"
-      });
+      await showFeedback("recurring-created", { afterNavigation: true });
       handleSaved();
     } catch {
       toast({
@@ -942,11 +940,17 @@ export default function AddExpenseScreen() {
         paymentSplits
       );
 
-      toast({
-        title: "Expense Added",
-        description: "Your expense has been added.",
-        type: "success"
+      const shown = await showFeedback("expense-added", {
+        once: true,
+        afterNavigation: true
       });
+      if (!shown) {
+        toast({
+          title: "Expense Added",
+          description: "Your expense has been added.",
+          type: "success"
+        });
+      }
       // Origin screens (Home / group) re-init on focus, so backing out refreshes
       // the list without an explicit callback.
       handleSaved();

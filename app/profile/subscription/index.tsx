@@ -55,7 +55,7 @@ const PLANS: {
   {
     key: "two_week",
     label: "2 Weeks",
-    sublabel: "Great for a single trip",
+    sublabel: "One-time pass — no auto-renewal",
     fallbackPrice: TWO_WEEK_PRICE,
     fallbackSuffix: "/ 2 wks"
   },
@@ -196,6 +196,10 @@ export default function SubscriptionScreen() {
             : undefined
         );
 
+      if (plan !== "pro") {
+        throw new Error("Pro access was not activated after purchase");
+      }
+
       states.user.setState((prev) => ({
         ...prev,
         details: prev.details
@@ -203,13 +207,9 @@ export default function SubscriptionScreen() {
           : prev.details
       }));
 
-      toast({
-        title: "Welcome to Pro!",
-        description:
-          selectedPlan === "two_week"
-            ? "Your 2-week Pro pass is active — enjoy all features."
-            : "No daily limits — enjoy all features.",
-        type: "success"
+      router.push({
+        pathname: "/subscription-success",
+        params: { plan: selectedPlan }
       });
     } catch (error) {
       console.error("Purchase failed:", error);
@@ -240,14 +240,18 @@ export default function SubscriptionScreen() {
           : prev.details
       }));
 
-      const restored = plan === "pro";
-      toast({
-        title: restored ? "Purchase Restored" : "No Purchase Found",
-        description: restored
-          ? "Your Ambagan Pro has been restored."
-          : "No previous purchase found for this account.",
-        type: restored ? "success" : "info"
-      });
+      if (plan === "pro") {
+        router.push({
+          pathname: "/subscription-success",
+          params: { restored: "1" }
+        });
+      } else {
+        toast({
+          title: "No Purchase Found",
+          description: "No previous purchase found for this account.",
+          type: "info"
+        });
+      }
     } catch {
       toast({
         title: "Restore Failed",
@@ -366,7 +370,8 @@ export default function SubscriptionScreen() {
                 <ProBadge size="lg" />
               </HStack>
               <Text className="text-secondary-950">
-                One subscription, all features — cancel anytime.
+                All Pro features with a 2-week pass or a monthly or yearly
+                subscription.
               </Text>
             </VStack>
           )}
@@ -480,6 +485,23 @@ export default function SubscriptionScreen() {
                 </Box>
               ))}
             </Box>
+            <Text className="text-sm text-secondary-950">
+              Free includes Groups and private Individual entries, receipt
+              scanning, linked spending totals, and notifications, with separate
+              daily limits of 5 group expenses and 5 individual expenses.
+            </Text>
+            {__DEV__ && (
+              <FormButton
+                text="Preview purchase success"
+                variant="outline"
+                onPress={() =>
+                  router.push({
+                    pathname: "/subscription-success",
+                    params: { plan: selectedPlan }
+                  })
+                }
+              />
+            )}
           </VStack>
         </VStack>
       </ScrollView>
@@ -507,8 +529,9 @@ export default function SubscriptionScreen() {
 
         {!isPro && (
           <Text className="text-center text-secondary-950 text-sm leading-relaxed">
-            Subscription renews automatically.{"\n"}
-            Cancel anytime via App Store settings.
+            {selectedPlan === "two_week"
+              ? "One-time purchase for 14 days of Pro. Does not renew automatically."
+              : "Subscription renews automatically.\nCancel anytime via App Store settings."}
           </Text>
         )}
       </SafeAreaView>

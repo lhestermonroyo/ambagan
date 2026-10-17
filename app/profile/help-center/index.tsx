@@ -56,22 +56,27 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is Ambagan?",
         answer:
-          "Ambagan is a group expense splitting app that helps you track shared costs, split bills fairly, and settle debts with friends, family, or colleagues."
+          "Ambagan helps you split shared expenses, keep track of who owes whom, and record settlements with friends, family, or colleagues. You can also track private spending in Individual entries, alongside your shared groups in the Groups tab."
       },
       {
         question: "How do I create an account?",
         answer:
-          "Download the app, tap Sign Up, and fill in your name, email, and password. You can also add a phone number and profile photo during onboarding."
+          "On the welcome screen, choose Login with Google or Login with Apple (on iOS), or tap Sign Up to create an account with email and password. New accounts complete three onboarding steps: name, phone number, and an optional profile photo. Already have an email account? Choose Login with Email to open the login form."
       },
       {
         question: "Is Ambagan free to use?",
         answer:
-          "Yes. The core features are free — add up to 5 group expenses and 5 individual expenses per day, track balances, split bills, settle up with friends, and keep Individual entries at no cost. A Pro subscription is available (starting at ₱99 for 2 weeks) for unlimited daily expenses, draft expenses, recurring expenses, Spending Analytics, CSV export, multi-currency support, and more."
+          "Yes. Create shared groups and private Individual entries, split bills, record settlements, scan receipts, link your private spending to a group, and receive notifications for free. Free accounts can add up to 5 group expenses and a separate 5 individual expenses per day. Pro removes both daily limits and unlocks drafts, recurring expenses, Spending Analytics, CSV export, and multi-currency. Choose a one-time 2-week pass or a monthly or yearly subscription."
       },
       {
         question: "What's the difference between Groups and Individual entries?",
         answer:
           "Groups are for money shared with other people — you split a bill, everyone sees it, and balances are settled between you. Individual entries are for money that's only yours: individual expenses nobody else can see. Both live together in the Groups tab, and the home Overview covers both — the Net Balance page for what you owe and are owed, and the Individual Totals page for all your recorded individual expenses. An Individual entry can also be linked to a group so you can see what a trip cost you in total."
+      },
+      {
+        question: "How do I find Groups and Individual entries?",
+        answer:
+          "Open the Groups tab and switch between Groups and Individual. Each list is sorted by recent activity and remembers its filter. Groups has All, Created, Joined, and Archived filters; Individual has All and Archived. Search looks across both modes, so you can find shared groups and private entries from one place."
       },
       {
         question: "What does the Net Balance on the home screen mean?",
@@ -121,7 +126,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I archive or leave a group?",
         answer:
-          "Open the group and tap the menu (⋮) in the top-right corner. Admins can archive the group; all members can choose to leave. Archived groups are hidden from your active list but all history is preserved."
+          "Open the group and tap the menu (⋮) in the top-right corner. The owner can archive the group; members can choose to leave once their unsettled balances are cleared. The owner must transfer ownership before leaving, unless they are the only member. Archived groups are hidden from your active list while their history is preserved."
       },
       {
         question: "How do I restore an archived group?",
@@ -174,10 +179,9 @@ const FAQ_SECTIONS: FAQSection[] = [
           "Tap Add Expense — from the action buttons on your home screen, or the + button inside a group. Enter the amount and a short description, and you're done: by default the bill is paid by you, split equally among everyone in the group, and dated today. You can adjust any of that before saving."
       },
       {
-        question:
-          "Is there still a separate Quick and Custom expense form?",
+        question: "How do I customize an expense?",
         answer:
-          "No. Ambagan now has a single Add Expense screen that covers everything. It opens ready to save with smart defaults (paid by you, split equally, dated today), and you only open the Paid by or Edit Split rows when you want to change who paid or how the bill is divided. The old separate Quick Add and Custom expense forms have been merged into this one screen."
+          "The Add Expense screen starts with you as the payer, an equal split, and today's date. Tap Paid by to change who covered the bill, or Edit Split to choose the participants and divide it equally, by percentage, or by exact amounts. Use the options below to change the category or date, attach a receipt, or set up a recurring expense with Pro."
       },
       {
         question: "Can I choose who paid?",
@@ -242,7 +246,7 @@ const FAQ_SECTIONS: FAQSection[] = [
     ]
   },
   {
-    title: "Individual entries & Individual Expenses",
+    title: "Individual Mode",
     items: [
       {
         question: "What are Individual entries?",
@@ -255,7 +259,12 @@ const FAQ_SECTIONS: FAQSection[] = [
           "Go to the Groups tab, tap +, choose Create Group, then select Individual mode. Enter a name (e.g. Daily or Japan Trip), pick a category and an optional cover photo, and set a currency (Pro) if needed. Tap Create. You can link it to a shared group later in Edit. There's no limit on how many Individual entries you can have, on either plan."
       },
       {
-        question: "How do I add a individual expense?",
+        question: "Can I change an entry's mode after creating it?",
+        answer:
+          "No. Choose Group for shared bills or Individual for private spending when you create the entry. Its mode stays fixed. You can create a separate entry in the other mode and link an Individual entry to a group when you want a combined view of your spending."
+      },
+      {
+        question: "How do I add an individual expense?",
         answer:
           "Two ways. From the home screen, tap Add Expense and choose 'Individual expense' — the form opens on your most recent Individual entry, and you can switch Individual entries from the Individual row. Or open an Individual entry from the Groups tab and tap Add Expense inside it. Enter the amount and a description and you're done; category, date, status, currency, and a receipt photo are all optional."
       },
@@ -271,7 +280,7 @@ const FAQ_SECTIONS: FAQSection[] = [
           "Free accounts can add up to 5 individual expenses per day. That's a separate allowance from the 5 group expenses per day, so on the free plan you get both. Each counter resets at midnight. Pro removes both limits."
       },
       {
-        question: "What do Paid and Pending mean on a individual expense?",
+        question: "What do Paid and Pending mean on an individual expense?",
         answer:
           "Paid means the money is already out. Pending is an upcoming or unpaid bill you want logged early. Tap the status pill on an expense to flip between the two, or set it in the Status row on the form. In an Individual entry you can filter the list by All, Pending, or Paid. The total expenses card includes every recorded expense, paid or pending. The home Individual Totals overview shows all recorded expenses across every Individual entry, including archived entries, with separate Paid and Pending totals. Category analytics show paid spend."
       },
@@ -283,7 +292,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Why do some totals show a ≈ sign?",
         answer:
-          "≈ means the figure mixes currencies and part of it was converted at an approximate rate. A spending total or the Overview's Individual Totals has to be a single number, so foreign spend is folded in using indicative rates that Ambagan refreshes weekly. Tap the currency chip next to any ≈ figure to see the exact amount per currency, what each one converts to, and the date of the rates used. Money you actually act on — balances and settlements — is never converted; it stays in the currency it will be paid in. If a currency has no rate available it's left out of the total, and the card tells you so instead of quietly dropping it."
+          "≈ means the figure mixes currencies and part of it was converted at an approximate rate. A spending total or the Overview's Individual Totals has to be a single number, so foreign spend is folded in using indicative rates that Ambagan refreshes weekly. Tap the currency chip next to any ≈ figure to see the exact amount per currency, what each one converts to, and the date of the rates used. Individual settlement amounts stay in their original currency. Combined balance summaries may use approximate conversions, but those summaries do not change the currency or amount to repay. If a currency has no rate available it's left out of the total, and the card tells you so instead of quietly dropping it."
       },
       {
         question: "What does linking an Individual entry to a group do?",
@@ -296,7 +305,7 @@ const FAQ_SECTIONS: FAQSection[] = [
           "Both sides show it. In the Individual entry, open the Stats tab and look for the Trip/Household/Combined total card. In the group, open the Stats tab and switch to the You view — if no Individual entry is linked yet, that card offers 'Link an Individual entry'. The group side totals in the group's currency, the Individual entry side in the Individual entry's."
       },
       {
-        question: "Can a individual expense repeat automatically?",
+        question: "Can an individual expense repeat automatically?",
         answer:
           "Yes, with Pro. On the Individual Add Expense screen, tap the Repeat row and choose a frequency (daily, weekly, or monthly), a start date, and an optional end. Ambagan then posts that expense into the Individual entry on schedule — even if the app is closed — and notifies you. To manage a series, open the Individual entry's Expenses tab and tap the Recurring expenses card, where you can pause, resume, or delete any series. Deleting a series never removes the expenses it already created."
       },
@@ -348,12 +357,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I settle a payment?",
         answer:
-          "Go to the Settlements tab inside a group or open the friend's details from the Friends tab. Tap on a settlement entry and press Settle Up. The payer will be notified and can review and approve your request."
+          "Tap a settlement in a group's Settlements tab, a friend's details, or Recent Activity on the home screen. Ambagan opens the relevant form directly. If you owe the money, record your payment with Request Settled; the person receiving it can review and approve or reject it. If someone owes you, use Mark Settled to record that you received the payment. You can add a note and proof of payment. Ambagan records the settlement; arrange the actual transfer with the other person."
       },
       {
         question: "What happens after I request a settlement?",
         answer:
-          "The payer receives a notification and can review your request. They can approve or reject it. Once approved, the amount is marked as settled."
+          "The person receiving your payment is notified and can review the request, including any note or proof of payment. They can approve or reject it. Approval marks it as settled. You can undo your request while it is awaiting review."
       },
       {
         question: "Where can I see my settlement history?",
@@ -454,7 +463,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What is the Pro plan?",
         answer:
-          "Pro is a subscription that removes the daily expense limits and unlocks premium features: unlimited group and individual expenses per day, draft expenses (log now, split later), recurring expenses in both groups and Individual entries, Spending Analytics, CSV export, and multi-currency groups, Individual entries, and expenses. Plans start at ₱99 for 2 weeks, ₱149/month, or ₱799/year. Individual entries, linked Individual entries, and push notifications are free for everyone."
+          "Pro removes both daily expense limits and unlocks draft expenses, recurring expenses in groups and Individual entries, Spending Analytics, CSV settlement export, and multi-currency with separate defaults for new expenses. Choose a one-time 2-week pass (₱99), a monthly subscription (₱149), or a yearly subscription (₱799). Basic Individual tracking, linked spending totals, receipt scanning, and notifications are free for everyone."
       },
       {
         question: "What is Spending Analytics?",
@@ -464,7 +473,12 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do I upgrade to Pro?",
         answer:
-          "Go to Profile → Subscription and choose a plan — 2 Weeks (₱99), Monthly (₱149), or Yearly (₱799). Tap Subscribe and complete the purchase through the App Store. All Pro features are unlocked immediately after subscribing."
+          "Go to Profile → Subscription and choose 2 Weeks, Monthly, or Yearly. Tap Get Pro for the 2-week pass or Subscribe for a monthly or yearly plan, then complete the App Store purchase. All plans unlock the same Pro features for the duration of your access. The 2-week pass is a one-time purchase and does not renew automatically; monthly and yearly subscriptions auto-renew until cancelled."
+      },
+      {
+        question: "Does Pro renew automatically?",
+        answer:
+          "The 2-week pass gives you 14 days of Pro without auto-renewal. Monthly and yearly subscriptions renew automatically unless cancelled through your App Store subscription settings. You can open those settings from Profile → Subscription → Manage Subscription. All three options include the same Pro features while your access is active."
       },
       {
         question: "How many expenses can I add per day on the free plan?",
@@ -479,13 +493,13 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "What does the Stats tab show?",
         answer:
-          "The Stats tab in a group shows your net balance (To Collect minus To Pay), total group spendings, and the CSV export button — all filtered by your selected date range. Use the date pills at the top to switch between 1D, 1W, 1M, 3M, 1Y, and All time."
+          "A group's Stats tab has Group and You views for the selected date range. Group shows total group spending, a category breakdown, expense count, average expense, and the expense list. You focuses on your own share and can show a combined total with a linked Individual entry. Pro also unlocks settlement export as CSV. An Individual entry's Stats tab shows your private spending by category, pending expenses, expense count, and average expense."
       },
       {
         question:
           "I already paid — how do I restore my Pro access on a new device?",
         answer:
-          "Go to Profile → Subscription and tap Restore Purchase. Your active subscription will be restored automatically through the App Store at no additional charge."
+          "Sign in to the same Ambagan account, go to Profile → Subscription, and tap Restore in the top-right corner to restore an active monthly or yearly App Store subscription. A 2-week pass is a one-time purchase tied to your Ambagan account's access period; it is not a recurring subscription."
       }
     ]
   },
@@ -495,7 +509,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "Which features work offline and which need a connection?",
         answer:
-          "You can keep using most of Ambagan without a connection, and actions you take offline sync automatically when you're back online. Works offline: viewing your groups, Individual entries, expenses, settlements, friends, and notifications from your last synced data; adding, editing, and deleting expenses (attached receipts sync on reconnect); adding, editing, and deleting individual expenses in an Individual entry; marking a individual expense as paid or pending; saving an expense as a draft; creating a group and editing its name or category; creating an Individual entry and editing its name, category, or linked group; archiving or restoring a group or an Individual entry; adding or removing members if you're the owner or an admin; adding or removing favorites; changing the app appearance and settlement view; toggling the daily reminder; and sharing an invite link or downloading a group QR code. Needs a connection: settling up (request, approve, reject, or mark as settled); finalizing a draft; setting up or managing a recurring expense (pause, resume, or delete a series); joining a group or scanning a QR to join; scanning a receipt; resetting a group's invite link; making a member an admin or removing their admin; leaving a group or permanently deleting a group or Individual entry; opening Spending Analytics; uploading a profile, group, or Individual entry photo; editing your profile or account and changing your password; changing your notification preferences; and signing out. If you try something that needs a connection while offline, Ambagan shows a short message instead of leaving you stuck.",
+          "You can keep using most of Ambagan without a connection, and actions you take offline sync automatically when you're back online. Works offline: viewing your groups, Individual entries, expenses, settlements, friends, and notifications from your last synced data; adding, editing, and deleting expenses (attached receipts sync on reconnect); adding, editing, and deleting individual expenses in an Individual entry; marking an individual expense as paid or pending; saving an expense as a draft; creating a group and editing its name or category; creating an Individual entry and editing its name, category, or linked group; archiving or restoring a group or an Individual entry; adding or removing members if you're the owner or an admin; adding or removing favorites; changing the app appearance and settlement view; toggling the daily reminder; and sharing an invite link or downloading a group QR code. Needs a connection: settling up (request, approve, reject, or mark as settled); finalizing a draft; setting up or managing a recurring expense (pause, resume, or delete a series); joining a group or scanning a QR to join; scanning a receipt; resetting a group's invite link; making a member an admin or removing their admin; leaving a group or permanently deleting a group or Individual entry; opening Spending Analytics; uploading a profile, group, or Individual entry photo; editing your profile or account and changing your password; changing your notification preferences; and signing out. If you try something that needs a connection while offline, Ambagan shows a short message instead of leaving you stuck.",
         content: <OfflineFeatureList />
       },
       {
@@ -558,9 +572,9 @@ const FAQ_SECTIONS: FAQSection[] = [
           "Go to Profile → Account Settings → Delete My Account. If you have unsettled expenses, they will be listed and you will need to resolve them before deletion is allowed. Once deleted, your account is permanently removed — your name will appear as 'Deleted User' on any shared expense history so other members retain their records."
       },
       {
-        question: "What do 'You receive' and 'You pay' mean in settlements?",
+        question: "What do the arrow and amount mean in a settlement?",
         answer:
-          "'You receive' appears in the Mark as Settled sheet and shows the amount the other person is paying you. 'You pay' appears in the Request Settlement sheet and shows how much you owe. These labels reflect your perspective so it is always clear which direction the money moves."
+          "The arrow points from the person repaying the expense to the person receiving that payment. The label says who pays whom, or who paid whom for a settled payment, and the amount stays in the settlement's original currency. Expand Breakdown of computation to see how the amount was calculated. Use View Group to open the group it belongs to."
       }
     ]
   }
@@ -573,7 +587,7 @@ const OFFLINE_CAPABLE: string[] = [
   "View groups, Individual entries, expenses, settlements, friends, and notifications (last synced data)",
   "Add, edit, and delete expenses — attached receipts sync on reconnect",
   "Add, edit, and delete individual expenses in an Individual entry",
-  "Mark a individual expense as paid or pending",
+  "Mark an individual expense as paid or pending",
   "Save an expense as a draft",
   "Create a group and edit its name or category",
   "Create an Individual entry and edit its name, category, or linked group",
@@ -598,7 +612,7 @@ const OFFLINE_BLOCKED: string[] = [
   "Open Spending Analytics",
   "Upload a profile photo, group cover photo, or Individual entry cover photo",
   "Edit your profile or account, or change your password",
-  "Change your default currency or notification preferences",
+  "Change notification preferences",
   "Sign out"
 ];
 
@@ -636,8 +650,8 @@ function OfflineFeatureList() {
     <VStack className="gap-y-4 pt-1">
       <Text className="text-base text-secondary-950">
         You can keep using most of Ambagan without a connection. Actions you
-        take offline are saved and sync automatically when you're back online.
-        Here's the full breakdown:
+        take offline are saved and sync automatically when you&apos;re back online.
+        Here&apos;s the full breakdown:
       </Text>
 
       <VStack className="gap-y-2">

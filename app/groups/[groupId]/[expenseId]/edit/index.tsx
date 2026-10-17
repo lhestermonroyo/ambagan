@@ -40,6 +40,7 @@ import {
   getPercentagePerPerson
 } from "@/features/expense/utils/split.util";
 import useAppToast from "@/hooks/use-app-toast";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
@@ -85,6 +86,7 @@ export default function EditExpenseScreen() {
   const isPro = currentUser?.plan === "pro";
 
   const toast = useAppToast();
+  const showFeedback = useActionFeedback();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   const [loading, setLoading] = useState(true);
@@ -661,13 +663,15 @@ export default function EditExpenseScreen() {
         settlementRefreshToken: prev.settlementRefreshToken + 1
       }));
 
-      toast({
-        title: isDraft ? "Draft Finalized" : "Expense Updated",
-        description: isDraft
-          ? "Your expense has been split and shared with the group."
-          : "Your changes have been saved.",
-        type: "success"
-      });
+      if (isDraft) {
+        await showFeedback("draft-finalized", { afterNavigation: true });
+      } else {
+        toast({
+          title: "Expense Updated",
+          description: "Your changes have been saved.",
+          type: "success"
+        });
+      }
       router.back();
     } catch (error: any) {
       console.log("Error saving expense:", error);

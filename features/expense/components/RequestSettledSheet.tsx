@@ -8,6 +8,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadImage from "@/components/UploadImage";
 import useAppToast from "@/hooks/use-app-toast";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import { Payment } from "@/types/expenses";
@@ -37,6 +38,7 @@ export default function RequestSettledSheet({
   });
 
   const toast = useAppToast();
+  const showFeedback = useActionFeedback();
   const ensureOnline = useEnsureOnline();
 
   if (!payment) {
@@ -51,6 +53,7 @@ export default function RequestSettledSheet({
     )
       return;
     setSubmitting(true);
+    let completed = false;
 
     try {
       const response = await services.expense.createSettledRequest({
@@ -64,11 +67,7 @@ export default function RequestSettledSheet({
       }
 
       onRefetch();
-      toast({
-        title: "Request Sent",
-        description: "Your request to mark this payment as paid has been sent.",
-        type: "success",
-      });
+      completed = true;
     } catch (error) {
       console.error("Error creating paid request:", error);
       toast({
@@ -80,6 +79,7 @@ export default function RequestSettledSheet({
     } finally {
       setSubmitting(false);
       onClose();
+      if (completed) void showFeedback("settlement-requested");
     }
   };
 

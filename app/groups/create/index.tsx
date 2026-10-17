@@ -27,6 +27,7 @@ import GroupMemberRow from "@/features/group/components/GroupMemberRow";
 import MemberActionsSheet from "@/features/group/components/MemberActionsSheet";
 import MembersSelectionSheet from "@/features/group/components/MembersSelectionSheet";
 import useAppToast from "@/hooks/use-app-toast";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
@@ -102,6 +103,7 @@ export default function CreateGroupScreen() {
 
   const router = useRouter();
   const toast = useAppToast();
+  const showFeedback = useActionFeedback();
 
   const switchToIndividual = () => {
     if (submitting) return;
@@ -191,7 +193,11 @@ export default function CreateGroupScreen() {
           router.replace("/groups");
         } else {
           const response = await services.book.saveBook(args);
-          toast({ title: "Individual created", description: "Your expenses are private to you.", type: "success" });
+          const shown = await showFeedback("individual-created", {
+            once: true,
+            afterNavigation: true
+          });
+          if (!shown) toast({ title: "Individual created", description: "Your expenses are private to you.", type: "success" });
           router.replace(`/books/${response.data.bookId}`);
         }
       } catch (error) {
@@ -291,11 +297,7 @@ export default function CreateGroupScreen() {
       // Placeholder ghosts are dropped inside addRecentUsers, so recent stays clean.
       await addRecentUsers(resolvedMembers, user.details!.id);
 
-      toast({
-        title: "Group Created",
-        description: "Group created successfully.",
-        type: "success"
-      });
+      await showFeedback("group-created", { afterNavigation: true });
       router.replace(`/groups/${response.data.groupId}`);
     } catch (error) {
       console.error("Error creating group:", error);

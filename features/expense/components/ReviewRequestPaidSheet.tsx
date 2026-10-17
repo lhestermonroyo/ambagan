@@ -10,6 +10,7 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import states from "@/states";
@@ -51,6 +52,7 @@ export default function ReviewRequestPaidSheet({
 
   const { details: userDetails } = states.user();
   const toast = useAppToast();
+  const showFeedback = useActionFeedback();
   const ensureOnline = useEnsureOnline();
   const colorScheme = useColorScheme() ?? "light";
 
@@ -78,10 +80,7 @@ export default function ReviewRequestPaidSheet({
 
       onRefetch();
       onClose();
-      toast({
-        description: "The payment request has been settled.",
-        type: "success",
-      });
+      await showFeedback("settlement-completed");
     } catch (error) {
       console.error("Error marking as paid:", error);
       toast({

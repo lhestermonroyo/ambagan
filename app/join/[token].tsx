@@ -1,3 +1,4 @@
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import FormButton from "@/components/FormButton";
 import { Box } from "@/components/ui/box";
 import { Spinner } from "@/components/ui/spinner";
@@ -26,6 +27,7 @@ export default function JoinGroupScreen() {
 
   const { token } = useLocalSearchParams<{ token: string }>();
   const router = useRouter();
+  const showFeedback = useActionFeedback();
   const colorScheme = useColorScheme() ?? "light";
   const [status, setStatus] = useState<"joining" | "error">("joining");
   const [errorMsg, setErrorMsg] = useState("");
@@ -86,6 +88,7 @@ export default function JoinGroupScreen() {
         }
       }
 
+      await showFeedback("group-joined", { afterNavigation: true });
       router.replace(`/groups/${groupId}` as any);
     } catch (error: any) {
       setStatus("error");

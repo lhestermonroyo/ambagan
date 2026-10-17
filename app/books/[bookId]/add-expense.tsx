@@ -46,6 +46,7 @@ import {
   scanDraftFor
 } from "@/features/expense/utils/scanDraft";
 import useAppToast from "@/hooks/use-app-toast";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
@@ -95,6 +96,7 @@ export default function AddPersonalExpenseScreen() {
 
   const router = useRouter();
   const toast = useAppToast();
+  const showFeedback = useActionFeedback();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   // Seed from a Scan Receipt hand-off (ADD mode only) — but only the receipt
@@ -304,7 +306,8 @@ export default function AddPersonalExpenseScreen() {
       router.dismissAll();
       return;
     }
-    router.back();
+    if (router.canGoBack()) router.back();
+    else router.replace(selectedBook ? `/books/${selectedBook.id}` : "/groups");
   };
 
   const handleToggleOptions = () => setOptionsExpanded((prev) => !prev);
@@ -372,11 +375,7 @@ export default function AddPersonalExpenseScreen() {
         currency,
         recurrence
       });
-      toast({
-        title: "Recurring Expense Set",
-        description: `${recurrenceSummary(recurrence)} — we'll post it for you.`,
-        type: "success"
-      });
+      await showFeedback("recurring-created", { afterNavigation: true });
       handleSaved();
     } catch (error) {
       console.error("Failed to save personal recurring expense:", error);
@@ -525,11 +524,17 @@ export default function AddPersonalExpenseScreen() {
           proof_of_payment: proofOfPayment,
           status
         });
-        toast({
-          title: "Expense added",
-          description: "Your expense has been recorded.",
-          type: "success"
+        const shown = await showFeedback("expense-added", {
+          once: true,
+          afterNavigation: true
         });
+        if (!shown) {
+          toast({
+            title: "Expense added",
+            description: "Your expense has been recorded.",
+            type: "success"
+          });
+        }
       }
       handleSaved();
     } catch (error) {

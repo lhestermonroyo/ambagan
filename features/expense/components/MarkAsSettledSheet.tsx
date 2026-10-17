@@ -8,6 +8,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import UploadImage from "@/components/UploadImage";
 import useAppToast from "@/hooks/use-app-toast";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import { Payment } from "@/types/expenses";
@@ -37,6 +38,7 @@ export default function MarkAsSettledSheet({
   });
 
   const toast = useAppToast();
+  const showFeedback = useActionFeedback();
   const ensureOnline = useEnsureOnline();
 
   if (!payment) {
@@ -49,6 +51,7 @@ export default function MarkAsSettledSheet({
     )
       return;
     setSubmitting(true);
+    let completed = false;
 
     try {
       const response = await services.expense.markAsSettled({
@@ -63,11 +66,7 @@ export default function MarkAsSettledSheet({
       }
 
       onRefetch();
-      toast({
-        title: "Marked as Settled",
-        description: "This payment has been successfully marked as settled.",
-        type: "success",
-      });
+      completed = true;
     } catch (error) {
       console.error("Error marking as settled:", error);
       toast({
@@ -79,6 +78,7 @@ export default function MarkAsSettledSheet({
     } finally {
       setSubmitting(false);
       onClose();
+      if (completed) void showFeedback("settlement-completed");
     }
   };
 

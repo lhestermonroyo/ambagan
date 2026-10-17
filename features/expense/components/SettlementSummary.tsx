@@ -4,21 +4,28 @@ import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import states from "@/states";
 import { Payment, PaymentStatus } from "@/types/expenses";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { ArrowRight } from "lucide-react-native";
 import { useColorScheme } from "react-native";
+import { amountTextSize } from "../utils/amountTextSize";
 import { formatAmount } from "../utils/formatAmount";
 import SettlementBreakdown from "./SettlementBreakdown";
 
 /** The member repays the original expense payer, so the arrow always follows
  *  member → payer regardless of which participant opened the sheet. */
 export default function SettlementSummary({ payment }: { payment: Payment }) {
-  if (!payment) return null;
+  return payment ? <SettlementSummaryContent payment={payment} /> : null;
+}
 
+// Mount the hook-driven content only when a payment exists, so an empty
+// summary never changes the number or order of hooks between renders.
+function SettlementSummaryContent({ payment }: { payment: Payment }) {
   const { details: userDetails } = states.user();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
+
   const senderIsYou = payment.member.id === userDetails?.id;
   const recipientIsYou = payment.payer.id === userDetails?.id;
   const sender = senderIsYou ? "You" : payment.member.first_name;
@@ -35,6 +42,8 @@ export default function SettlementSummary({ payment }: { payment: Payment }) {
       : senderIsYou
         ? "pay"
         : "pays";
+  const amountText = formatAmount(payment.amount || 0, payment.currency);
+  const amountSize = amountTextSize("text-4xl", amountText, 13);
 
   return (
     <VStack className="rounded-2xl bg-secondary-100 overflow-hidden">
@@ -86,12 +95,10 @@ export default function SettlementSummary({ payment }: { payment: Payment }) {
           </Text>
           <Text
             bold
-            className="text-4xl text-center w-full"
+            className={cn(amountSize, "text-center w-full")}
             numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.6}
           >
-            {formatAmount(payment.amount || 0, payment.currency)}
+            {amountText}
           </Text>
           {!!payment.expense_description && (
             <Text className="text-base text-center">

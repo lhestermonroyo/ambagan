@@ -25,6 +25,7 @@ import CategorySheet, {
   groupCategoryMeta
 } from "@/features/expense/components/CategorySheet";
 import useAppToast from "@/hooks/use-app-toast";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
@@ -87,6 +88,7 @@ function EditIndividualScreen() {
 
   const router = useRouter();
   const toast = useAppToast();
+  const showFeedback = useActionFeedback();
 
   // Edit mode — hydrate the form from the existing book.
   useEffect(() => {
@@ -250,11 +252,17 @@ function EditIndividualScreen() {
           avatar: values.avatar,
           user_id: userDetails.id
         });
-        toast({
-          title: "Individual created",
-          description: "Individual created successfully.",
-          type: "success"
+        const shown = await showFeedback("individual-created", {
+          once: true,
+          afterNavigation: true
         });
+        if (!shown) {
+          toast({
+            title: "Individual created",
+            description: "Individual created successfully.",
+            type: "success"
+          });
+        }
         router.replace(`/books/${response.data.bookId}`);
       }
     } catch (error) {

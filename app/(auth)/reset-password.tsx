@@ -3,6 +3,7 @@ import FormInput from "@/components/FormInput";
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icon";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import AuthLayout from "@/layouts/AuthLayout";
 import services from "@/services";
 import { useRouter } from "expo-router";
@@ -21,6 +22,7 @@ export default function ResetPasswordScreen() {
 
   const router = useRouter();
   const toast = useAppToast();
+  const showFeedback = useActionFeedback();
 
   const handleSubmit = async () => {
     const next: typeof errors = { password: "", confirm: "" };
@@ -45,11 +47,7 @@ export default function ResetPasswordScreen() {
     setSubmitting(true);
     try {
       await services.auth.setNewPassword(values.password);
-      toast({
-        title: "Password Updated",
-        description: "Your password has been changed. Please log in.",
-        type: "success"
-      });
+      await showFeedback("password-reset", { afterNavigation: true });
       router.replace("/(auth)/login");
     } catch {
       toast({

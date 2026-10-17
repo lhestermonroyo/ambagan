@@ -23,7 +23,7 @@ export const PRO_FEATURES: {
     icon: "event-repeat",
     title: "Recurring expenses",
     description:
-      "Auto-post rent, subscriptions, and regular bills on a schedule — in groups and books."
+      "Schedule regular bills in shared groups and private Individual entries."
   },
   {
     icon: "pending-actions",
@@ -34,13 +34,13 @@ export const PRO_FEATURES: {
     icon: "currency-exchange",
     title: "Multi-currency",
     description:
-      "Set the currency per group, per book, and per expense — PHP, JPY, SGD, and more."
+      "Choose currencies for groups, Individual entries, and expenses, with a separate default for new expenses."
   },
   {
     icon: "trending-up",
     title: "Spending analytics",
     description:
-      "See where your money goes — across groups, books, months, and friends."
+      "Explore spending across Groups and Individual entries, with trends, categories, and friends."
   },
   {
     icon: "download",

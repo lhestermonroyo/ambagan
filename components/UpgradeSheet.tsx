@@ -58,7 +58,7 @@ export default function UpgradeSheet({
             </HStack>
             <Text className="text-sm text-secondary-950">
               {description ??
-                "From ₱99 for 2 weeks • Monthly & yearly • Cancel anytime"}
+                "2-week pass from ₱99 • Monthly and yearly subscriptions available"}
             </Text>
           </VStack>
 
