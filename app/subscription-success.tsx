@@ -1,4 +1,5 @@
 import SuccessFeedback from "@/components/SuccessFeedback";
+import { getFeedbackIllustration } from "@/constants/feedbackIllustrations";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 export default function SubscriptionSuccessScreen() {
@@ -25,6 +26,7 @@ export default function SubscriptionSuccessScreen() {
     <SuccessFeedback
       title={isRestored ? "Your Pro access is restored" : "Welcome to Pro!"}
       description={description}
+      illustration={getFeedbackIllustration(isRestored ? "pro-restored" : "pro-activated")}
       onClose={close}
     />
   );

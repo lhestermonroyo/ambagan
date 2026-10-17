@@ -7,16 +7,12 @@ import { VStack } from "@/components/ui/vstack";
 import { useCallback, useRef, useState } from "react";
 import {
   Animated,
+  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollView,
-  StyleSheet,
-  useColorScheme,
   useWindowDimensions
 } from "react-native";
-import { SvgXml } from "react-native-svg";
-import ArtBlob from "../ArtBlob";
-import { fitArt } from "../art";
 import { TOUR_SLIDES } from "./slides";
 
 /** Horizontal breathing room either side of a slide's art and copy. */
@@ -29,12 +25,6 @@ export default function FeatureTourCarousel({
   onDone: () => void;
 }) {
   const { width: pageWidth, height: windowHeight } = useWindowDimensions();
-  const isDark = (useColorScheme() ?? "light") === "dark";
-  // Ink, not brand purple. Drawing the art in the same hue as the shape behind
-  // it left the two at nearly the same luminance, so the lines sank into their
-  // own backdrop. Colour belongs to the blob; the subject stays high-contrast.
-  // Values are the theme's typography-900 for each scheme.
-  const artColor = isDark ? "#F5F5F5" : "#262627";
 
   // State rather than a ref, because the dots interpolate this during render
   // and refs may not be read there. The lazy initialiser keeps the one value
@@ -73,9 +63,8 @@ export default function FeatureTourCarousel({
   // short screen, and floored so it doesn't vanish on a tall one.
   const artBoxWidth = pageWidth - SLIDE_PADDING * 2;
   const artBoxHeight = Math.max(140, Math.min(240, windowHeight * 0.28));
-  // Bigger than the box it sits in so the shape runs past the drawing rather
-  // than framing it, but never wider than the slide's padding allows.
-  const blobSize = Math.min(artBoxWidth, artBoxHeight * 1.2);
+  const artSize = Math.min(artBoxWidth, artBoxHeight);
+  const circleSize = artSize * 0.8;
 
   return (
     <VStack className="flex-1 bg-background-0">
@@ -111,12 +100,7 @@ export default function FeatureTourCarousel({
         onMomentumScrollEnd={handleScrollEnd}
         className="flex-1"
       >
-        {TOUR_SLIDES.map((slide, i) => {
-          const { width, height } = fitArt(
-            slide.art,
-            artBoxWidth,
-            artBoxHeight
-          );
+        {TOUR_SLIDES.map((slide) => {
           return (
             <VStack
               key={slide.key}
@@ -128,29 +112,28 @@ export default function FeatureTourCarousel({
                 shapes, and letting each one set the height makes the text
                 jump as you swipe. */}
               <Box
-                style={{ height: artBoxHeight }}
-                className="items-center justify-center"
+                style={{ width: artSize, height: artBoxHeight }}
+                className="relative items-center justify-center"
               >
                 {/* Behind the drawing, and deaf to touches — the pager needs
                   every horizontal drag it can get. */}
                 <Box
-                  style={StyleSheet.absoluteFill}
-                  className="items-center justify-center"
+                  style={{
+                    width: circleSize,
+                    height: circleSize,
+                    borderRadius: circleSize / 2
+                  }}
+                  className="absolute bg-primary-0 dark:bg-primary-50"
                   pointerEvents="none"
-                >
-                  <ArtBlob
-                    size={blobSize}
-                    index={i}
-                    accent={slide.blob}
-                    isDark={isDark}
-                  />
-                </Box>
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
 
-                <SvgXml
-                  xml={slide.art.xml}
-                  width={width}
-                  height={height}
-                  color={artColor}
+                <Image
+                  source={slide.art}
+                  style={{ width: artSize, height: artSize }}
+                  resizeMode="contain"
+                  accessible={false}
                 />
               </Box>
 

@@ -3,25 +3,24 @@ import { Box } from "@/components/ui/box";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import ArtBlob from "@/features/user/components/ArtBlob";
-import { BLOB_ACCENTS } from "@/features/user/components/art";
-import { getPrimaryHex } from "@/utils/getColorHex";
-import { ImageIcon } from "lucide-react-native";
-import { useColorScheme, useWindowDimensions } from "react-native";
+import { Image, useWindowDimensions } from "react-native";
+import type { ImageSourcePropType } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SuccessFeedback({
   title,
   description,
+  illustration,
   onClose
 }: {
   title: string;
   description: string;
+  illustration: ImageSourcePropType;
   onClose: () => void;
 }) {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const { width, height } = useWindowDimensions();
   const artSize = Math.max(140, Math.min(240, height * 0.28, width - 48));
+  const circleSize = artSize * 0.8;
 
   return (
     <SafeAreaView className="flex-1 bg-background-0" edges={["top", "bottom"]}>
@@ -37,23 +36,23 @@ export default function SuccessFeedback({
       >
         <VStack className="items-center gap-y-8">
           <Box
+            className="relative items-center justify-center"
             style={{ width: artSize, height: artSize }}
-            className="items-center justify-center"
-            accessible
-            accessibilityLabel="Illustration placeholder"
           >
-            <Box className="absolute">
-              <ArtBlob
-                size={artSize}
-                index={0}
-                accent={BLOB_ACCENTS.violet}
-                isDark={scheme === "dark"}
-              />
-            </Box>
-            <ImageIcon
-              size={64}
-              strokeWidth={1.5}
-              color={getPrimaryHex("text-primary-600", scheme)}
+            <Box
+              className="absolute bg-primary-0 dark:bg-primary-50"
+              style={{
+                width: circleSize,
+                height: circleSize,
+                borderRadius: circleSize / 2
+              }}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            />
+            <Image
+              source={illustration}
+              style={{ width: artSize, height: artSize }}
+              resizeMode="contain"
               accessible={false}
             />
           </Box>

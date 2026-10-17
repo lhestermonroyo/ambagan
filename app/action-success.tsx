@@ -1,5 +1,6 @@
 import SuccessFeedback from "@/components/SuccessFeedback";
 import { getActionFeedback } from "@/constants/actionFeedback";
+import { getFeedbackIllustration } from "@/constants/feedbackIllustrations";
 import { useActionFeedbackState } from "@/features/user/states/actionFeedback.state";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
@@ -22,5 +23,11 @@ export default function ActionSuccessScreen() {
     else router.replace("/(tabs)/(home)");
   };
 
-  return <SuccessFeedback {...getActionFeedback(kind)} onClose={close} />;
+  return (
+    <SuccessFeedback
+      {...getActionFeedback(kind)}
+      illustration={getFeedbackIllustration(kind)}
+      onClose={close}
+    />
+  );
 }
