@@ -23,7 +23,7 @@ import states from "@/states";
 import { FriendSummary } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
-import { getPrimaryHex } from "@/utils/getColorHex";
+import { getOnOutlineHex } from "@/utils/getColorHex";
 import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -272,7 +272,7 @@ export default function FriendsScreen() {
                   iconEnd={
                     <ChevronDown
                       size={16}
-                      color={getPrimaryHex("text-primary-500", colorScheme)}
+                      color={getOnOutlineHex(colorScheme)}
                     />
                   }
                   onPress={() => setBalanceFilterSheetOpen(true)}

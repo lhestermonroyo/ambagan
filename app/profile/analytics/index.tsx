@@ -26,7 +26,7 @@ import DateRangeSheet, {
 } from "@/features/group/components/DateRangeSheet";
 import InnerLayout from "@/layouts/InnerLayout";
 import { EmptyType } from "@/types/general";
-import { getPrimaryHex } from "@/utils/getColorHex";
+import { getOnOutlineHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import { useMemo, useState } from "react";
@@ -90,7 +90,7 @@ export default function AnalyticsScreen() {
               iconEnd={
                 <ChevronDown
                   size={16}
-                  color={getPrimaryHex("text-primary-500", colorScheme)}
+                  color={getOnOutlineHex(colorScheme)}
                 />
               }
               onPress={() => setDateRangeSheetOpen(true)}

@@ -11,7 +11,7 @@ import LinkExpirationSheet from "@/features/group/components/LinkExpirationSheet
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import states from "@/states";
-import { getErrorHex, getPrimaryHex, getOnSolidHex } from "@/utils/getColorHex";
+import { getErrorHex, getOnSolidHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { format } from "date-fns";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -379,9 +379,12 @@ export default function ShareGroupScreen() {
                 <HStack className="mt-4 gap-x-2 items-center">
                   <AlertCircle
                     size={16}
-                    color={getErrorHex("text-error-500", colorScheme)}
+                    color={getErrorHex(
+                      colorScheme === "dark" ? "text-error-800" : "text-error-500",
+                      colorScheme
+                    )}
                   />
-                  <Text className="text-error-500 text-sm">
+                  <Text className="text-error-500 text-sm dark:text-error-800">
                     This link has expired — reset it to invite members.
                   </Text>
                 </HStack>
@@ -410,7 +413,7 @@ export default function ShareGroupScreen() {
                 icon={
                   <Download
                     size={18}
-                    color={getPrimaryHex("text-primary-500", colorScheme)}
+                    color={getOnOutlineHex(colorScheme)}
                   />
                 }
               />

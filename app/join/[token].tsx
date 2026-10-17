@@ -112,7 +112,10 @@ export default function JoinGroupScreen() {
             <Box className="h-16 w-16 items-center justify-center rounded-full bg-error-50">
               <AlertCircle
                 size={32}
-                color={getErrorHex("text-error-500", colorScheme)}
+                color={getErrorHex(
+                  colorScheme === "dark" ? "text-error-800" : "text-error-500",
+                  colorScheme
+                )}
               />
             </Box>
             <VStack className="gap-y-1">

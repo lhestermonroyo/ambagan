@@ -57,7 +57,7 @@ export default function ForgotPasswordScreen() {
         subtitle={`We sent a password reset link to ${email.trim()}`}
         footer={
           <FormButton
-            icon={<Icon as="chevron-left" className="text-primary-400" />}
+            icon={<Icon as="chevron-left" className={colorScheme === "dark" ? "text-primary-600" : "text-primary-400"} />}
             variant="outline"
             text="Back to Login"
             onPress={() => router.replace("/(auth)/login")}
@@ -94,7 +94,7 @@ export default function ForgotPasswordScreen() {
       footer={
         <FormButton
           icon={
-            <Icon as="chevron-left" className="text-primary-400 -ml-2 -mr-1" />
+            <Icon as="chevron-left" className={`${colorScheme === "dark" ? "text-primary-600" : "text-primary-400"} -ml-2 -mr-1`} />
           }
           variant="outline"
           text="Back to Login"

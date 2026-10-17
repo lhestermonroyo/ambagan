@@ -277,7 +277,7 @@ export default function BookRecurringDetailsScreen() {
                       <BadgeText
                         className={`font-bold text-xs uppercase ${
                           item.is_active
-                            ? "text-success-600"
+                            ? "text-success-600 dark:text-success-800"
                             : "text-typography-700"
                         }`}
                       >

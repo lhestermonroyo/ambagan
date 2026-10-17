@@ -3,7 +3,7 @@ import { Badge, BadgeText } from "@/components/ui/badge";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import states from "@/states";
+import useUserStore from "@/features/user/states/user.state";
 import { GroupRole, Member } from "@/types/groups";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import MemberActionsButton from "./MemberActionsButton";
@@ -33,12 +33,12 @@ export default function GroupMemberRow({
   onSetRole: (member: Member, role: GroupRole) => void;
   onRemove?: (member: Member) => void;
 }) {
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
 
   const isYou = item.id === userDetails?.id;
   const isOwnerRow = item.id === ownerId;
   const isAdminRow = isOwnerRow || item.role === GroupRole.ADMIN;
-  const roleLabel = isOwnerRow ? "Owner" : "Admin";
+  const roleLabel = isOwnerRow ? "OWNER" : "ADMIN";
   const subtitle = getUserSubtitle(item);
 
   return (
@@ -69,8 +69,9 @@ export default function GroupMemberRow({
           }`}
         >
           <BadgeText
-            className={`text-xs normal-case ${
-              isOwnerRow ? "text-primary-600" : "text-secondary-950"
+            numberOfLines={1}
+            className={`text-xs uppercase shrink-0 ${
+              isOwnerRow ? "text-primary-600 dark:text-primary-800" : "text-secondary-950 dark:text-typography-700"
             }`}
           >
             {roleLabel}

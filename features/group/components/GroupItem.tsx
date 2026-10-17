@@ -75,14 +75,17 @@ export default function GroupItem({
             </Text>
           </HStack>
         </VStack>
-        <HStack className="gap-x-2 items-center">
+        <HStack className="gap-x-2 items-center shrink-0">
           {individual ? (
             <Badge
               size="sm"
               className="rounded-full bg-primary-100 shrink-0"
             >
-              <BadgeText className="text-xs text-primary-600 normal-case">
-                Individual
+              <BadgeText
+                numberOfLines={1}
+                className="text-xs text-primary-600 uppercase shrink-0 dark:text-primary-800"
+              >
+                INDIVIDUAL
               </BadgeText>
             </Badge>
           ) : (

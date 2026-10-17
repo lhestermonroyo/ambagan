@@ -405,9 +405,12 @@ export default function CreateGroupScreen() {
                   <HStack className="gap-x-2 items-start">
                     <Info
                       size={20}
-                      color={getPrimaryHex("text-primary-500", colorScheme)}
+                      color={getPrimaryHex(
+                        colorScheme === "dark" ? "text-primary-800" : "text-primary-500",
+                        colorScheme
+                      )}
                     />
-                    <Text className="flex-1 text-primary-500">
+                    <Text className="flex-1 text-primary-500 dark:text-primary-800">
                       {individual
                         ? "Track your own expenses. Only you can access this entry."
                         : "Split expenses and settle up with other people."}

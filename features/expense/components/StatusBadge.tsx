@@ -1,4 +1,5 @@
 import AppBadge from "@/components/AppBadge";
+import { Icon } from "@/components/ui/icon";
 import {
   CheckCheck,
   Clock,
@@ -18,28 +19,28 @@ export default function StatusBadge({
   let action: "success" | "info" | "muted" | "warning" = "warning";
   let text;
   let icon;
-  let iconSize = iconOnly ? 16 : size === "sm" || size === "md" ? 12 : 16;
+  const iconSize = iconOnly || size === "lg" ? "sm" : "2xs";
 
   if (status === "settled") {
     action = "success";
     text = "Settled";
-    icon = <CheckCheck size={iconSize} color="#2A7948" />;
+    icon = <Icon as={CheckCheck} size={iconSize} className="text-success-600 dark:text-success-800" />;
   } else if (status === "requested") {
     action = "info";
     text = "Requested";
-    icon = <FileCheckCorner size={iconSize} color="#0B8DCD" />;
+    icon = <Icon as={FileCheckCorner} size={iconSize} className="text-info-600 dark:text-info-800" />;
   } else if (status === "pending") {
     action = "warning";
     text = "Pending";
-    icon = <Clock size={iconSize} color="#D76C1F" />;
+    icon = <Icon as={Clock} size={iconSize} className="text-warning-600 dark:text-warning-800" />;
   } else if (status === "ongoing") {
     action = "warning";
     text = "Ongoing";
-    icon = <RefreshCcw size={iconSize} color="#D76C1F" />;
+    icon = <Icon as={RefreshCcw} size={iconSize} className="text-warning-600 dark:text-warning-800" />;
   } else if (status === "completed") {
     action = "success";
     text = "Completed";
-    icon = <CheckCheck size={iconSize} color="#2A7948" />;
+    icon = <Icon as={CheckCheck} size={iconSize} className="text-success-600 dark:text-success-800" />;
   }
 
   if (!text) return null;

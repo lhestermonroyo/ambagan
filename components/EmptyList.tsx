@@ -1,7 +1,7 @@
 import { EmptyType } from "@/types/general";
 import useUserStore from "@/features/user/states/user.state";
 import { emptyTypes } from "@/utils/constants";
-import { getOnSolidHex, getPrimaryHex } from "@/utils/getColorHex";
+import { getOnOutlineHex, getOnSolidHex } from "@/utils/getColorHex";
 import { LucideIcon } from "lucide-react-native";
 import { Image, useColorScheme } from "react-native";
 import { Text } from "./ui/text";
@@ -173,7 +173,7 @@ const EmptyList = ({
                     size={18}
                     color={variant === "solid"
                       ? getOnSolidHex(colorScheme)
-                      : getPrimaryHex("text-primary-500", colorScheme)}
+                      : getOnOutlineHex(colorScheme)}
                   />
                 ) : undefined}
                 onPress={action.onPress}

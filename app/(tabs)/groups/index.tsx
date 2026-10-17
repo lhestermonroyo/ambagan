@@ -28,7 +28,7 @@ import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { GroupMode, type Group, type Member } from "@/types/groups";
-import { getPrimaryHex } from "@/utils/getColorHex";
+import { getPrimaryHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   BookPlus,
@@ -396,7 +396,7 @@ export default function GroupsScreen() {
                 size="sm"
                 variant="outline"
                 text={groupFilterLabel(activeFilter)}
-                iconEnd={<ChevronDown size={16} color={getPrimaryHex("text-primary-500", colorScheme)} />}
+                iconEnd={<ChevronDown size={16} color={getOnOutlineHex(colorScheme)} />}
                 onPress={() => setFilterSheetOpen(true)}
               />
             </HStack>

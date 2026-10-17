@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/radio";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getSecondaryHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { format } from "date-fns";
 import { CalendarDays, ChevronLeft, CircleIcon } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -239,7 +239,7 @@ export default function DateRangeSheet({
                 icon={
                   <CalendarDays
                     size={18}
-                    color={getPrimaryHex("text-primary-500", colorScheme)}
+                    color={getOnOutlineHex(colorScheme)}
                   />
                 }
                 onPress={() => setStep("custom")}

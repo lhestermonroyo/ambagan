@@ -59,7 +59,12 @@ import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { formatLastUpdate, getDateGroupTitle } from "@/utils/formatDate";
 import { useConvertedTotal } from "@/utils/fx";
-import { getPrimaryHex, getSecondaryHex, getOnSolidHex } from "@/utils/getColorHex";
+import {
+  getPrimaryHex,
+  getSecondaryHex,
+  getOnSolidHex,
+  getOnOutlineHex
+} from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { format, parseISO } from "date-fns";
 import {
@@ -961,10 +966,7 @@ export default function BookDetailScreen() {
                         iconEnd={
                           <ChevronDown
                             size={16}
-                            color={getPrimaryHex(
-                              "text-primary-500",
-                              colorScheme
-                            )}
+                            color={getOnOutlineHex(colorScheme)}
                           />
                         }
                         onPress={() => {
@@ -1041,7 +1043,7 @@ export default function BookDetailScreen() {
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
                           <Text
-                            className="text-sm text-primary-600 max-w-[160px]"
+                            className="text-sm text-primary-600 max-w-[160px] dark:text-primary-800"
                             numberOfLines={1}
                           >
                             &ldquo;{expenseSearch}&rdquo;
@@ -1049,7 +1051,7 @@ export default function BookDetailScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1060,13 +1062,13 @@ export default function BookDetailScreen() {
                           onPress={() => setCategoryFilter(ALL_CATEGORIES)}
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
-                          <Text className="text-sm text-primary-600">
+                          <Text className="text-sm text-primary-600 dark:text-primary-800">
                             {categoryFilterLabel(categoryFilter)}
                           </Text>
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1080,7 +1082,7 @@ export default function BookDetailScreen() {
                           }}
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
-                          <Text className="text-sm text-primary-600">
+                          <Text className="text-sm text-primary-600 dark:text-primary-800">
                             {formatDateRangeLabel(
                               expenseDateRange,
                               expenseCustomRange
@@ -1089,7 +1091,7 @@ export default function BookDetailScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
                               colorScheme
                             )}
                           />

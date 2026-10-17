@@ -36,7 +36,7 @@ import {
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { formatDate } from "@/utils/formatDate";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getSecondaryHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import {
   Stack,
@@ -502,7 +502,7 @@ export default function ExpenseDetailsScreen() {
                         variant="solid"
                         className="rounded-full bg-warning-50 px-3"
                       >
-                        <BadgeText className="font-bold text-xs uppercase text-warning-600">
+                        <BadgeText className="font-bold text-xs uppercase text-warning-600 dark:text-warning-800">
                           Draft
                         </BadgeText>
                       </Badge>
@@ -592,10 +592,7 @@ export default function ExpenseDetailsScreen() {
                             icon={
                               <FileImage
                                 size={18}
-                                color={getPrimaryHex(
-                                  "text-primary-500",
-                                  colorScheme
-                                )}
+                                color={getOnOutlineHex(colorScheme)}
                               />
                             }
                             onPress={() => setImageViewerOpen(true)}
@@ -613,10 +610,10 @@ export default function ExpenseDetailsScreen() {
                 {isDraft ? (
                   <VStack className="gap-y-4 px-4">
                     <VStack className="bg-warning-50 rounded-xl p-4 gap-y-1">
-                      <Text bold className="text-warning-700">
+                      <Text bold className="text-warning-700 dark:text-warning-800">
                         This expense is a draft
                       </Text>
-                      <Text className="text-sm text-warning-700">
+                      <Text className="text-sm text-warning-700 dark:text-warning-800">
                         Only you can see it. Finalize it to set who paid and
                         split it among members — that's when it counts toward
                         balances and everyone gets notified.

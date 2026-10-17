@@ -129,7 +129,7 @@ export default function SocialAuthButtons() {
               resizeMode="contain"
             />
           </Box>
-          <ButtonText className="text-background-950">
+          <ButtonText className="text-background-950 dark:text-background-950 dark:data-[hover=true]:text-background-950 dark:data-[active=true]:text-background-950">
             Continue with Google
           </ButtonText>
         </Button>

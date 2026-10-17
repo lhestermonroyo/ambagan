@@ -26,7 +26,7 @@ import { EmptyType } from "@/types/general";
 import { groupByCurrency } from "@/utils/currency";
 import { exportFriendSettlementsAsCsv } from "@/utils/exportCsv";
 import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
-import { getPrimaryHex, getOnSolidHex } from "@/utils/getColorHex";
+import { getOnSolidHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { ChevronDown, Download } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
@@ -267,7 +267,7 @@ export default function FriendStatsTab({
             iconEnd={
               <ChevronDown
                 size={16}
-                color={getPrimaryHex("text-primary-500", colorScheme)}
+                color={getOnOutlineHex(colorScheme)}
               />
             }
             onPress={() => setDateRangeSheetOpen(true)}

@@ -169,11 +169,14 @@ export default function LeaveGroupSheet({
                   <Fragment>
                     <HStack className="bg-error-50 rounded-xl gap-x-4 p-4 mx-4 items-start">
                       <AlertTriangle
-                        color={getErrorHex("text-error-600", colorScheme)}
+                        color={getErrorHex(
+                          colorScheme === "dark" ? "text-error-800" : "text-error-600",
+                          colorScheme
+                        )}
                       />
-                      <Text className="text-error-600 flex-1">
+                      <Text className="text-error-600 flex-1 dark:text-error-800">
                         You have{" "}
-                        <Text bold className="text-error-600">
+                        <Text bold className="text-error-600 dark:text-error-800">
                           {unsettledPayments.length} unsettled{" "}
                           {unsettledPayments.length === 1
                             ? "payment"
@@ -199,11 +202,14 @@ export default function LeaveGroupSheet({
                 ) : isSoleMember ? (
                   <HStack className="bg-primary-50 rounded-xl gap-x-3 p-4 items-start">
                     <AlertTriangle
-                      color={getPrimaryHex("text-primary-600", colorScheme)}
+                      color={getPrimaryHex(
+                        colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                        colorScheme
+                      )}
                     />
-                    <Text className="text-primary-600 flex-1">
+                    <Text className="text-primary-600 flex-1 dark:text-primary-800">
                       You are the only member. Leaving will{" "}
-                      <Text bold className="text-primary-600">
+                      <Text bold className="text-primary-600 dark:text-primary-800">
                         permanently delete this group
                       </Text>{" "}
                       and all its data.
@@ -214,9 +220,12 @@ export default function LeaveGroupSheet({
                     <HStack className="bg-primary-50 rounded-xl gap-x-3 p-4 items-start">
                       <AlertTriangle
                         size={18}
-                        color={getPrimaryHex("text-primary-600", colorScheme)}
+                        color={getPrimaryHex(
+                          colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                          colorScheme
+                        )}
                       />
-                      <Text className="text-primary-600 flex-1">
+                      <Text className="text-primary-600 flex-1 dark:text-primary-800">
                         You own this group. Pick who takes over as owner
                         before you leave.
                       </Text>

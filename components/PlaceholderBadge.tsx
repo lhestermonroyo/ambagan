@@ -7,7 +7,7 @@ export default function PlaceholderBadge() {
       variant="outline"
       className="rounded-full px-2 self-start border-secondary-300"
     >
-      <BadgeText className="text-xs text-secondary-950 normal-case">
+      <BadgeText className="text-xs text-secondary-950 normal-case dark:text-typography-700">
         Not on Ambagan
       </BadgeText>
     </Badge>

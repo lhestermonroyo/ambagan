@@ -30,6 +30,12 @@ export const getPrimaryHex = (
   return primaryColorMap[normalizeScheme(colorScheme)][className] || className;
 };
 
+export const getOnOutlineHex = (colorScheme: ColorSchemeName = "light") =>
+  getPrimaryHex(
+    normalizeScheme(colorScheme) === "dark" ? "text-primary-600" : "text-primary-500",
+    colorScheme
+  );
+
 export const getSecondaryHex = (
   className: keyof (typeof secondaryColorMap)["light" | "dark"],
   colorScheme: ColorSchemeName = "light"

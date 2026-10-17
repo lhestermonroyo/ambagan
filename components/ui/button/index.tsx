@@ -174,25 +174,25 @@ const buttonTextStyle = tva({
       variant: 'outline',
       action: 'primary',
       class:
-        'text-primary-500 data-[hover=true]:text-primary-500 data-[active=true]:text-primary-500'
+        'text-primary-500 data-[hover=true]:text-primary-500 data-[active=true]:text-primary-500 dark:text-primary-600 dark:data-[hover=true]:text-primary-600 dark:data-[active=true]:text-primary-600'
     },
     {
       variant: 'outline',
       action: 'secondary',
       class:
-        'text-typography-500 data-[hover=true]:text-primary-600 data-[active=true]:text-typography-700'
+        'text-typography-500 data-[hover=true]:text-primary-600 data-[active=true]:text-typography-700 dark:text-primary-600 dark:data-[hover=true]:text-primary-600 dark:data-[active=true]:text-primary-600'
     },
     {
       variant: 'outline',
       action: 'positive',
       class:
-        'text-primary-500 data-[hover=true]:text-primary-500 data-[active=true]:text-primary-500'
+        'text-primary-500 data-[hover=true]:text-primary-500 data-[active=true]:text-primary-500 dark:text-primary-600 dark:data-[hover=true]:text-primary-600 dark:data-[active=true]:text-primary-600'
     },
     {
       variant: 'outline',
       action: 'negative',
       class:
-        'text-primary-500 data-[hover=true]:text-primary-500 data-[active=true]:text-primary-500'
+        'text-primary-500 data-[hover=true]:text-primary-500 data-[active=true]:text-primary-500 dark:text-primary-600 dark:data-[hover=true]:text-primary-600 dark:data-[active=true]:text-primary-600'
     }
   ]
 });
@@ -202,7 +202,8 @@ const buttonIconStyle = tva({
   parentVariants: {
     variant: {
       link: 'data-[hover=true]:underline data-[active=true]:underline',
-      outline: '',
+      outline:
+        'dark:text-primary-600 dark:data-[hover=true]:text-primary-600 dark:data-[active=true]:text-primary-600',
       solid:
         'text-typography-0 data-[hover=true]:text-typography-0 data-[active=true]:text-typography-0 dark:text-white dark:data-[hover=true]:text-white dark:data-[active=true]:text-white'
     },
@@ -363,7 +364,13 @@ const ButtonIcon = React.forwardRef<
       <UIButton.Icon
         ref={ref}
         {...props}
-        className={buttonIconStyle({ class: className })}
+        className={buttonIconStyle({
+          parentVariants: {
+            variant: parentVariant,
+            action: parentAction
+          },
+          class: className
+        })}
         size={size}
       />
     );
@@ -375,7 +382,13 @@ const ButtonIcon = React.forwardRef<
       <UIButton.Icon
         ref={ref}
         {...props}
-        className={buttonIconStyle({ class: className })}
+        className={buttonIconStyle({
+          parentVariants: {
+            variant: parentVariant,
+            action: parentAction
+          },
+          class: className
+        })}
       />
     );
   }

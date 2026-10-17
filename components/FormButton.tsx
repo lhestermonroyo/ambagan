@@ -53,7 +53,7 @@ const FormButton: FC<IFormButtonProps> = ({
             action === "secondary" &&
               (variant === "solid"
                 ? "text-inherit dark:text-white"
-                : "text-inherit dark:text-secondary-950")
+                : "text-inherit dark:text-primary-600")
           )}
         >
           {text}
@@ -64,7 +64,7 @@ const FormButton: FC<IFormButtonProps> = ({
         <ButtonSpinner
           className={
             variant === "outline"
-              ? "text-primary-400"
+              ? "text-primary-400 dark:text-primary-600"
               : "text-background-0 dark:text-white"
           }
         />

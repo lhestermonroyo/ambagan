@@ -86,7 +86,7 @@ export default function RecurringItem({
                 <BadgeText
                   className={`font-bold text-xs uppercase ${
                     details.is_active
-                      ? "text-success-600"
+                      ? "text-success-600 dark:text-success-800"
                       : "text-typography-700"
                   }`}
                 >

@@ -64,7 +64,12 @@ import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { formatLastUpdate, getDateGroupTitle } from "@/utils/formatDate";
 import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
-import { getPrimaryHex, getSecondaryHex, getOnSolidHex } from "@/utils/getColorHex";
+import {
+  getPrimaryHex,
+  getSecondaryHex,
+  getOnSolidHex,
+  getOnOutlineHex
+} from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
 import {
   Stack,
@@ -940,14 +945,17 @@ export default function GroupDetailsScreen() {
               showArchiveBanner && (
                 <HStack className="mx-4 mb-4 p-4 rounded-xl bg-primary-50 items-start gap-x-2">
                   <Archive
-                    color={getPrimaryHex("text-primary-500", colorScheme)}
+                    color={getPrimaryHex(
+                      colorScheme === "dark" ? "text-primary-800" : "text-primary-500",
+                      colorScheme
+                    )}
                   />
                   <VStack className="flex-1 gap-y-3">
                     <VStack className="gap-y-0.5">
                       <Text className="text-lg font-semibold">
                         Ready to archive?
                       </Text>
-                      <Text className="text-sm text-secondary-950">
+                      <Text className="text-sm text-secondary-950 dark:text-typography-700">
                         All settled up with no activity for 30+ days.
                       </Text>
                     </VStack>
@@ -1031,10 +1039,7 @@ export default function GroupDetailsScreen() {
                         iconEnd={
                           <ChevronDown
                             size={16}
-                            color={getPrimaryHex(
-                              "text-primary-500",
-                              colorScheme
-                            )}
+                            color={getOnOutlineHex(colorScheme)}
                           />
                         }
                         onPress={() => setPayerSheetOpen(true)}
@@ -1102,7 +1107,7 @@ export default function GroupDetailsScreen() {
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
                           <Text
-                            className="text-sm text-primary-600 max-w-[160px]"
+                            className="text-sm text-primary-600 max-w-[160px] dark:text-primary-800"
                             numberOfLines={1}
                           >
                             &ldquo;{expenseSearch}&rdquo;
@@ -1110,7 +1115,7 @@ export default function GroupDetailsScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1121,13 +1126,13 @@ export default function GroupDetailsScreen() {
                           onPress={() => setCategoryFilter(ALL_CATEGORIES)}
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
-                          <Text className="text-sm text-primary-600">
+                          <Text className="text-sm text-primary-600 dark:text-primary-800">
                             {categoryFilterLabel(categoryFilter)}
                           </Text>
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1141,7 +1146,7 @@ export default function GroupDetailsScreen() {
                           }}
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
-                          <Text className="text-sm text-primary-600">
+                          <Text className="text-sm text-primary-600 dark:text-primary-800">
                             {formatDateRangeLabel(
                               expenseDateRange,
                               expenseCustomRange
@@ -1150,7 +1155,7 @@ export default function GroupDetailsScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1416,7 +1421,7 @@ function ExpenseItem({
                   variant="solid"
                   className="rounded-full bg-warning-50 px-3"
                 >
-                  <BadgeText className="font-bold text-xs uppercase text-warning-600">
+                  <BadgeText className="font-bold text-xs uppercase text-warning-600 dark:text-warning-800">
                     Draft
                   </BadgeText>
                 </Badge>

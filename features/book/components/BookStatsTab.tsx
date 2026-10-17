@@ -28,7 +28,7 @@ import {
 import services from "@/services";
 import { PersonalExpense } from "@/types/books";
 import { getRate, isConverted, useFxRates } from "@/utils/fx";
-import { getPrimaryHex } from "@/utils/getColorHex";
+import { getOnOutlineHex } from "@/utils/getColorHex";
 import { ChevronDown } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
@@ -265,7 +265,7 @@ export default function BookStatsTab({
             iconEnd={
               <ChevronDown
                 size={16}
-                color={getPrimaryHex("text-primary-500", colorScheme)}
+                color={getOnOutlineHex(colorScheme)}
               />
             }
             onPress={() => setDateRangeSheetOpen(true)}

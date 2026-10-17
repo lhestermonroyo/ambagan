@@ -57,7 +57,12 @@ import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
 import { groupByCurrency } from "@/utils/currency";
 import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
-import { getPrimaryHex, getSecondaryHex, getOnSolidHex } from "@/utils/getColorHex";
+import {
+  getPrimaryHex,
+  getSecondaryHex,
+  getOnSolidHex,
+  getOnOutlineHex
+} from "@/utils/getColorHex";
 import {
   Stack,
   useFocusEffect,
@@ -746,10 +751,7 @@ export default function FriendDetailScreen() {
                         text="Request All as Settled"
                         icon={
                           <FileCheckCorner
-                            color={getPrimaryHex(
-                              "text-primary-500",
-                              colorScheme
-                            )}
+                            color={getOnOutlineHex(colorScheme)}
                           />
                         }
                         onPress={() =>
@@ -796,7 +798,7 @@ export default function FriendDetailScreen() {
                       iconEnd={
                         <ChevronDown
                           size={16}
-                          color={getPrimaryHex("text-primary-500", colorScheme)}
+                          color={getOnOutlineHex(colorScheme)}
                         />
                       }
                       onPress={() => setStatusSheetOpen(true)}
@@ -864,14 +866,17 @@ export default function FriendDetailScreen() {
                         className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                       >
                         <Text
-                          className="text-sm text-primary-600 max-w-[160px]"
+                          className="text-sm text-primary-600 max-w-[160px] dark:text-primary-800"
                           numberOfLines={1}
                         >
                           &ldquo;{searchQuery}&rdquo;
                         </Text>
                         <X
                           size={12}
-                          color={getPrimaryHex("text-primary-600", colorScheme)}
+                          color={getPrimaryHex(
+                            colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                            colorScheme
+                          )}
                         />
                       </Pressable>
                     )}
@@ -883,12 +888,15 @@ export default function FriendDetailScreen() {
                         }}
                         className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                       >
-                        <Text className="text-sm text-primary-600">
+                        <Text className="text-sm text-primary-600 dark:text-primary-800">
                           {formatDateRangeLabel(dateRange, customRange)}
                         </Text>
                         <X
                           size={12}
-                          color={getPrimaryHex("text-primary-600", colorScheme)}
+                          color={getPrimaryHex(
+                            colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                            colorScheme
+                          )}
                         />
                       </Pressable>
                     )}
@@ -897,12 +905,15 @@ export default function FriendDetailScreen() {
                         onPress={() => setViewBy("By Date")}
                         className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                       >
-                        <Text className="text-sm text-primary-600">
+                        <Text className="text-sm text-primary-600 dark:text-primary-800">
                           {viewBy}
                         </Text>
                         <X
                           size={12}
-                          color={getPrimaryHex("text-primary-600", colorScheme)}
+                          color={getPrimaryHex(
+                            colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                            colorScheme
+                          )}
                         />
                       </Pressable>
                     )}
