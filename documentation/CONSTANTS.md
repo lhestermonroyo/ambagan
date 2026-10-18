@@ -6,7 +6,7 @@
 > instead of retyping them.** Update this file when a value changes, and everything
 > downstream stays consistent.
 
-Last verified against the codebase: **2026-08-08** (app version `1.4.0`).
+Pricing and feature descriptions verified against the codebase: **2026-10-17**.
 
 ## App identity
 
@@ -43,21 +43,25 @@ Last verified against the codebase: **2026-08-08** (app version `1.4.0`).
 
 ## Pricing
 
-Free plan and a **Pro subscription** (via RevenueCat, entitlement `Ambagan Pro`).
+Free plan, a **one-time Pro pass**, and **Pro subscriptions** (via RevenueCat,
+entitlement `Ambagan Pro` for subscriptions).
 
 | Plan | Price |
 | --- | --- |
-| Free | ₱0 — up to **5 group expenses per day** (counted across all groups; resets at midnight) **plus a separate 5/day allowance for personal expenses**. Personal books and budgets are free and uncapped. |
-| Pro — 2 Weeks | **₱99** |
+| Free | ₱0 — up to **5 group expenses per day** (counted across all groups; resets at midnight) **plus a separate 5/day allowance for individual expenses**. Creating Groups and private Individual entries is free, with no entry-count limit. |
+| Pro — 2 Weeks | **₱99** — one-time 14-day pass; does not auto-renew |
 | Pro — Monthly | **₱149** |
 | Pro — Yearly | **₱799** |
 
-**Pro unlocks:** unlimited daily expenses · draft expenses · recurring expenses (group **and**
-personal) · CSV export · spending analytics · multi-currency expenses · a separate entry
-currency per book · a home currency per group · custom default currency.
+**Pro unlocks:** unlimited daily group and individual expenses · draft expenses ·
+recurring expenses in Groups and Individual entries · CSV settlement export ·
+Spending Analytics · multi-currency Groups, Individual entries, and expenses ·
+separate reporting and default expense currencies per entry.
 
-**Free for everyone:** push notifications, personal books, and per-book budgets. Budgets are
-deliberately free — a budget you must pay for is one that charges you to learn you overspent.
+**Free for everyone:** shared Groups, private Individual entries, linked spending
+totals, receipt scanning, basic stats, settlement tracking, and push notifications.
+Groups and Individual entries share the Groups tab; Individual entries have Paid
+and Pending tracking. The Overview offers Net Balance and Individual Totals.
 
 > Source of truth in code: `app/profile/subscription/index.tsx` (prices) and
 > `features/user/services/purchase.service.ts` (entitlement `Ambagan Pro`).
