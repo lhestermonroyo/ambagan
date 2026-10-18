@@ -58,7 +58,7 @@ const initialFilters: Record<GroupMode, GroupFilter> = {
 
 export default function GroupsScreen() {
   const previewEmpty = useEmptyStatePreview();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [deleting, setDeleting] = useState(false);

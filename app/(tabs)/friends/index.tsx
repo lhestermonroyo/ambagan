@@ -40,7 +40,7 @@ const MAIN_TABS: { key: MainTab; label: string }[] = [
 
 export default function FriendsScreen() {
   const previewEmpty = useEmptyStatePreview();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [recentFriends, setRecentFriends] = useState<UserPreview[]>([]);
