@@ -61,7 +61,7 @@ import {
 import { ExpensePreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
-import { groupByCurrency } from "@/utils/currency";
+import { groupSettlementBalancesByCurrency as groupByCurrency } from "@/features/expense/utils/settlementPayments.util";
 import { formatLastUpdate, getDateGroupTitle } from "@/utils/formatDate";
 import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
 import {
@@ -355,7 +355,7 @@ export default function GroupDetailsScreen() {
         details: prev.details ? { ...prev.details, archived: false } : null
       }));
       toast({
-        title: "Group restored",
+        title: "Group Restored",
         description: "Group has been moved back to your active groups.",
         type: "success"
       });
@@ -527,7 +527,7 @@ export default function GroupDetailsScreen() {
         settlementList: []
       }));
       toast({
-        title: "Group archived",
+        title: "Group Archived",
         description: "You can find it in the Archived tab.",
         type: "success"
       });
@@ -554,7 +554,7 @@ export default function GroupDetailsScreen() {
       settlementList: []
     }));
     toast({
-      title: "Group deleted",
+      title: "Group Deleted",
       description: "The group has been permanently deleted.",
       type: "success"
     });
@@ -566,7 +566,7 @@ export default function GroupDetailsScreen() {
   const ensureCanAddExpense = () => {
     if (!canAddExpense) {
       toast({
-        title: "Add a member first",
+        title: "Add a Member First",
         description:
           "A group needs at least two members before you can add an expense. Add someone from the group's Members tab.",
         type: "info"
@@ -892,7 +892,7 @@ export default function GroupDetailsScreen() {
                     {groupDetails?.name}
                   </Text>
                   <Text className="text-secondary-950">
-                    Last update {formatLastUpdate(
+                    Last Update {formatLastUpdate(
                       groupDetails?.last_updated_at ?? groupDetails?.created_at ?? ""
                     )} •{" "}
                     {expenseList.length} expense
@@ -924,7 +924,7 @@ export default function GroupDetailsScreen() {
                 <VStack className="flex-1 gap-y-4">
                   <VStack className="gap-y-1">
                     <Text className="text-lg font-semibold">
-                      This group is archived
+                      This Group Is Archived
                     </Text>
                     <Text>
                       New expenses are disabled. Unarchive to continue adding
@@ -953,7 +953,7 @@ export default function GroupDetailsScreen() {
                   <VStack className="flex-1 gap-y-3">
                     <VStack className="gap-y-0.5">
                       <Text className="text-lg font-semibold">
-                        Ready to archive?
+                        Ready to Archive?
                       </Text>
                       <Text className="text-sm text-secondary-950 dark:text-typography-700">
                         All settled up with no activity for 30+ days.
@@ -998,7 +998,7 @@ export default function GroupDetailsScreen() {
                       <VStack className="flex-1">
                         <HStack className="items-center gap-x-2">
                           <Text className="text-lg" bold>
-                            Recurring expenses
+                            Recurring Expenses
                           </Text>
                           {!isPro && <ProBadge />}
                         </HStack>
@@ -1035,7 +1035,7 @@ export default function GroupDetailsScreen() {
                       <FormButton
                         size="sm"
                         variant="outline"
-                        text={payerFilter === "All" ? "Everyone" : "Paid by me"}
+                        text={payerFilter === "All" ? "Everyone" : "Paid by Me"}
                         iconEnd={
                           <ChevronDown
                             size={16}

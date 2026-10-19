@@ -33,7 +33,7 @@ const features = [
   },
   {
     icon: Receipt,
-    title: "Expenses with Receipts",
+    title: "Expenses With Receipts",
     description:
       "Log expenses with descriptions, dates, and optional proof-of-payment photo."
   },
@@ -105,7 +105,7 @@ export default function AboutScreen() {
 
           <VStack className="px-4 gap-y-2">
             <Text bold className="text-xl">
-              What is Ambagan?
+              What Is Ambagan?
             </Text>
             <Text className="text-sm text-secondary-950 leading-relaxed">
               Ambagan is a group expense splitting app designed for Filipinos

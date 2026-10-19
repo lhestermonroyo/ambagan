@@ -23,8 +23,8 @@ export type BalanceFilter = (typeof balanceFilters)[number];
 
 const balanceFilterOptions: { value: BalanceFilter; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "collect", label: "To collect" },
-  { value: "pay", label: "To pay" }
+  { value: "collect", label: "To Collect" },
+  { value: "pay", label: "To Pay" }
 ];
 
 export const balanceFilterLabel = (value: BalanceFilter) =>

@@ -108,7 +108,7 @@ export default function NotificationsScreen() {
       // unresolved) still navigates; the friend screen backstops the miss.
       if (notification.settlement_status === null) {
         toast({
-          title: "No longer available",
+          title: "No Longer Available",
           description:
             "The settlement linked to this notification no longer exists.",
           type: "info"
@@ -132,7 +132,7 @@ export default function NotificationsScreen() {
         router.push(route as any);
       } else {
         toast({
-          title: "No longer available",
+          title: "No Longer Available",
           description:
             "The group or expense linked to this notification no longer exists.",
           type: "info"
@@ -185,7 +185,7 @@ export default function NotificationsScreen() {
           accessibilityLabel="Mark all notifications as read"
           onPress={handleMarkAllRead}
         >
-          {markingAll ? "Marking..." : "Mark all read"}
+          {markingAll ? "Marking..." : "Mark All Read"}
         </Stack.Toolbar.Button>
       }
       androidActions={
@@ -202,7 +202,7 @@ export default function NotificationsScreen() {
               opacity: markingAll || unreadCount === 0 ? 0.4 : 1
             }}
           >
-            {markingAll ? "Marking..." : "Mark all read"}
+            {markingAll ? "Marking..." : "Mark All Read"}
           </Text>
         </Pressable>
       }

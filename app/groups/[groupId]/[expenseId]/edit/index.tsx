@@ -1,3 +1,4 @@
+import { hasSettlementHistory } from "@/features/expense/utils/settlementPayments.util";
 import AmountInput from "@/components/AmountInput";
 import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
@@ -217,7 +218,7 @@ export default function EditExpenseScreen() {
 
       // Block editing once any settlement has moved past "pending" — replacing
       // the splits would silently drop that progress.
-      const hasProgress = paymentList.some((p) => p.status !== "pending");
+      const hasProgress = paymentList.some((p) => hasSettlementHistory(p));
       if (hasProgress) {
         setBlockReason("settled");
         setLoading(false);
@@ -352,7 +353,7 @@ export default function EditExpenseScreen() {
   const handleOpenPayerSheet = () => {
     if (parsedAmount <= 0) {
       toast({
-        title: "Enter an amount first",
+        title: "Enter an Amount First",
         description: "Add the expense amount before choosing payers.",
         type: "info"
       });
@@ -486,7 +487,7 @@ export default function EditExpenseScreen() {
   const handleOpenSplitSheet = () => {
     if (parsedAmount <= 0) {
       toast({
-        title: "Enter an amount first",
+        title: "Enter an Amount First",
         description: "Add the expense amount before customizing the split.",
         type: "info"
       });
@@ -538,7 +539,7 @@ export default function EditExpenseScreen() {
     if (!online) {
       if (isDraft) {
         toast({
-          title: "You're offline",
+          title: "You're Offline",
           description: "Finalizing a draft requires an internet connection.",
           type: "error"
         });
@@ -612,7 +613,7 @@ export default function EditExpenseScreen() {
       );
 
       toast({
-        title: "Saved offline",
+        title: "Saved Offline",
         description: "Your changes will sync automatically when you're online.",
         type: "info"
       });
@@ -972,7 +973,7 @@ function ScrollableContent(props: {
     },
     {
       key: "receipt",
-      label: proofUri ? "Receipt added" : "Receipt",
+      label: proofUri ? "Receipt Added" : "Receipt",
       isDefault: !proofUri,
       icon: (color) => <Paperclip size={16} color={color} />,
       // The one chip that expands instead of opening a sheet: the uploader is a
@@ -1195,7 +1196,7 @@ function ScrollableContent(props: {
 
           <VStack className="gap-y-1">
             <UploadImage
-              title="Upload Proof of Payment (optional)"
+              title="Upload Proof of Payment (Optional)"
               key={proofUri ?? "none"}
               defaultUri={proofUri}
               onSelect={setProofOfPayment}

@@ -72,7 +72,7 @@ function PreviewControls() {
         <VStack className="gap-y-6 py-4">
           <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-3">
             <HStack className="items-center gap-x-4">
-              <Text bold className="flex-1 text-lg">Simulate empty lists</Text>
+              <Text bold className="flex-1 text-lg">Simulate Empty Lists</Text>
               <Switch
                 accessibilityLabel="Simulate empty lists"
                 value={enabled}
@@ -91,17 +91,17 @@ function PreviewControls() {
           </VStack>
 
           <VStack className="px-4 gap-y-2">
-            <Text bold className="text-lg">App screens</Text>
+            <Text bold className="text-lg">App Screens</Text>
             <FormButton text="Overview" variant="outline" onPress={() => router.push("/(tabs)/(home)")} />
             <FormButton text="Groups & Individual" variant="outline" onPress={() => router.push("/groups")} />
             <FormButton text="Friends" variant="outline" onPress={() => router.push("/friends")} />
             <FormButton text="Notifications" variant="outline" onPress={() => router.push("/notifications")} />
             <FormButton text="Spending Analytics" variant="outline" onPress={() => router.push("/profile/analytics")} />
-            <FormButton text="Help Center search" variant="outline" onPress={() => router.push("/profile/help-center")} />
+            <FormButton text="Help Center Search" variant="outline" onPress={() => router.push("/profile/help-center")} />
           </VStack>
 
           <VStack className="gap-y-1">
-            <Text bold className="text-lg px-4">Existing groups & Individual entries</Text>
+            <Text bold className="text-lg px-4">Existing Groups & Individual Entries</Text>
             <Text className="text-sm text-secondary-950 px-4 pb-2">
               Open details here while the main lists are empty. Check their tabs,
               recurring expenses, and member pickers.
@@ -123,7 +123,7 @@ function PreviewControls() {
 
           {friends.length > 0 && (
             <VStack>
-              <Text bold className="text-lg px-4 pb-2">Existing friends</Text>
+              <Text bold className="text-lg px-4 pb-2">Existing Friends</Text>
               {friends.map((friend) => (
                 <PressableListItem key={friend.id} onPress={() => router.push({
                   pathname: "/friends/[friendId]",
@@ -135,7 +135,7 @@ function PreviewControls() {
             </VStack>
           )}
           <VStack className="px-4">
-            <FormButton text={loading ? "Loading destinations…" : "Refresh destinations"} variant="outline" disabled={loading} onPress={() => setRefreshToken((value) => value + 1)} />
+            <FormButton text={loading ? "Loading Destinations…" : "Refresh Destinations"} variant="outline" disabled={loading} onPress={() => setRefreshToken((value) => value + 1)} />
           </VStack>
         </VStack>
       </ScrollView>

@@ -18,25 +18,25 @@ export const TOUR_SLIDES: TourSlide[] = [
   {
     key: "split",
     art: require("@/assets/illustrations/feature-tour/split-bill.png"),
-    title: "Split the bill",
+    title: "Split the Bill",
     body: "Add what was spent and who was in on it. Ambagan does the dividing: evenly, by exact amounts, or by percentage."
   },
   {
     key: "settle",
     art: require("@/assets/illustrations/feature-tour/settle-balances.png"),
-    title: "See exactly who owes who",
+    title: "See Exactly Who Owes Who",
     body: "It all adds up to one net balance per person, so nobody has to do the math. Settle up and attach a screenshot as proof."
   },
   {
     key: "books",
     art: require("@/assets/illustrations/feature-tour/personal-spending.png"),
-    title: "Track your own spending too",
+    title: "Track Your Own Spending Too",
     body: "Choose Individual mode when creating an entry in Groups to track expenses that are just yours. Record your expenses and see how much you have spent."
   },
   {
     key: "scan",
     art: require("@/assets/illustrations/feature-tour/scan-receipt.png"),
-    title: "Skip the typing",
+    title: "Skip the Typing",
     body: "Point your camera at a receipt and Ambagan fills in the amount, merchant, and date. Check it, then save."
   }
 ];

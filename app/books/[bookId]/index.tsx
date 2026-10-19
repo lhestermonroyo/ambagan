@@ -475,7 +475,7 @@ export default function BookDetailScreen() {
         list: prev.list.filter((b) => b.id !== bookId)
       }));
       toast({
-        title: "Individual archived",
+        title: "Individual Archived",
         description: "You can find it in the Archived tab.",
         type: "success"
       });
@@ -496,7 +496,7 @@ export default function BookDetailScreen() {
       await services.book.unarchiveBook(bookId);
       setBook((prev) => (prev ? { ...prev, archived: false } : prev));
       toast({
-        title: "Individual restored",
+        title: "Individual Restored",
         description: "Individual moved back to your active Individual entries.",
         type: "success"
       });
@@ -520,7 +520,7 @@ export default function BookDetailScreen() {
         list: prev.list.filter((b) => b.id !== bookId)
       }));
       toast({
-        title: "Individual deleted",
+        title: "Individual Deleted",
         description: "The Individual entry and its expenses have been permanently deleted.",
         type: "success"
       });
@@ -529,7 +529,7 @@ export default function BookDetailScreen() {
     } catch (error: any) {
       console.error("Failed to delete Individual entry:", error);
       toast({
-        title: "Cannot delete Individual entry",
+        title: "Cannot Delete Individual Entry",
         description:
           error?.message ?? "Failed to delete Individual entry. Please try again.",
         type: "error"
@@ -825,7 +825,7 @@ export default function BookDetailScreen() {
                     {book?.name}
                   </Text>
                   <Text className="text-secondary-950">
-                    Last update {formatLastUpdate(book?.last_updated_at ?? book?.created_at ?? "")} • {expenses.length}
+                    Last Update {formatLastUpdate(book?.last_updated_at ?? book?.created_at ?? "")} • {expenses.length}
                     {hasMore ? "+" : ""} expense
                     {expenses.length !== 1 ? "s" : ""}
                   </Text>
@@ -852,17 +852,17 @@ export default function BookDetailScreen() {
               <VStack className="gap-y-6 pb-4">
                 <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-4">
                   <HeroAmount
-                    label="Total expenses"
+                    label="Total Expenses"
                     amountText={totalAmountText}
                     amountSize={amountTextSize("text-3xl", totalAmountText, 12)}
                     currency={primaryCurrency}
                     chip={
                       <CurrencyCountButton
                         items={recordedByCurrency}
-                        title="Total expenses"
+                        title="Total Expenses"
                         subtitle="All recorded expenses, by currency"
                         convertTo={primaryCurrency}
-                        totalLabel="Total expenses"
+                        totalLabel="Total Expenses"
                       />
                     }
                   />
@@ -881,7 +881,7 @@ export default function BookDetailScreen() {
                         subtitle="Paid expenses, by currency"
                         primaryCurrency={primaryCurrency}
                         convertTo={primaryCurrency}
-                        totalLabel="Total paid"
+                        totalLabel="Total Paid"
                         fitAmount
                       />
                     </VStack>
@@ -899,7 +899,7 @@ export default function BookDetailScreen() {
                         subtitle="Pending expenses, by currency"
                         primaryCurrency={primaryCurrency}
                         convertTo={primaryCurrency}
-                        totalLabel="Total pending"
+                        totalLabel="Total Pending"
                         fitAmount
                       />
                     </VStack>
@@ -921,7 +921,7 @@ export default function BookDetailScreen() {
                       <VStack className="flex-1">
                         <HStack className="items-center gap-x-2">
                           <Text className="text-lg" bold>
-                            Recurring expenses
+                            Recurring Expenses
                           </Text>
                           {!isPro && <ProBadge />}
                         </HStack>

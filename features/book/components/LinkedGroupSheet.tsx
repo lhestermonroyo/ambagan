@@ -105,7 +105,7 @@ export default function LinkedGroupSheet({
                 onPress={() => setSelected(NONE)}
               >
                 <VStack className="flex-1">
-                  <Text className="text-lg">Not linked</Text>
+                  <Text className="text-lg">Not Linked</Text>
                   <Text className="text-sm text-secondary-950">
                     Keep this Individual entry standalone.
                   </Text>

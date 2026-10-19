@@ -62,7 +62,7 @@ export default function ExportCsvSheet({
 
       if (payments.length === 0) {
         toast({
-          title: "No data",
+          title: "No Data",
           description: "No settlements found for the selected date range.",
           type: "info"
         });
@@ -74,7 +74,7 @@ export default function ExportCsvSheet({
     } catch (error) {
       console.error("Export failed:", error);
       toast({
-        title: "Export failed",
+        title: "Export Failed",
         description: "Could not export settlements. Please try again.",
         type: "error"
       });

@@ -106,7 +106,7 @@ export default function ScanDestinationScreen() {
   };
 
   return (
-    <InnerLayout title="Where should this go?" onBack={() => router.back()}>
+    <InnerLayout title="Where Should This Go?" onBack={() => router.back()}>
       {loading && isEmpty ? (
         <VStack className="flex-1 items-center justify-center">
           <Spinner size="large" />
@@ -156,7 +156,7 @@ export default function ScanDestinationScreen() {
                 {matchedGroups.length > 0 && (
                   <VStack className="w-full">
                     <SectionHeader
-                      label="Split with a group"
+                      label="Split With a Group"
                       count={matchedGroups.length}
                     />
                     {matchedGroups.map((group, index) => (
@@ -176,7 +176,7 @@ export default function ScanDestinationScreen() {
                 {matchedBooks.length > 0 && (
                   <VStack className="w-full">
                     <SectionHeader
-                      label="Track it yourself"
+                      label="Track It Yourself"
                       count={matchedBooks.length}
                     />
                     {matchedBooks.map((book, index) => (

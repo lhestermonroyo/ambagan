@@ -32,6 +32,7 @@ import NetBalanceDisplay, {
 } from "@/features/expense/components/NetBalanceDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementItem from "@/features/expense/components/SettlementItem";
+import { getSettlementUpdatedAt } from "@/features/expense/utils/settlementDate.util";
 import {
   amountTextSize,
   smallerAmountSize
@@ -373,7 +374,7 @@ export default function HomeScreen() {
         await Notifications.scheduleNotificationAsync({
           identifier: SETTLEMENT_REMINDER_ID,
           content: {
-            title: "You have unpaid settlements",
+            title: "You Have Unpaid Settlements",
             body: "Don't forget to settle up with your group members."
           },
           trigger: {
@@ -503,7 +504,8 @@ export default function HomeScreen() {
   // The two ledgers stay in their own sections — a settlement and a personal
   // expense read too differently to sit in one list.
   const settlementsPreview = useMemo(
-    () => activityList.slice(0, 3),
+    () => [...activityList].sort((a, b) =>
+      new Date(getSettlementUpdatedAt(b)).getTime() - new Date(getSettlementUpdatedAt(a)).getTime()).slice(0, 3),
     [activityList]
   );
   const personalExpensesPreview = useMemo(
@@ -1363,7 +1365,7 @@ function StatItem({
               : "You owe across all groups, per currency"
           }
           convertTo={primaryCurrency}
-          totalLabel={isReceive ? "Total to collect" : "Total to pay"}
+          totalLabel={isReceive ? "Total to Collect" : "Total to Pay"}
         />
       }
     />

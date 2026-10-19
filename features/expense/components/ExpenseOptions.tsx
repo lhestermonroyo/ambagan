@@ -125,7 +125,7 @@ export default function ExpenseOptions({
         <HStack className="items-center gap-x-4">
           <HStack className="flex-1 items-center gap-x-4">
             <Text bold className="text-sm uppercase text-secondary-950">
-              More options
+              More Options
             </Text>
             <Divider className="border-secondary-100 flex-1" />
           </HStack>

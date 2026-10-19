@@ -63,7 +63,7 @@ export default function RecurringExpensesScreen() {
         console.error("Failed to load group recurring expenses:", error);
         setLoadFailed(true);
         toast({
-          title: "Couldn't load",
+          title: "Couldn't Load",
           description: "Failed to load recurring expenses. Please try again.",
           type: "error"
         });

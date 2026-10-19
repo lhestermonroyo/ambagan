@@ -192,7 +192,7 @@ export default function GroupsScreen() {
     try {
       await (isIndividualGroup(entry) ? services.book.archiveBook(groupId) : services.group.archiveGroup(groupId));
       toast({
-        title: isIndividualGroup(entry) ? "Individual archived" : "Group archived",
+        title: isIndividualGroup(entry) ? "Individual Archived" : "Group Archived",
         description: "You can find it using the Archived filter.",
         type: "success"
       });
@@ -215,7 +215,7 @@ export default function GroupsScreen() {
     try {
       await (isIndividualGroup(entry) ? services.book.deleteBook(groupId) : services.group.deleteGroup(groupId));
       toast({
-        title: isIndividualGroup(entry) ? "Individual deleted" : "Group deleted",
+        title: isIndividualGroup(entry) ? "Individual Deleted" : "Group Deleted",
         description: "The group has been permanently deleted.",
         type: "success"
       });
@@ -227,7 +227,7 @@ export default function GroupsScreen() {
     } catch (error: any) {
       console.error("Failed to delete group:", error);
       toast({
-        title: "Cannot delete group",
+        title: "Cannot Delete Group",
         description:
           error?.message ?? "Failed to delete group. Please try again.",
         type: "error"
@@ -243,7 +243,7 @@ export default function GroupsScreen() {
     try {
       await (isIndividualGroup(entry) ? services.book.unarchiveBook(groupId) : services.group.unarchiveGroup(groupId));
       toast({
-        title: "Group restored",
+        title: "Group Restored",
         description: "Group has been moved back to your active groups.",
         type: "success"
       });
@@ -365,7 +365,7 @@ export default function GroupsScreen() {
           key: "add",
           sf: fabOpen ? "xmark" : "plus",
           lucide: fabOpen ? X : Plus,
-          label: fabOpen ? "Close add menu" : "Add group",
+          label: fabOpen ? "Close Add Menu" : "Add Group",
           onPress: () => setFabOpen((prev) => !prev)
         }
       ]}
@@ -511,8 +511,8 @@ export default function GroupsScreen() {
                     : [
                       {
                         label: activeTab === GroupMode.INDIVIDUAL
-                          ? "Create your First Individual"
-                          : "Create your First Group",
+                          ? "Create Your First Individual"
+                          : "Create Your First Group",
                         icon: activeTab === GroupMode.INDIVIDUAL ? BookPlus : HousePlus,
                         onPress: () => router.push(activeTab === GroupMode.INDIVIDUAL ? "/books/create" : "/groups/create")
                       },
@@ -642,7 +642,7 @@ export default function GroupsScreen() {
                 {searchError ? (
                   <VStack className="p-4 gap-y-3 items-center">
                     <Text className="text-secondary-950">Couldn't load search results.</Text>
-                    <FormButton size="sm" text="Try again" variant="outline" onPress={fetchSearchEntries} />
+                    <FormButton size="sm" text="Try Again" variant="outline" onPress={fetchSearchEntries} />
                   </VStack>
                 ) : (
                   <FlatList

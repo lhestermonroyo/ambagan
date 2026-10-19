@@ -132,15 +132,15 @@ export default function SettlementBreakdown({
   })();
 
   const payerPaidLabel = isPayer
-    ? "You paid"
-    : `${payment.payer.first_name} paid`;
+    ? "You Paid"
+    : `${payment.payer.first_name} Paid`;
   const memberShareLabel = isMember
-    ? "Your share"
-    : `${payment.member.first_name}'s share`;
+    ? "Your Share"
+    : `${payment.member.first_name}'s Share`;
   const settlementLabel = isMember
-    ? `You pay ${payment.payer.first_name}`
+    ? `You Pay ${payment.payer.first_name}`
     : isPayer
-      ? `You receive from ${payment.member.first_name}`
+      ? `You Receive From ${payment.member.first_name}`
       : `${payment.member.first_name} → ${payment.payer.first_name}`;
 
   // With multiple payers, or when the member also paid, netting can split a
@@ -160,7 +160,7 @@ export default function SettlementBreakdown({
       >
         <HStack className="items-center justify-between p-4">
           <Text bold className="text-secondary-950">
-            Breakdown of computation
+            Breakdown of Computation
           </Text>
           <Animated.View style={chevronStyle}>
             <ChevronDown size={20} color={iconColor} />
@@ -203,7 +203,7 @@ export default function SettlementBreakdown({
           ) : data ? (
             <VStack className="px-4 py-2">
               <BreakdownRow
-                label="Total expense"
+                label="Total Expense"
                 value={formatAmount(data.expense.amount, payment.currency)}
               />
               <BreakdownRow label="Split" value={splitLabel} />

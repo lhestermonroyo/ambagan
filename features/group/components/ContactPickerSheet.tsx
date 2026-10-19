@@ -137,7 +137,7 @@ export default function ContactPickerSheet({
     } catch (error) {
       console.error("Failed to load contacts:", error);
       toast({
-        title: "Couldn't load contacts",
+        title: "Couldn't Load Contacts",
         description: "Please try again.",
         type: "error",
       });
@@ -212,7 +212,7 @@ export default function ContactPickerSheet({
     toast({
       title:
         added.length === 1
-          ? "1 contact added"
+          ? "1 Contact Added"
           : `${added.length} contacts added`,
       description: "Keep adding, or tap Done when you're finished.",
       type: "success",
@@ -257,7 +257,7 @@ export default function ContactPickerSheet({
           <Icon as="arrow-back-ios" className="text-secondary-950" />
           <VStack className="flex-1 gap-y-1">
             <Text bold className="text-xl">
-              Add from Contacts
+              Add From Contacts
             </Text>
             <Text className="text-sm text-secondary-950 w-full">
               They can claim these expenses once they join Ambagan.

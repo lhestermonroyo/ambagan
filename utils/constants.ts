@@ -1,4 +1,4 @@
-import { ExpenseCategory } from "@/types/expenses";
+import { ExpenseCategory, SplitType } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { GroupCategory } from "@/types/groups";
 import {
@@ -39,6 +39,7 @@ export const tables = {
   EXPENSE_PAYERS_TBL: "expense_payers_tbl",
   MEMBER_SPLITS_TBL: "member_splits_tbl",
   PAYMENT_SPLITS_TBL: "payment_splits_tbl",
+  SETTLEMENT_PAYMENTS_TBL: "settlement_payments_tbl",
   NOTIFICATIONS_TBL: "notifications_tbl",
   USER_FAVORITES_TBL: "user_favorites_tbl",
   USER_PREFERENCES_TBL: "user_preferences_tbl",
@@ -283,6 +284,12 @@ export const expenseCategories: CategoryOption[] = [
   }
 ];
 
+export const splitTypeLabels: Record<SplitType, string> = {
+  [SplitType.EQUAL]: "Equal",
+  [SplitType.PERCENTAGE]: "Percentage",
+  [SplitType.CUSTOM]: "Custom"
+};
+
 export const splitTypes = [
   {
     label: "Equally",
@@ -417,17 +424,17 @@ export const avatarColors = {
 
 export const introSlideContent = [
   {
-    title: "Who paid for what again?",
+    title: "Who Paid for What Again?",
     description:
       "Stop the awkward back-and-forth. Ambagan tracks every shared expense so you always know exactly who owes what."
   },
   {
-    title: "Split it. Settle it. Done.",
+    title: "Split It. Settle It. Done.",
     description:
       "Add expenses, split them your way — equally, by percentage, or custom — and request settlements with one tap."
   },
   {
-    title: "No more IOUs. Just good vibes.",
+    title: "No More IOUs. Just Good Vibes.",
     description:
       "Whether it's a group trip, dinner with friends, or shared bills — Ambagan keeps money from getting in the way."
   }

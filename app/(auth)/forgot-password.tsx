@@ -53,7 +53,7 @@ export default function ForgotPasswordScreen() {
   if (sent) {
     return (
       <AuthLayout
-        title="Check your email"
+        title="Check Your Email"
         subtitle={`We sent a password reset link to ${email.trim()}`}
         footer={
           <FormButton

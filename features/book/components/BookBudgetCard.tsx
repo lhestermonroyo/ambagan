@@ -136,10 +136,10 @@ export default function BookBudgetCard({
     <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-4">
       <HStack className="items-center justify-between">
         <Text bold className="text-sm text-secondary-950 uppercase">
-          {isMonthly ? "Monthly budget" : "Total budget"}
+          {isMonthly ? "Monthly Budget" : "Total Budget"}
         </Text>
         <Text className="text-sm text-secondary-950">
-          {isMonthly ? monthLabel() : "All time"}
+          {isMonthly ? monthLabel() : "All Time"}
         </Text>
       </HStack>
 
@@ -161,10 +161,10 @@ export default function BookBudgetCard({
             </Text>
             <CurrencyCountButton
               items={rows}
-              title="Spend by currency"
+              title="Spend by Currency"
               subtitle={`Counted toward this ${isMonthly ? "month's" : ""} budget`}
               convertTo={currency}
-              totalLabel="Total spent"
+              totalLabel="Total Spent"
             />
           </HStack>
           <Text className="text-secondary-950">
@@ -232,7 +232,7 @@ export default function BookBudgetCard({
                 amountClassName="text-background-950"
                 fitAmount
                 convertTo={currency}
-                totalLabel="Total paid"
+                totalLabel="Total Paid"
               />
             </VStack>
             <Divider orientation="vertical" className="mx-4" />
@@ -248,7 +248,7 @@ export default function BookBudgetCard({
                 amountClassName="text-background-950"
                 fitAmount
                 convertTo={currency}
-                totalLabel="Total pending"
+                totalLabel="Total Pending"
               />
             </VStack>
           </HStack>

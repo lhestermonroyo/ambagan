@@ -24,7 +24,7 @@ export default function SubscriptionSuccessScreen() {
 
   return (
     <SuccessFeedback
-      title={isRestored ? "Your Pro access is restored" : "Welcome to Pro!"}
+      title={isRestored ? "Your Pro Access Is Restored" : "Welcome to Pro!"}
       description={description}
       illustration={getFeedbackIllustration(isRestored ? "pro-restored" : "pro-activated")}
       onClose={close}

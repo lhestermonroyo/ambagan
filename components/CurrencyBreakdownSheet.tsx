@@ -130,7 +130,7 @@ export default function CurrencyBreakdownSheet({
                     {convertTo && currency !== convertTo && (
                       <Text className="text-sm text-secondary-950">
                         {converted === null
-                          ? "Not counted"
+                          ? "Not Counted"
                           : `≈ ${formatAmount(converted, convertTo)}`}
                       </Text>
                     )}

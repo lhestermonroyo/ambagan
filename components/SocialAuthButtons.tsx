@@ -114,7 +114,7 @@ export default function SocialAuthButtons({
   return (
     <VStack className="gap-y-4">
       <FormButton
-        text="Login with Email"
+        text="Login With Email"
         icon={<Icon as="mail-outline" className="text-white" size={20} />}
         disabled={!!loadingProvider}
         onPress={onEmailLogin}
@@ -142,7 +142,7 @@ export default function SocialAuthButtons({
             />
           </Box>
           <ButtonText className="text-background-950 dark:text-background-950 dark:data-[hover=true]:text-background-950 dark:data-[active=true]:text-background-950">
-            Login with Google
+            Login With Google
           </ButtonText>
         </Button>
 
@@ -181,7 +181,7 @@ export default function SocialAuthButtons({
                 colorScheme === "dark" ? "text-black" : "text-white"
               )}
             >
-              Login with Apple
+              Login With Apple
             </ButtonText>
           </Button>
         )}

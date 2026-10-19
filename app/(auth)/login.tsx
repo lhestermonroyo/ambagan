@@ -104,7 +104,7 @@ export default function LoginScreen() {
       toast({
         title: "Login Failed",
         description: invalidCreds
-          ? "Incorrect email or password. If you signed up with Google, go back and choose Login with Google."
+          ? "Incorrect email or password. If you signed up with Google, go back and choose Login With Google."
           : "An error occurred while logging in. Please try again.",
         type: "error"
       });
@@ -115,7 +115,7 @@ export default function LoginScreen() {
 
   return (
     <AuthLayout
-      title="Log in to Ambagan"
+      title="Log In to Ambagan"
       subtitle="Enter your credentials to continue"
       onBack={() => router.dismissTo("/(auth)/welcome")}
       footer={
@@ -123,7 +123,7 @@ export default function LoginScreen() {
           <Text className="text-lg text-secondary-950">No account yet?</Text>
           <Link onPress={() => router.replace("/(auth)/sign-up")}>
             <Text className="text-lg font-medium text-primary-400">
-              Sign up
+              Sign Up
             </Text>
           </Link>
         </HStack>

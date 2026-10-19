@@ -311,7 +311,7 @@ export default function ShareGroupScreen() {
             dialogTitle: "Save QR Code"
           });
           toast({
-            title: "QR code saved",
+            title: "QR Code Saved",
             description: "The invite QR code has been saved to your device.",
             type: "success"
           });
@@ -342,7 +342,7 @@ export default function ShareGroupScreen() {
       const copied =
         result.activityType === "com.apple.UIKit.activity.CopyToPasteboard";
       toast({
-        title: copied ? "Link copied" : "Invite link shared",
+        title: copied ? "Link Copied" : "Invite Link Shared",
         description: copied
           ? "The invite link has been copied to your clipboard."
           : "Your group invite link has been shared.",
@@ -424,7 +424,7 @@ export default function ShareGroupScreen() {
             <VStack className="gap-y-4">
               <VStack>
                 <Text bold className="text-xl">
-                  Reset invite link
+                  Reset Invite Link
                 </Text>
                 <Text className="text-sm text-secondary-950">
                   New link and QR. The current one stops immediately.

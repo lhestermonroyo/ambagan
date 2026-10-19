@@ -40,7 +40,7 @@ export default function IndividualTotalsPane({
             title="Individual Totals"
             subtitle="All recorded Individual expenses, by currency"
             convertTo={BASE_CURRENCY}
-            totalLabel="Total expenses"
+            totalLabel="Total Expenses"
           />
         }
       />
@@ -59,7 +59,7 @@ export default function IndividualTotalsPane({
               title="Paid"
               subtitle="Paid expenses across all Individual entries, by currency"
               convertTo={BASE_CURRENCY}
-              totalLabel="Total paid"
+              totalLabel="Total Paid"
             />
           }
         />
@@ -75,7 +75,7 @@ export default function IndividualTotalsPane({
               title="Pending"
               subtitle="Pending expenses across all Individual entries, by currency"
               convertTo={BASE_CURRENCY}
-              totalLabel="Total pending"
+              totalLabel="Total Pending"
             />
           }
         />

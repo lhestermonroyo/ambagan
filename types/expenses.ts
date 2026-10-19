@@ -130,6 +130,11 @@ export type Payment = {
   proof_of_payment: string | null;
   member_note: string | null;
   payer_note: string | null;
+  /** Original amount stays unchanged; only confirmed payments reduce debt. */
+  confirmed_paid_amount?: number;
+  requested_payment_amount?: number;
+  payment_history_count?: number;
+  has_partial_payments?: boolean;
   status: PaymentStatus;
   status_updated_at: string;
   /** When the member requested settlement (status → requested). */
@@ -149,6 +154,7 @@ export type Payment = {
  * distinct from the settlement's recorded date). See getPaymentsForExport.
  */
 export type PaymentExportRow = Payment & {
+  payment_history?: import("./settlementPayments").SettlementPaymentEntry[];
   /** Stored category value of the parent expense (e.g. "food"); "other" fallback. */
   expense_category: string;
   /** The expense's own date, distinct from the settlement's created_at. */
@@ -181,6 +187,10 @@ export type PaymentPreview = Pick<
   requested_at?: string | null;
   settled_at?: string | null;
   rejected_at?: string | null;
+  confirmed_paid_amount?: number;
+  requested_payment_amount?: number;
+  payment_history_count?: number;
+  has_partial_payments?: boolean;
   /** True for a settlement generated from an offline expense, not yet synced. */
   pending?: boolean;
 };

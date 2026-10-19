@@ -115,7 +115,7 @@ export default function GroupMembersTab() {
       }));
 
       showToast({
-        title: promoting ? "Admin added" : "Admin removed",
+        title: promoting ? "Admin Added" : "Admin Removed",
         description: promoting
           ? `${member.first_name} can now add and remove members and share the invite link.`
           : `${member.first_name} is now a regular member.`,
@@ -124,7 +124,7 @@ export default function GroupMembersTab() {
     } catch (error) {
       console.error("Error updating member role:", error);
       showToast({
-        title: "Couldn't update admins",
+        title: "Couldn't Update Admins",
         description: "Please check your connection and try again.",
         type: "error"
       });

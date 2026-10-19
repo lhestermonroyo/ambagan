@@ -77,7 +77,7 @@ export default function BookRecurringDetailsScreen() {
       // offline empty state below, not an error worth a toast.
       if (isOnline) {
         toast({
-          title: "Couldn't load",
+          title: "Couldn't Load",
           description:
             "Failed to load this recurring expense. Please try again.",
           type: "error"
@@ -106,7 +106,7 @@ export default function BookRecurringDetailsScreen() {
   const requireConnection = async () => {
     if (await offlineQueue.isOnline()) return true;
     toast({
-      title: "You're offline",
+      title: "You're Offline",
       description:
         "Recurring expenses need a connection. Reconnect to manage this series.",
       type: "info"
@@ -123,7 +123,7 @@ export default function BookRecurringDetailsScreen() {
     try {
       await services.bookRecurring.setPersonalRecurringActive(item.id, next);
       toast({
-        title: next ? "Series resumed" : "Series paused",
+        title: next ? "Series Resumed" : "Series Paused",
         description: next
           ? "Future occurrences will post on schedule again."
           : "No new occurrences will post until you resume.",
@@ -132,7 +132,7 @@ export default function BookRecurringDetailsScreen() {
     } catch {
       setItem((prev) => (prev ? { ...prev, is_active: !next } : prev));
       toast({
-        title: "Couldn't update",
+        title: "Couldn't Update",
         description: "Failed to change this series. Please try again.",
         type: "error"
       });
@@ -148,7 +148,7 @@ export default function BookRecurringDetailsScreen() {
     try {
       await services.bookRecurring.deletePersonalRecurring(item.id);
       toast({
-        title: "Series deleted",
+        title: "Series Deleted",
         description: "Future occurrences won't be posted. Past ones remain.",
         type: "success"
       });
@@ -156,7 +156,7 @@ export default function BookRecurringDetailsScreen() {
       router.back();
     } catch {
       toast({
-        title: "Couldn't delete",
+        title: "Couldn't Delete",
         description: "Failed to delete this series. Please try again.",
         type: "error"
       });
@@ -177,7 +177,7 @@ export default function BookRecurringDetailsScreen() {
           icon={item.is_active ? "pause" : "play"}
           onPress={handleToggleActive}
         >
-          {item.is_active ? "Pause series" : "Resume series"}
+          {item.is_active ? "Pause Series" : "Resume Series"}
         </Stack.Toolbar.MenuAction>
         <Stack.Toolbar.MenuAction
           icon="trash"
@@ -198,7 +198,7 @@ export default function BookRecurringDetailsScreen() {
         items={[
           {
             key: "toggle",
-            label: item.is_active ? "Pause series" : "Resume series",
+            label: item.is_active ? "Pause Series" : "Resume Series",
             icon: item.is_active ? Pause : Play,
             onPress: handleToggleActive
           },
@@ -375,7 +375,7 @@ export default function BookRecurringDetailsScreen() {
       <ConfirmationSheet
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
-        title="Delete recurring series?"
+        title="Delete Recurring Series?"
         description="Future occurrences won't be posted. Expenses already created stay in the Individual entry. This can't be undone."
         confirmText="Delete"
         isDelete

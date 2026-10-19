@@ -7,11 +7,11 @@ import { formatDate } from "@/utils/formatDate";
  * optional — offline-generated previews omit them).
  */
 type SettlementLike = Pick<Payment, "created_at"> &
-  Partial<Pick<Payment, "requested_at" | "settled_at" | "rejected_at">>;
+  Partial<Pick<Payment, "requested_at" | "settled_at" | "rejected_at" | "status_updated_at" | "payment_history_count">>;
 
 /**
  * Timestamp of the most recent lifecycle action on a settlement:
- *   requested → settled/approved → rejected.
+ *   requests, confirmations, rejections, withdrawals, and reopened payments.
  *
  * Uses the latest of the action dates so it stays correct regardless of the
  * order they were written (a rejection reverts status to 'pending' but keeps
@@ -22,7 +22,8 @@ export const getSettlementUpdatedAt = (item: SettlementLike): string => {
   const actions = [
     item.requested_at,
     item.settled_at,
-    item.rejected_at
+    item.rejected_at,
+    item.payment_history_count ? item.status_updated_at : undefined
   ].filter((d): d is string => !!d);
 
   if (actions.length === 0) return item.created_at;
@@ -32,9 +33,10 @@ export const getSettlementUpdatedAt = (item: SettlementLike): string => {
   );
 };
 
-/** True once the settlement has moved past creation (requested/settled/rejected). */
+/** True once a settlement or one of its payments has been acted on. */
 export const isSettlementUpdated = (item: SettlementLike): boolean =>
-  !!(item.requested_at || item.settled_at || item.rejected_at);
+  !!(item.requested_at || item.settled_at || item.rejected_at ||
+    (item.payment_history_count && item.status_updated_at));
 
 /**
  * Label for a settlement row's timestamp: "Updated <date>" once it has been

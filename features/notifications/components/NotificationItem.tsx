@@ -31,15 +31,15 @@ function getRecurringMessage(type: NotificationType): string {
 function getNotificationSuffix(type: NotificationType): string {
   switch (type) {
     case NotificationType.SETTLEMENT_REQUEST:
-      return "submitted a settlement request for your review.";
+      return "submitted a payment for your review.";
     case NotificationType.SETTLEMENT_APPROVED:
-      return "approved your settlement request.";
+      return "confirmed your payment.";
     case NotificationType.SETTLEMENT_REJECTED:
-      return "rejected your settlement request.";
+      return "rejected your payment request.";
     case NotificationType.SETTLEMENT_REVERTED:
-      return "reopened your settlement for review.";
+      return "reopened a payment for review.";
     case NotificationType.SETTLEMENT_COMPLETED:
-      return "completed a settlement.";
+      return "recorded a payment.";
     case NotificationType.EXPENSE_INCLUSION:
       return "added you to an expense.";
     case NotificationType.GROUP_JOIN:
@@ -103,7 +103,7 @@ export default function NotificationItem({
               <StatusBadge status={item.settlement_status} size="sm" />
             ) : item.settlement_status === null ? (
               <Text className="text-sm text-secondary-500">
-                No longer available
+                No Longer Available
               </Text>
             ) : null}
           </HStack>

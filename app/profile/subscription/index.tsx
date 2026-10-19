@@ -210,7 +210,7 @@ export default function SubscriptionScreen() {
         });
       } else {
         toast({
-          title: "No active Pro access",
+          title: "No Active Pro Access",
           description: "No active subscription or unexpired Pro pass was found for this account.",
           type: "info"
         });
@@ -218,7 +218,7 @@ export default function SubscriptionScreen() {
     } catch {
       if (states.user.getState().details?.id !== purchasingUserId) return;
       toast({
-        title: retryActivation ? "Activation pending" : "Restore Failed",
+        title: retryActivation ? "Activation Pending" : "Restore Failed",
         description: retryActivation || activationPending
           ? "We couldn’t activate Pro yet. Your payment is saved; retry activation when your connection is available. Do not purchase again."
           : "Could not restore purchase. Please try again.",
@@ -288,7 +288,7 @@ export default function SubscriptionScreen() {
       if (purchaseConfirmed || services.purchase.isActivationPending(error)) {
         setActivationPending(true);
         toast({
-          title: "Payment received",
+          title: "Payment Received",
           description: "Pro activation is pending. Tap Retry activation or Restore; you don’t need to purchase again.",
           type: "info"
         });
@@ -310,7 +310,7 @@ export default function SubscriptionScreen() {
       await services.purchase.showManageSubscriptions();
     } catch {
       toast({
-        title: "Unable to open",
+        title: "Unable to Open",
         description:
           "Could not open subscription management. Try via Settings → Apple ID → Subscriptions.",
         type: "error"
@@ -425,7 +425,7 @@ export default function SubscriptionScreen() {
             >
               <VStack className="gap-y-2">
                 <Text bold className="text-2xl">
-                  Choose a plan
+                  Choose a Plan
                 </Text>
                 <VStack className="gap-y-2">
                   {PLANS.map((plan) => {
@@ -506,7 +506,7 @@ export default function SubscriptionScreen() {
           {/* Feature list */}
           <VStack className="gap-y-2">
             <Text bold className="text-2xl">
-              {isPro ? "Your Pro Features" : "What you get"}
+              {isPro ? "Your Pro Features" : "What You Get"}
             </Text>
             <Box className="rounded-2xl overflow-hidden bg-background-50">
               {PRO_FEATURES.map((feature, index) => (
@@ -550,7 +550,7 @@ export default function SubscriptionScreen() {
 
           {!isPro && (
             <FormButton
-              text={activationPending ? "Retry activation" : ctaLabel()}
+              text={activationPending ? "Retry Activation" : ctaLabel()}
               loading={purchasing || restoring}
               disabled={purchasing || restoring || loadingOffering}
               onPress={handleSubscribe}

@@ -1,3 +1,4 @@
+import { usesPartialPaymentFlow, groupSettlementBalancesByCurrency as groupByCurrency } from "@/features/expense/utils/settlementPayments.util";
 import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList, { EmptyListAction } from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -48,7 +49,6 @@ import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
-import { groupByCurrency } from "@/utils/currency";
 import { BASE_CURRENCY } from "@/utils/fx";
 import {
   getPrimaryHex,
@@ -406,7 +406,7 @@ export default function GroupSettlements({
     const isUserPayer = p.payer.id === userDetails?.id;
 
     if (isUserMember) {
-      if (p.status === "pending") {
+      if (p.status === "pending" && !usesPartialPaymentFlow(p)) {
         handleOpenRequest(p);
       } else {
         handleOpenReview(p, false);
@@ -414,7 +414,7 @@ export default function GroupSettlements({
     } else if (isUserPayer) {
       if (p.status === "requested") {
         handleOpenReview(p, true);
-      } else if (p.status === "pending") {
+      } else if (p.status === "pending" && !usesPartialPaymentFlow(p)) {
         handleOpenMarkAsSettled(p);
       } else {
         handleOpenReview(p, true);
@@ -488,7 +488,7 @@ export default function GroupSettlements({
                     type="receive"
                     primaryCurrency={primaryCurrency}
                     convertTo={primaryCurrency}
-                    totalLabel="Total to collect"
+                    totalLabel="Total to Collect"
                   />
                 </VStack>
                 <Divider orientation="vertical" className="mx-4" />
@@ -507,7 +507,7 @@ export default function GroupSettlements({
                     type="pay"
                     primaryCurrency={primaryCurrency}
                     convertTo={primaryCurrency}
-                    totalLabel="Total to pay"
+                    totalLabel="Total to Pay"
                   />
                 </VStack>
               </HStack>

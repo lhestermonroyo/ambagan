@@ -186,7 +186,7 @@ export default function FeatureTourCarousel({
         </HStack>
 
         <FormButton
-          text={page === lastPage ? "Get started" : "Next"}
+          text={page === lastPage ? "Get Started" : "Next"}
           onPress={() => (page === lastPage ? onDone() : goToPage(page + 1))}
         />
       </VStack>

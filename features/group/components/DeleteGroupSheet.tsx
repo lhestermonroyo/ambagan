@@ -70,7 +70,7 @@ export default function DeleteGroupSheet({
       await onDelete();
     } catch (error: any) {
       toast({
-        title: "Cannot delete group",
+        title: "Cannot Delete Group",
         description:
           error?.message ?? "Failed to delete group. Please try again.",
         type: "error"

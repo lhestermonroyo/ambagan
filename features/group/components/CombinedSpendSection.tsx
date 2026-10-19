@@ -96,7 +96,7 @@ export default function CombinedSpendSection({
       setPickerOpen(true);
     } catch {
       toast({
-        title: "Couldn't load your books",
+        title: "Couldn't Load Your Books",
         description: "Check your connection and try again.",
         type: "error"
       });
@@ -110,14 +110,14 @@ export default function CombinedSpendSection({
     try {
       await services.book.linkBookToGroup(selected.id, groupId);
       toast({
-        title: "Book linked",
+        title: "Book Linked",
         description: `${selected.name} now rolls up with this group.`,
         type: "success"
       });
       refresh();
     } catch (error) {
       toast({
-        title: "Couldn't link book",
+        title: "Couldn't Link Book",
         description:
           error instanceof Error ? error.message : "Please try again.",
         type: "error"
@@ -139,7 +139,7 @@ export default function CombinedSpendSection({
         >
           <HStack className="gap-x-4 items-center">
             <VStack className="flex-1">
-              <Text className="text-lg">Link a personal book</Text>
+              <Text className="text-lg">Link a Personal Book</Text>
               <Text className="text-sm text-secondary-950">
                 Tracking your own spending here too? Link a book to see what this{" "}
                 {groupCategory === "trip" ? "trip" : "group"} really cost you.
@@ -166,7 +166,7 @@ export default function CombinedSpendSection({
         onClose={() => setPickerOpen(false)}
         books={linkable}
         onSelect={handleLink}
-        title="Link which book?"
+        title="Link Which Book?"
       />
 
       <Divider />
@@ -184,7 +184,7 @@ export default function CombinedSpendSection({
             findable. */}
         <VStack className="gap-y-2">
           <BreakdownRow
-            label="Your share (group)"
+            label="Your Share (Group)"
             amount={yourShare}
             currency={targetCurrency}
             approx={shareApprox}

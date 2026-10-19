@@ -40,7 +40,7 @@ export default function MemberActionsButton({
         )}
         {canManage && !isOwnerRow && (
           <Button
-            label={isAdmin ? "Remove admin" : "Make admin"}
+            label={isAdmin ? "Remove Admin" : "Make Admin"}
             systemImage={isAdmin ? "person.badge.minus" : "person.badge.plus"}
             role={isAdmin ? "destructive" : "default"}
             onPress={() =>
@@ -50,7 +50,7 @@ export default function MemberActionsButton({
         )}
         {canManage && !isOwnerRow && onRemove && (
           <Button
-            label="Remove member"
+            label="Remove Member"
             systemImage="person.crop.circle.badge.minus"
             role="destructive"
             onPress={() => onRemove(member)}

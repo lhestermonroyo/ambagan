@@ -708,6 +708,11 @@
   dependencies:
     "@types/hammerjs" "^2.0.36"
 
+"@electric-sql/pglite@0.5.10":
+  version "0.5.10"
+  resolved "https://registry.yarnpkg.com/@electric-sql/pglite/-/pglite-0.5.10.tgz#fa875b6199e6641d82b19cbf8e9fde51196afd4d"
+  integrity sha512-tXc/25U3ulOkiRQuTFdwIv+JhBqtMdAF7Gvo6CfZZWtSB4+hgC4Wr2vwK5ngvvN5PJfAAEGIsfyCVy1JhCOBYw==
+
 "@emnapi/core@^1.4.3":
   version "1.11.2"
   resolved "https://registry.yarnpkg.com/@emnapi/core/-/core-1.11.2.tgz#fab0a0f3c492d11f5a9ac9065d0d73955ee1c1c9"

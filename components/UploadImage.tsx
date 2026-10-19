@@ -43,7 +43,7 @@ const UploadImage = ({
   const openPicker = () => {
     if (!isOnline) {
       toast({
-        title: "You're offline",
+        title: "You're Offline",
         description:
           "Images can't be uploaded right now. You can still save without one.",
         type: "info"

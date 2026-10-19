@@ -75,7 +75,7 @@ export default function PersonalExpenseItem({
                 onPress={onToggleStatus}
                 className={togglingStatus ? "opacity-50" : undefined}
                 accessibilityRole="button"
-                accessibilityLabel={`Mark ${isPaid ? "pending" : "paid"}`}
+                accessibilityLabel={`Mark ${isPaid ? "Pending" : "Paid"}`}
               >
                 {pill}
               </Pressable>

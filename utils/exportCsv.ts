@@ -35,16 +35,21 @@ export const exportGroupSettlementsAsCsv = async (
     "Category",
     "Member (Owes)",
     "Payer (Paid by)",
-    "Amount",
+    "Original Amount",
+    "Confirmed Paid",
+    "Remaining Balance",
     "Currency",
     "Status",
     "Requested At",
     "Settled At",
     "Member Note",
-    "Payer Note"
+    "Payer Note",
+    "Payment ID", "Payment Amount", "Payment Status", "Payment Added At",
+    "Payment Confirmed At", "Payment Reopened At", "Payment Rejected At", "Payment Withdrawn At", "Payment Proof"
   ];
 
-  const rows = payments.map((p) => [
+  const rows = payments.flatMap((p) => (p.payment_history?.length ? [...p.payment_history]
+    .sort((a, b) => a.created_at.localeCompare(b.created_at)) : [null]).map((entry) => [
     p.id,
     formatDate(p.created_at),
     formatDate(p.expense_date),
@@ -53,13 +58,19 @@ export const exportGroupSettlementsAsCsv = async (
     `${p.member.first_name} ${p.member.last_name}`.trim(),
     `${p.payer.first_name} ${p.payer.last_name}`.trim(),
     p.amount.toFixed(2),
+    (p.confirmed_paid_amount ?? (p.status === "settled" ? p.amount : 0)).toFixed(2),
+    Math.max(0, p.amount - (p.confirmed_paid_amount ?? (p.status === "settled" ? p.amount : 0))).toFixed(2),
     p.currency,
     p.status,
     formatDateTime(p.requested_at),
     formatDateTime(p.settled_at),
-    p.member_note ?? "",
-    p.payer_note ?? ""
-  ]);
+    entry?.member_note ?? (entry ? "" : p.member_note ?? ""),
+    entry?.payer_note ?? (entry ? "" : p.payer_note ?? ""),
+    entry?.id ?? "", entry?.amount.toFixed(2) ?? "", entry?.status ?? "",
+    formatDateTime(entry?.created_at ?? null), formatDateTime(entry?.confirmed_at ?? null),
+    formatDateTime(entry?.reopened_at ?? null), formatDateTime(entry?.rejected_at ?? null),
+    formatDateTime(entry?.withdrawn_at ?? null), entry?.proof_of_payment ?? ""
+  ]));
 
   const csv = [headers, ...rows]
     .map((row) => row.map(escapeCell).join(","))

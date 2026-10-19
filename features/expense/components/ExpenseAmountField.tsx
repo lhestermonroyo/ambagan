@@ -137,10 +137,10 @@ export default function ExpenseAmountField({
             </Text>
             <CurrencyCountButton
               items={[{ currency, amount }]}
-              title="Approximate value"
+              title="Approximate Value"
               subtitle="Original amount and reporting currency conversion"
               convertTo={reportingCurrency}
-              totalLabel="Approximate total"
+              totalLabel="Approximate Total"
             />
           </>
         )}

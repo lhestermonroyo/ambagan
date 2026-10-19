@@ -229,7 +229,7 @@ export default function RootLayout() {
                 );
               } else {
                 toast({
-                  title: "No longer available",
+                  title: "No Longer Available",
                   description:
                     "The settlement linked to this notification no longer exists.",
                   type: "info"
@@ -246,7 +246,7 @@ export default function RootLayout() {
               router.push(route as any);
             } else {
               toast({
-                title: "No longer available",
+                title: "No Longer Available",
                 description:
                   "The group or expense linked to this notification no longer exists.",
                 type: "info"

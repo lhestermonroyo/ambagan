@@ -266,7 +266,7 @@ export default function EditMembersSheet({
       // Phone contacts need the placeholder RPC (online) to get real ids.
       if (!online && services.member.hasUnresolvedContacts(members)) {
         showToast({
-          title: "You're offline",
+          title: "You're Offline",
           description:
             "Adding phone contacts as members needs an internet connection. Remove them or reconnect.",
           type: "error",
@@ -372,7 +372,7 @@ export default function EditMembersSheet({
         await addRecentUsers(membersToSave, userDetails!.id);
 
         showToast({
-          title: "Saved offline",
+          title: "Saved Offline",
           description:
             "Member changes will sync automatically when you're back online.",
           type: "info",
@@ -452,7 +452,7 @@ export default function EditMembersSheet({
             <FormButton
               variant="link"
               size="md"
-              text="Add from Contacts"
+              text="Add From Contacts"
               icon={
                 <UserPlus
                   size={18}

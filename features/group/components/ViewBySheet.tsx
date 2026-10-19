@@ -41,7 +41,7 @@ export default function ViewBySheet({
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full gap-y-4">
           <Text bold className="text-xl">
-            View By
+            View by
           </Text>
           <RadioGroup
             value={viewBy}

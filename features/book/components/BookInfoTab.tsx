@@ -48,7 +48,7 @@ export default function BookInfoTab({ book }: { book: Book }) {
           <DetailRow label="Mode" value={<Text>Individual</Text>} />
           <RowDivider />
           <DetailRow
-            label={entryCurrency ? "Individual currency" : "Currency"}
+            label={entryCurrency ? "Individual Currency" : "Currency"}
             value={
               <Text>
                 {currency ? currency.subtitle : book.currency} (
@@ -60,7 +60,7 @@ export default function BookInfoTab({ book }: { book: Book }) {
             <>
               <RowDivider />
               <DetailRow
-                label="New expenses"
+                label="New Expenses"
                 value={
                   <Text>
                     {entryCurrency.subtitle} ({entryCurrency.sign})
@@ -97,7 +97,7 @@ export default function BookInfoTab({ book }: { book: Book }) {
             <>
               <RowDivider />
               <DetailRow
-                label="Linked group"
+                label="Linked Group"
                 value={
                   <Pressable
                     onPress={() => router.push(`/groups/${book.group_id}`)}
@@ -108,7 +108,7 @@ export default function BookInfoTab({ book }: { book: Book }) {
                           just can't name it, so say so rather than showing
                           nothing. */}
                       <Text className="text-sm">
-                        {book.linked_group?.name ?? "View group"}
+                        {book.linked_group?.name ?? "View Group"}
                       </Text>
                       <ChevronRight
                         size={16}

@@ -76,7 +76,7 @@ export default function ScanJoinScreen() {
       // Not one of our invite QRs — warn once, then allow another scan.
       handledRef.current = true;
       toast({
-        title: "Not an Ambagan invite",
+        title: "Not an Ambagan Invite",
         description: "That QR code isn't a group invite. Try another.",
         type: "warning"
       });
@@ -127,14 +127,14 @@ export default function ScanJoinScreen() {
       }
 
       toast({
-        title: "No invite found",
+        title: "No Invite Found",
         description:
           "We couldn't find a group invite QR in that image. Try another.",
         type: "warning"
       });
     } catch {
       toast({
-        title: "Couldn't read image",
+        title: "Couldn't Read Image",
         description: "That image couldn't be scanned. Please try another.",
         type: "error"
       });
@@ -162,7 +162,7 @@ export default function ScanJoinScreen() {
           />
           <VStack className="gap-y-2">
             <Text bold className="text-xl text-center">
-              Camera access is off
+              Camera Access Is Off
             </Text>
             <Text className="text-secondary-950 text-center">
               Turn on camera access in Settings to scan a group invite QR code.
@@ -176,7 +176,7 @@ export default function ScanJoinScreen() {
             />
             <FormButton
               variant="outline"
-              text={uploading ? "Reading image…" : "Choose from Photos"}
+              text={uploading ? "Reading Image…" : "Choose From Photos"}
               onPress={handleUploadQR}
               disabled={uploading}
             />
@@ -226,7 +226,7 @@ export default function ScanJoinScreen() {
               <HStack className="items-center justify-center gap-x-2 px-4 py-3 rounded-full bg-white/15">
                 <ImageUp size={18} color="#fff" />
                 <Text className="text-white">
-                  {uploading ? "Reading image…" : "Upload QR from Photos"}
+                  {uploading ? "Reading Image…" : "Upload QR From Photos"}
                 </Text>
               </HStack>
             </Pressable>
@@ -236,7 +236,7 @@ export default function ScanJoinScreen() {
               className="px-4 py-2 rounded-full bg-black/50 active:opacity-50"
             >
               <Text className="text-white">
-                {torch ? "Turn off flashlight" : "Turn on flashlight"}
+                {torch ? "Turn Off Flashlight" : "Turn On Flashlight"}
               </Text>
             </Pressable>
           </VStack>

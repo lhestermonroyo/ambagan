@@ -232,7 +232,7 @@ export default function FriendsScreen() {
           key: "search",
           sf: "magnifyingglass",
           lucide: Search,
-          label: "Search friends",
+          label: "Search Friends",
           onPress: () => setSearchVisible(true)
         }
       ]}

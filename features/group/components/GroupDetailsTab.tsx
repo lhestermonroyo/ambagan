@@ -93,7 +93,7 @@ function GroupDetailsContent({
               convert into. It also seeds new expenses unless the row below
               overrides it, which is why this one isn't labelled "default". */}
           <DetailRow
-            label={entryCurrency ? "Group currency" : "Currency"}
+            label={entryCurrency ? "Group Currency" : "Currency"}
             value={
               <Text>
                 {currency ? currency.subtitle : (details.currency ?? "PHP")} (
@@ -105,7 +105,7 @@ function GroupDetailsContent({
             <>
               <RowDivider />
               <DetailRow
-                label="New expenses"
+                label="New Expenses"
                 value={
                   <Text>
                     {entryCurrency.subtitle} ({entryCurrency.sign})

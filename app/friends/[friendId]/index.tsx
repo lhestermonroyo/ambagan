@@ -1,3 +1,4 @@
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AppAvatar from "@/components/AppAvatar";
@@ -55,7 +56,7 @@ import states from "@/states";
 import { PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
-import { groupByCurrency } from "@/utils/currency";
+import { usesPartialPaymentFlow, groupSettlementBalancesByCurrency as groupByCurrency } from "@/features/expense/utils/settlementPayments.util";
 import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
 import {
   getPrimaryHex,
@@ -212,7 +213,7 @@ export default function FriendDetailScreen() {
     if (isOnline) {
       const notifyGone = () =>
         toast({
-          title: "No longer available",
+          title: "No Longer Available",
           description:
             "The settlement linked to this notification no longer exists.",
           type: "info"
@@ -353,7 +354,7 @@ export default function FriendDetailScreen() {
   const requireOnline = () => {
     if (!isOnline) {
       toast({
-        title: "You're offline",
+        title: "You're Offline",
         description:
           "Settling and requests need a connection. Try again once you're back online.",
         type: "info"
@@ -363,6 +364,8 @@ export default function FriendDetailScreen() {
     return true;
   };
 
+  const showPaymentFeedback = useActionFeedback();
+
   const handleConfirmAction = async () => {
     if (!userDetails?.id || !friendId || !pendingAction) return;
     if (
@@ -370,27 +373,32 @@ export default function FriendDetailScreen() {
     )
       return;
     setActionLoading(true);
+    const partialBatch = activeSettlements.some((settlement) =>
+      (pendingAction === "settle" ? settlement.payer.id === userDetails.id
+        : settlement.member.id === userDetails.id && settlement.status === "pending") &&
+      usesPartialPaymentFlow(settlement));
     try {
       if (pendingAction === "settle") {
         await services.friend.bulkSettleWithFriend(userDetails.id, friendId);
-        toast({
-          title: "All settled!",
-          description: `All your collections from ${decodedName} have been marked as settled.`,
-          type: "success"
-        });
+
       } else {
         await services.friend.bulkRequestSettleWithFriend(
           userDetails.id,
           friendId
         );
-        toast({
-          title: "Requests sent!",
-          description: `All your pending settlements with ${decodedName} have been requested.`,
-          type: "success"
-        });
+
       }
+      const completedAction = pendingAction;
       setPendingAction(null);
       await fetchAll(false);
+      if (partialBatch) {
+        void showPaymentFeedback(completedAction === "settle" ? "settlement-completed" : "settlement-requested");
+      } else {
+        toast({ type: "success", title: completedAction === "settle" ? "All Settled!" : "Requests Sent!",
+          description: completedAction === "settle"
+            ? `Your full-payment collections from ${decodedName} have been marked as settled.`
+            : `All your pending settlements with ${decodedName} have been requested.` });
+      }
     } catch {
       toast({
         title: "Error",
@@ -403,7 +411,7 @@ export default function FriendDetailScreen() {
   };
 
   const canSettle = useMemo(
-    () => activeSettlements.some((s) => s.payer.id === userDetails?.id),
+    () => activeSettlements.some((s) => s.payer.id === userDetails?.id && !usesPartialPaymentFlow(s)),
     [activeSettlements, userDetails]
   );
 
@@ -600,8 +608,8 @@ export default function FriendDetailScreen() {
     ? getPrimaryHex("text-primary-400", colorScheme)
     : getSecondaryHex("text-secondary-950", colorScheme);
   const favoriteLabel = isFavorite
-    ? "Remove from favorites"
-    : "Add to favorites";
+    ? "Remove From Favorites"
+    : "Add to Favorites";
 
   return (
     <>
@@ -705,7 +713,7 @@ export default function FriendDetailScreen() {
                             type="receive"
                             primaryCurrency={BASE_CURRENCY}
                             convertTo={BASE_CURRENCY}
-                            totalLabel="Total to collect"
+                            totalLabel="Total to Collect"
                           />
                         </VStack>
                         <Divider orientation="vertical" className="mx-4" />
@@ -724,7 +732,7 @@ export default function FriendDetailScreen() {
                             type="pay"
                             primaryCurrency={BASE_CURRENCY}
                             convertTo={BASE_CURRENCY}
-                            totalLabel="Total to pay"
+                            totalLabel="Total to Pay"
                           />
                         </VStack>
                       </HStack>
@@ -1096,8 +1104,8 @@ export default function FriendDetailScreen() {
         onClose={() => setPendingAction(null)}
         title={pendingAction === "settle" ? "Mark All as Settled" : "Request All as Settled"}
         description={pendingAction === "settle"
-          ? `This will mark all your outstanding collections from ${decodedName} as settled. This action cannot be undone.`
-          : `This will send a settlement request for all your pending payments to ${decodedName}.`}
+          ? `This settles full-payment collections from ${decodedName}. Partial payments are excluded; open their Payment History to confirm or reject each request.`
+          : `This requests the full remaining balance of each pending settlement with ${decodedName}.`}
         confirmText={pendingAction === "settle" ? "Settle All" : "Request All"}
         loading={actionLoading}
         onConfirm={handleConfirmAction}

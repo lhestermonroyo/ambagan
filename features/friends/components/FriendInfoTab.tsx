@@ -54,7 +54,7 @@ export default function FriendInfoTab({
         />
         <RowDivider />
         <DetailRow
-          label="Member since"
+          label="Member Since"
           value={loading ? "…" : profile ? formatDate(profile.created_at) : "—"}
         />
         <RowDivider />

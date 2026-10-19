@@ -29,15 +29,15 @@ import { useEffect, useMemo, useState } from "react";
 
 const ONBOARDING_STEPS = [
   {
-    title: "What's your name?",
+    title: "What's Your Name?",
     subtitle: "Let's start with your name. You can change this later."
   },
   {
-    title: "What's your phone number?",
+    title: "What's Your Phone Number?",
     subtitle: "Used for account recovery and important notifications."
   },
   {
-    title: "Add a profile photo",
+    title: "Add a Profile Photo",
     subtitle:
       "Help your friends recognize you. This is optional, and you can add one later."
   }
@@ -138,7 +138,7 @@ export default function OnboardingScreen() {
 
       if (isDuplicateEmail) {
         toast({
-          title: "Email already in use",
+          title: "Email Already in Use",
           description:
             "An account with this email already exists. Please log in with your password instead.",
           type: "error"

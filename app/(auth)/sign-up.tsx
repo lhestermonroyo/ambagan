@@ -75,7 +75,7 @@ export default function SignUpScreen() {
 
       if (alreadyRegistered) {
         toast({
-          title: "Email already in use",
+          title: "Email Already in Use",
           description:
             "This email already has an account. Please log in instead.",
           type: "error"
@@ -103,7 +103,7 @@ export default function SignUpScreen() {
 
       if (alreadyRegistered) {
         toast({
-          title: "Email already in use",
+          title: "Email Already in Use",
           description:
             "This email already has an account. Please log in instead.",
           type: "error"

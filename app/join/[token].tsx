@@ -123,7 +123,7 @@ export default function JoinGroupScreen() {
             </Box>
             <VStack className="gap-y-1">
               <Text bold className="text-xl text-center">
-                Couldn&apos;t join group
+                Couldn&apos;t Join Group
               </Text>
               <Text className="text-center text-secondary-950">{errorMsg}</Text>
             </VStack>

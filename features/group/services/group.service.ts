@@ -332,11 +332,11 @@ export const deleteGroup = async (groupId: string) => {
   const expenseIds = expenses.map((e) => e.id);
 
   if (expenseIds.length > 0) {
-    const [paymentsRes, payersRes, splitsRes] = await Promise.all([
-      supabase
-        .from(tables.PAYMENT_SPLITS_TBL)
-        .delete()
-        .in("expense_id", expenseIds),
+    // Remove fully settled parents (and their ledger) before split children.
+    const paymentsRes = await supabase.from(tables.PAYMENT_SPLITS_TBL)
+      .delete().in("expense_id", expenseIds);
+    if (paymentsRes.error) throw paymentsRes.error;
+    const [payersRes, splitsRes] = await Promise.all([
       supabase
         .from(tables.EXPENSE_PAYERS_TBL)
         .delete()
@@ -347,7 +347,6 @@ export const deleteGroup = async (groupId: string) => {
         .in("expense_id", expenseIds)
     ]);
 
-    if (paymentsRes.error) throw paymentsRes.error;
     if (payersRes.error) throw payersRes.error;
     if (splitsRes.error) throw splitsRes.error;
 

@@ -91,7 +91,7 @@ export default function MemberActionsSheet({
               key: "demote",
               icon: ShieldOff,
               iconColor: getErrorHex("text-error-600", colorScheme),
-              label: "Remove admin",
+              label: "Remove Admin",
               destructive: true,
               onPress: () => onSetRole(member, GroupRole.MEMBER)
             }
@@ -99,7 +99,7 @@ export default function MemberActionsSheet({
               key: "promote",
               icon: ShieldPlus,
               iconColor: getSecondaryHex("text-secondary-950", colorScheme),
-              label: "Make admin",
+              label: "Make Admin",
               onPress: () => onSetRole(member, GroupRole.ADMIN)
             }
       );
@@ -110,7 +110,7 @@ export default function MemberActionsSheet({
         key: "remove",
         icon: UserRoundMinus,
         iconColor: getErrorHex("text-error-600", colorScheme),
-        label: "Remove member",
+        label: "Remove Member",
         destructive: true,
         onPress: () => onRemove(member)
       });

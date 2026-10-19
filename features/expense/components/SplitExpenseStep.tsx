@@ -257,7 +257,7 @@ export default function SplitSelection({
                   )}
                   <VStack>
                     <Text className="text-2xl" bold>
-                      Who owes what?
+                      Who Owes What?
                     </Text>
                     <Text className="text-sm text-secondary-950">
                       Set how the total is divided among each member.
@@ -292,7 +292,7 @@ export default function SplitSelection({
                   trailingIcon="expand-more"
                 >
                   <Text className="text-base" numberOfLines={1}>
-                    Split among {includedCount} of {members.length}
+                    Split Among {includedCount} of {members.length}
                   </Text>
                 </SelectField>
               </Box>

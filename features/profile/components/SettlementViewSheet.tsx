@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/radio";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
+import useUserState from "@/features/user/states/user.state";
 import useAppToast from "@/hooks/use-app-toast";
-import states from "@/states";
 import { SettlementView } from "@/types/user";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { CircleIcon, MoveRight, Rows2, Rows4 } from "lucide-react-native";
@@ -31,13 +31,9 @@ export default function SettlementViewSheet({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const { settlementView, setSettlementView } = states.user();
+  const settlementView = useUserState((state) => state.settlementView);
+  const setSettlementView = useUserState((state) => state.setSettlementView);
   const toast = useAppToast();
-
-  if (!settlementView || !setSettlementView) {
-    return null;
-  }
-
   const colorScheme = useColorScheme() ?? "light";
 
   const options: {
@@ -57,7 +53,7 @@ export default function SettlementViewSheet({
         icon: <Rows4 color={getPrimaryHex("text-primary-400", colorScheme)} />,
         label: "Compact",
         value: "compact",
-        description: "Dense two-line rows — fit more on screen at a glance"
+        description: "Short payment rows with a sentence and status icon"
       },
       {
         icon: (

@@ -25,7 +25,7 @@ export default function EmptyStatePreviewBanner() {
       </Text>
       <FormButton
         size="sm"
-        text="Turn off"
+        text="Turn Off"
         onPress={() => setEmptyStatePreview(false)}
       />
     </HStack>

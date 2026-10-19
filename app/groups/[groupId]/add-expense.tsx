@@ -364,7 +364,7 @@ export default function AddExpenseScreen() {
   const handleOpenPayerSheet = () => {
     if (parsedAmount <= 0) {
       toast({
-        title: "Enter an amount first",
+        title: "Enter an Amount First",
         description: "Add the expense amount before choosing payers.",
         type: "info"
       });
@@ -383,7 +383,7 @@ export default function AddExpenseScreen() {
       isMultiPayer || splitType !== "equal" || includedIds.length < memberCount;
     if (hadCustomization) {
       toast({
-        title: "Payers and split were reset",
+        title: "Payers and Split Were Reset",
         description: "The new group has different members.",
         type: "info"
       });
@@ -534,7 +534,7 @@ export default function AddExpenseScreen() {
   const handleOpenSplitSheet = () => {
     if (parsedAmount <= 0) {
       toast({
-        title: "Enter an amount first",
+        title: "Enter an Amount First",
         description: "Add the expense amount before customizing the split.",
         type: "info"
       });
@@ -591,15 +591,15 @@ export default function AddExpenseScreen() {
       label: recurrence
         ? recurrenceSummary(recurrence)
         : isPro
-          ? "One-time"
-          : "One-time · Pro",
+          ? "One-Time"
+          : "One-Time · Pro",
       isDefault: !recurrence,
       icon: (color) => <Repeat size={16} color={color} />,
       onPress: handleOpenRecurrence
     },
     {
       key: "receipt",
-      label: hasReceipt ? "Receipt added" : "Receipt",
+      label: hasReceipt ? "Receipt Added" : "Receipt",
       isDefault: !hasReceipt,
       icon: (color) => <Paperclip size={16} color={color} />,
       // The one chip that expands instead of opening a sheet: the uploader is a
@@ -704,7 +704,7 @@ export default function AddExpenseScreen() {
       );
 
       toast({
-        title: "Draft saved offline",
+        title: "Draft Saved Offline",
         description: proofUpload
           ? "This draft and its receipt will sync automatically when you're back online."
           : "This draft will sync automatically when you're back online.",
@@ -755,7 +755,7 @@ export default function AddExpenseScreen() {
     const online = await offlineQueue.isOnline();
     if (!online) {
       toast({
-        title: "You're offline",
+        title: "You're Offline",
         description:
           "Recurring expenses need a connection. Reconnect to set one up.",
         type: "info"
@@ -894,7 +894,7 @@ export default function AddExpenseScreen() {
       );
 
       toast({
-        title: "Saved offline",
+        title: "Saved Offline",
         description: proofUpload
           ? "This expense and its receipt will sync automatically when you're back online."
           : "This expense will sync automatically when you're back online.",
@@ -1243,7 +1243,7 @@ export default function AddExpenseScreen() {
                 <Icon as="cloud-off" size={40} className="text-secondary-400" />
                 <VStack className="gap-y-1 items-center">
                   <Text bold className="text-center">
-                    Members aren&apos;t available for this group
+                    Members Aren&apos;t Available for This Group
                   </Text>
                   <Text className="text-center text-sm text-secondary-950">
                     {isOnline
@@ -1255,7 +1255,7 @@ export default function AddExpenseScreen() {
                   <FormButton
                     size="sm"
                     variant="outline"
-                    text="Choose another group"
+                    text="Choose Another Group"
                     onPress={() => setGroupPickerOpen(true)}
                   />
                 )}
@@ -1325,8 +1325,8 @@ export default function AddExpenseScreen() {
                     {recurrence
                       ? recurrenceSummary(recurrence)
                       : isPro
-                        ? "One-time"
-                        : "One-time - Pro"}
+                        ? "One-Time"
+                        : "One-Time - Pro"}
                   </Text>
                 </SelectField>
                 {recurrence && (
@@ -1338,7 +1338,7 @@ export default function AddExpenseScreen() {
 
               <VStack className="gap-y-1">
                 <UploadImage
-                  title="Upload Proof of Payment (optional)"
+                  title="Upload Proof of Payment (Optional)"
                   key={proofOfPayment?.assets?.[0]?.uri ?? "none"}
                   defaultUri={proofOfPayment?.assets?.[0]?.uri ?? null}
                   onSelect={setProofOfPayment}

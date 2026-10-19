@@ -224,12 +224,12 @@ export function useLinkedGroupShare(
 export function combinedTotalLabel(groupCategory?: string): string {
   switch (groupCategory) {
     case "trip":
-      return "Trip total";
+      return "Trip Total";
     case "household":
-      return "Household total";
+      return "Household Total";
     case "event":
-      return "Event total";
+      return "Event Total";
     default:
-      return "Combined total";
+      return "Combined Total";
   }
 }

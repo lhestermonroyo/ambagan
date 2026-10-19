@@ -23,7 +23,7 @@ export type PayerOption = (typeof payerOptions)[number];
 
 export const payerLabels: Record<PayerOption, string> = {
   All: "Everyone",
-  Me: "Paid by me"
+  Me: "Paid by Me"
 };
 
 export default function PayerSheet({

@@ -61,7 +61,7 @@ export default function BookRecurringScreen() {
       // offline empty state, not an error worth a toast.
       if (isOnline) {
         toast({
-          title: "Couldn't load",
+          title: "Couldn't Load",
           description: "Failed to load recurring expenses. Please try again.",
           type: "error"
         });

@@ -90,7 +90,7 @@ export default function SplitMembersSheet({
         <HStack className="p-4 items-center">
           <Icon as="arrow-back-ios" className="text-secondary-950" />
           <Text bold className="text-xl">
-            Split among
+            Split Among
           </Text>
         </HStack>
       </Pressable>
@@ -104,7 +104,7 @@ export default function SplitMembersSheet({
         </Text>
         <Pressable onPress={toggleAll}>
           <Text className="text-primary-400">
-            {allSelected ? "Unselect all" : "Select all"}
+            {allSelected ? "Unselect All" : "Select All"}
           </Text>
         </Pressable>
       </HStack>

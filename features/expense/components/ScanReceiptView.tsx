@@ -243,14 +243,14 @@ export default function ScanReceiptView({
 
       if (gotNothing) {
         toast({
-          title: "Couldn't read that",
+          title: "Couldn't Read That",
           description:
             "We couldn't read the receipt. You can still enter the expense manually.",
           type: "warning"
         });
       } else if (scan.confidence < LOW_CONFIDENCE) {
         toast({
-          title: "Please double-check",
+          title: "Please Double-Check",
           description:
             "The scan may not be accurate — review the amount before saving.",
           type: "info"
@@ -277,7 +277,7 @@ export default function ScanReceiptView({
     } catch {
       setScanning(false);
       toast({
-        title: "Scan failed",
+        title: "Scan Failed",
         description:
           "Something went wrong reading the receipt. Please try again.",
         type: "error"
@@ -308,7 +308,7 @@ export default function ScanReceiptView({
       await handleScan(toPickerResult(photo));
     } catch {
       toast({
-        title: "Couldn't take photo",
+        title: "Couldn't Take Photo",
         description: "Something went wrong with the camera. Please try again.",
         type: "error"
       });
@@ -403,7 +403,7 @@ export default function ScanReceiptView({
           />
           <VStack className="gap-y-2">
             <Text bold className="text-xl text-center">
-              Camera access is off
+              Camera Access Is Off
             </Text>
             <Text className="text-secondary-950 text-center">
               Turn on camera access in Settings to photograph a receipt. You can
@@ -417,7 +417,7 @@ export default function ScanReceiptView({
             />
             <FormButton
               variant="outline"
-              text={scanning ? "Reading receipt…" : "Choose from Photos"}
+              text={scanning ? "Reading Receipt…" : "Choose From Photos"}
               onPress={handleUploadReceipt}
               disabled={scanning}
             />
@@ -532,7 +532,7 @@ export default function ScanReceiptView({
               color={getPrimaryHex("text-primary-400", colorScheme)}
             />
             <Text bold className="text-base text-white">
-              Reading receipt…
+              Reading Receipt…
             </Text>
             <Text className="text-sm text-white/70 text-center">
               Pulling the amount and details from your receipt.

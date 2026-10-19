@@ -357,7 +357,7 @@ export default function AddPersonalExpenseScreen() {
 
     if (!(await offlineQueue.isOnline())) {
       toast({
-        title: "You're offline",
+        title: "You're Offline",
         description:
           "Recurring expenses need a connection. Reconnect to set one up.",
         type: "info"
@@ -380,7 +380,7 @@ export default function AddPersonalExpenseScreen() {
     } catch (error) {
       console.error("Failed to save personal recurring expense:", error);
       toast({
-        title: "Couldn't set up",
+        title: "Couldn't Set Up",
         description:
           "Could not set up the recurring expense. Please try again.",
         type: "error"
@@ -486,7 +486,7 @@ export default function AddPersonalExpenseScreen() {
         );
       }
       toast({
-        title: "Saved offline",
+        title: "Saved Offline",
         description: "Your expense will sync when you're back online.",
         type: "info"
       });
@@ -508,7 +508,7 @@ export default function AddPersonalExpenseScreen() {
           status
         });
         toast({
-          title: "Expense updated",
+          title: "Expense Updated",
           description: "Your changes have been saved.",
           type: "success"
         });
@@ -530,7 +530,7 @@ export default function AddPersonalExpenseScreen() {
         });
         if (!shown) {
           toast({
-            title: "Expense added",
+            title: "Expense Added",
             description: "Your expense has been recorded.",
             type: "success"
           });
@@ -565,14 +565,14 @@ export default function AddPersonalExpenseScreen() {
           original?.status ?? status
         );
         toast({
-          title: "Deleted offline",
+          title: "Deleted Offline",
           description: "This will sync when you're back online.",
           type: "info"
         });
       } else {
         await services.bookExpense.deletePersonalExpense(expenseId);
         toast({
-          title: "Expense deleted",
+          title: "Expense Deleted",
           description: "The expense has been removed.",
           type: "success"
         });
@@ -627,8 +627,8 @@ export default function AddPersonalExpenseScreen() {
             label: recurrence
               ? recurrenceSummary(recurrence)
               : isPro
-                ? "One-time"
-                : "One-time · Pro",
+                ? "One-Time"
+                : "One-Time · Pro",
             isDefault: !recurrence,
             icon: (color: string) => <Repeat size={16} color={color} />,
             onPress: handleOpenRecurrence
@@ -637,7 +637,7 @@ export default function AddPersonalExpenseScreen() {
       : []),
     {
       key: "receipt",
-      label: hasReceipt ? "Receipt added" : "Receipt",
+      label: hasReceipt ? "Receipt Added" : "Receipt",
       isDefault: !hasReceipt,
       icon: (color) => <Paperclip size={16} color={color} />,
       // The one chip that expands instead of opening a sheet: the uploader is a
@@ -866,8 +866,8 @@ export default function AddPersonalExpenseScreen() {
                         <Text className="text-sm text-secondary-950">
                           Status
                         </Text>
-                        <Text className="text-base font-medium capitalize">
-                          {status}
+                        <Text className="text-base font-medium">
+                          {status === "paid" ? "Paid" : "Pending"}
                         </Text>
                       </VStack>
                       <Icon
@@ -952,8 +952,8 @@ export default function AddPersonalExpenseScreen() {
                       {recurrence
                         ? recurrenceSummary(recurrence)
                         : isPro
-                          ? "One-time"
-                          : "One-time - Pro"}
+                          ? "One-Time"
+                          : "One-Time - Pro"}
                     </Text>
                   </SelectField>
                   {recurrence && (
@@ -966,7 +966,7 @@ export default function AddPersonalExpenseScreen() {
 
               <VStack className="gap-y-1">
                 <UploadImage
-                  title="Upload Proof of Payment (optional)"
+                  title="Upload Proof of Payment (Optional)"
                   key={
                     proofOfPayment?.assets?.[0]?.uri ??
                     existingProofUrl ??

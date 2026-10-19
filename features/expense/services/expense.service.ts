@@ -1,3 +1,5 @@
+import { getRemainingPaymentAmount, hasSettlementHistory } from "../utils/settlementPayments.util";
+import { getSettlementUpdatedAt } from "../utils/settlementDate.util";
 import { computeInitialNextRunAt } from "@/features/expense/utils/recurrence.util";
 import { createNotification } from "@/features/notifications/services/notification.service";
 import states from "@/states";
@@ -616,7 +618,7 @@ export const updateExpense = async (
   // Guard — editing is only safe while every settlement is still pending.
   const splitsCheck = await supabase
     .from(tables.PAYMENT_SPLITS_TBL)
-    .select("status")
+    .select("status, confirmed_paid_amount, payment_history_count")
     .eq("expense_id", expenseId);
 
   if (splitsCheck.error) {
@@ -624,7 +626,7 @@ export const updateExpense = async (
   }
 
   const hasProgress = (splitsCheck.data ?? []).some(
-    (s) => s.status !== "pending"
+    (s) => hasSettlementHistory(s)
   );
 
   if (hasProgress) {
@@ -970,6 +972,11 @@ export const deleteExpense = async (expenseId: string, groupId?: string) => {
     throw new Error("User not authorized to delete this expense");
   }
 
+  const progress = await supabase.from(tables.PAYMENT_SPLITS_TBL)
+    .select("status, confirmed_paid_amount, payment_history_count").eq("expense_id", expenseId);
+  if (progress.error) throw progress.error;
+  if ((progress.data ?? []).some(hasSettlementHistory)) throw new Error(SETTLEMENT_IN_PROGRESS);
+
   const responses = await Promise.all([
     supabase
       .from(tables.EXPENSE_PAYERS_TBL)
@@ -1042,10 +1049,11 @@ export const getPaymentsByUserId = async (
     });
 
   try {
+    const fields = `id, created_at, group_id, expense_id, member:member_id(id, email, phone, first_name, last_name, avatar), payer:payer_id(id, email, phone, first_name, last_name, avatar), amount, confirmed_paid_amount, requested_payment_amount, payment_history_count, has_partial_payments, status, proof_of_payment, member_note, payer_note, status_updated_at, requested_at, settled_at, rejected_at, expense:expense_id(description, currency)`;
     let query = supabase
       .from(tables.PAYMENT_SPLITS_TBL)
       .select(
-        `id, created_at, group_id, expense_id, member:member_id(id, email, phone, first_name, last_name, avatar), payer:payer_id(id, email, phone, first_name, last_name, avatar), amount, status, proof_of_payment, member_note, payer_note, status_updated_at, requested_at, settled_at, rejected_at, expense:expense_id(description, currency)`,
+        fields,
         { count: withMetadata ? "exact" : undefined }
       )
       .order("created_at", { ascending: false })
@@ -1063,11 +1071,21 @@ export const getPaymentsByUserId = async (
       query = query.eq("status", filters.status);
     }
 
-    const expenseSplitResponse = await query;
+    // Home needs the latest activity, including payments on older expenses.
+    // Merge the latest-created and latest-updated pages so new unpaid rows
+    // with null action dates remain visible alongside updated partial payments.
+    const [expenseSplitResponse, updatedResponse] = await Promise.all([
+      query,
+      canCache ? supabase.from(tables.PAYMENT_SPLITS_TBL).select(fields)
+        .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
+        .order("status_updated_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false }).range(0, limit - 1) : null
+    ]);
 
     if (expenseSplitResponse.error) {
       throw expenseSplitResponse.error;
     }
+    if (updatedResponse?.error) throw updatedResponse.error;
 
     if (withMetadata) {
       const totalCount = expenseSplitResponse.count || 0;
@@ -1089,7 +1107,12 @@ export const getPaymentsByUserId = async (
     }
 
     const result = {
-      data: normalize(expenseSplitResponse.data) as PaymentPreview[]
+      data: normalize(canCache
+        ? Array.from(new Map([...expenseSplitResponse.data, ...(updatedResponse?.data ?? [])]
+          .map((row) => [row.id, row])).values())
+          .sort((a, b) => new Date(getSettlementUpdatedAt(b)).getTime() - new Date(getSettlementUpdatedAt(a)).getTime())
+          .slice(0, limit)
+        : expenseSplitResponse.data) as PaymentPreview[]
     };
 
     if (canCache) {
@@ -1142,14 +1165,14 @@ export const getPaymentsByExpenseId = async (expenseId: string) => {
 };
 
 export const getStatsByUserId = async (userId: string) => {
-  const groupByCurrency = (data: { amount: number; expense: any }[]) => {
+  const groupByCurrency = (data: { amount: number; confirmed_paid_amount?: number; expense: any }[]) => {
     const map: Record<string, number> = {};
     data.forEach((item) => {
       const expense = Array.isArray(item.expense)
         ? item.expense[0]
         : item.expense;
       const currency = expense?.currency ?? "PHP";
-      map[currency] = (map[currency] ?? 0) + item.amount;
+      map[currency] = (map[currency] ?? 0) + getRemainingPaymentAmount(item);
     });
     return Object.entries(map).map(([currency, amount]) => ({
       currency,
@@ -1166,7 +1189,7 @@ export const getStatsByUserId = async (userId: string) => {
 
     const toPayResponse = await supabase
       .from(tables.PAYMENT_SPLITS_TBL)
-      .select("amount, expense:expense_id(currency)")
+      .select("amount, confirmed_paid_amount, expense:expense_id(currency)")
       .eq("member_id", userId)
       .or(`status.eq.pending,status.eq.requested`);
 
@@ -1176,7 +1199,7 @@ export const getStatsByUserId = async (userId: string) => {
 
     const toReceiveResponse = await supabase
       .from(tables.PAYMENT_SPLITS_TBL)
-      .select("amount, expense:expense_id(currency)")
+      .select("amount, confirmed_paid_amount, expense:expense_id(currency)")
       .eq("payer_id", userId)
       .or(`status.eq.pending,status.eq.requested`);
 
@@ -1226,11 +1249,11 @@ export const getExpensesByGroupId = async (groupId: string) => {
   if (expenseIds.length) {
     const { data: splitData } = await supabase
       .from(tables.PAYMENT_SPLITS_TBL)
-      .select("expense_id, status")
+      .select("expense_id, status, confirmed_paid_amount, payment_history_count")
       .in("expense_id", expenseIds);
 
     (splitData ?? []).forEach((split) => {
-      if (split.status !== "pending") {
+      if (hasSettlementHistory(split)) {
         progressByExpenseId.add(split.expense_id);
       }
     });
@@ -1399,299 +1422,13 @@ export const getSplitsByExpense = async (expenseId: string) => {
   return data;
 };
 
-export const createSettledRequest = async (expensePayload: {
-  note: string;
-  receipt: ImagePickerSuccessResult | null;
-  expenseSplitId: string;
-}) => {
-  const user = await supabase.auth.getUser();
-
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
-  }
-  const { note, receipt, expenseSplitId } = expensePayload;
-  let receiptUrl: string | null = null;
-
-  if (receipt) {
-    const uploadResponse = await uploadFile(receipt.assets[0], "receipts");
-
-    if (uploadResponse.error) throw uploadResponse.error;
-
-    receiptUrl = uploadResponse.data?.publicUrl || null;
-  }
-
-  const now = new Date().toISOString();
-  const splitResponse = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .update({
-      status: "requested",
-      member_note: note,
-      proof_of_payment: receiptUrl,
-      requested_at: now,
-      status_updated_at: now
-      // rejected_at is intentionally left intact — if a prior request was
-      // rejected, keep that date so the rejection stays visible as history.
-    })
-    .eq("id", expenseSplitId)
-    .select("payer_id")
-    .single();
-
-  if (splitResponse.error) {
-    throw splitResponse.error;
-  }
-
-  try {
-    await Promise.all([
-      createNotification({
-        fromUserId: user.data.user.id,
-        toUserId: splitResponse.data.payer_id,
-        type: NotificationType.SETTLEMENT_REQUEST,
-        referenceId: expenseSplitId
-      }),
-      sendPushNotification(
-        splitResponse.data.payer_id,
-        NotificationType.SETTLEMENT_REQUEST,
-        {
-          title: "Settlement Requested",
-          body: "Someone is requesting to settle a payment with you",
-          referenceId: expenseSplitId
-        }
-      )
-    ]);
-  } catch (err) {
-    console.error("Failed to send payment request notification:", err);
-  }
-
-  return { success: true, message: "Request created successfully" };
-};
-
-export const undoSettledRequest = async (expenseSplitId: string) => {
-  const user = await supabase.auth.getUser();
-
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
-  }
-
-  const splitResponse = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .update({
-      status: "pending",
-      member_note: null,
-      proof_of_payment: null,
-      // Request withdrawn — drop the request date.
-      requested_at: null,
-      status_updated_at: new Date().toISOString()
-    })
-    .eq("id", expenseSplitId);
-
-  if (splitResponse.error) {
-    throw splitResponse.error;
-  }
-
-  return { success: true, message: "Settled request undone successfully" };
-};
-
-export const rejectSettledRequest = async (expenseSplitId: string) => {
-  const user = await supabase.auth.getUser();
-
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
-  }
-
-  const rejectedNow = new Date().toISOString();
-  const splitResponse = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .update({
-      status: "pending",
-      member_note: null,
-      proof_of_payment: null,
-      // Persist when the request was rejected (kept even though status reverts to
-      // pending) so the rejection date can be surfaced. requested_at is left in
-      // place so both "requested" and "rejected" dates remain visible.
-      rejected_at: rejectedNow,
-      status_updated_at: rejectedNow
-    })
-    .eq("id", expenseSplitId)
-    .select("member_id")
-    .single();
-
-  if (splitResponse.error) {
-    throw splitResponse.error;
-  }
-
-  try {
-    await Promise.all([
-      createNotification({
-        fromUserId: user.data.user.id,
-        toUserId: splitResponse.data.member_id,
-        type: NotificationType.SETTLEMENT_REJECTED,
-        referenceId: expenseSplitId
-      }),
-      sendPushNotification(
-        splitResponse.data.member_id,
-        NotificationType.SETTLEMENT_REJECTED,
-        {
-          title: "Settlement Rejected",
-          body: "Your settlement request has been rejected",
-          referenceId: expenseSplitId
-        }
-      )
-    ]);
-  } catch (err) {
-    console.error("Failed to send payment rejected notification:", err);
-  }
-
-  return { success: true, message: "Settled request rejected successfully" };
-};
-
-export const revertSettledRequest = async (expenseSplitId: string) => {
-  const user = await supabase.auth.getUser();
-
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
-  }
-
-  const revertedNow = new Date().toISOString();
-  const splitResponse = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .update({
-      status: "requested",
-      // Reopened for review — it's a pending request again, so restore a request
-      // date and clear the settled date.
-      requested_at: revertedNow,
-      settled_at: null,
-      status_updated_at: revertedNow
-    })
-    .eq("id", expenseSplitId)
-    .select("member_id")
-    .single();
-
-  if (splitResponse.error) {
-    throw splitResponse.error;
-  }
-
-  try {
-    await Promise.all([
-      createNotification({
-        fromUserId: user.data.user.id,
-        toUserId: splitResponse.data.member_id,
-        type: NotificationType.SETTLEMENT_REVERTED,
-        referenceId: expenseSplitId
-      }),
-      sendPushNotification(
-        splitResponse.data.member_id,
-        NotificationType.SETTLEMENT_REVERTED,
-        {
-          title: "Settlement Reopened",
-          body: "Your settlement has been reopened for review",
-          referenceId: expenseSplitId
-        }
-      )
-    ]);
-  } catch (err) {
-    console.error("Failed to send settlement reverted notification:", err);
-  }
-
-  return { success: true, message: "Settled request reverted successfully" };
-};
-
-export const markAsSettled = async (expensePayload: {
-  note: string;
-  receipt: ImagePickerSuccessResult | null;
-  expenseSplitId: string;
-  expenseId: string;
-}) => {
-  const user = await supabase.auth.getUser();
-
-  if (!user.data.user) {
-    throw new Error("User not authenticated");
-  }
-  const { note, receipt, expenseSplitId, expenseId } = expensePayload;
-  let receiptUrl: string | null = null;
-
-  if (receipt) {
-    const uploadResponse = await uploadFile(receipt.assets[0], "receipts");
-
-    if (uploadResponse.error) throw uploadResponse.error;
-
-    receiptUrl = uploadResponse.data?.publicUrl || null;
-  }
-
-  // Only overwrite proof_of_payment when the payer actually attaches a new
-  // receipt. Approving a member's request comes through here with receipt=null,
-  // and blindly writing null would wipe the proof the member uploaded when they
-  // created the settlement request.
-  const settledNow = new Date().toISOString();
-  const updatePayload: Record<string, any> = {
-    status: "settled",
-    payer_note: note,
-    settled_at: settledNow,
-    status_updated_at: settledNow
-  };
-  if (receiptUrl) {
-    updatePayload.proof_of_payment = receiptUrl;
-  }
-
-  const splitResponse = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .update(updatePayload)
-    .eq("id", expenseSplitId)
-    .select("member_id")
-    .single();
-
-  if (splitResponse.error) {
-    throw splitResponse.error;
-  }
-
-  try {
-    await Promise.all([
-      createNotification({
-        fromUserId: user.data.user.id,
-        toUserId: splitResponse.data.member_id,
-        type: NotificationType.SETTLEMENT_APPROVED,
-        referenceId: expenseSplitId
-      }),
-      sendPushNotification(
-        splitResponse.data.member_id,
-        NotificationType.SETTLEMENT_APPROVED,
-        {
-          title: "Settlement Approved",
-          body: "Your settlement request has been approved",
-          referenceId: expenseSplitId
-        }
-      )
-    ]);
-  } catch (err) {
-    console.error("Failed to send payment approved notification:", err);
-  }
-
-  const { data: allSplits, error: splitsError } = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .select("status")
-    .eq("expense_id", expenseId);
-
-  if (splitsError) throw splitsError;
-
-  const allSettled =
-    allSplits.length > 0 && allSplits.every((s) => s.status === "settled");
-
-  if (allSettled) {
-    const { error: expenseError } = await supabase
-      .from(tables.EXPENSES_TBL)
-      .update({ status: "completed" })
-      .eq("id", expenseId);
-
-    if (expenseError) throw expenseError;
-  }
-
-  return { success: true, message: "Marked as settled successfully" };
-};
+export { getSettlementPaymentHistory, submitSettlementPayment, transitionSettlementPayment } from "./settlement-payment.service";
 
 const PAYMENT_FIELDS = `*, member:member_id(id, email, phone, first_name, last_name, avatar, is_placeholder), payer:payer_id(id, email, phone, first_name, last_name, avatar, is_placeholder), expense:expense_id(description, currency)`;
 
 // Export needs the parent expense's category + own date on top of the standard
 // payment fields so each CSV row is self-describing (see getPaymentsForExport).
-const PAYMENT_EXPORT_FIELDS = `*, member:member_id(id, email, phone, first_name, last_name, avatar, is_placeholder), payer:payer_id(id, email, phone, first_name, last_name, avatar, is_placeholder), expense:expense_id(description, currency, category, expense_date)`;
+const PAYMENT_EXPORT_FIELDS = `*, member:member_id(id, email, phone, first_name, last_name, avatar, is_placeholder), payer:payer_id(id, email, phone, first_name, last_name, avatar, is_placeholder), expense:expense_id(description, currency, category, expense_date), payment_history:settlement_payments_tbl(*)`;
 
 const mapPaymentRows = (data: any[]): Payment[] =>
   data.map((item) => {
@@ -1765,6 +1502,21 @@ export const getPaymentById = async (
 
   if (error) throw error;
   return data ? mapPaymentRows([data])[0] : null;
+};
+
+/** Parent and ledger are read in one database snapshot. */
+export const getSettlementPaymentDetails = async (paymentId: string) => {
+  const { data, error } = await supabase.from(tables.PAYMENT_SPLITS_TBL)
+    .select(`${PAYMENT_FIELDS}, payment_history:${tables.SETTLEMENT_PAYMENTS_TBL}(*)`)
+    .eq("id", paymentId).single();
+  if (error) throw error;
+  const { payment_history, ...row } = data as unknown as Record<string, unknown> & {
+    payment_history: import("@/types/settlementPayments").SettlementPaymentEntry[];
+  };
+  return {
+    payment: mapPaymentRows([row])[0],
+    entries: payment_history as import("@/types/settlementPayments").SettlementPaymentEntry[]
+  };
 };
 
 export const getUnsettledPaymentsByGroupId = async (

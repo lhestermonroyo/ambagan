@@ -91,14 +91,14 @@ export const hasReachedEnd = (
 };
 
 const FREQUENCY_NOUN: Record<RecurrenceFrequency, string> = {
-  [RecurrenceFrequency.DAILY]: "day",
-  [RecurrenceFrequency.WEEKLY]: "week",
-  [RecurrenceFrequency.MONTHLY]: "month"
+  [RecurrenceFrequency.DAILY]: "Day",
+  [RecurrenceFrequency.WEEKLY]: "Week",
+  [RecurrenceFrequency.MONTHLY]: "Month"
 };
 
 /**
- * Human-readable recurrence label, e.g. "Repeats monthly", "Repeats every 2
- * weeks". Used on the Add Expense summary row and the manage-recurring list.
+ * Human-readable recurrence label, e.g. "Repeats Monthly", "Repeats Every 2
+ * Weeks". Used on the Add Expense summary row and the manage-recurring list.
  */
 export const recurrenceSummary = (config: {
   frequency: RecurrenceFrequency;
@@ -108,16 +108,16 @@ export const recurrenceSummary = (config: {
   if (config.repeat_interval <= 1) {
     const adverb =
       config.frequency === RecurrenceFrequency.DAILY
-        ? "daily"
+        ? "Daily"
         : config.frequency === RecurrenceFrequency.WEEKLY
-          ? "weekly"
-          : "monthly";
+          ? "Weekly"
+          : "Monthly";
     return `Repeats ${adverb}`;
   }
-  return `Repeats every ${config.repeat_interval} ${noun}s`;
+  return `Repeats Every ${config.repeat_interval} ${noun}s`;
 };
 
-/** Short end-condition label, e.g. "Ends Aug 1, 2026", "Ends after 12 times". */
+/** Short end-condition label, e.g. "Ends Aug 1, 2026", "Ends After 12 Times". */
 export const endSummary = (config: {
   end_type: RecurrenceEndType;
   end_date: Date | string | null;
@@ -130,9 +130,9 @@ export const endSummary = (config: {
     config.end_type === RecurrenceEndType.AFTER_COUNT &&
     config.occurrence_limit != null
   ) {
-    return `Ends after ${config.occurrence_limit} time${
+    return `Ends After ${config.occurrence_limit} Time${
       config.occurrence_limit === 1 ? "" : "s"
     }`;
   }
-  return "Never ends";
+  return "Never Ends";
 };

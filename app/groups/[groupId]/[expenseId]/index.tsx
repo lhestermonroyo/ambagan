@@ -1,3 +1,4 @@
+import { hasSettlementHistory } from "@/features/expense/utils/settlementPayments.util";
 import useUserStore from "@/features/user/states/user.state";
 import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import ConfirmationSheet from "@/components/ConfirmationSheet";
@@ -35,6 +36,7 @@ import {
 } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
+import { splitTypeLabels } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
 import { getSecondaryHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { getUserSubtitle } from "@/utils/userDisplay";
@@ -317,7 +319,7 @@ export default function ExpenseDetailsScreen() {
   // Editing replaces the splits wholesale, which is only safe while every
   // settlement is still pending. Mirror the server-side guard in the UI.
   const hasSettlementProgress = useMemo(
-    () => paymentSplitList.some((p) => p.status !== "pending"),
+    () => paymentSplitList.some((p) => hasSettlementHistory(p)),
     [paymentSplitList]
   );
 
@@ -546,7 +548,7 @@ export default function ExpenseDetailsScreen() {
                       <Divider className="border-secondary-200" />
                     </Box>
                     <DetailRow
-                      label="Created By"
+                      label="Created by"
                       value={
                         <HStack className="gap-x-3 items-center">
                           <AppAvatar
@@ -571,8 +573,8 @@ export default function ExpenseDetailsScreen() {
                         <DetailRow
                           label="Split Type"
                           value={
-                            <Text className="capitalize">
-                              {expenseDetails.split_type}
+                            <Text>
+                              {splitTypeLabels[expenseDetails.split_type] ?? expenseDetails.split_type}
                             </Text>
                           }
                         />
@@ -611,7 +613,7 @@ export default function ExpenseDetailsScreen() {
                   <VStack className="gap-y-4 px-4">
                     <VStack className="bg-warning-50 rounded-xl p-4 gap-y-1">
                       <Text bold className="text-warning-700 dark:text-warning-800">
-                        This expense is a draft
+                        This Expense Is a Draft
                       </Text>
                       <Text className="text-sm text-warning-700 dark:text-warning-800">
                         Only you can see it. Finalize it to set who paid and

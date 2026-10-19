@@ -111,7 +111,7 @@ export default function LeaveGroupSheet({
     // needs a live connection, so it isn't supported offline.
     if (!(await offlineQueue.isOnline())) {
       toast({
-        title: "You're offline",
+        title: "You're Offline",
         description: "Leaving a group requires an internet connection.",
         type: "error"
       });
@@ -232,7 +232,7 @@ export default function LeaveGroupSheet({
                     </HStack>
 
                     <VStack className="gap-y-1">
-                      <Text className="font-medium">Transfer ownership to</Text>
+                      <Text className="font-medium">Transfer Ownership to</Text>
                       <RadioGroup
                         value={selectedNewAdmin?.id ?? ""}
                         onChange={(id) => {

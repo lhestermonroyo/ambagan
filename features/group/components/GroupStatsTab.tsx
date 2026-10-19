@@ -208,7 +208,7 @@ export default function GroupStatsTab({
 
       if (payments.length === 0) {
         toast({
-          title: "No data",
+          title: "No Data",
           description: "No settlements found for the selected date range.",
           type: "info"
         });
@@ -219,7 +219,7 @@ export default function GroupStatsTab({
     } catch (error) {
       console.error("Export failed:", error);
       toast({
-        title: "Export failed",
+        title: "Export Failed",
         description: "Could not export settlements. Please try again.",
         type: "error"
       });
@@ -322,7 +322,7 @@ export default function GroupStatsTab({
                         title="Total Group Spendings"
                         subtitle="Total, by currency"
                         convertTo={primaryCurrency}
-                        totalLabel="Total spent"
+                        totalLabel="Total Spent"
                       />
                     </HStack>
                   </HStack>

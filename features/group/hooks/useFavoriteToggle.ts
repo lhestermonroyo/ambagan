@@ -35,7 +35,7 @@ export function useFavoriteToggle(userId: string | undefined) {
         });
         setFavoriteUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
         toast({
-          title: "Removed from favorites",
+          title: "Removed From Favorites",
           description: `${name} was removed from your favorites.`,
           type: "muted"
         });
@@ -44,7 +44,7 @@ export function useFavoriteToggle(userId: string | undefined) {
         setFavoriteIds((prev) => new Set([...prev, targetUser.id]));
         setFavoriteUsers((prev) => [targetUser, ...prev]);
         toast({
-          title: "Added to favorites",
+          title: "Added to Favorites",
           description: `${name} is now in your favorites.`,
           type: "success"
         });
@@ -52,7 +52,7 @@ export function useFavoriteToggle(userId: string | undefined) {
     } catch (error) {
       console.error("Error toggling favorite:", error);
       toast({
-        title: "Something went wrong",
+        title: "Something Went Wrong",
         description: "Couldn't update favorites. Please try again.",
         type: "error"
       });

@@ -93,7 +93,7 @@ export default function PayersContributionStep({
               )}
               <VStack>
                 <Text className="text-2xl" bold>
-                  Who paid?
+                  Who Paid?
                 </Text>
                 <Text className="text-sm text-secondary-950">
                   Enter how much each person contributed to the expense.

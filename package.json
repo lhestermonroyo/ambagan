@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "test:settlement-payments": "node --test scripts/test-settlement-payments.cjs scripts/test-settlement-client.cjs",
     "test:purchase-recovery": "node --test scripts/test-purchase-recovery.cjs",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -93,6 +94,7 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.10",
     "@types/react": "~19.2.14",
     "babel-plugin-module-resolver": "^5.0.2",
     "eslint": "^9.25.0",

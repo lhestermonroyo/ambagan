@@ -112,7 +112,7 @@ export default function UpdateAvailable({
 
             <VStack className="gap-y-2 items-center">
               <Text bold className="text-2xl text-center">
-                {required ? "Update required" : "A new version is here"}
+                {required ? "Update Required" : "A New Version Is Here"}
               </Text>
               <Text className="text-secondary-950 text-center px-2">
                 {required
@@ -140,7 +140,7 @@ export default function UpdateAvailable({
           {gate.releaseNotes.length > 0 && (
             <VStack className="w-full gap-y-3 bg-background-50 rounded-2xl p-5">
               <Text bold className="text-sm">
-                What&apos;s new
+                What&apos;s New
               </Text>
               <VStack className="gap-y-2">
                 {gate.releaseNotes.map((note, index) => (
@@ -160,12 +160,12 @@ export default function UpdateAvailable({
       <SafeAreaView edges={["bottom"]}>
         <VStack className="w-full gap-y-2 px-6 pb-4">
           <FormButton
-            text={required ? "Update now" : "Update"}
+            text={required ? "Update Now" : "Update"}
             loading={opening}
             onPress={handleUpdate}
           />
           {onLater && (
-            <FormButton text="Not now" variant="link" onPress={onLater} />
+            <FormButton text="Not Now" variant="link" onPress={onLater} />
           )}
         </VStack>
       </SafeAreaView>

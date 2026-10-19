@@ -1,6 +1,6 @@
-import { createNotification } from "@/features/notifications/services/notification.service";
+import { v4 as uuid } from "uuid";
+import { getRemainingPaymentAmount, usesPartialPaymentFlow } from "@/features/expense/utils/settlementPayments.util";
 import { FriendSummary, PaymentExportRow, PaymentPreview } from "@/types/expenses";
-import { NotificationType } from "@/types/notifications";
 import { UserPreview } from "@/types/user";
 import { cacheService } from "@/utils/cacheService";
 import { tables } from "@/utils/constants";
@@ -165,7 +165,7 @@ export const getFriendsSummary = async (
     const { data, error } = await supabase
       .from(tables.PAYMENT_SPLITS_TBL)
       .select(
-        `amount, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), expense:expense_id(currency)`
+        `amount, confirmed_paid_amount, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), expense:expense_id(currency)`
       )
       .or(`member_id.eq.${userId},payer_id.eq.${userId}`)
       .or(`status.eq.pending,status.eq.requested`);
@@ -187,7 +187,8 @@ export const getFriendsSummary = async (
 
       const isUserPayer = payer.id === userId;
       const other = isUserPayer ? member : payer;
-      const amount = isUserPayer ? item.amount : -item.amount;
+      const remaining = getRemainingPaymentAmount(item);
+      const amount = isUserPayer ? remaining : -remaining;
 
       if (!friendMap[other.id]) {
         friendMap[other.id] = { friend: other, balances: {} };
@@ -217,7 +218,7 @@ export const getFriendsSummary = async (
   }
 };
 
-const FRIEND_SETTLEMENT_FIELDS = `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), amount, status, proof_of_payment, member_note, payer_note, status_updated_at, requested_at, settled_at, rejected_at, expense:expense_id(description, currency)`;
+const FRIEND_SETTLEMENT_FIELDS = `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), amount, confirmed_paid_amount, requested_payment_amount, payment_history_count, has_partial_payments, status, proof_of_payment, member_note, payer_note, status_updated_at, requested_at, settled_at, rejected_at, expense:expense_id(description, currency)`;
 
 const mapFriendPaymentRows = (data: any[]): PaymentPreview[] =>
   data.map((item) => {
@@ -304,7 +305,7 @@ export const getSettledFriendSettlements = async (
 
 // Export needs the parent expense's category + own date on top of the standard
 // payment fields so each CSV row is self-describing (mirrors the group export).
-const FRIEND_EXPORT_FIELDS = `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), amount, status, proof_of_payment, member_note, payer_note, status_updated_at, requested_at, settled_at, rejected_at, expense:expense_id(description, currency, category, expense_date)`;
+const FRIEND_EXPORT_FIELDS = `id, created_at, group_id, expense_id, member:member_id!inner(id, email, phone, first_name, last_name, avatar, plan), payer:payer_id!inner(id, email, phone, first_name, last_name, avatar, plan), amount, confirmed_paid_amount, requested_payment_amount, payment_history_count, has_partial_payments, status, proof_of_payment, member_note, payer_note, status_updated_at, requested_at, settled_at, rejected_at, expense:expense_id(description, currency, category, expense_date), payment_history:settlement_payments_tbl(*)`;
 
 const mapFriendExportRows = (data: any[]): PaymentExportRow[] =>
   data.map((item) => {
@@ -344,95 +345,25 @@ export const getFriendPaymentsForExport = async (
   return mapFriendExportRows(data);
 };
 
-export const bulkSettleWithFriend = async (
-  userId: string,
-  friendId: string
-): Promise<{ success: boolean }> => {
-  const user = await supabase.auth.getUser();
-  if (!user.data.user) throw new Error("User not authenticated");
 
-  const { data: splits, error: fetchError } = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .select("id, expense_id, member_id, payer_id")
-    .eq("payer_id", userId)
-    .eq("member_id", friendId)
-    .or(`status.eq.pending,status.eq.requested`);
-
-  if (fetchError) throw fetchError;
-  if (!splits?.length) return { success: true };
-
-  const { error: updateError } = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .update({ status: "settled", status_updated_at: new Date().toISOString() })
-    .in("id", splits.map((s) => s.id));
-
-  if (updateError) throw updateError;
-
-  const uniqueExpenseIds = [...new Set(splits.map((s) => s.expense_id))];
-  await Promise.allSettled(
-    uniqueExpenseIds.map(async (expenseId) => {
-      const { data: allSplits } = await supabase
-        .from(tables.PAYMENT_SPLITS_TBL)
-        .select("status")
-        .eq("expense_id", expenseId);
-
-      if (allSplits?.every((s) => s.status === "settled")) {
-        await supabase
-          .from(tables.EXPENSES_TBL)
-          .update({ status: "completed" })
-          .eq("id", expenseId);
-      }
-    })
-  );
-
-  await Promise.allSettled(
-    splits.map((s) =>
-      createNotification({
-        fromUserId: userId,
-        toUserId: s.member_id,
-        type: NotificationType.SETTLEMENT_COMPLETED,
-        referenceId: s.id
-      })
-    )
-  );
-
+async function updateFriendBalances(userId: string, friendId: string, received: boolean) {
+  const auth = await supabase.auth.getUser();
+  if (!auth.data.user || auth.data.user.id !== userId) throw new Error("Sign in to update these payments.");
+  const { data: rows, error } = await supabase.from(tables.PAYMENT_SPLITS_TBL)
+    .select("id, amount, confirmed_paid_amount, requested_payment_amount, has_partial_payments")
+    .eq(received ? "payer_id" : "member_id", userId)
+    .eq(received ? "member_id" : "payer_id", friendId)
+    .in("status", received ? ["pending", "requested"] : ["pending"]);
+  if (error) throw error;
+  const eligible = received ? rows?.filter((row) => !usesPartialPaymentFlow(row)) : rows;
+  if (!eligible?.length) return { success: true };
+  const result = await supabase.rpc("settle_friend_balances", {
+    p_friend_id: friendId, p_received: received,
+    p_rows: eligible.map((row) => ({ settlement_id: row.id, payment_id: uuid(), remaining_amount: getRemainingPaymentAmount(row) }))
+  });
+  if (result.error) throw result.error;
   return { success: true };
-};
+}
 
-export const bulkRequestSettleWithFriend = async (
-  userId: string,
-  friendId: string
-): Promise<{ success: boolean }> => {
-  const user = await supabase.auth.getUser();
-  if (!user.data.user) throw new Error("User not authenticated");
-
-  const { data: splits, error: fetchError } = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .select("id, payer_id")
-    .eq("member_id", userId)
-    .eq("payer_id", friendId)
-    .eq("status", "pending");
-
-  if (fetchError) throw fetchError;
-  if (!splits?.length) return { success: true };
-
-  const { error: updateError } = await supabase
-    .from(tables.PAYMENT_SPLITS_TBL)
-    .update({ status: "requested" })
-    .in("id", splits.map((s) => s.id));
-
-  if (updateError) throw updateError;
-
-  await Promise.allSettled(
-    splits.map((s) =>
-      createNotification({
-        fromUserId: userId,
-        toUserId: s.payer_id,
-        type: NotificationType.SETTLEMENT_REQUEST,
-        referenceId: s.id
-      })
-    )
-  );
-
-  return { success: true };
-};
+export const bulkSettleWithFriend = (userId: string, friendId: string) => updateFriendBalances(userId, friendId, true);
+export const bulkRequestSettleWithFriend = (userId: string, friendId: string) => updateFriendBalances(userId, friendId, false);

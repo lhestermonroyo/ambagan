@@ -91,7 +91,7 @@ export default function ExpenseSplitBreakdown({
                     : "text-sm text-primary-500"
                 }
               >
-                {expanded ? "Hide breakdown" : "Show breakdown"}
+                {expanded ? "Hide Breakdown" : "Show Breakdown"}
               </Text>
               <Animated.View style={chevronStyle}>
                 <ChevronDown

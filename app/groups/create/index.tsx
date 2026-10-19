@@ -189,7 +189,7 @@ export default function CreateGroupScreen() {
             groupId: null, userId: user.details.id
           });
           await offlineQueue.queueCreateBook(user.details.id, { ...args, avatar: null }, optimistic);
-          toast({ title: "Saved offline", description: "Your Individual entry will sync when you're back online. You can add a cover photo after it syncs.", type: "info" });
+          toast({ title: "Saved Offline", description: "Your Individual entry will sync when you're back online. You can add a cover photo after it syncs.", type: "info" });
           router.replace("/groups");
         } else {
           const response = await services.book.saveBook(args);
@@ -197,12 +197,12 @@ export default function CreateGroupScreen() {
             once: true,
             afterNavigation: true
           });
-          if (!shown) toast({ title: "Individual created", description: "Your expenses are private to you.", type: "success" });
+          if (!shown) toast({ title: "Individual Created", description: "Your expenses are private to you.", type: "success" });
           router.replace(`/books/${response.data.bookId}`);
         }
       } catch (error) {
         console.error("Error creating Individual entry:", error);
-        toast({ title: "Creation failed", description: "Couldn't create the Individual entry. Please try again.", type: "error" });
+        toast({ title: "Creation Failed", description: "Couldn't create the Individual entry. Please try again.", type: "error" });
       } finally {
         setSubmitting(false);
       }
@@ -225,7 +225,7 @@ export default function CreateGroupScreen() {
         // a group with unresolved contacts can't be queued offline.
         if (services.member.hasUnresolvedContacts(members)) {
           toast({
-            title: "You're offline",
+            title: "You're Offline",
             description:
               "Adding phone contacts as members needs an internet connection. Remove them or reconnect to continue.",
             type: "error"
@@ -263,7 +263,7 @@ export default function CreateGroupScreen() {
         await addRecentUsers(members, user.details!.id).catch(() => {});
 
         toast({
-          title: "Saved offline",
+          title: "Saved Offline",
           description:
             "Your group will be created automatically when you're back online. You can add a cover photo after it syncs.",
           type: "info"
@@ -427,7 +427,7 @@ export default function CreateGroupScreen() {
                 <HStack>
                   <FormControlLabel className="flex-1">
                     <FormControlLabelText>
-                      Members (optional)
+                      Members (Optional)
                     </FormControlLabelText>
                   </FormControlLabel>
                   <Button

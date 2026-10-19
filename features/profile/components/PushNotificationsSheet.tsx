@@ -195,7 +195,7 @@ export default function PushNotificationsSheet({
                   />
                   <VStack className="flex-1 gap-y-2">
                     <Text bold className="text-lg text-primary-600 dark:text-primary-800">
-                      Notifications not enabled
+                      Notifications Not Enabled
                     </Text>
                     <Text className="text-primary-500 dark:text-primary-800">
                       You haven't enabled push notifications yet. Enable them to
@@ -217,7 +217,7 @@ export default function PushNotificationsSheet({
                   <BellOff color={getErrorHex(colorScheme === "dark" ? "text-error-800" : "text-error-500", colorScheme)} />
                   <VStack className="flex-1 gap-y-2">
                     <Text bold className="text-lg text-error-600 dark:text-error-800">
-                      Notifications are disabled
+                      Notifications Are Disabled
                     </Text>
                     <Text className="text-error-500 dark:text-error-800">
                       Push notifications are turned off in your device settings.

@@ -35,13 +35,13 @@ const attachSettlementStatuses = async (
 
   const { data, error } = await supabase
     .from(tables.PAYMENT_SPLITS_TBL)
-    .select("id, status")
+    .select("id, status, confirmed_paid_amount")
     .in("id", referenceIds);
 
   if (error || !data) return;
 
-  const statusById = new Map<string, PaymentStatus>(
-    data.map((s: any) => [s.id, s.status as PaymentStatus])
+  const statusById = new Map<string, PaymentStatus | "partially_paid">(
+    data.map((s: any) => [s.id, s.status === "pending" && Number(s.confirmed_paid_amount) > 0 ? "partially_paid" : s.status as PaymentStatus])
   );
 
   notifications.forEach((n) => {

@@ -59,7 +59,7 @@ export function useExpenseEmptyActions({
       : "/groups/[groupId]";
   return [
     {
-      label: "Add your First Expense",
+      label: "Add Your First Expense",
       icon: ReceiptText,
       onPress: () => router.push(`${base}/add-expense` as any)
     },

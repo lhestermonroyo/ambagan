@@ -58,7 +58,7 @@ export default function WelcomeScreen() {
 
             <VStack className="items-center gap-y-3">
               <Text bold size="3xl" className="text-center">
-                Split bills, settle up, no awkward math.
+                Split Bills, Settle Up, No Awkward Math.
               </Text>
               <Text className="text-lg text-secondary-950 text-center">
                 Welcome to Ambagan. Split with your barkada, or track your own.

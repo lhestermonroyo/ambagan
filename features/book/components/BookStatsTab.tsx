@@ -305,7 +305,7 @@ export default function BookStatsTab({
                     subtitle="Paid, by currency"
                     secondaryLabel="pending"
                     convertTo={primaryCurrency}
-                    totalLabel="Total paid"
+                    totalLabel="Total Paid"
                   />
                 </HStack>
               </HStack>
@@ -384,7 +384,7 @@ export default function BookStatsTab({
                       className="text-sm text-secondary-950 flex-1"
                       numberOfLines={1}
                     >
-                      This Individual entry (paid)
+                      This Individual Entry (Paid)
                     </Text>
                     <Text numberOfLines={1} adjustsFontSizeToFit>
                       {spending.paidApprox ? "≈ " : ""}
@@ -396,7 +396,7 @@ export default function BookStatsTab({
                       className="text-sm text-secondary-950 flex-1"
                       numberOfLines={1}
                     >
-                      Your share (group)
+                      Your Share (Group)
                     </Text>
                     <Text numberOfLines={1} adjustsFontSizeToFit>
                       {shareLoading

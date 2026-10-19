@@ -30,7 +30,7 @@ export default function ExpenseDestinationSheet({
   onClose,
   onSelectGroup,
   onSelectPersonal,
-  title = "What are you adding?",
+  title = "What Are You Adding?",
   subtitle
 }: {
   isOpen: boolean;
@@ -64,7 +64,7 @@ export default function ExpenseDestinationSheet({
 
           <Option
             icon={<Home color={iconColor} />}
-            title="Group expense"
+            title="Group Expense"
             description="Split a bill with people in a group."
             onPress={onSelectGroup}
           />

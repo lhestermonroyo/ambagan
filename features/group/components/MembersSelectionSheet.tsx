@@ -230,7 +230,7 @@ export default function MembersSelectionSheet({
             <FormButton
               variant="link"
               size="md"
-              text="Add from Contacts"
+              text="Add From Contacts"
               icon={
                 <UserPlus
                   size={18}

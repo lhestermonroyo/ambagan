@@ -67,7 +67,7 @@ export default function EditGroupScreen() {
       values.defaultExpenseCurrency
         ? (currencies.find((c) => c.value === values.defaultExpenseCurrency)
             ?.label ?? values.defaultExpenseCurrency)
-        : "Same as group currency",
+        : "Same as Group Currency",
     [values.defaultExpenseCurrency]
   );
 
@@ -301,7 +301,7 @@ export default function EditGroupScreen() {
                 <FormControl size="md">
                   <FormControlLabel>
                     <FormControlLabelText>
-                      Default for new expenses
+                      Default for New Expenses
                     </FormControlLabelText>
                   </FormControlLabel>
                   <SelectField onPress={() => setEntryCurrencySheetOpen(true)}>
@@ -344,7 +344,7 @@ export default function EditGroupScreen() {
         title="New Expenses"
         currency={values.defaultExpenseCurrency}
         sameAs={{
-          label: "Same as group currency",
+          label: "Same as Group Currency",
           subtitle: currencyLabel ?? values.currency
         }}
         onClose={() => setEntryCurrencySheetOpen(false)}

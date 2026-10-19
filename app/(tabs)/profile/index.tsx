@@ -196,7 +196,7 @@ export default function ProfileScreen() {
             icon: (
               <Sparkles color={getPrimaryHex("text-primary-400", colorScheme)} />
             ),
-            label: "How Ambagan works",
+            label: "How Ambagan Works",
             description: "A quick tour of what you can do in the app",
             onPress: () => router.push("/feature-tour")
           },

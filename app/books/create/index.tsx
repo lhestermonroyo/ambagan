@@ -161,7 +161,7 @@ function EditIndividualScreen() {
       values.defaultExpenseCurrency
         ? (currencies.find((c) => c.value === values.defaultExpenseCurrency)
             ?.label ?? values.defaultExpenseCurrency)
-        : "Same as Individual entry currency",
+        : "Same as Individual Entry Currency",
     [values.defaultExpenseCurrency]
   );
 
@@ -214,7 +214,7 @@ function EditIndividualScreen() {
         optimistic
       );
       toast({
-        title: "Saved offline",
+        title: "Saved Offline",
         description:
           "Your Individual entry will be created automatically when you're back online.",
         type: "info"
@@ -235,7 +235,7 @@ function EditIndividualScreen() {
           avatar: values.avatar
         });
         toast({
-          title: "Individual updated",
+          title: "Individual Updated",
           description: "Your changes have been saved.",
           type: "success"
         });
@@ -258,7 +258,7 @@ function EditIndividualScreen() {
         });
         if (!shown) {
           toast({
-            title: "Individual created",
+            title: "Individual Created",
             description: "Individual created successfully.",
             type: "success"
           });
@@ -377,7 +377,7 @@ function EditIndividualScreen() {
                 <FormControl size="md">
                   <FormControlLabel>
                     <FormControlLabelText>
-                      Default for new expenses
+                      Default for New Expenses
                     </FormControlLabelText>
                   </FormControlLabel>
                   <SelectField onPress={() => setEntryCurrencySheetOpen(true)}>
@@ -400,7 +400,7 @@ function EditIndividualScreen() {
               <FormControl size="md">
                 <FormControlLabel>
                   <FormControlLabelText>
-                    Linked group (optional)
+                    Linked Group (Optional)
                   </FormControlLabelText>
                 </FormControlLabel>
                 <SelectField
@@ -416,7 +416,7 @@ function EditIndividualScreen() {
                   }
                 >
                   <Text className="text-lg" numberOfLines={1}>
-                    {linkedGroup?.name ?? "Not linked"}
+                    {linkedGroup?.name ?? "Not Linked"}
                   </Text>
                 </SelectField>
                 <FormControlHelper>
@@ -450,9 +450,9 @@ function EditIndividualScreen() {
       <CurrencySelectionSheet
         isOpen={entryCurrencySheetOpen}
         currency={values.defaultExpenseCurrency}
-        title="Default For New Expenses"
+        title="Default for New Expenses"
         sameAs={{
-          label: "Same as Individual entry currency",
+          label: "Same as Individual Entry Currency",
           subtitle: currencyLabel ?? values.currency
         }}
         onClose={() => setEntryCurrencySheetOpen(false)}
