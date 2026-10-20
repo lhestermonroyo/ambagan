@@ -1,4 +1,4 @@
-import { usesPartialPaymentFlow, groupSettlementBalancesByCurrency as groupByCurrency } from "@/features/expense/utils/settlementPayments.util";
+import { groupSettlementBalancesByCurrency as groupByCurrency } from "@/features/expense/utils/settlementPayments.util";
 import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList, { EmptyListAction } from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -17,10 +17,8 @@ import { SectionList } from "@/components/ui/section-list";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
-import MarkAsSettledSheet from "@/features/expense/components/MarkAsSettledSheet";
 import NetBalanceDisplay from "@/features/expense/components/NetBalanceDisplay";
-import RequestSettledSheet from "@/features/expense/components/RequestSettledSheet";
-import ReviewRequestPaidSheet from "@/features/expense/components/ReviewRequestPaidSheet";
+import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import SettlementGroupCard from "@/features/expense/components/SettlementGroupCard";
 import SettlementItem from "@/features/expense/components/SettlementItem";
@@ -43,7 +41,6 @@ import StatusSheet, {
 import ViewBySheet, {
   ViewOption
 } from "@/features/group/components/ViewBySheet";
-import { useNetwork } from "@/hooks/useNetwork";
 import services from "@/services";
 import states from "@/states";
 import { Payment, PaymentPreview } from "@/types/expenses";
@@ -97,7 +94,6 @@ export default function GroupSettlements({
   // into, which is what keeps the two figures agreeing.
   const primaryCurrency = details?.currency ?? BASE_CURRENCY;
   const colorScheme = useColorScheme() ?? "light";
-  const { isOnline } = useNetwork();
 
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -106,11 +102,7 @@ export default function GroupSettlements({
   const [settledPage, setSettledPage] = useState(0);
   const [hasMoreSettled, setHasMoreSettled] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [requestSheetOpen, setRequestSheetOpen] = useState(false);
-  const [markAsSettledSheetOpen, setMarkAsSettledSheetOpen] = useState(false);
-  const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
-  const [reviewSheetReadOnly, setReviewSheetReadOnly] = useState(false);
-  const [reviewIsPayer, setReviewIsPayer] = useState(false);
+  const [settlementSheetOpen, setSettlementSheetOpen] = useState(false);
   const [settlementTab, setSettlementTab] = useState<SettlementStatus>("All");
   const [statusSheetOpen, setStatusSheetOpen] = useState(false);
   const [viewBy, setViewBy] = useState<ViewOption>("By Date");
@@ -380,63 +372,13 @@ export default function GroupSettlements({
     searchQuery
   ]);
 
-  const handleSettlementItemPress = async (
+  const handleSettlementItemPress = (
     payment: PaymentPreview | Payment
   ) => {
-    let p = payment as Payment;
-
-    // A PaymentPreview omits proof_of_payment / notes, which the settlement
-    // sheets display. Hydrate it into a full Payment so those aren't empty —
-    // but only when online. Viewing a settlement is allowed offline; each
-    // sheet's actions (mark settled / approve / reject / request) guard
-    // themselves and toast if the user tries them without a connection. A
-    // not-yet-synced offline settlement (p.pending) has nothing to hydrate.
-    if (isOnline && !p.pending && p.proof_of_payment === undefined) {
-      try {
-        const full = await services.expense.getPaymentById(p.id);
-        if (full) {
-          p = full;
-        }
-      } catch (error) {
-        console.error("Error fetching payment details:", error);
-      }
-    }
-
-    const isUserMember = p.member.id === userDetails?.id;
-    const isUserPayer = p.payer.id === userDetails?.id;
-
-    if (isUserMember) {
-      if (p.status === "pending" && !usesPartialPaymentFlow(p)) {
-        handleOpenRequest(p);
-      } else {
-        handleOpenReview(p, false);
-      }
-    } else if (isUserPayer) {
-      if (p.status === "requested") {
-        handleOpenReview(p, true);
-      } else if (p.status === "pending" && !usesPartialPaymentFlow(p)) {
-        handleOpenMarkAsSettled(p);
-      } else {
-        handleOpenReview(p, true);
-      }
-    }
-  };
-
-  const handleOpenRequest = (payment: Payment) => {
-    setSelectedPayment(payment);
-    setRequestSheetOpen(true);
-  };
-
-  const handleOpenMarkAsSettled = (payment: Payment) => {
-    setSelectedPayment(payment);
-    setMarkAsSettledSheetOpen(true);
-  };
-
-  const handleOpenReview = (payment: Payment, isPayer: boolean) => {
-    setReviewSheetReadOnly(false);
-    setReviewIsPayer(isPayer);
-    setSelectedPayment(payment);
-    setReviewSheetOpen(true);
+    if (payment.member.id !== userDetails?.id && payment.payer.id !== userDetails?.id) return;
+    // Present immediately. The screen reads fresh details and history together.
+    setSelectedPayment(payment as Payment);
+    setSettlementSheetOpen(true);
   };
 
   // Swap the status/filter row for the full-width search field (and back).
@@ -755,45 +697,16 @@ export default function GroupSettlements({
         onSelect={setViewBy}
       />
 
-      {selectedPayment && (
-        <RequestSettledSheet
-          isOpen={requestSheetOpen}
-          onClose={() => {
-            setRequestSheetOpen(false);
-            setSelectedPayment(null);
-          }}
-          payment={selectedPayment}
-          onRefetch={fetchAll}
-          showGroupLink={false}
-        />
-      )}
-      {selectedPayment && (
-        <MarkAsSettledSheet
-          isOpen={markAsSettledSheetOpen}
-          onClose={() => {
-            setMarkAsSettledSheetOpen(false);
-            setSelectedPayment(null);
-          }}
-          payment={selectedPayment}
-          onRefetch={fetchAll}
-          showGroupLink={false}
-        />
-      )}
-      {selectedPayment && (
-        <ReviewRequestPaidSheet
-          isOpen={reviewSheetOpen}
-          onClose={() => {
-            setReviewSheetOpen(false);
-            setSelectedPayment(null);
-            setReviewSheetReadOnly(false);
-          }}
-          payment={selectedPayment}
-          onRefetch={fetchAll}
-          isPayer={reviewIsPayer}
-          readOnly={reviewSheetReadOnly}
-          showGroupLink={false}
-        />
-      )}
+      <SettlementActionSheet
+        isOpen={settlementSheetOpen}
+        onClose={() => {
+          setSettlementSheetOpen(false);
+          setSelectedPayment(null);
+        }}
+        item={selectedPayment}
+        onRefetch={fetchAll}
+        showGroupLink={false}
+      />
     </Fragment>
   );
 }

@@ -1,4 +1,3 @@
-import AppSheet from "@/components/AppSheet";
 import FormButton from "@/components/FormButton";
 import FormTextarea from "@/components/FormTextarea";
 import UploadImage from "@/components/UploadImage";
@@ -30,13 +29,11 @@ export type SettlementPaymentSheetProps = {
   onRefetch: () => void;
   showGroupLink?: boolean;
   onBack?: () => void;
-  /** Render inside an existing sheet when navigating from payment history. */
-  embedded?: boolean;
   onBusyChange?: (busy: boolean) => void;
 };
 
 export default function SettlementPaymentSheet({ isOpen, onClose, payment: initialPayment,
-  onRefetch, showGroupLink = true, onBack, received = false, embedded = false, onBusyChange
+  onRefetch, showGroupLink = true, onBack, received = false, onBusyChange
 }: SettlementPaymentSheetProps & { received?: boolean }) {
   const details = useSettlementPaymentDetails(initialPayment, isOpen);
   const { payment, entries, loading, error } = details;
@@ -57,7 +54,6 @@ export default function SettlementPaymentSheet({ isOpen, onClose, payment: initi
   const receiverBlocked = received && (mode === "partial" || partialSettlement);
   const valid = !receiverBlocked && !loading && !error && !hasPending && payment.status !== "settled" && remaining > 0 &&
     (mode === "full" || isValidPartialPaymentAmount(amount, remaining));
-  const close = () => { if (!locked.current) onClose(); };
   const back = () => { if (!locked.current) (onBack ?? onClose)(); };
 
   const submit = async () => {
@@ -77,7 +73,8 @@ export default function SettlementPaymentSheet({ isOpen, onClose, payment: initi
       locked.current = false;
       onBusyChange?.(false);
       onClose();
-      void feedback(received ? (result.settled ? "settlement-completed" : "partial-payment-recorded") : "settlement-requested");
+      void feedback(received ? (result.settled ? "settlement-completed" : "partial-payment-recorded") : "settlement-requested",
+        { afterNavigation: true });
     } catch (cause) {
       toast({ title: "Payment Not Verified", description: settlementErrorMessage(cause), type: "error" });
       details.refresh();
@@ -147,6 +144,5 @@ export default function SettlementPaymentSheet({ isOpen, onClose, payment: initi
       </ScrollView>
     </>
   );
-  if (embedded) return <VStack className="flex-1">{content}{footer}</VStack>;
-  return <AppSheet isOpen={isOpen} onClose={close} fullscreen keyboardAvoiding footer={footer}>{content}</AppSheet>;
+  return <VStack className="flex-1">{content}{footer}</VStack>;
 }

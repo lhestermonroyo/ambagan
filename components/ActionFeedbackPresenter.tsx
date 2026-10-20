@@ -21,7 +21,7 @@ export default function ActionFeedbackPresenter() {
     }
     if (request.presented || request.afterNavigationFrom === pathname) return;
     if (request.afterNavigationTo && request.afterNavigationTo !== pathname) return;
-    if (!focusedRoute || ["feature-tour", "update-available", "subscription-success"].includes(focusedRoute)) return;
+    if (!focusedRoute || ["feature-tour", "update-available", "subscription-success", "settlement"].includes(focusedRoute)) return;
     if (!store.present(request.id)) return;
 
     Keyboard.dismiss();

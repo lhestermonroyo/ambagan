@@ -568,6 +568,14 @@ export default function RootLayout() {
                   options={{ presentation: "modal" }}
                 />
                 <Stack.Screen
+                  name="settlement"
+                  options={{
+                    presentation: "fullScreenModal",
+                    animation: "slide_from_bottom",
+                    gestureEnabled: false
+                  }}
+                />
+                <Stack.Screen
                   name="subscription-success"
                   options={{
                     presentation: "modal",

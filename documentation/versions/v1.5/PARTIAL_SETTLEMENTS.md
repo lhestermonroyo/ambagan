@@ -64,8 +64,15 @@ be reconstructed. Existing fully settled balances stay fully paid.
 
 ## App flow
 
-All settlement forms and review screens use the shared fullscreen sheet shell
-used by Edit Expense Split, with safe-area spacing and a sticky footer.
+All settlement forms and review screens open the root `/settlement` native
+`fullScreenModal` route. It uses the same native presentation system as the
+feature tour, with fullscreen safe-area spacing, keyboard avoidance, and a
+sticky footer. Home, Friends, and Groups share this route; there is no nested
+Actionsheet for the settlement itself. A session-local presentation request
+retains the preview and source-list callbacks without serializing them into
+navigation params. Dismissal clears that request and the source selection;
+cold-restored routes without a request return safely to the app. Saving blocks
+native dismissal, and success feedback waits until the settlement route leaves.
 **Pay in Full** stays selected by default and keeps the original titles and actions:
 Request as Settled / Request Settled for the sender, Mark as Settled / Mark
 Settled for the recipient, and Review Settlement with its date, participant,

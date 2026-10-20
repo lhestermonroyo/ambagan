@@ -4,6 +4,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { useRouter } from "expo-router";
+import { Keyboard } from "react-native";
 
 /**
  * Shared header for the settlement sheets (Mark as Settled / Request as Settled
@@ -31,8 +32,8 @@ export default function SettlementSheetHeader({
   const router = useRouter();
 
   const handleOpenGroup = () => {
-    onClose();
-    if (groupId) router.push(`/groups/${groupId}`);
+    Keyboard.dismiss();
+    if (groupId) router.dismissTo(`/groups/${groupId}`);
   };
 
   return (

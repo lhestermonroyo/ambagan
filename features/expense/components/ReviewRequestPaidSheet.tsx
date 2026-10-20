@@ -1,4 +1,3 @@
-import AppSheet from "@/components/AppSheet";
 import FormButton from "@/components/FormButton";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
@@ -14,7 +13,8 @@ import services from "@/services";
 import type { Payment } from "@/types/expenses";
 import type { SettlementPaymentAction, SettlementPaymentEntry } from "@/types/settlementPayments";
 import { Info } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { BackHandler } from "react-native";
 import { settlementErrorMessage, useSettlementPaymentDetails } from "../hooks/useSettlementPaymentDetails";
 import { getRemainingPaymentAmount, usesPartialPaymentFlow } from "../utils/settlementPayments.util";
 import FullSettlementReview from "./FullSettlementReview";
@@ -26,7 +26,7 @@ import SettlementSheetHeader from "./SettlementSheetHeader";
 import SettlementSummary from "./SettlementSummary";
 
 export default function ReviewRequestPaidSheet({ isOpen, onClose, onRefetch, payment: initialPayment,
-  readOnly = false, showGroupLink = true
+  readOnly = false, showGroupLink = true, onBusyChange
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -36,6 +36,7 @@ export default function ReviewRequestPaidSheet({ isOpen, onClose, onRefetch, pay
   isPayer?: boolean;
   readOnly?: boolean;
   showGroupLink?: boolean;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const details = useSettlementPaymentDetails(initialPayment, isOpen);
   const { payment, entries, loading, error } = details;
@@ -59,9 +60,19 @@ export default function ReviewRequestPaidSheet({ isOpen, onClose, onRefetch, pay
     onClose();
   };
 
+  useEffect(() => {
+    if (!remainingPaymentOpen) return;
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (!locked.current) setRemainingPaymentOpen(false);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [remainingPaymentOpen]);
+
   const act = async (entry: SettlementPaymentEntry, action: SettlementPaymentAction, note: string) => {
     if (locked.current || readOnly || !ready) return;
     locked.current = true;
+    onBusyChange?.(true);
     setBusyPaymentId(entry.id);
     setBusyAction(action);
     try {
@@ -69,6 +80,7 @@ export default function ReviewRequestPaidSheet({ isOpen, onClose, onRefetch, pay
       const result = await services.expense.transitionSettlementPayment(entry.id, action, note);
       try { void Promise.resolve(onRefetch()).catch(console.error); } catch (cause) { console.error("Refreshing settlements:", cause); }
       locked.current = false;
+      onBusyChange?.(false);
       close();
       if (!partialSettlement && action !== "confirm") {
         toast({ type: "success", description: action === "reject" ? "The payment request has been rejected."
@@ -77,12 +89,14 @@ export default function ReviewRequestPaidSheet({ isOpen, onClose, onRefetch, pay
       } else void feedback(action === "reject" ? "payment-request-rejected"
         : action === "withdraw" ? "payment-request-withdrawn"
           : action === "reopen" ? "payment-reopened"
-            : result.settled ? "settlement-completed" : "partial-payment-recorded");
+            : result.settled ? "settlement-completed" : "partial-payment-recorded",
+        { afterNavigation: true });
     } catch (cause) {
       toast({ title: "Payment Not Updated", description: settlementErrorMessage(cause), type: "error" });
       details.refresh();
     } finally {
       locked.current = false;
+      onBusyChange?.(false);
       setBusyPaymentId(null);
       setBusyAction(null);
     }
@@ -102,19 +116,18 @@ export default function ReviewRequestPaidSheet({ isOpen, onClose, onRefetch, pay
         ? currentEntry.created_at : payment.requested_at),
       settled_at: currentEntry.status === "confirmed" ? currentEntry.confirmed_at ?? null : null
     } : payment;
-    // Keep the same AppSheet at this position for full and partial layouts.
-    // A cached full-payment preview may become partial after the history read;
-    // replacing the sheet itself mid-opening interrupts its native animation.
-    return <AppSheet isOpen={isOpen} onClose={close} fullscreen>
+    // The native route stays mounted when a cached full-payment preview becomes
+    // partial after the history read. Only the content changes.
+    return <VStack className="flex-1">
       <FullSettlementReview key={payment.id} onClose={close} payment={fullPayment}
         loading={loading} error={error} onRetry={details.refresh} busyAction={busyAction}
         readOnly={readOnly || !currentEntry} showGroupLink={showGroupLink}
         onAction={async (action) => { if (currentEntry) await act(currentEntry, action, ""); }} />
-    </AppSheet>;
+    </VStack>;
   }
 
   return (
-    <AppSheet isOpen={isOpen} onClose={close} fullscreen>
+    <VStack className="flex-1">
       <SettlementSheetPager recording={remainingPaymentOpen && canAddPayment} details={
       <VStack className="flex-1">
       <SettlementSheetHeader title="Settlement Details" onClose={close}
@@ -160,11 +173,11 @@ export default function ReviewRequestPaidSheet({ isOpen, onClose, onRefetch, pay
       </VStack>
       </VStack>
       } form={canAddPayment ? (
-        <SettlementPaymentSheet embedded isOpen={isOpen && remainingPaymentOpen} onClose={close}
+        <SettlementPaymentSheet isOpen={isOpen && remainingPaymentOpen} onClose={close}
           onBack={() => setRemainingPaymentOpen(false)} payment={payment}
-          onBusyChange={(busy) => { locked.current = busy; }}
+          onBusyChange={(busy) => { locked.current = busy; onBusyChange?.(busy); }}
           onRefetch={onRefetch} showGroupLink={false} />
       ) : null} />
-    </AppSheet>
+    </VStack>
   );
 }
