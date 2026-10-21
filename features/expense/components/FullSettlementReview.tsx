@@ -14,7 +14,7 @@ import type { SettlementPaymentAction } from "@/types/settlementPayments";
 import { formatDate } from "@/utils/formatDate";
 import { getSecondaryHex, getOnSolidHex } from "@/utils/getColorHex";
 import { Image } from "expo-image";
-import { Expand, ReceiptText } from "lucide-react-native";
+import { CircleX, Expand, ReceiptText, Undo2 } from "lucide-react-native";
 import { type ReactNode, useState } from "react";
 import { useColorScheme } from "react-native";
 import ImageViewerSheet from "./ImageViewerSheet";
@@ -55,6 +55,7 @@ export default function FullSettlementReview({ onClose, payment, loading, error,
             {canReview && (
               <>
                 <ConfirmButton className="flex-1" action="negative" text="Reject"
+                  confirmIcon={CircleX}
                   isDelete confirmText="Reject" loading={busyAction === "reject"} disabled={submitting}
                   onConfirm={() => onAction("reject")} confirmTitle="Reject Settlement Request"
                   confirmDescription="Are you sure you want to reject this settlement request? This will send the settlement back to pending."
@@ -70,6 +71,7 @@ export default function FullSettlementReview({ onClose, payment, loading, error,
             )}
             {canUndo && (
               <ConfirmButton className="flex-1" action="negative" text="Undo Request"
+                confirmIcon={Undo2}
                 isDelete confirmText="Undo Request" loading={busyAction === "withdraw"} disabled={submitting}
                 onConfirm={() => onAction("withdraw")} confirmTitle="Undo Settlement Request"
                 confirmDescription="Are you sure you want to undo your settlement request? The settlement will return to pending so you can submit it again."

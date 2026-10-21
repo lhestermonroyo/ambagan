@@ -40,7 +40,7 @@ import * as offlineQueue from "@/utils/offlineQueue";
 import { addRecentUsers } from "@/utils/recentUsers";
 import { ImagePickerSuccessResult } from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Info } from "lucide-react-native";
+import { Info, NotebookPen } from "lucide-react-native";
 import { Fragment, useMemo, useState } from "react";
 import { Platform, useColorScheme } from "react-native";
 import "react-native-get-random-values";
@@ -475,6 +475,7 @@ export default function CreateGroupScreen() {
 
       <ConfirmationSheet
         isOpen={individualConfirmOpen}
+        icon={NotebookPen}
         onClose={() => setIndividualConfirmOpen(false)}
         title="Switch to Individual?"
         description={

@@ -1,3 +1,4 @@
+import ConfirmationHeader from "@/components/ConfirmationHeader";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import {
@@ -20,7 +21,7 @@ import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { getErrorHex } from "@/utils/getColorHex";
-import { AlertTriangle } from "lucide-react-native";
+import { AlertTriangle, Trash2 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -91,12 +92,8 @@ export default function DeleteGroupSheet({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full flex-1">
-          <VStack className="p-4">
-            <Text bold className="text-xl">
-              Delete Group
-            </Text>
-          </VStack>
           <ScrollView className="flex-1">
+            <ConfirmationHeader title="Delete Group" icon={Trash2} destructive />
             <LoadingWrapper isLoading={fetching}>
               <VStack className="gap-y-4">
                 {hasUnsettled ? (

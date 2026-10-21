@@ -10,6 +10,7 @@ const ConfirmIconButton = ({
   onConfirm,
   confirmTitle,
   confirmDescription,
+  confirmIcon,
   isDelete = false,
   isLoading = false,
   ...buttonProps
@@ -20,6 +21,7 @@ const ConfirmIconButton = ({
   onConfirm: () => void;
   confirmTitle?: string;
   confirmDescription?: string;
+  confirmIcon?: React.ComponentProps<typeof ConfirmationSheet>["icon"];
   isDelete?: boolean;
   isLoading?: boolean;
 } & React.ComponentProps<typeof Button>) => {
@@ -41,6 +43,7 @@ const ConfirmIconButton = ({
         onConfirm={handleConfirm}
         title={confirmTitle}
         description={confirmDescription}
+        icon={confirmIcon}
         loading={isLoading}
         confirmText="Yes"
         isDelete={isDelete}

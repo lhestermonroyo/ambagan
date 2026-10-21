@@ -31,6 +31,8 @@ import { GroupMode, type Group, type Member } from "@/types/groups";
 import { getPrimaryHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
+  Archive,
+  ArchiveRestore,
   BookPlus,
   ChevronDown,
   HousePlus,
@@ -422,6 +424,7 @@ export default function GroupsScreen() {
                       <>
                         <ConfirmIconButton
                           icon="unarchive"
+                          confirmIcon={ArchiveRestore}
                           iconClassName="text-background-0 dark:text-white"
                           variant="solid"
                           className="rounded-full h-[40] w-[40] p-0"
@@ -463,6 +466,7 @@ export default function GroupsScreen() {
                         </Button>
                         <ConfirmIconButton
                           icon="archive"
+                          confirmIcon={Archive}
                           iconClassName="text-background-0 dark:text-white"
                           variant="solid"
                           className="rounded-full h-[40] w-[40] p-0"

@@ -1,5 +1,7 @@
+import { Trash2, type LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
 import AppSheet from "./AppSheet";
+import ConfirmationHeader from "./ConfirmationHeader";
 import FormButton from "./FormButton";
 import { ScrollView } from "./ui/scroll-view";
 import { Text } from "./ui/text";
@@ -13,6 +15,7 @@ export default function ConfirmationSheet({
   description = "Are you sure you want to proceed?",
   confirmText = "Confirm",
   cancelText = "Cancel",
+  icon,
   isDelete = false,
   loading = false
 }: {
@@ -23,6 +26,7 @@ export default function ConfirmationSheet({
   description?: ReactNode;
   confirmText?: string;
   cancelText?: string;
+  icon?: LucideIcon;
   isDelete?: boolean;
   loading?: boolean;
 }) {
@@ -52,10 +56,9 @@ export default function ConfirmationSheet({
         </VStack>
       }
     >
-      <VStack className="p-4">
-        <Text bold className="text-xl">{title}</Text>
-      </VStack>
       <ScrollView className="flex-1">
+        <ConfirmationHeader title={title} icon={icon ?? (isDelete ? Trash2 : undefined)}
+          destructive={isDelete} />
         <Text className="px-4">{description}</Text>
       </ScrollView>
     </AppSheet>

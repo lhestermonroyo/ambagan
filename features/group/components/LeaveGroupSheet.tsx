@@ -1,5 +1,6 @@
 import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
+import ConfirmationHeader from "@/components/ConfirmationHeader";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
@@ -34,7 +35,7 @@ import { isGroupOwner } from "@/features/group/utils/groupRoles";
 import { getErrorHex, getPrimaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { getUserSubtitle } from "@/utils/userDisplay";
-import { AlertTriangle, CircleIcon } from "lucide-react-native";
+import { AlertTriangle, CircleIcon, LogOut, Trash2 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -157,12 +158,8 @@ export default function LeaveGroupSheet({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full flex-1">
-          <VStack className="p-4">
-            <Text bold className="text-xl">
-              Leave Group
-            </Text>
-          </VStack>
           <ScrollView className="flex-1">
+            <ConfirmationHeader title="Leave Group" icon={isSoleMember ? Trash2 : LogOut} destructive />
             <VStack className="gap-y-4">
               <LoadingWrapper isLoading={fetching}>
                 {hasUnsettled ? (

@@ -7,6 +7,7 @@ const ConfirmButton = ({
   confirmTitle,
   confirmDescription,
   confirmText,
+  confirmIcon,
   isDelete,
   ...buttonProps
 }: {
@@ -14,6 +15,7 @@ const ConfirmButton = ({
   confirmTitle?: string;
   confirmDescription?: string;
   confirmText?: string;
+  confirmIcon?: React.ComponentProps<typeof ConfirmationSheet>["icon"];
   isDelete?: boolean;
 } & React.ComponentProps<typeof FormButton>) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -44,6 +46,7 @@ const ConfirmButton = ({
         onConfirm={handleConfirm}
         loading={loading}
         isDelete={isDelete}
+        icon={confirmIcon}
         confirmText={confirmText ?? (isDelete ? "Delete" : "Confirm")}
         title={confirmTitle}
         description={confirmDescription}

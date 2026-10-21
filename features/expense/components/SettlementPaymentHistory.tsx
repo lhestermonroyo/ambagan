@@ -18,7 +18,7 @@ import useUserState from "@/features/user/states/user.state";
 import type { Payment } from "@/types/expenses";
 import type { SettlementPaymentAction, SettlementPaymentEntry } from "@/types/settlementPayments";
 import { format } from "date-fns";
-import { ChevronDown, ChevronUp, Expand, ReceiptText } from "lucide-react-native";
+import { ChevronDown, ChevronUp, CircleX, Expand, ReceiptText, RotateCcw, Undo2 } from "lucide-react-native";
 import { useState } from "react";
 import FormButton from "@/components/FormButton";
 import ConfirmButton from "@/components/ConfirmButton";
@@ -190,6 +190,7 @@ function PaymentHistoryContent({ payment, entries, onAction, busyPaymentId }: Hi
                             onChangeText={(note) => setNotes((current) => ({ ...current, [entry.id]: note }))} />
                           <HStack className="gap-x-2">
                             <ConfirmButton className="flex-1" text="Reject" variant="outline"
+                              confirmIcon={CircleX}
                               disabled={!!busyPaymentId} confirmText="Reject Payment"
                               confirmTitle="Reject This Payment?"
                               confirmDescription="The payment will stay in history with its notes and proof. The remaining balance will stay the same."
@@ -202,6 +203,7 @@ function PaymentHistoryContent({ payment, entries, onAction, busyPaymentId }: Hi
                       )}
                       {onAction && entry.status === "requested" && memberIsYou && (
                         <ConfirmButton text="Withdraw Request" variant="outline" disabled={!!busyPaymentId}
+                          confirmIcon={Undo2}
                           confirmText="Withdraw Request" confirmTitle="Withdraw This Request?"
                           confirmDescription="The request will remain in payment history and will no longer await confirmation."
                           onConfirm={() => onAction(entry, "withdraw", "")} />
@@ -209,6 +211,7 @@ function PaymentHistoryContent({ payment, entries, onAction, busyPaymentId }: Hi
                       {onAction && entry.status === "confirmed" && payerIsYou && (
                         <VStack className="gap-y-2">
                           <ConfirmButton text="Reopen Payment" variant="outline" disabled={!!busyPaymentId || hasPending}
+                            confirmIcon={RotateCcw}
                             confirmText="Reopen Payment" confirmTitle="Reopen This Payment?"
                             confirmDescription="This payment will await confirmation again. Its amount will be added back to the remaining balance."
                             onConfirm={() => onAction(entry, "reopen", "")} />

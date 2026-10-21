@@ -78,6 +78,7 @@ import {
   Heart,
   LayoutList,
   Search,
+  Send,
   X
 } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -1101,6 +1102,7 @@ export default function FriendDetailScreen() {
       />
       <ConfirmationSheet
         isOpen={pendingAction !== null}
+        icon={pendingAction === "settle" ? CheckCheck : Send}
         onClose={() => setPendingAction(null)}
         title={pendingAction === "settle" ? "Mark All as Settled" : "Request All as Settled"}
         description={pendingAction === "settle"
