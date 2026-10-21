@@ -615,7 +615,8 @@ export default function EditExpenseScreen() {
       toast({
         title: "Saved Offline",
         description: "Your changes will sync automatically when you're online.",
-        type: "info"
+        type: "info",
+        haptic: true
       });
       router.back();
       return;

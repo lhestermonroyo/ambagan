@@ -10,6 +10,7 @@ import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 import AuthLayout from "@/layouts/AuthLayout";
 import services from "@/services";
 import states from "@/states";
+import { successHaptic } from "@/utils/haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
@@ -90,6 +91,7 @@ export default function LoginScreen() {
         session: response.session
       }));
 
+      void successHaptic();
       router.replace("/(tabs)/(home)");
     } catch (error: any) {
       console.log("Error logging in:", error);

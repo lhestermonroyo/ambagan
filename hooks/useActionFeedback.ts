@@ -1,6 +1,7 @@
 import type { ActionFeedbackKind } from "@/constants/actionFeedback";
 import { useActionFeedbackState } from "@/features/user/states/actionFeedback.state";
 import states from "@/states";
+import { successHaptic } from "@/utils/haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { usePathname } from "expo-router";
 
@@ -36,12 +37,14 @@ export function useActionFeedback() {
       return false;
     }
 
-    return useActionFeedbackState.getState().enqueue({
+    const enqueued = useActionFeedbackState.getState().enqueue({
       id: String(++nextRequestId),
       kind,
       userId,
       afterNavigationFrom: options.afterNavigation ? pathname : undefined,
       afterNavigationTo: options.afterPath
     });
+    if (enqueued) void successHaptic();
+    return enqueued;
   };
 }

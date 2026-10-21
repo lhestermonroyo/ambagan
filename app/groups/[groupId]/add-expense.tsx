@@ -708,7 +708,8 @@ export default function AddExpenseScreen() {
         description: proofUpload
           ? "This draft and its receipt will sync automatically when you're back online."
           : "This draft will sync automatically when you're back online.",
-        type: "info"
+        type: "info",
+        haptic: true
       });
       handleSaved();
       return;
@@ -898,7 +899,8 @@ export default function AddExpenseScreen() {
         description: proofUpload
           ? "This expense and its receipt will sync automatically when you're back online."
           : "This expense will sync automatically when you're back online.",
-        type: "info"
+        type: "info",
+        haptic: true
       });
       handleSaved();
       return;

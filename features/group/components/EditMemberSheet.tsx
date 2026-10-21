@@ -376,6 +376,7 @@ export default function EditMembersSheet({
           description:
             "Member changes will sync automatically when you're back online.",
           type: "info",
+          haptic: true,
         });
         handleClose();
         return;

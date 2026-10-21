@@ -37,7 +37,8 @@ export function useFavoriteToggle(userId: string | undefined) {
         toast({
           title: "Removed From Favorites",
           description: `${name} was removed from your favorites.`,
-          type: "muted"
+          type: "muted",
+          haptic: true
         });
       } else {
         await services.friend.addFavorite(userId, targetUser.id, targetUser);

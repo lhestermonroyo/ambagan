@@ -21,6 +21,7 @@ import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { getPrimaryHex } from "@/utils/getColorHex";
+import { successHaptic } from "@/utils/haptics";
 import { setCachedUserSession } from "@/utils/userCache";
 
 import { differenceInCalendarDays, format } from "date-fns";
@@ -204,6 +205,7 @@ export default function SubscriptionScreen() {
       setActivationPending(false);
 
       if (plan === "pro") {
+        void successHaptic();
         router.push({
           pathname: "/subscription-success",
           params: { restored: "1" }
@@ -277,6 +279,7 @@ export default function SubscriptionScreen() {
       if (states.user.getState().details?.id !== purchasingUserId) return;
       setActivationPending(false);
 
+      void successHaptic();
       router.push({
         pathname: "/subscription-success",
         params: { plan: selectedPlan }

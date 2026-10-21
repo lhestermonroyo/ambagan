@@ -488,7 +488,8 @@ export default function AddPersonalExpenseScreen() {
       toast({
         title: "Saved Offline",
         description: "Your expense will sync when you're back online.",
-        type: "info"
+        type: "info",
+        haptic: true
       });
       handleSaved();
       return;
@@ -567,7 +568,8 @@ export default function AddPersonalExpenseScreen() {
         toast({
           title: "Deleted Offline",
           description: "This will sync when you're back online.",
-          type: "info"
+          type: "info",
+          haptic: true
         });
       } else {
         await services.bookExpense.deletePersonalExpense(expenseId);

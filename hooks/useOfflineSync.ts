@@ -291,7 +291,8 @@ export function useOfflineSync() {
             description: `${success} offline ${
               success === 1 ? "change" : "changes"
             } synced.`,
-            type: "success"
+            type: "success",
+            haptic: false
           });
         }
         if (failed > 0) {

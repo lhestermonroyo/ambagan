@@ -9,6 +9,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import AuthLayout from "@/layouts/AuthLayout";
 import services from "@/services";
 import states from "@/states";
+import { successHaptic } from "@/utils/haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
@@ -92,6 +93,7 @@ export default function SignUpScreen() {
         ...prev,
         session: response.session
       }));
+      void successHaptic();
       router.push("/onboarding");
     } catch (error: any) {
       // With confirmations OFF, a duplicate email throws instead of obfuscating.

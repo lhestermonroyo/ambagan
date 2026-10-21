@@ -217,7 +217,8 @@ function EditIndividualScreen() {
         title: "Saved Offline",
         description:
           "Your Individual entry will be created automatically when you're back online.",
-        type: "info"
+        type: "info",
+        haptic: true
       });
       router.replace("/groups");
       return;

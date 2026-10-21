@@ -8,6 +8,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import AuthLayout from "@/layouts/AuthLayout";
 import services from "@/services";
 import { getPrimaryHex } from "@/utils/getColorHex";
+import { successHaptic } from "@/utils/haptics";
 import { useRouter } from "expo-router";
 import { MailCheck } from "lucide-react-native";
 import { useState } from "react";
@@ -39,6 +40,7 @@ export default function ForgotPasswordScreen() {
     try {
       await services.auth.resetPassword(email.trim());
       setSent(true);
+      void successHaptic();
     } catch {
       toast({
         title: "Request Failed",

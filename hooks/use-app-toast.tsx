@@ -5,6 +5,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { BANNER_CONTENT_HEIGHT } from "@/hooks/useBanner";
 import { useNetwork } from "@/hooks/useNetwork";
+import { successHaptic } from "@/utils/haptics";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -32,6 +33,9 @@ type ToastParams = {
   description: string;
   type?: ToastActionType;
   link?: ToastLink;
+  /** Defaults to success toasts. Background sync can opt out; local saves and
+   * other completed actions with an informational toast can opt in. */
+  haptic?: boolean;
 };
 
 interface ToastData extends ToastParams {
@@ -65,6 +69,7 @@ const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     setToasts((prev) => [...prev, toastData]);
+    if (params.haptic ?? (params.type === "success")) void successHaptic();
 
     setTimeout(() => {
       dismissToast(newId);

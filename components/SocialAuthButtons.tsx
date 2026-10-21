@@ -5,6 +5,7 @@ import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import states from "@/states";
+import { successHaptic } from "@/utils/haptics";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { statusCodes } from "@react-native-google-signin/google-signin";
 import type { Session } from "@supabase/supabase-js";
@@ -50,6 +51,7 @@ export default function SocialAuthButtons({
       oauthName: name?.firstName || name?.lastName ? name : prev.oauthName,
       routeIntent: "splash"
     }));
+    void successHaptic();
     router.replace("/");
   };
 

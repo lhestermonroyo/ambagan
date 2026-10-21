@@ -189,7 +189,7 @@ export default function CreateGroupScreen() {
             groupId: null, userId: user.details.id
           });
           await offlineQueue.queueCreateBook(user.details.id, { ...args, avatar: null }, optimistic);
-          toast({ title: "Saved Offline", description: "Your Individual entry will sync when you're back online. You can add a cover photo after it syncs.", type: "info" });
+          toast({ title: "Saved Offline", description: "Your Individual entry will sync when you're back online. You can add a cover photo after it syncs.", type: "info", haptic: true });
           router.replace("/groups");
         } else {
           const response = await services.book.saveBook(args);
@@ -266,7 +266,8 @@ export default function CreateGroupScreen() {
           title: "Saved Offline",
           description:
             "Your group will be created automatically when you're back online. You can add a cover photo after it syncs.",
-          type: "info"
+          type: "info",
+          haptic: true
         });
         router.replace("/groups");
         return;
