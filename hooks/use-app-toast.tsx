@@ -8,6 +8,7 @@ import { useNetwork } from "@/hooks/useNetwork";
 import { successHaptic } from "@/utils/haptics";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useRouter } from "expo-router";
+import { CircleCheck, CircleX, Info, MessageCircle, TriangleAlert } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,6 +20,14 @@ type ToastActionType =
   | "info"
   | "muted"
   | undefined;
+
+const TOAST_ICONS = {
+  success: CircleCheck,
+  error: CircleX,
+  warning: TriangleAlert,
+  info: Info,
+  muted: MessageCircle
+};
 
 // An optional tappable link rendered under the toast body — e.g. an offline
 // message linking to the relevant Help Center FAQ. Tapping navigates to `route`
@@ -96,6 +105,7 @@ interface ToastItemProps {
 
 const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   const router = useRouter();
+  const toastIcon = TOAST_ICONS[toast.type ?? "muted"];
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.9)).current;
@@ -154,8 +164,14 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           "px-4 py-2 rounded-lg mx-2 shadow-lg"
         )}
       >
-        <Box className="flex-row items-center justify-between">
-          <VStack space="xs" className="flex-1 mr-2">
+        <Box className="flex-row items-start gap-x-3">
+          <Icon
+            as={toastIcon}
+            size="lg"
+            className="text-white shrink-0 mt-0.5"
+            accessible={false}
+          />
+          <VStack space="xs" className="flex-1 min-w-0">
             {toast.title && (
               <Text size="lg" className="text-white font-medium">
                 {toast.title}
@@ -179,7 +195,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
 
           <Pressable
             onPress={() => onDismiss(toast.id)}
-            className="ml-2 p-1 -mr-1 -mt-1"
+            className="shrink-0 p-1 -mr-1 -mt-1"
           >
             <Icon as={CloseIcon} className="text-white" size="sm" />
           </Pressable>
