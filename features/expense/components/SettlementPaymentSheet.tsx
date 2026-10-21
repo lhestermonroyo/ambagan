@@ -104,12 +104,11 @@ export default function SettlementPaymentSheet({ isOpen, onClose, payment: initi
           <SettlementHistoryState loading={loading} error={error} onRetry={details.refresh} />
           {!loading && !error && (
             <>
+              <SettlementSummary payment={payment} />
               {!received && <PaymentModeTabs value={mode} onChange={setMode} disabled={submitting || hasPending} />}
-              {mode === "partial" ? (
+              {mode === "partial" && (
                 <PartialPaymentFields payment={payment} amount={amount} onChangeAmount={setAmount}
                   received={received} confirmedPaidAmount={payment.confirmed_paid_amount ?? 0} />
-              ) : (
-                <SettlementSummary payment={payment} />
               )}
               {!partialForm && payment.rejected_at && (
                 <VStack className="bg-secondary-100 rounded-xl p-4 gap-y-1">

@@ -6,8 +6,6 @@ import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { groupEntryCurrency } from "@/features/group/utils/groupCurrency";
-import { groupAdmins } from "@/features/group/utils/groupRoles";
 import states from "@/states";
 import { Group, Member } from "@/types/groups";
 import { categories, currencies } from "@/utils/constants";
@@ -57,31 +55,15 @@ function GroupDetailsContent({
 }) {
   const colorScheme = useColorScheme() ?? "light";
 
-  const admins = useMemo(
-    () => groupAdmins(details, memberList),
-    [details, memberList]
+  const category = useMemo(
+    () => categories.find((c) => c.value === details.category) ?? null,
+    [details.category]
   );
-
-  const category = useMemo(() => {
-    if (!details) return null;
-    return categories.find((c) => c.value === details.category) ?? null;
-  }, [details?.category]);
 
   const currency = useMemo(
-    () => currencies.find((c) => c.value === details?.currency) ?? null,
-    [details?.currency]
+    () => currencies.find((c) => c.value === (details.currency ?? "PHP")) ?? null,
+    [details.currency]
   );
-
-  // Only interesting when it differs from the group's own currency — on every
-  // other group it would restate the row above it.
-  const entryCurrency = useMemo(() => {
-    const resolved = groupEntryCurrency({
-      currency: details?.currency,
-      default_expense_currency: details?.default_expense_currency
-    });
-    if (!resolved || resolved === details?.currency) return null;
-    return currencies.find((c) => c.value === resolved) ?? null;
-  }, [details?.default_expense_currency, details?.currency]);
 
   return (
     <Fragment>
@@ -89,11 +71,8 @@ function GroupDetailsContent({
         <Box className="bg-secondary-100 rounded-xl overflow-hidden">
           <DetailRow label="Mode" value={<Text>Group</Text>} />
           <RowDivider />
-          {/* The REPORTING currency — what Stats and the settlement totals
-              convert into. It also seeds new expenses unless the row below
-              overrides it, which is why this one isn't labelled "default". */}
           <DetailRow
-            label={entryCurrency ? "Group Currency" : "Currency"}
+            label="Currency"
             value={
               <Text>
                 {currency ? currency.subtitle : (details.currency ?? "PHP")} (
@@ -101,19 +80,6 @@ function GroupDetailsContent({
               </Text>
             }
           />
-          {entryCurrency && (
-            <>
-              <RowDivider />
-              <DetailRow
-                label="New Expenses"
-                value={
-                  <Text>
-                    {entryCurrency.subtitle} ({entryCurrency.sign})
-                  </Text>
-                }
-              />
-            </>
-          )}
           <RowDivider />
           <DetailRow
             label="Category"
@@ -165,21 +131,6 @@ function GroupDetailsContent({
               </HStack>
             }
           />
-          {/* Only worth a row once someone else can manage the group — on a
-              single-admin group it would just restate the owner above. */}
-          {admins.length > 1 && (
-            <>
-              <RowDivider />
-              <DetailRow
-                label="Admins"
-                value={
-                  <Text>
-                    {admins.length} {admins.length === 1 ? "admin" : "admins"}
-                  </Text>
-                }
-              />
-            </>
-          )}
           <RowDivider />
           <DetailRow
             label="Created at"

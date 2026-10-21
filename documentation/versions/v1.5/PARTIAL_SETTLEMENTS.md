@@ -73,6 +73,9 @@ retains the preview and source-list callbacks without serializing them into
 navigation params. Dismissal clears that request and the source selection;
 cold-restored routes without a request return safely to the app. Saving blocks
 native dismissal, and success feedback waits until the settlement route leaves.
+An overlay host inside the native route keeps confirmation sheets (including
+Withdraw Request, Reject, and Reopen Payment) and proof-picker sheets above the
+settlement instead of behind its native modal.
 **Pay in Full** stays selected by default and keeps the original titles and actions:
 Request as Settled / Request Settled for the sender, Mark as Settled / Mark
 Settled for the recipient, and Review Settlement with its date, participant,

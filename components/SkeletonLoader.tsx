@@ -496,6 +496,24 @@ export function SettlementListSkeleton({ count = 4 }: { count?: number }) {
   );
 }
 
+export function SettlementDetailsSkeleton() {
+  const scheme = useColorScheme() ?? "light";
+  const color = scheme === "dark" ? SKELETON_DARK : SKELETON_LIGHT;
+  const animStyle = useSkeletonPulse();
+
+  return (
+    <Animated.View
+      style={[animStyle, { gap: 16 }]}
+      accessibilityLabel="Loading payment details"
+      accessibilityState={{ busy: true }}
+    >
+      <Bone w="100%" h={256} radius={16} color={color} />
+      <Bone w="100%" h={80} radius={12} color={color} />
+      <Bone w="100%" h={80} radius={12} color={color} />
+    </Animated.View>
+  );
+}
+
 // ─────────────────────────────────────────────
 // AnalyticsScreen skeleton
 // Total Spent (gauge) + Where It Went + Trend + Top Partners

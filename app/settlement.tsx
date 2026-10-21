@@ -3,11 +3,12 @@ import SettlementScreenContent from "@/features/expense/components/SettlementScr
 import { useSettlementPresentationState } from "@/features/expense/states/settlementPresentation.state";
 import useUserState from "@/features/user/states/user.state";
 import { useBanner } from "@/hooks/useBanner";
+import { OverlayProvider } from "@gluestack-ui/core/overlay/creator";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { usePreventRemove } from "expo-router/react-navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Keyboard } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Keyboard, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /** Same native presentation as the tour, with a fullscreen modal and one shell
  * throughout the details → record-payment transition. */
@@ -17,6 +18,7 @@ export default function SettlementScreen() {
   const request = useSettlementPresentationState((state) => state.request);
   const userId = useUserState((state) => state.details?.id ?? state.session?.user.id);
   const { sheetTopInset } = useBanner();
+  const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
   const [closing, setClosing] = useState(false);
   const locked = useRef(false);
@@ -45,19 +47,28 @@ export default function SettlementScreen() {
   }, [requestId]);
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-background-0"
-      edges={{ top: "maximum", bottom: "additive" }}
-      // Match the previous fullscreen sheet's top padding without adding the
-      // status-bar inset twice. Larger device safe areas still take precedence.
-      style={{ paddingTop: sheetTopInset - 8 }}
+      // Use the available context insets on the first render. A native
+      // SafeAreaView inside the presented modal can apply them after mounting,
+      // changing the footer position between the first and later openings.
+      style={{
+        paddingTop: Math.max(insets.top, sheetTopInset - 8),
+        paddingBottom: insets.bottom,
+        paddingLeft: insets.left,
+        paddingRight: insets.right
+      }}
     >
-      <KeyboardAvoidingSheet>
-        {valid && (
-          <SettlementScreenContent payment={request.payment} showGroupLink={request.showGroupLink}
-            onClose={close} onRefetch={request.onRefetch} onBusyChange={onBusyChange} />
-        )}
-      </KeyboardAvoidingSheet>
-    </SafeAreaView>
+      {/* Keep confirmation and image-picker portals in this native modal.
+          The app-level host belongs to the screen underneath it. */}
+      <OverlayProvider>
+        <KeyboardAvoidingSheet>
+          {valid && (
+            <SettlementScreenContent payment={request.payment} showGroupLink={request.showGroupLink}
+              onClose={close} onRefetch={request.onRefetch} onBusyChange={onBusyChange} />
+          )}
+        </KeyboardAvoidingSheet>
+      </OverlayProvider>
+    </View>
   );
 }

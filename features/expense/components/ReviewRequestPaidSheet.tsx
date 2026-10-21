@@ -12,7 +12,7 @@ import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import services from "@/services";
 import type { Payment } from "@/types/expenses";
 import type { SettlementPaymentAction, SettlementPaymentEntry } from "@/types/settlementPayments";
-import { Info } from "lucide-react-native";
+import { BanknoteArrowUp, Info } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { BackHandler } from "react-native";
 import { settlementErrorMessage, useSettlementPaymentDetails } from "../hooks/useSettlementPaymentDetails";
@@ -153,6 +153,7 @@ export default function ReviewRequestPaidSheet({ isOpen, onClose, onRefetch, pay
                 </HStack>
               ) : canAddPayment ? (
                 <FormButton text="Pay Remaining"
+                  icon={<Icon as={BanknoteArrowUp} size="md" className="text-white" />}
                   disabled={busyPaymentId !== null}
                   onPress={() => setRemainingPaymentOpen(true)} />
               ) : null}
