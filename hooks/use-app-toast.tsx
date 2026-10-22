@@ -161,16 +161,17 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
       <Box
         className={cn(
           getBackgroundColor(toast.type),
-          "px-4 py-2 rounded-lg mx-2 shadow-lg"
+          "px-4 py-3 rounded-lg mx-2 shadow-lg"
         )}
       >
-        <Box className="flex-row items-start gap-x-3">
-          <Icon
-            as={toastIcon}
-            size="lg"
-            className="text-white shrink-0 mt-0.5"
-            accessible={false}
-          />
+        <Box className="flex-row items-center gap-x-3">
+          <Box className="h-14 w-14 rounded-full bg-white/20 items-center justify-center shrink-0">
+            <Icon
+              as={toastIcon}
+              className="text-white h-8 w-8"
+              accessible={false}
+            />
+          </Box>
           <VStack space="xs" className="flex-1 min-w-0">
             {toast.title && (
               <Text size="lg" className="text-white font-medium">
@@ -195,7 +196,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
 
           <Pressable
             onPress={() => onDismiss(toast.id)}
-            className="shrink-0 p-1 -mr-1 -mt-1"
+            className="self-start shrink-0 p-1 -mr-1 -mt-1"
           >
             <Icon as={CloseIcon} className="text-white" size="sm" />
           </Pressable>
