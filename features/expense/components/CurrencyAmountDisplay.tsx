@@ -1,4 +1,5 @@
 import CurrencyCountButton from "@/components/CurrencyCountButton";
+import { AmountSkeleton } from "@/components/SkeletonLoader";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { getRate, useConvertedTotal, useFxRates } from "@/utils/fx";
@@ -88,11 +89,7 @@ export default function CurrencyAmountDisplay({
     : "text-xl";
 
   if (isLoading) {
-    return (
-      <Text bold className={cn("text-3xl", amountColor, amountClassName)}>
-        -
-      </Text>
-    );
+    return <AmountSkeleton size={amountSize} />;
   }
 
   return (

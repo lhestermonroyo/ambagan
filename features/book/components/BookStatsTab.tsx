@@ -3,7 +3,7 @@ import ApproxRateNote from "@/components/ApproxRateNote";
 import CategoryGauge from "@/components/CategoryGauge";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import FormButton from "@/components/FormButton";
-import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import { BookStatsSkeleton } from "@/components/SkeletonLoader";
 import { Card } from "@/components/ui/card";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
@@ -236,11 +236,7 @@ export default function BookStatsTab({
   const shareLoading = !previewEmpty && linkedShareLoading;
 
   if (loading) {
-    return (
-      <VStack className="pt-2">
-        <ExpenseListSkeleton />
-      </VStack>
-    );
+    return <BookStatsSkeleton />;
   }
 
   return (

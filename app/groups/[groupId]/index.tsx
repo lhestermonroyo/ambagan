@@ -12,7 +12,11 @@ import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
 import ProBadge from "@/components/ProBadge";
 import SearchInput from "@/components/SearchInput";
-import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import {
+  ContainerDetailsSkeleton,
+  ContainerHeaderSkeleton,
+  ContainerTabsSkeleton
+} from "@/components/SkeletonLoader";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
@@ -114,10 +118,14 @@ if (
 }
 
 const tabs = ["Settlements", "Expenses", "Stats", "Members", "Info"] as const;
+const EMPTY_LIST: never[] = [];
 
 export default function GroupDetailsScreen() {
+  const params = useLocalSearchParams();
+  const groupId = params.groupId as string | undefined;
   const previewEmpty = useEmptyStatePreview();
-  const [loading, setLoading] = useState(false);
+  const [fetchingDetails, setLoading] = useState(false);
+  const [settlementsLoading, setSettlementsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [settlementRefreshTrigger, setSettlementRefreshTrigger] = useState(0);
   const [recurringRefreshTrigger, setRecurringRefreshTrigger] = useState(0);
@@ -148,19 +156,37 @@ export default function GroupDetailsScreen() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const {
-    details: groupDetails,
-    expenseList,
-    settlementList,
-    memberList
+    details: storedGroupDetails,
+    expenseList: storedExpenseList,
+    settlementList: storedSettlementList,
+    memberList: storedMemberList,
+    list: groupList,
+    headerPreview
   } = states.group();
-  const { details: userDetails } = useUserStore();
+  const groupDetails =
+    storedGroupDetails?.id === groupId ? storedGroupDetails : null;
+  const groupHeader =
+    groupDetails ??
+    (headerPreview?.id === groupId ? headerPreview : null) ??
+    groupList.find((group) => group.id === groupId);
+  const expenseList = groupDetails ? storedExpenseList : EMPTY_LIST;
+  const settlementList = useMemo(
+    () => storedSettlementList.filter((payment) => payment.group_id === groupId),
+    [storedSettlementList, groupId]
+  );
+  const memberList = groupDetails ? storedMemberList : EMPTY_LIST;
+  const loading = fetchingDetails || !groupDetails;
+  const headerExpenseCount = groupDetails
+    ? expenseList.length
+    : groupHeader?.expense_count ?? 0;
+  const { details: userDetails, settlementView } = useUserStore();
 
   const isPro = userDetails?.plan === "pro";
 
   // This group's own home currency drives which balance line surfaces first (a
   // JPY trip group shows JPY first). Falls back to the app's home currency
   // until the group detail loads / for legacy rows.
-  const primaryCurrency = groupDetails?.currency ?? BASE_CURRENCY;
+  const primaryCurrency = groupHeader?.currency ?? BASE_CURRENCY;
 
   // A split needs at least two people, so expenses are gated until the group
   // has a second member (joined via invite, or added as a phone contact).
@@ -225,8 +251,6 @@ export default function GroupDetailsScreen() {
     outputRange: [-16, 0],
     extrapolate: "clamp"
   });
-  const params = useLocalSearchParams();
-  const groupId = params.groupId as string | undefined;
   const expenseEmptyActions = useExpenseEmptyActions({
     groupId,
     onViewMembers: () => setTab("Members")
@@ -734,7 +758,8 @@ export default function GroupDetailsScreen() {
         }
         androidActions={renderGroupAndroidActions()}
       >
-        {(tab === "Expenses" || tab === "Settlements") &&
+        {!loading &&
+          (tab === "Expenses" || tab === "Settlements") &&
           !groupDetails?.archived && (
             <>
               {/* Speed-dial rendered in a Modal so its dim masks the WHOLE
@@ -853,48 +878,49 @@ export default function GroupDetailsScreen() {
               )}
             </>
           )}
-        <LoadingWrapper isLoading={loading} skeleton={<ExpenseListSkeleton />}>
-          <ScrollView
-            className="flex-1"
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: false }
-            )}
-            scrollEventThrottle={16}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-              />
-            }
-          >
-            <VStack className="gap-y-6 py-4">
+        <ScrollView
+          className="flex-1"
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+          )}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
+          <VStack className="gap-y-6 py-4">
+            {groupHeader ? (
               <HStack className="px-4 gap-x-4 items-center">
                 <VStack>
                   <AppAvatar
                     className="self-center"
-                    uri={groupDetails?.avatar || ""}
-                    name={groupDetails?.name || "Group Avatar"}
+                    uri={groupHeader.avatar || ""}
+                    name={groupHeader.name}
                     size="lg"
                   />
                 </VStack>
-                <VStack>
+                <VStack className="flex-1">
                   <Text bold className="text-2xl" numberOfLines={3}>
-                    {groupDetails?.name}
+                    {groupHeader.name}
                   </Text>
                   <Text className="text-secondary-950">
                     Last update{" "}
                     {formatLastUpdate(
-                      groupDetails?.last_updated_at ??
-                        groupDetails?.created_at ??
-                        ""
+                      groupHeader.last_updated_at ?? groupHeader.created_at
                     )}{" "}
-                    • {expenseList.length} expense
-                    {expenseList.length !== 1 ? "s" : ""}
+                    • {headerExpenseCount} expense
+                    {headerExpenseCount !== 1 ? "s" : ""}
                   </Text>
                 </VStack>
               </HStack>
+            ) : (
+              <ContainerHeaderSkeleton />
+            )}
 
+            {loading || (tab === "Settlements" && settlementsLoading) ? (
+              <ContainerTabsSkeleton />
+            ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <HStack className="gap-x-2 px-4">
                   {tabs.map((type) => (
@@ -908,9 +934,11 @@ export default function GroupDetailsScreen() {
                   ))}
                 </HStack>
               </ScrollView>
-            </VStack>
+            )}
+          </VStack>
 
-            {groupDetails?.archived ? (
+          {!loading &&
+            (groupDetails?.archived ? (
               <HStack className="mx-4 mb-4 p-4 rounded-xl bg-secondary-100 gap-x-2 items-start">
                 <Archive
                   color={getPrimaryHex("text-primary-500", colorScheme)}
@@ -971,14 +999,29 @@ export default function GroupDetailsScreen() {
                   </VStack>
                 </HStack>
               )
-            )}
+            ))}
 
-            <Box className={tab !== "Settlements" ? "hidden" : ""}>
-              <GroupSettlements
-                refreshTrigger={settlementRefreshTrigger}
-                emptyActions={expenseEmptyActions}
+          <Box className={tab !== "Settlements" ? "hidden" : ""}>
+            <GroupSettlements
+              key={groupId}
+              groupId={groupId}
+              currency={primaryCurrency}
+              groupLoading={loading}
+              onLoadingChange={setSettlementsLoading}
+              refreshTrigger={settlementRefreshTrigger}
+              emptyActions={loading ? [] : expenseEmptyActions}
+            />
+          </Box>
+          <LoadingWrapper
+            isLoading={loading && tab !== "Settlements"}
+            skeleton={
+              <ContainerDetailsSkeleton
+                tab={tab}
+                settlementView={settlementView}
+                showHeader={false}
               />
-            </Box>
+            }
+          >
             {tab === "Expenses" && (
               <VStack className="pb-2 gap-y-4">
                 <Pressable
@@ -1243,8 +1286,8 @@ export default function GroupDetailsScreen() {
                 userId={userDetails.id}
               />
             )}
-          </ScrollView>
-        </LoadingWrapper>
+          </LoadingWrapper>
+        </ScrollView>
 
         {/* Compact sticky stats — Settlements tab only. Pinned just under the
             native header as an absolute overlay that fades in once the group

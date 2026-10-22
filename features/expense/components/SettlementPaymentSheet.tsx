@@ -101,7 +101,9 @@ export default function SettlementPaymentSheet({ isOpen, onClose, payment: initi
         onClose={back} groupId={payment.group_id} showGroupLink={showGroupLink && !submitting} />
       <ScrollView className="flex-1 px-4" keyboardShouldPersistTaps="handled">
         <VStack className="gap-y-6 pb-6">
-          <SettlementHistoryState loading={loading} error={error} onRetry={details.refresh} />
+          <SettlementHistoryState loading={loading} error={error} onRetry={details.refresh}
+            variant="form" showPaymentModes={!received} partial={mode === "partial"}
+            showProgress={(payment.confirmed_paid_amount ?? 0) > 0} />
           {!loading && !error && (
             <>
               <SettlementSummary payment={payment} />

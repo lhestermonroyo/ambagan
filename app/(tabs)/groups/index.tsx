@@ -7,7 +7,11 @@ import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchDrawer from "@/components/SearchDrawer";
-import { GroupListSkeleton } from "@/components/SkeletonLoader";
+import {
+  ContainerTabsSkeleton,
+  FilterBarSkeleton,
+  GroupListSkeleton
+} from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { FlatList } from "@/components/ui/flat-list";
@@ -380,29 +384,44 @@ export default function GroupsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <VStack className="bg-background-0 pb-4 gap-y-4 pt-2">
-            <HStack className="gap-x-2 px-4">
-              {TABS.map((tab) => (
+          <LoadingWrapper
+            isLoading={loading}
+            skeleton={
+              <VStack className="pb-4 gap-y-4 pt-2">
+                <ContainerTabsSkeleton widths={[112, 112]} fill />
+                <FilterBarSkeleton />
+              </VStack>
+            }
+          >
+            <VStack className="bg-background-0 pb-4 gap-y-4 pt-2">
+              <HStack className="gap-x-2 px-4">
+                {TABS.map((tab) => (
+                  <FormButton
+                    key={tab.key}
+                    size="sm"
+                    className="flex-1"
+                    variant={activeTab === tab.key ? "solid" : "outline"}
+                    text={tab.label}
+                    onPress={() => handleTabChange(tab.key)}
+                  />
+                ))}
+              </HStack>
+              <HStack className="px-4 items-center">
                 <FormButton
-                  key={tab.key}
                   size="sm"
-                  className="flex-1"
-                  variant={activeTab === tab.key ? "solid" : "outline"}
-                  text={tab.label}
-                  onPress={() => handleTabChange(tab.key)}
+                  variant="outline"
+                  text={groupFilterLabel(activeFilter)}
+                  iconEnd={
+                    <ChevronDown
+                      size={16}
+                      color={getOnOutlineHex(colorScheme)}
+                    />
+                  }
+                  onPress={() => setFilterSheetOpen(true)}
                 />
-              ))}
-            </HStack>
-            <HStack className="px-4 items-center">
-              <FormButton
-                size="sm"
-                variant="outline"
-                text={groupFilterLabel(activeFilter)}
-                iconEnd={<ChevronDown size={16} color={getOnOutlineHex(colorScheme)} />}
-                onPress={() => setFilterSheetOpen(true)}
-              />
-            </HStack>
-          </VStack>
+              </HStack>
+            </VStack>
+          </LoadingWrapper>
 
           <LoadingWrapper isLoading={loading} skeleton={<GroupListSkeleton />}>
             <SwipeListView
@@ -428,7 +447,11 @@ export default function GroupsScreen() {
                           iconClassName="text-background-0 dark:text-white"
                           variant="solid"
                           className="rounded-full h-[40] w-[40] p-0"
-                          confirmTitle={isIndividualGroup(item) ? "Restore Individual" : "Restore Group"}
+                          confirmTitle={
+                            isIndividualGroup(item)
+                              ? "Restore Individual"
+                              : "Restore Group"
+                          }
                           confirmDescription="This will move the group back to your active groups."
                           isLoading={archiving}
                           onConfirm={() => {
@@ -442,8 +465,16 @@ export default function GroupsScreen() {
                           variant="solid"
                           action="negative"
                           className="rounded-full h-[40] w-[40] p-0"
-                          confirmTitle={isIndividualGroup(item) ? "Delete Individual" : "Delete Group"}
-                          confirmDescription={isIndividualGroup(item) ? "Permanently deleting this Individual entry removes its expenses and recurring schedules. This cannot be undone." : "Permanently deleting this group will remove all expenses, settlements, and member data. This cannot be undone."}
+                          confirmTitle={
+                            isIndividualGroup(item)
+                              ? "Delete Individual"
+                              : "Delete Group"
+                          }
+                          confirmDescription={
+                            isIndividualGroup(item)
+                              ? "Permanently deleting this Individual entry removes its expenses and recurring schedules. This cannot be undone."
+                              : "Permanently deleting this group will remove all expenses, settlements, and member data. This cannot be undone."
+                          }
                           isDelete
                           isLoading={deleting}
                           onConfirm={() => {
@@ -458,11 +489,18 @@ export default function GroupsScreen() {
                           variant="solid"
                           className="rounded-full h-[40] w-[40] p-0"
                           onPress={() => {
-                            router.push(isIndividualGroup(item) ? `/books/create?bookId=${item.id}` : `/groups/${item.id}/edit?isGroup=true`);
+                            router.push(
+                              isIndividualGroup(item)
+                                ? `/books/create?bookId=${item.id}`
+                                : `/groups/${item.id}/edit?isGroup=true`
+                            );
                             rowMap[groupEntryKey(item)]?.closeRow();
                           }}
                         >
-                          <Icon as="edit" className="text-background-0 dark:text-white" />
+                          <Icon
+                            as="edit"
+                            className="text-background-0 dark:text-white"
+                          />
                         </Button>
                         <ConfirmIconButton
                           icon="archive"
@@ -470,7 +508,11 @@ export default function GroupsScreen() {
                           iconClassName="text-background-0 dark:text-white"
                           variant="solid"
                           className="rounded-full h-[40] w-[40] p-0"
-                          confirmTitle={isIndividualGroup(item) ? "Archive Individual" : "Archive Group"}
+                          confirmTitle={
+                            isIndividualGroup(item)
+                              ? "Archive Individual"
+                              : "Archive Group"
+                          }
                           confirmDescription="This group will be archived and hidden from your active list. You can restore it anytime using the Archived filter."
                           isLoading={archiving}
                           onConfirm={() => {
@@ -484,8 +526,16 @@ export default function GroupsScreen() {
                           variant="solid"
                           action="negative"
                           className="rounded-full h-[40] w-[40] p-0"
-                          confirmTitle={isIndividualGroup(item) ? "Delete Individual" : "Delete Group"}
-                          confirmDescription={isIndividualGroup(item) ? "Permanently deleting this Individual entry removes its expenses and recurring schedules. This cannot be undone." : "Permanently deleting this group will remove all expenses, settlements, and member data. This cannot be undone."}
+                          confirmTitle={
+                            isIndividualGroup(item)
+                              ? "Delete Individual"
+                              : "Delete Group"
+                          }
+                          confirmDescription={
+                            isIndividualGroup(item)
+                              ? "Permanently deleting this Individual entry removes its expenses and recurring schedules. This cannot be undone."
+                              : "Permanently deleting this group will remove all expenses, settlements, and member data. This cannot be undone."
+                          }
                           isDelete
                           isLoading={deleting}
                           onConfirm={() => {
@@ -503,57 +553,78 @@ export default function GroupsScreen() {
               ItemSeparatorComponent={ListDivider}
               ListEmptyComponent={() => (
                 <EmptyList
-                  type={activeTab === GroupMode.INDIVIDUAL ? EmptyType.BOOK : EmptyType.GROUP}
-                  actions={activeFilter !== "all"
-                    ? [
-                      {
-                        label: "View All",
-                        icon: LayoutList,
-                        onPress: () => handleFilterChange("all")
-                      }
-                    ]
-                    : [
-                      {
-                        label: activeTab === GroupMode.INDIVIDUAL
-                          ? "Create Your First Individual"
-                          : "Create Your First Group",
-                        icon: activeTab === GroupMode.INDIVIDUAL ? BookPlus : HousePlus,
-                        onPress: () => router.push(activeTab === GroupMode.INDIVIDUAL ? "/books/create" : "/groups/create")
-                      },
-                      ...(activeTab === GroupMode.GROUP
-                        ? [
+                  type={
+                    activeTab === GroupMode.INDIVIDUAL
+                      ? EmptyType.BOOK
+                      : EmptyType.GROUP
+                  }
+                  actions={
+                    activeFilter !== "all"
+                      ? [
                           {
-                            label: "Scan to Join",
-                            icon: QrCode,
-                            onPress: handleScanToJoin
+                            label: "View All",
+                            icon: LayoutList,
+                            onPress: () => handleFilterChange("all")
                           }
                         ]
-                        : [])
-                    ]}
-                  content={activeTab === GroupMode.INDIVIDUAL
-                    ? activeFilter === "archived"
-                      ? "Archived Individual entries will appear here."
-                      : "Track your own spending. Create your first Individual entry."
-                    : activeFilter === "archived"
-                      ? "Archived groups will appear here."
-                      : activeFilter === "created"
-                        ? "Groups you create will appear here."
-                        : activeFilter === "joined"
-                          ? "Groups you join will appear here."
-                          : "Split bills with friends. Create a group or scan an invite to join."}
+                      : [
+                          {
+                            label:
+                              activeTab === GroupMode.INDIVIDUAL
+                                ? "Create Your First Individual"
+                                : "Create Your First Group",
+                            icon:
+                              activeTab === GroupMode.INDIVIDUAL
+                                ? BookPlus
+                                : HousePlus,
+                            onPress: () =>
+                              router.push(
+                                activeTab === GroupMode.INDIVIDUAL
+                                  ? "/books/create"
+                                  : "/groups/create"
+                              )
+                          },
+                          ...(activeTab === GroupMode.GROUP
+                            ? [
+                                {
+                                  label: "Scan to Join",
+                                  icon: QrCode,
+                                  onPress: handleScanToJoin
+                                }
+                              ]
+                            : [])
+                        ]
+                  }
+                  content={
+                    activeTab === GroupMode.INDIVIDUAL
+                      ? activeFilter === "archived"
+                        ? "Archived Individual entries will appear here."
+                        : "Track your own spending. Create your first Individual entry."
+                      : activeFilter === "archived"
+                        ? "Archived groups will appear here."
+                        : activeFilter === "created"
+                          ? "Groups you create will appear here."
+                          : activeFilter === "joined"
+                            ? "Groups you join will appear here."
+                            : "Split bills with friends. Create a group or scan an invite to join."
+                  }
                 />
               )}
-              ListFooterComponent={previewEmpty ? null : (() => (
-                <>
-                  {hasMore && (
-                    <ListFooter
-                      hasNextPage={hasMore}
-                      loading={loadingMore}
-                      onLoadMore={loadMore}
-                    />
-                  )}
-                </>
-              ))}
+              ListFooterComponent={
+                previewEmpty
+                  ? null
+                  : () => (
+                      <>
+                        {hasMore && (
+                          <ListFooter
+                            hasNextPage={hasMore}
+                            loading={loadingMore}
+                            onLoadMore={loadMore}
+                          />
+                        )}
+                      </>
+                    )
+              }
             />
           </LoadingWrapper>
         </ScrollView>
@@ -625,7 +696,7 @@ export default function GroupsScreen() {
         </Modal>
 
         <GroupListFilterSheet
-          isOpen={filterSheetOpen}
+          isOpen={filterSheetOpen && !loading}
           onClose={() => setFilterSheetOpen(false)}
           mode={activeTab}
           filter={activeFilter}
@@ -642,11 +713,21 @@ export default function GroupsScreen() {
         >
           {searching ? (
             <VStack className="flex-1">
-              <LoadingWrapper isLoading={searchLoading} skeleton={<GroupListSkeleton />}>
+              <LoadingWrapper
+                isLoading={searchLoading}
+                skeleton={<GroupListSkeleton />}
+              >
                 {searchError ? (
                   <VStack className="p-4 gap-y-3 items-center">
-                    <Text className="text-secondary-950">Couldn't load search results.</Text>
-                    <FormButton size="sm" text="Try Again" variant="outline" onPress={fetchSearchEntries} />
+                    <Text className="text-secondary-950">
+                      Couldn't load search results.
+                    </Text>
+                    <FormButton
+                      size="sm"
+                      text="Try Again"
+                      variant="outline"
+                      onPress={fetchSearchEntries}
+                    />
                   </VStack>
                 ) : (
                   <FlatList
@@ -666,7 +747,10 @@ export default function GroupsScreen() {
                     )}
                     ItemSeparatorComponent={ListDivider}
                     ListHeaderComponent={
-                      <Text className="text-sm text-secondary-950 px-4 py-2" bold>
+                      <Text
+                        className="text-sm text-secondary-950 px-4 py-2"
+                        bold
+                      >
                         {previewEmpty ? 0 : searchResults.length} result
                         {previewEmpty || searchResults.length !== 1 ? "s" : ""}
                       </Text>

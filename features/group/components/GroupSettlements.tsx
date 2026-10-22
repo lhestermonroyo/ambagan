@@ -6,7 +6,11 @@ import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
-import { SettlementListSkeleton } from "@/components/SkeletonLoader";
+import {
+  FilterBarSkeleton,
+  NetBalanceCardSkeleton,
+  SettlementListSkeleton
+} from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -79,10 +83,19 @@ if (
 
 export default function GroupSettlements({
   refreshTrigger = 0,
-  emptyActions
+  emptyActions,
+  groupId: requestedGroupId,
+  currency,
+  groupLoading = false,
+  onLoadingChange
 }: {
   refreshTrigger?: number;
   emptyActions: EmptyListAction[];
+  /** Start loading with the route ID, before the full group record arrives. */
+  groupId?: string;
+  currency?: string;
+  groupLoading?: boolean;
+  onLoadingChange?: (loading: boolean) => void;
 }) {
   const previewEmpty = useEmptyStatePreview();
   const { details, settlementRefreshToken } = states.group();
@@ -91,10 +104,15 @@ export default function GroupSettlements({
   // These cards are scoped to one group, so they lead with that group's own
   // currency — the same one the compact sticky bar on the detail screen folds
   // into, which is what keeps the two figures agreeing.
-  const primaryCurrency = details?.currency ?? BASE_CURRENCY;
+  const groupId = requestedGroupId ?? details?.id;
+  const primaryCurrency =
+    currency ??
+    (details?.id === groupId ? details?.currency : undefined) ??
+    BASE_CURRENCY;
   const colorScheme = useColorScheme() ?? "light";
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const contentLoading = loading || groupLoading;
   const [loadingMore, setLoadingMore] = useState(false);
   const [activePayments, setActivePayments] = useState<Payment[]>([]);
   const [settledPayments, setSettledPayments] = useState<Payment[]>([]);
@@ -129,39 +147,46 @@ export default function GroupSettlements({
       : emptyActions;
   const initializedRef = useRef(false);
 
+  useEffect(() => {
+    onLoadingChange?.(loading);
+  }, [loading, onLoadingChange]);
+
   useFocusEffect(
     useMemo(
       () => () => {
-        if (details?.id && userDetails?.id) {
+        if (groupId && userDetails?.id) {
           fetchAll();
         }
       },
-      [details?.id, userDetails?.id]
+      [groupId, userDetails?.id]
     )
   );
 
   useEffect(() => {
-    if (refreshTrigger > 0 && details?.id && userDetails?.id) {
+    if (refreshTrigger > 0 && groupId && userDetails?.id) {
       fetchAll();
     }
   }, [refreshTrigger]);
 
   useEffect(() => {
-    if (settlementRefreshToken > 0 && details?.id && userDetails?.id) {
+    if (settlementRefreshToken > 0 && groupId && userDetails?.id) {
       fetchAll();
     }
   }, [settlementRefreshToken]);
 
   useEffect(() => {
     if (!initializedRef.current) return;
-    if (!details?.id || !userDetails?.id) return;
+    if (!groupId || !userDetails?.id) return;
     setSettledPayments([]);
     setSettledPage(0);
     fetchSettled(0, getDateRangeBounds(dateRange, customRange));
   }, [dateRange, customRange]);
 
   const fetchAll = async () => {
-    if (!details?.id || !userDetails?.id) return;
+    if (!groupId || !userDetails?.id) return;
+    setStatusSheetOpen(false);
+    setDateRangeSheetOpen(false);
+    setViewSheetOpen(false);
     setLoading(true);
     try {
       const { start: cutoff, end: until } = getDateRangeBounds(
@@ -170,11 +195,11 @@ export default function GroupSettlements({
       );
       const [active, settled] = await Promise.all([
         services.expense.getActivePaymentsByGroupAndUserId(
-          details.id,
+          groupId,
           userDetails.id
         ),
         services.expense.getSettledPaymentsByGroupAndUserId(
-          details.id,
+          groupId,
           userDetails.id,
           { cutoff, until, page: 0 }
         )
@@ -191,12 +216,12 @@ export default function GroupSettlements({
 
       // Cache for offline viewing of the Settlements tab.
       cacheService
-        .saveGroupSettlements(details.id, active, settled.data)
+        .saveGroupSettlements(groupId, active, settled.data)
         .catch(() => {});
     } catch (error) {
       // Offline / fetch failure — hydrate from the cached snapshot.
       const cached = await cacheService
-        .getGroupSettlements(details.id)
+        .getGroupSettlements(groupId)
         .catch(() => null);
 
       if (cached) {
@@ -226,10 +251,10 @@ export default function GroupSettlements({
     page: number,
     bounds: { start: Date | null; end: Date | null }
   ) => {
-    if (!details?.id || !userDetails?.id) return;
+    if (!groupId || !userDetails?.id) return;
     try {
       const result = await services.expense.getSettledPaymentsByGroupAndUserId(
-        details.id,
+        groupId,
         userDetails.id,
         { cutoff: bounds.start, until: bounds.end, page }
       );
@@ -417,202 +442,219 @@ export default function GroupSettlements({
     <Fragment>
       <VStack className="gap-y-6">
         <VStack className="px-4">
-          <Card className="rounded-xl bg-secondary-100">
-            <VStack className="gap-y-4">
-              <NetBalanceDisplay
-                isLoading={loading}
-                items={netBalance}
-                currency={primaryCurrency}
-                subtitle="To Collect minus To Pay in this group, per currency"
-              />
+          {contentLoading ? (
+            <NetBalanceCardSkeleton />
+          ) : (
+            <Card className="rounded-xl bg-secondary-100">
+              <VStack className="gap-y-4">
+                <NetBalanceDisplay
+                  items={netBalance}
+                  currency={primaryCurrency}
+                  subtitle="To Collect minus To Pay in this group, per currency"
+                />
 
-              <Divider />
+                <Divider />
 
-              <HStack className="items-stretch">
-                <VStack className="flex-1 gap-y-2">
-                  <HStack className="items-center gap-x-2">
-                    <SettlementAvatar isPayer={true} size="sm" />
-                    <Text className="text-secondary-950 text-sm uppercase">
-                      To Collect
-                    </Text>
-                  </HStack>
-                  <CurrencyAmountDisplay
-                    isLoading={loading}
-                    items={yourToCollectTotalByCurrency}
-                    label="To Collect"
-                    subtitle="Owed to you in this group, per currency"
-                    type="receive"
-                    primaryCurrency={primaryCurrency}
-                    convertTo={primaryCurrency}
-                    totalLabel="Total to Collect"
-                  />
-                </VStack>
-                <Divider orientation="vertical" className="mx-4" />
-                <VStack className="flex-1 gap-y-2">
-                  <HStack className="items-center gap-x-2">
-                    <SettlementAvatar isPayer={false} size="sm" />
-                    <Text className="text-secondary-950 text-sm uppercase">
-                      To Pay
-                    </Text>
-                  </HStack>
-                  <CurrencyAmountDisplay
-                    isLoading={loading}
-                    items={yourTotalUnpaidByCurrency}
-                    label="To Pay"
-                    subtitle="You owe in this group, per currency"
-                    type="pay"
-                    primaryCurrency={primaryCurrency}
-                    convertTo={primaryCurrency}
-                    totalLabel="Total to Pay"
-                  />
-                </VStack>
-              </HStack>
-            </VStack>
-          </Card>
+                <HStack className="items-stretch">
+                  <VStack className="flex-1 gap-y-2">
+                    <HStack className="items-center gap-x-2">
+                      <SettlementAvatar isPayer={true} size="sm" />
+                      <Text className="text-secondary-950 text-sm uppercase">
+                        To Collect
+                      </Text>
+                    </HStack>
+                    <CurrencyAmountDisplay
+                      items={yourToCollectTotalByCurrency}
+                      label="To Collect"
+                      subtitle="Owed to you in this group, per currency"
+                      type="receive"
+                      primaryCurrency={primaryCurrency}
+                      convertTo={primaryCurrency}
+                      totalLabel="Total to Collect"
+                    />
+                  </VStack>
+                  <Divider orientation="vertical" className="mx-4" />
+                  <VStack className="flex-1 gap-y-2">
+                    <HStack className="items-center gap-x-2">
+                      <SettlementAvatar isPayer={false} size="sm" />
+                      <Text className="text-secondary-950 text-sm uppercase">
+                        To Pay
+                      </Text>
+                    </HStack>
+                    <CurrencyAmountDisplay
+                      items={yourTotalUnpaidByCurrency}
+                      label="To Pay"
+                      subtitle="You owe in this group, per currency"
+                      type="pay"
+                      primaryCurrency={primaryCurrency}
+                      convertTo={primaryCurrency}
+                      totalLabel="Total to Pay"
+                    />
+                  </VStack>
+                </HStack>
+              </VStack>
+            </Card>
+          )}
         </VStack>
 
         <VStack className="gap-y-4">
-          {searchOpen ? (
-            <HStack className="px-4 items-center gap-x-2">
-              <Box className="flex-1">
-                <SearchInput
-                  autoFocus
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder="Search by description or name"
-                />
-              </Box>
-              <FormButton
-                size="md"
-                variant="link"
-                text="Cancel"
-                onPress={toggleSearch}
-              />
-            </HStack>
-          ) : (
-            <HStack className="px-4 items-center justify-between">
-              <FormButton
-                size="sm"
-                variant="outline"
-                text={settlementTab}
-                iconEnd={
-                  <ChevronDown
-                    size={16}
-                    color={getOnOutlineHex(colorScheme)}
-                  />
-                }
-                onPress={() => setStatusSheetOpen(true)}
-              />
-              <HStack className="gap-x-6 items-center">
-                <Button
-                  variant="link"
-                  className="rounded-full"
-                  onPress={toggleSearch}
-                >
-                  <Search
-                    color={
-                      searchQuery
-                        ? getPrimaryHex("text-primary-400", colorScheme)
-                        : getSecondaryHex("text-secondary-950", colorScheme)
-                    }
-                  />
-                </Button>
-                <Button
-                  variant="link"
-                  className="rounded-full"
-                  onPress={() => setDateRangeSheetOpen(true)}
-                >
-                  <CalendarRange
-                    color={
-                      dateRange !== "All"
-                        ? getPrimaryHex("text-primary-400", colorScheme)
-                        : getSecondaryHex("text-secondary-950", colorScheme)
-                    }
-                  />
-                </Button>
-                <Button
-                  variant="link"
-                  className="rounded-full"
-                  onPress={() => setViewSheetOpen(true)}
-                >
-                  <LayoutList
-                    color={
-                      viewBy !== "By Date"
-                        ? getPrimaryHex("text-primary-400", colorScheme)
-                        : getSecondaryHex("text-secondary-950", colorScheme)
-                    }
-                  />
-                </Button>
-              </HStack>
-            </HStack>
-          )}
-
-          {(dateRange !== "All" ||
-            viewBy !== "By Date" ||
-            (!!searchQuery && !searchOpen)) && (
-            <HStack className="gap-x-2 px-4 flex-wrap">
-              {!!searchQuery && !searchOpen && (
-                <Pressable
-                  onPress={() => setSearchQuery("")}
-                  className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
-                >
-                  <Text
-                    className="text-sm text-primary-600 max-w-[160px] dark:text-primary-800"
-                    numberOfLines={1}
-                  >
-                    &ldquo;{searchQuery}&rdquo;
-                  </Text>
-                  <X
-                    size={12}
-                    color={getPrimaryHex(
-                      colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
-                      colorScheme
-                    )}
-                  />
-                </Pressable>
-              )}
-              {dateRange !== "All" && (
-                <Pressable
-                  onPress={() => {
-                    setDateRange("All");
-                    setCustomRange(null);
-                  }}
-                  className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
-                >
-                  <Text className="text-sm text-primary-600 dark:text-primary-800">
-                    {formatDateRangeLabel(dateRange, customRange)}
-                  </Text>
-                  <X
-                    size={12}
-                    color={getPrimaryHex(
-                      colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
-                      colorScheme
-                    )}
-                  />
-                </Pressable>
-              )}
-              {viewBy !== "By Date" && (
-                <Pressable
-                  onPress={() => setViewBy("By Date")}
-                  className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
-                >
-                  <Text className="text-sm text-primary-600 dark:text-primary-800">{viewBy}</Text>
-                  <X
-                    size={12}
-                    color={getPrimaryHex(
-                      colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
-                      colorScheme
-                    )}
-                  />
-                </Pressable>
-              )}
-            </HStack>
-          )}
-
           <LoadingWrapper
-            isLoading={loading}
-            skeleton={<SettlementListSkeleton />}
+            isLoading={contentLoading}
+            skeleton={
+              <VStack className="gap-y-4">
+                <FilterBarSkeleton actions search={searchOpen} />
+                <SettlementListSkeleton
+                  view={settlementView}
+                  showProgress={settlementTab === "Partially Paid"}
+                />
+              </VStack>
+            }
           >
+            {searchOpen ? (
+              <HStack className="px-4 items-center gap-x-2">
+                <Box className="flex-1">
+                  <SearchInput
+                    autoFocus
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder="Search by description or name"
+                  />
+                </Box>
+                <FormButton
+                  size="md"
+                  variant="link"
+                  text="Cancel"
+                  onPress={toggleSearch}
+                />
+              </HStack>
+            ) : (
+              <HStack className="px-4 items-center justify-between">
+                <FormButton
+                  size="sm"
+                  variant="outline"
+                  text={settlementTab}
+                  iconEnd={
+                    <ChevronDown
+                      size={16}
+                      color={getOnOutlineHex(colorScheme)}
+                    />
+                  }
+                  onPress={() => setStatusSheetOpen(true)}
+                />
+                <HStack className="gap-x-6 items-center">
+                  <Button
+                    variant="link"
+                    className="rounded-full"
+                    onPress={toggleSearch}
+                  >
+                    <Search
+                      color={
+                        searchQuery
+                          ? getPrimaryHex("text-primary-400", colorScheme)
+                          : getSecondaryHex("text-secondary-950", colorScheme)
+                      }
+                    />
+                  </Button>
+                  <Button
+                    variant="link"
+                    className="rounded-full"
+                    onPress={() => setDateRangeSheetOpen(true)}
+                  >
+                    <CalendarRange
+                      color={
+                        dateRange !== "All"
+                          ? getPrimaryHex("text-primary-400", colorScheme)
+                          : getSecondaryHex("text-secondary-950", colorScheme)
+                      }
+                    />
+                  </Button>
+                  <Button
+                    variant="link"
+                    className="rounded-full"
+                    onPress={() => setViewSheetOpen(true)}
+                  >
+                    <LayoutList
+                      color={
+                        viewBy !== "By Date"
+                          ? getPrimaryHex("text-primary-400", colorScheme)
+                          : getSecondaryHex("text-secondary-950", colorScheme)
+                      }
+                    />
+                  </Button>
+                </HStack>
+              </HStack>
+            )}
+
+            {(dateRange !== "All" ||
+              viewBy !== "By Date" ||
+              (!!searchQuery && !searchOpen)) && (
+              <HStack className="gap-x-2 px-4 flex-wrap">
+                {!!searchQuery && !searchOpen && (
+                  <Pressable
+                    onPress={() => setSearchQuery("")}
+                    className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                  >
+                    <Text
+                      className="text-sm text-primary-600 max-w-[160px] dark:text-primary-800"
+                      numberOfLines={1}
+                    >
+                      &ldquo;{searchQuery}&rdquo;
+                    </Text>
+                    <X
+                      size={12}
+                      color={getPrimaryHex(
+                        colorScheme === "dark"
+                          ? "text-primary-800"
+                          : "text-primary-600",
+                        colorScheme
+                      )}
+                    />
+                  </Pressable>
+                )}
+                {dateRange !== "All" && (
+                  <Pressable
+                    onPress={() => {
+                      setDateRange("All");
+                      setCustomRange(null);
+                    }}
+                    className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                  >
+                    <Text className="text-sm text-primary-600 dark:text-primary-800">
+                      {formatDateRangeLabel(dateRange, customRange)}
+                    </Text>
+                    <X
+                      size={12}
+                      color={getPrimaryHex(
+                        colorScheme === "dark"
+                          ? "text-primary-800"
+                          : "text-primary-600",
+                        colorScheme
+                      )}
+                    />
+                  </Pressable>
+                )}
+                {viewBy !== "By Date" && (
+                  <Pressable
+                    onPress={() => setViewBy("By Date")}
+                    className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                  >
+                    <Text className="text-sm text-primary-600 dark:text-primary-800">
+                      {viewBy}
+                    </Text>
+                    <X
+                      size={12}
+                      color={getPrimaryHex(
+                        colorScheme === "dark"
+                          ? "text-primary-800"
+                          : "text-primary-600",
+                        colorScheme
+                      )}
+                    />
+                  </Pressable>
+                )}
+              </HStack>
+            )}
+
             {viewBy === "By Date" ? (
               <SectionList
                 scrollEnabled={false}
@@ -638,19 +680,24 @@ export default function GroupSettlements({
                     actions={actions}
                   />
                 )}
-                ListFooterComponent={previewEmpty ? null : (() => (
-                  <>
-                    {(settlementTab === "Settled" || settlementTab === "All") &&
-                      hasMoreSettled && (
-                        <ListFooter
-                          hasNextPage={hasMoreSettled}
-                          loading={loadingMore}
-                          onLoadMore={loadMoreSettled}
-                        />
-                      )}
-                    <Box className="h-16" />
-                  </>
-                ))}
+                ListFooterComponent={
+                  previewEmpty
+                    ? null
+                    : () => (
+                        <>
+                          {(settlementTab === "Settled" ||
+                            settlementTab === "All") &&
+                            hasMoreSettled && (
+                              <ListFooter
+                                hasNextPage={hasMoreSettled}
+                                loading={loadingMore}
+                                onLoadMore={loadMoreSettled}
+                              />
+                            )}
+                          <Box className="h-16" />
+                        </>
+                      )
+                }
                 stickySectionHeadersEnabled={true}
               />
             ) : previewEmpty || settlementSections.length === 0 ? (
@@ -686,13 +733,13 @@ export default function GroupSettlements({
 
       <StatusSheet
         showPartiallyPaid
-        isOpen={statusSheetOpen}
+        isOpen={statusSheetOpen && !contentLoading}
         onClose={() => setStatusSheetOpen(false)}
         status={settlementTab}
         onSelect={setSettlementTab}
       />
       <DateRangeSheet
-        isOpen={dateRangeSheetOpen}
+        isOpen={dateRangeSheetOpen && !contentLoading}
         onClose={() => setDateRangeSheetOpen(false)}
         dateRange={dateRange}
         customRange={customRange}
@@ -702,7 +749,7 @@ export default function GroupSettlements({
         }}
       />
       <ViewBySheet
-        isOpen={viewSheetOpen}
+        isOpen={viewSheetOpen && !contentLoading}
         onClose={() => setViewSheetOpen(false)}
         viewBy={viewBy}
         onSelect={setViewBy}

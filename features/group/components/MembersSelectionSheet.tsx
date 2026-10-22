@@ -298,7 +298,7 @@ export default function MembersSelectionSheet({
           {!searching && <RecentFavoritesTab tab={tab} onTabChange={setTab} />}
         </VStack>
         <ScrollView keyboardShouldPersistTaps="handled" className="flex-1 w-full">
-          <LoadingWrapper isLoading={loading} skeleton={<FriendListSkeleton />}>
+          <LoadingWrapper isLoading={loading} skeleton={<FriendListSkeleton selection />}>
             {(previewEmpty || displayUsers.length === 0) && (
               <EmptyList
                 type={emptyType}

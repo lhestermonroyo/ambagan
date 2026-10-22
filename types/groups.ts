@@ -7,11 +7,24 @@ export type GroupState = {
    * tell "still loading" apart from "genuinely has no groups". */
   initialized: boolean;
   details: Group | null;
+  /** Display-only summary from the row that opened the details screen. */
+  headerPreview: GroupHeaderPreview | null;
   memberList: Member[];
   expenseList: ExpensePreview[];
   settlementList: Payment[];
   settlementRefreshToken: number;
 };
+
+export type GroupHeaderPreview = Pick<
+  Group,
+  | "id"
+  | "name"
+  | "avatar"
+  | "created_at"
+  | "last_updated_at"
+  | "expense_count"
+  | "currency"
+>;
 
 export enum GroupMode {
   GROUP = "group",

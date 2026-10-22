@@ -42,25 +42,45 @@ export default function GroupItem({
   );
 
   return (
-    <PressableListItem className="p-4" onPress={onOpen}>
+    <PressableListItem
+      className="p-4"
+      onPress={() => {
+        if (!individual) {
+          const {
+            id,
+            name,
+            avatar,
+            created_at,
+            last_updated_at,
+            expense_count,
+            currency
+          } = details;
+          states.group.setState({
+            headerPreview: {
+              id,
+              name,
+              avatar,
+              created_at,
+              last_updated_at,
+              expense_count,
+              currency
+            }
+          });
+        }
+        onOpen();
+      }}
+    >
       <HStack className="items-center gap-x-3">
         <Box className="relative">
           {isCreator && !individual && (
             <Box className="absolute right-0 bottom-0 z-10 bg-primary-600 rounded-full p-1">
-              <UserStar
-                size={12}
-                color={getOnSolidHex(colorScheme)}
-              />
+              <UserStar size={12} color={getOnSolidHex(colorScheme)} />
             </Box>
           )}
           <AppAvatar name={details.name} uri={details.avatar || undefined} />
         </Box>
         <VStack className="flex-1 min-w-0">
-          <Text
-            className="text-lg"
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
+          <Text className="text-lg" numberOfLines={1} ellipsizeMode="tail">
             {details.name}
           </Text>
           <HStack className="gap-x-1 items-center">
@@ -77,10 +97,7 @@ export default function GroupItem({
         </VStack>
         <HStack className="gap-x-2 items-center shrink-0">
           {individual ? (
-            <Badge
-              size="sm"
-              className="rounded-full bg-primary-100 shrink-0"
-            >
+            <Badge size="sm" className="rounded-full bg-primary-100 shrink-0">
               <BadgeText
                 numberOfLines={1}
                 className="text-xs text-primary-600 uppercase shrink-0 dark:text-primary-800"

@@ -1,7 +1,7 @@
 import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
-import { SettlementListSkeleton } from "@/components/SkeletonLoader";
+import { FriendStatsSkeleton } from "@/components/SkeletonLoader";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import { Box } from "@/components/ui/box";
 import { Card } from "@/components/ui/card";
@@ -220,11 +220,7 @@ export default function FriendStatsTab({
   };
 
   if (loading) {
-    return (
-      <VStack className="pt-2">
-        <SettlementListSkeleton />
-      </VStack>
-    );
+    return <FriendStatsSkeleton />;
   }
 
   if (previewEmpty || settlements.length === 0) {

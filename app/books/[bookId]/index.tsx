@@ -13,7 +13,7 @@ import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import ProBadge from "@/components/ProBadge";
 import SearchInput from "@/components/SearchInput";
-import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import { ContainerDetailsSkeleton } from "@/components/SkeletonLoader";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
@@ -791,7 +791,7 @@ export default function BookDetailScreen() {
           </>
         )}
 
-        <LoadingWrapper isLoading={loading} skeleton={<ExpenseListSkeleton />}>
+        <LoadingWrapper isLoading={loading} skeleton={<ContainerDetailsSkeleton personal tab={tab} />}>
           <ScrollView
             className="flex-1"
             onScroll={Animated.event(

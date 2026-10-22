@@ -261,7 +261,7 @@ export default function RecurringDetailsScreen() {
         actions={renderActions()}
         androidActions={renderAndroidActions()}
       >
-        <LoadingWrapper isLoading={loading} skeleton={<ExpenseDetailsSkeleton />}>
+        <LoadingWrapper isLoading={loading} skeleton={<ExpenseDetailsSkeleton recurring />}>
           {!item ? (
             <VStack className="flex-1 py-16">
               <EmptyList

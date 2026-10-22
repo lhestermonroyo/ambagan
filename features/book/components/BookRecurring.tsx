@@ -1,6 +1,6 @@
 import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
-import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import { RecurringListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { VStack } from "@/components/ui/vstack";
 import RecurringItem from "@/features/expense/components/RecurringItem";
@@ -45,11 +45,7 @@ export default function BookRecurring({
   };
 
   if (loading && items.length === 0) {
-    return (
-      <VStack className="p-4">
-        <ExpenseListSkeleton />
-      </VStack>
-    );
+    return <RecurringListSkeleton />;
   }
 
   if (previewEmpty || items.length === 0) {

@@ -135,7 +135,7 @@ export default function ReviewRequestPaidSheet({ isOpen, onClose, onRefetch, pay
       <Text className="text-sm text-secondary-950 px-4 pb-4">Track payments and the remaining balance.</Text>
       <ScrollView className="flex-1 px-4" keyboardShouldPersistTaps="handled">
         <VStack className="gap-y-6 pb-6">
-          <SettlementHistoryState loading={loading} error={error} onRetry={details.refresh} />
+          <SettlementHistoryState loading={loading} error={error} onRetry={details.refresh} showProgress={(payment.confirmed_paid_amount ?? 0) > 0} />
           {!loading && !error && (
             <>
               <SettlementSummary payment={payment} />

@@ -6,7 +6,7 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
-import { FriendListSkeleton } from "@/components/SkeletonLoader";
+import { MemberEditorSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
@@ -464,7 +464,7 @@ export default function EditMembersSheet({
             />
           )}
         </HStack>
-        <LoadingWrapper isLoading={loading} skeleton={<FriendListSkeleton />}>
+        <LoadingWrapper isLoading={loading} skeleton={<MemberEditorSkeleton />}>
           <VStack className="w-full gap-y-4 pb-4">
             <VStack>
               {formattedMembers.length > 0 && (

@@ -235,7 +235,7 @@ export default function BookRecurringDetailsScreen() {
         actions={renderActions()}
         androidActions={renderAndroidActions()}
       >
-        <LoadingWrapper isLoading={loading} skeleton={<ExpenseDetailsSkeleton />}>
+        <LoadingWrapper isLoading={loading} skeleton={<ExpenseDetailsSkeleton recurring personal />}>
           {!item ? (
             <VStack className="flex-1 py-16">
               <EmptyList

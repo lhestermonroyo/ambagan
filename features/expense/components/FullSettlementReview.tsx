@@ -91,7 +91,7 @@ export default function FullSettlementReview({ onClose, payment, loading, error,
           groupId={payment.group_id} showGroupLink={showGroupLink && !submitting} />
         <ScrollView className="flex-1 px-4">
           <VStack className="gap-y-6 pb-6">
-            <SettlementHistoryState loading={loading} error={error} onRetry={onRetry} />
+            <SettlementHistoryState loading={loading} error={error} onRetry={onRetry} variant="full" showProgress={false} />
             {!loading && !error && (
               <>
                 <SettlementSummary payment={payment} confirmedPaidAmount={0} />

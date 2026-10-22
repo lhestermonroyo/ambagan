@@ -4,7 +4,11 @@ import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchDrawer from "@/components/SearchDrawer";
-import { FriendListSkeleton } from "@/components/SkeletonLoader";
+import {
+  ContainerTabsSkeleton,
+  FilterBarSkeleton,
+  FriendListSkeleton
+} from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
@@ -41,6 +45,8 @@ const MAIN_TABS: { key: MainTab; label: string }[] = [
 export default function FriendsScreen() {
   const previewEmpty = useEmptyStatePreview();
   const [loading, setLoading] = useState(true);
+  const [contactsLoading, setContactsLoading] = useState(true);
+  const contentLoading = loading || contactsLoading;
   const [refreshing, setRefreshing] = useState(false);
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [recentFriends, setRecentFriends] = useState<UserPreview[]>([]);
@@ -105,6 +111,8 @@ export default function FriendsScreen() {
       setGroupContacts(data);
     } catch (error) {
       console.error("Failed to load group contacts:", error);
+    } finally {
+      setContactsLoading(false);
     }
   };
 
@@ -245,43 +253,67 @@ export default function FriendsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <VStack className="bg-background-0 pb-4 gap-y-4 pt-2">
-            {/* Balances / Contacts tabs under the search */}
-            {!isSearchActive && (
-              <HStack className="px-4 gap-x-2">
-                {MAIN_TABS.map((tab) => (
-                  <FormButton
-                    key={tab.key}
-                    className="flex-1"
-                    size="sm"
-                    variant={mainTab === tab.key ? "solid" : "outline"}
-                    text={tab.label}
-                    onPress={() => { setBalanceFilterSheetOpen(false); setMainTab(tab.key); }}
-                  />
-                ))}
-              </HStack>
-            )}
-
-            {/* Balance direction filter — only on the Balances tab, not searching */}
-            {!isSearchActive && mainTab === "balances" && (
-              <HStack className="px-4 items-center">
-                <FormButton
-                  size="sm"
-                  variant="outline"
-                  text={balanceFilterLabel(balanceFilter)}
-                  iconEnd={
-                    <ChevronDown
-                      size={16}
-                      color={getOnOutlineHex(colorScheme)}
+          <LoadingWrapper
+            isLoading={contentLoading}
+            skeleton={
+              <VStack className="pb-4 gap-y-4 pt-2">
+                {!isSearchActive && (
+                  <>
+                    <ContainerTabsSkeleton widths={[112, 112]} fill />
+                    {mainTab === "balances" && <FilterBarSkeleton />}
+                  </>
+                )}
+              </VStack>
+            }
+          >
+            <VStack className="bg-background-0 pb-4 gap-y-4 pt-2">
+              {/* Balances / Contacts tabs under the search */}
+              {!isSearchActive && (
+                <HStack className="px-4 gap-x-2">
+                  {MAIN_TABS.map((tab) => (
+                    <FormButton
+                      key={tab.key}
+                      className="flex-1"
+                      size="sm"
+                      variant={mainTab === tab.key ? "solid" : "outline"}
+                      text={tab.label}
+                      onPress={() => {
+                        setBalanceFilterSheetOpen(false);
+                        setMainTab(tab.key);
+                      }}
                     />
-                  }
-                  onPress={() => setBalanceFilterSheetOpen(true)}
-                />
-              </HStack>
-            )}
-          </VStack>
+                  ))}
+                </HStack>
+              )}
 
-          <LoadingWrapper isLoading={loading} skeleton={<FriendListSkeleton />}>
+              {/* Balance direction filter — only on the Balances tab, not searching */}
+              {!isSearchActive && mainTab === "balances" && (
+                <HStack className="px-4 items-center">
+                  <FormButton
+                    size="sm"
+                    variant="outline"
+                    text={balanceFilterLabel(balanceFilter)}
+                    iconEnd={
+                      <ChevronDown
+                        size={16}
+                        color={getOnOutlineHex(colorScheme)}
+                      />
+                    }
+                    onPress={() => setBalanceFilterSheetOpen(true)}
+                  />
+                </HStack>
+              )}
+            </VStack>
+          </LoadingWrapper>
+
+          <LoadingWrapper
+            isLoading={contentLoading}
+            skeleton={
+              <FriendListSkeleton
+                showBalance={mainTab === "balances" || isSearchActive}
+              />
+            }
+          >
             {isSearchActive ? (
               // Unified global search across balances + contacts.
               <FlatList
@@ -304,11 +336,7 @@ export default function FriendsScreen() {
                     {previewEmpty || searchResults.length !== 1 ? "s" : ""}
                   </Text>
                 )}
-                ListEmptyComponent={() => (
-                  <EmptyList
-                    type={EmptyType.SEARCH}
-                  />
-                )}
+                ListEmptyComponent={() => <EmptyList type={EmptyType.SEARCH} />}
               />
             ) : mainTab === "balances" ? (
               <FlatList
@@ -328,9 +356,11 @@ export default function FriendsScreen() {
                 ListEmptyComponent={() => (
                   <EmptyList
                     type={EmptyType.FRIEND}
-                    content={balanceFilter !== "all"
-                      ? "No balances match this filter. View all to see the rest."
-                      : "Share a group expense to see who owes what."}
+                    content={
+                      balanceFilter !== "all"
+                        ? "No balances match this filter. View all to see the rest."
+                        : "Share a group expense to see who owes what."
+                    }
                   />
                 )}
               />
@@ -355,14 +385,16 @@ export default function FriendsScreen() {
                   </VStack>
                 )}
                 <VStack className="gap-y-2">
-                  {!previewEmpty && favoriteContacts.length > 0 && otherContacts.length > 0 && (
-                    <Text
-                      bold
-                      className="text-sm text-secondary-950 uppercase px-4 pt-2"
-                    >
-                      All Contacts
-                    </Text>
-                  )}
+                  {!previewEmpty &&
+                    favoriteContacts.length > 0 &&
+                    otherContacts.length > 0 && (
+                      <Text
+                        bold
+                        className="text-sm text-secondary-950 uppercase px-4 pt-2"
+                      >
+                        All Contacts
+                      </Text>
+                    )}
                   <FlatList
                     data={previewEmpty ? [] : otherContacts}
                     keyExtractor={(item) => item.id}
@@ -388,7 +420,7 @@ export default function FriendsScreen() {
         </ScrollView>
 
         <BalanceFilterSheet
-          isOpen={balanceFilterSheetOpen}
+          isOpen={balanceFilterSheetOpen && !contentLoading}
           onClose={() => setBalanceFilterSheetOpen(false)}
           filter={balanceFilter}
           onSelect={setBalanceFilter}
@@ -427,11 +459,7 @@ export default function FriendsScreen() {
                   {previewEmpty || searchResults.length !== 1 ? "s" : ""}
                 </Text>
               }
-              ListEmptyComponent={
-                <EmptyList
-                  type={EmptyType.SEARCH}
-                />
-              }
+              ListEmptyComponent={<EmptyList type={EmptyType.SEARCH} />}
             />
           ) : null}
         </SearchDrawer>

@@ -795,7 +795,7 @@ export default function AddPersonalExpenseScreen() {
               errorMessage={descriptionError}
             />
 
-            {!bookResolved && <BookFieldSkeleton />}
+            {!bookResolved && <BookFieldSkeleton showStatus={!recurrence} />}
             {selectedBook && (
               <VStack className="bg-secondary-100 rounded-xl overflow-hidden">
                 {isLocked || isEdit ? (

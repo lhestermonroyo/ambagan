@@ -8,7 +8,12 @@ import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
-import { SettlementListSkeleton } from "@/components/SkeletonLoader";
+import {
+  ContainerTabsSkeleton,
+  FilterBarSkeleton,
+  NetBalanceCardSkeleton,
+  SettlementListSkeleton
+} from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -117,7 +122,7 @@ export default function FriendDetailScreen() {
   const [activeTab, setActiveTab] = useState<"Settlements" | "Stats" | "Info">(
     "Settlements"
   );
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeSettlements, setActiveSettlements] = useState<PaymentPreview[]>(
@@ -671,106 +676,111 @@ export default function FriendDetailScreen() {
               </HStack>
 
               {/* Tabs: Settlements (landing), Stats and Info */}
-              <HStack className="gap-x-2">
-                {(["Settlements", "Stats", "Info"] as const).map((t) => (
-                  <FormButton
-                    size="sm"
-                    key={t}
-                    variant={t === activeTab ? "solid" : "outline"}
-                    text={t}
-                    onPress={() => setActiveTab(t)}
-                  />
-                ))}
-              </HStack>
-
-              {activeTab === "Settlements" && (
-                <VStack className="gap-y-4">
-                  <Card className="rounded-xl bg-secondary-100">
-                    <VStack className="gap-y-4">
-                      {/* Net Balance Hero */}
-                      <NetBalanceDisplay
-                        isLoading={loading}
-                        items={netBalance}
-                        currency={BASE_CURRENCY}
-                        subtitle="To Collect minus To Pay with this friend, per currency"
-                      />
-
-                      <Divider />
-
-                      {/* Stat Columns */}
-                      <HStack className="items-stretch">
-                        <VStack className="flex-1 gap-y-2">
-                          <HStack className="items-center gap-x-2">
-                            <SettlementAvatar isPayer={true} size="sm" />
-                            <Text className="text-secondary-950 text-sm uppercase">
-                              To Collect
-                            </Text>
-                          </HStack>
-                          <CurrencyAmountDisplay
-                            isLoading={loading}
-                            items={toCollect}
-                            label="To Collect"
-                            subtitle="Owed to you by this friend, per currency"
-                            type="receive"
-                            primaryCurrency={BASE_CURRENCY}
-                            convertTo={BASE_CURRENCY}
-                            totalLabel="Total to Collect"
-                          />
-                        </VStack>
-                        <Divider orientation="vertical" className="mx-4" />
-                        <VStack className="flex-1 gap-y-2">
-                          <HStack className="items-center gap-x-2">
-                            <SettlementAvatar isPayer={false} size="sm" />
-                            <Text className="text-secondary-950 text-sm uppercase">
-                              To Pay
-                            </Text>
-                          </HStack>
-                          <CurrencyAmountDisplay
-                            isLoading={loading}
-                            items={toPay}
-                            label="To Pay"
-                            subtitle="You owe this friend, per currency"
-                            type="pay"
-                            primaryCurrency={BASE_CURRENCY}
-                            convertTo={BASE_CURRENCY}
-                            totalLabel="Total to Pay"
-                          />
-                        </VStack>
-                      </HStack>
-                    </VStack>
-                  </Card>
-
-                  <VStack className="gap-y-2">
-                    {canSettle && (
-                      <FormButton
-                        text="Mark All as Settled"
-                        icon={
-                          <CheckCheck
-                            color={getOnSolidHex(colorScheme)}
-                          />
-                        }
-                        onPress={() =>
-                          requireOnline() && setPendingAction("settle")
-                        }
-                      />
-                    )}
-                    {canRequestSettle && (
-                      <FormButton
-                        variant="outline"
-                        text="Request All as Settled"
-                        icon={
-                          <FileCheckCorner
-                            color={getOnOutlineHex(colorScheme)}
-                          />
-                        }
-                        onPress={() =>
-                          requireOnline() && setPendingAction("request")
-                        }
-                      />
-                    )}
-                  </VStack>
-                </VStack>
+              {loading ? (
+                <ContainerTabsSkeleton widths={[112, 72, 64]} inset={false} />
+              ) : (
+                <HStack className="gap-x-2">
+                  {(["Settlements", "Stats", "Info"] as const).map((t) => (
+                    <FormButton
+                      size="sm"
+                      key={t}
+                      variant={t === activeTab ? "solid" : "outline"}
+                      text={t}
+                      onPress={() => setActiveTab(t)}
+                    />
+                  ))}
+                </HStack>
               )}
+
+              {activeTab === "Settlements" &&
+                (loading ? (
+                  <NetBalanceCardSkeleton />
+                ) : (
+                  <VStack className="gap-y-4">
+                    <Card className="rounded-xl bg-secondary-100">
+                      <VStack className="gap-y-4">
+                        {/* Net Balance Hero */}
+                        <NetBalanceDisplay
+                          isLoading={loading}
+                          items={netBalance}
+                          currency={BASE_CURRENCY}
+                          subtitle="To Collect minus To Pay with this friend, per currency"
+                        />
+
+                        <Divider />
+
+                        {/* Stat Columns */}
+                        <HStack className="items-stretch">
+                          <VStack className="flex-1 gap-y-2">
+                            <HStack className="items-center gap-x-2">
+                              <SettlementAvatar isPayer={true} size="sm" />
+                              <Text className="text-secondary-950 text-sm uppercase">
+                                To Collect
+                              </Text>
+                            </HStack>
+                            <CurrencyAmountDisplay
+                              isLoading={loading}
+                              items={toCollect}
+                              label="To Collect"
+                              subtitle="Owed to you by this friend, per currency"
+                              type="receive"
+                              primaryCurrency={BASE_CURRENCY}
+                              convertTo={BASE_CURRENCY}
+                              totalLabel="Total to Collect"
+                            />
+                          </VStack>
+                          <Divider orientation="vertical" className="mx-4" />
+                          <VStack className="flex-1 gap-y-2">
+                            <HStack className="items-center gap-x-2">
+                              <SettlementAvatar isPayer={false} size="sm" />
+                              <Text className="text-secondary-950 text-sm uppercase">
+                                To Pay
+                              </Text>
+                            </HStack>
+                            <CurrencyAmountDisplay
+                              isLoading={loading}
+                              items={toPay}
+                              label="To Pay"
+                              subtitle="You owe this friend, per currency"
+                              type="pay"
+                              primaryCurrency={BASE_CURRENCY}
+                              convertTo={BASE_CURRENCY}
+                              totalLabel="Total to Pay"
+                            />
+                          </VStack>
+                        </HStack>
+                      </VStack>
+                    </Card>
+
+                    <VStack className="gap-y-2">
+                      {canSettle && (
+                        <FormButton
+                          text="Mark All as Settled"
+                          icon={
+                            <CheckCheck color={getOnSolidHex(colorScheme)} />
+                          }
+                          onPress={() =>
+                            requireOnline() && setPendingAction("settle")
+                          }
+                        />
+                      )}
+                      {canRequestSettle && (
+                        <FormButton
+                          variant="outline"
+                          text="Request All as Settled"
+                          icon={
+                            <FileCheckCorner
+                              color={getOnOutlineHex(colorScheme)}
+                            />
+                          }
+                          onPress={() =>
+                            requireOnline() && setPendingAction("request")
+                          }
+                        />
+                      )}
+                    </VStack>
+                  </VStack>
+                ))}
             </VStack>
 
             {activeTab === "Stats" && userDetails && friendId && (
@@ -787,152 +797,163 @@ export default function FriendDetailScreen() {
 
             {activeTab === "Settlements" && (
               <VStack className="gap-y-4">
-                {searchOpen ? (
-                  <Box className="px-4">
-                    <SearchInput
-                      autoFocus
-                      value={searchQuery}
-                      onChangeText={setSearchQuery}
-                      placeholder="Search by description or name"
-                      rightIcon={X}
-                      onPressRightIcon={toggleSearch}
-                    />
-                  </Box>
-                ) : (
-                  <HStack className="px-4 items-center justify-between">
-                    <FormButton
-                      size="sm"
-                      variant="outline"
-                      text={settlementTab}
-                      iconEnd={
-                        <ChevronDown
-                          size={16}
-                          color={getOnOutlineHex(colorScheme)}
-                        />
-                      }
-                      onPress={() => setStatusSheetOpen(true)}
-                    />
-                    <HStack className="gap-x-6 items-center">
-                      <Button
-                        variant="link"
-                        className="rounded-full"
-                        onPress={toggleSearch}
-                      >
-                        <Search
-                          color={
-                            searchQuery
-                              ? getPrimaryHex("text-primary-400", colorScheme)
-                              : getSecondaryHex(
-                                  "text-secondary-950",
-                                  colorScheme
-                                )
-                          }
-                        />
-                      </Button>
-                      <Button
-                        variant="link"
-                        className="rounded-full"
-                        onPress={() => setDateRangeSheetOpen(true)}
-                      >
-                        <CalendarRange
-                          color={
-                            dateRange !== "All"
-                              ? getPrimaryHex("text-primary-400", colorScheme)
-                              : getSecondaryHex(
-                                  "text-secondary-950",
-                                  colorScheme
-                                )
-                          }
-                        />
-                      </Button>
-                      <Button
-                        variant="link"
-                        className="rounded-full"
-                        onPress={() => setViewSheetOpen(true)}
-                      >
-                        <LayoutList
-                          color={
-                            viewBy !== "By Date"
-                              ? getPrimaryHex("text-primary-400", colorScheme)
-                              : getSecondaryHex(
-                                  "text-secondary-950",
-                                  colorScheme
-                                )
-                          }
-                        />
-                      </Button>
-                    </HStack>
-                  </HStack>
-                )}
-
-                {(dateRange !== "All" ||
-                  viewBy !== "By Date" ||
-                  (!!searchQuery && !searchOpen)) && (
-                  <HStack className="gap-x-2 px-4 flex-wrap">
-                    {!!searchQuery && !searchOpen && (
-                      <Pressable
-                        onPress={() => setSearchQuery("")}
-                        className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
-                      >
-                        <Text
-                          className="text-sm text-primary-600 max-w-[160px] dark:text-primary-800"
-                          numberOfLines={1}
-                        >
-                          &ldquo;{searchQuery}&rdquo;
-                        </Text>
-                        <X
-                          size={12}
-                          color={getPrimaryHex(
-                            colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
-                            colorScheme
-                          )}
-                        />
-                      </Pressable>
-                    )}
-                    {dateRange !== "All" && (
-                      <Pressable
-                        onPress={() => {
-                          setDateRange("All");
-                          setCustomRange(null);
-                        }}
-                        className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
-                      >
-                        <Text className="text-sm text-primary-600 dark:text-primary-800">
-                          {formatDateRangeLabel(dateRange, customRange)}
-                        </Text>
-                        <X
-                          size={12}
-                          color={getPrimaryHex(
-                            colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
-                            colorScheme
-                          )}
-                        />
-                      </Pressable>
-                    )}
-                    {viewBy !== "By Date" && (
-                      <Pressable
-                        onPress={() => setViewBy("By Date")}
-                        className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
-                      >
-                        <Text className="text-sm text-primary-600 dark:text-primary-800">
-                          {viewBy}
-                        </Text>
-                        <X
-                          size={12}
-                          color={getPrimaryHex(
-                            colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
-                            colorScheme
-                          )}
-                        />
-                      </Pressable>
-                    )}
-                  </HStack>
-                )}
-
                 <LoadingWrapper
                   isLoading={loading}
-                  skeleton={<SettlementListSkeleton />}
+                  skeleton={
+                    <VStack className="gap-y-4">
+                      <FilterBarSkeleton actions search={searchOpen} />
+                      <SettlementListSkeleton view={settlementView} />
+                    </VStack>
+                  }
                 >
+                  {searchOpen ? (
+                    <Box className="px-4">
+                      <SearchInput
+                        autoFocus
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        placeholder="Search by description or name"
+                        rightIcon={X}
+                        onPressRightIcon={toggleSearch}
+                      />
+                    </Box>
+                  ) : (
+                    <HStack className="px-4 items-center justify-between">
+                      <FormButton
+                        size="sm"
+                        variant="outline"
+                        text={settlementTab}
+                        iconEnd={
+                          <ChevronDown
+                            size={16}
+                            color={getOnOutlineHex(colorScheme)}
+                          />
+                        }
+                        onPress={() => setStatusSheetOpen(true)}
+                      />
+                      <HStack className="gap-x-6 items-center">
+                        <Button
+                          variant="link"
+                          className="rounded-full"
+                          onPress={toggleSearch}
+                        >
+                          <Search
+                            color={
+                              searchQuery
+                                ? getPrimaryHex("text-primary-400", colorScheme)
+                                : getSecondaryHex(
+                                    "text-secondary-950",
+                                    colorScheme
+                                  )
+                            }
+                          />
+                        </Button>
+                        <Button
+                          variant="link"
+                          className="rounded-full"
+                          onPress={() => setDateRangeSheetOpen(true)}
+                        >
+                          <CalendarRange
+                            color={
+                              dateRange !== "All"
+                                ? getPrimaryHex("text-primary-400", colorScheme)
+                                : getSecondaryHex(
+                                    "text-secondary-950",
+                                    colorScheme
+                                  )
+                            }
+                          />
+                        </Button>
+                        <Button
+                          variant="link"
+                          className="rounded-full"
+                          onPress={() => setViewSheetOpen(true)}
+                        >
+                          <LayoutList
+                            color={
+                              viewBy !== "By Date"
+                                ? getPrimaryHex("text-primary-400", colorScheme)
+                                : getSecondaryHex(
+                                    "text-secondary-950",
+                                    colorScheme
+                                  )
+                            }
+                          />
+                        </Button>
+                      </HStack>
+                    </HStack>
+                  )}
+
+                  {(dateRange !== "All" ||
+                    viewBy !== "By Date" ||
+                    (!!searchQuery && !searchOpen)) && (
+                    <HStack className="gap-x-2 px-4 flex-wrap">
+                      {!!searchQuery && !searchOpen && (
+                        <Pressable
+                          onPress={() => setSearchQuery("")}
+                          className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                        >
+                          <Text
+                            className="text-sm text-primary-600 max-w-[160px] dark:text-primary-800"
+                            numberOfLines={1}
+                          >
+                            &ldquo;{searchQuery}&rdquo;
+                          </Text>
+                          <X
+                            size={12}
+                            color={getPrimaryHex(
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
+                              colorScheme
+                            )}
+                          />
+                        </Pressable>
+                      )}
+                      {dateRange !== "All" && (
+                        <Pressable
+                          onPress={() => {
+                            setDateRange("All");
+                            setCustomRange(null);
+                          }}
+                          className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                        >
+                          <Text className="text-sm text-primary-600 dark:text-primary-800">
+                            {formatDateRangeLabel(dateRange, customRange)}
+                          </Text>
+                          <X
+                            size={12}
+                            color={getPrimaryHex(
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
+                              colorScheme
+                            )}
+                          />
+                        </Pressable>
+                      )}
+                      {viewBy !== "By Date" && (
+                        <Pressable
+                          onPress={() => setViewBy("By Date")}
+                          className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
+                        >
+                          <Text className="text-sm text-primary-600 dark:text-primary-800">
+                            {viewBy}
+                          </Text>
+                          <X
+                            size={12}
+                            color={getPrimaryHex(
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
+                              colorScheme
+                            )}
+                          />
+                        </Pressable>
+                      )}
+                    </HStack>
+                  )}
+
                   {viewBy === "By Date" ? (
                     <SectionList
                       scrollEnabled={false}
@@ -956,27 +977,25 @@ export default function FriendDetailScreen() {
                       ItemSeparatorComponent={ListDivider}
                       stickySectionHeadersEnabled={true}
                       ListEmptyComponent={() => (
-                        <EmptyList
-                          type={emptyType}
-                          content={emptyContent}
-                        />
+                        <EmptyList type={emptyType} content={emptyContent} />
                       )}
-                      ListFooterComponent={previewEmpty ? null : (() =>
-                        (settlementTab === "Settled" ||
-                          settlementTab === "All") &&
-                        hasMoreSettled ? (
-                          <ListFooter
-                            hasNextPage={hasMoreSettled}
-                            loading={loadingMore}
-                            onLoadMore={loadMoreSettled}
-                          />
-                        ) : null)}
+                      ListFooterComponent={
+                        previewEmpty
+                          ? null
+                          : () =>
+                              (settlementTab === "Settled" ||
+                                settlementTab === "All") &&
+                              hasMoreSettled ? (
+                                <ListFooter
+                                  hasNextPage={hasMoreSettled}
+                                  loading={loadingMore}
+                                  onLoadMore={loadMoreSettled}
+                                />
+                              ) : null
+                      }
                     />
                   ) : previewEmpty || sections.length === 0 ? (
-                    <EmptyList
-                      type={emptyType}
-                      content={emptyContent}
-                    />
+                    <EmptyList type={emptyType} content={emptyContent} />
                   ) : (
                     <VStack className="gap-y-3 px-4">
                       {sections.map((section) => (
@@ -1079,13 +1098,13 @@ export default function FriendDetailScreen() {
         onRefetch={() => fetchAll(false)}
       />
       <StatusSheet
-        isOpen={statusSheetOpen}
+        isOpen={statusSheetOpen && !loading}
         onClose={() => setStatusSheetOpen(false)}
         status={settlementTab}
         onSelect={setSettlementTab}
       />
       <DateRangeSheet
-        isOpen={dateRangeSheetOpen}
+        isOpen={dateRangeSheetOpen && !loading}
         onClose={() => setDateRangeSheetOpen(false)}
         dateRange={dateRange}
         customRange={customRange}
@@ -1095,7 +1114,7 @@ export default function FriendDetailScreen() {
         }}
       />
       <ViewBySheet
-        isOpen={viewSheetOpen}
+        isOpen={viewSheetOpen && !loading}
         onClose={() => setViewSheetOpen(false)}
         viewBy={viewBy}
         onSelect={setViewBy}
@@ -1104,10 +1123,16 @@ export default function FriendDetailScreen() {
         isOpen={pendingAction !== null}
         icon={pendingAction === "settle" ? CheckCheck : Send}
         onClose={() => setPendingAction(null)}
-        title={pendingAction === "settle" ? "Mark All as Settled" : "Request All as Settled"}
-        description={pendingAction === "settle"
-          ? `This settles full-payment collections from ${decodedName}. Partial payments are excluded; open their Payment History to confirm or reject each request.`
-          : `This requests the full remaining balance of each pending settlement with ${decodedName}.`}
+        title={
+          pendingAction === "settle"
+            ? "Mark All as Settled"
+            : "Request All as Settled"
+        }
+        description={
+          pendingAction === "settle"
+            ? `This settles full-payment collections from ${decodedName}. Partial payments are excluded; open their Payment History to confirm or reject each request.`
+            : `This requests the full remaining balance of each pending settlement with ${decodedName}.`
+        }
         confirmText={pendingAction === "settle" ? "Settle All" : "Request All"}
         loading={actionLoading}
         onConfirm={handleConfirmAction}

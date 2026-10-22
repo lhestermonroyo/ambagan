@@ -6,6 +6,7 @@ import HeroColumn from "@/components/HeroColumn";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import {
+  ExpenseListSkeleton,
   FriendCardListSkeleton,
   GroupListSkeleton,
   SettlementListSkeleton
@@ -868,7 +869,7 @@ export default function HomeScreen() {
               </HStack>
               <LoadingWrapper
                 isLoading={loading.activities}
-                skeleton={<SettlementListSkeleton count={3} />}
+                skeleton={<SettlementListSkeleton count={3} view={settlementView} />}
               >
                 <FlatList
                   key={settlementView}
@@ -897,7 +898,7 @@ export default function HomeScreen() {
               </HStack>
               <LoadingWrapper
                 isLoading={loading.activities}
-                skeleton={<SettlementListSkeleton count={3} />}
+                skeleton={<ExpenseListSkeleton count={3} personal />}
               >
                 <FlatList
                   data={previewEmpty ? [] : personalExpensesPreview}

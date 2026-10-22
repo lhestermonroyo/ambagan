@@ -9,10 +9,7 @@ import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
 import SelectField from "@/components/SelectField";
-import {
-  GroupCardSkeleton,
-  PayerFieldSkeleton
-} from "@/components/SkeletonLoader";
+import { GroupCardSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
@@ -985,7 +982,6 @@ export default function AddExpenseScreen() {
         ) : (
           <VStack className="flex-1 p-4 gap-y-6">
             <GroupCardSkeleton />
-            <PayerFieldSkeleton />
           </VStack>
         )}
       </FormLayout>
@@ -1066,10 +1062,7 @@ export default function AddExpenseScreen() {
             />
 
             {fieldsLoading ? (
-              <VStack className="gap-y-6">
-                <PayerFieldSkeleton />
-                <GroupCardSkeleton />
-              </VStack>
+              <GroupCardSkeleton />
             ) : memberCount > 0 ? (
               /* Group + who paid + how it splits, as one card of tappable rows.
                  Each row opens the sheet it summarizes, so the payer field no
