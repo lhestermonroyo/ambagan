@@ -1,5 +1,3 @@
-import useUserStore from "@/features/user/states/user.state";
-import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AndroidHeaderMenu, {
   type AndroidHeaderMenuItem
 } from "@/components/AndroidHeaderMenu";
@@ -7,7 +5,6 @@ import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
 import EmptyList from "@/components/EmptyList";
-import { useExpenseEmptyActions } from "@/features/expense/hooks/useExpenseEmptyActions";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
@@ -32,7 +29,9 @@ import CategorySheet, {
   categoryFilterOptions,
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
+import { useExpenseEmptyActions } from "@/features/expense/hooks/useExpenseEmptyActions";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import { groupSettlementBalancesByCurrency as groupByCurrency } from "@/features/expense/utils/settlementPayments.util";
 import DateRangeSheet, {
   CustomDateRange,
   DateRangeOption,
@@ -49,26 +48,24 @@ import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
 import PayerSheet, {
   PayerOption
 } from "@/features/group/components/PayerSheet";
+import { isGroupAdmin, isGroupOwner } from "@/features/group/utils/groupRoles";
+import useUserStore from "@/features/user/states/user.state";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
-import {
-  isGroupAdmin,
-  isGroupOwner
-} from "@/features/group/utils/groupRoles";
 import { ExpensePreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
-import { groupSettlementBalancesByCurrency as groupByCurrency } from "@/features/expense/utils/settlementPayments.util";
 import { formatLastUpdate, getDateGroupTitle } from "@/utils/formatDate";
 import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
 import {
-  getPrimaryHex,
-  getSecondaryHex,
+  getOnOutlineHex,
   getOnSolidHex,
-  getOnOutlineHex
+  getPrimaryHex,
+  getSecondaryHex
 } from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
 import {
@@ -82,6 +79,7 @@ import {
   ArchiveRestore,
   CalendarRange,
   ChevronDown,
+  LayoutList,
   ListPlus,
   LogOut,
   Pencil,
@@ -92,8 +90,7 @@ import {
   Share2,
   Tag,
   Trash2,
-  X,
-  FilterX
+  X
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -848,15 +845,9 @@ export default function GroupDetailsScreen() {
                   onPress={handleFabPress}
                 >
                   {fabOpen ? (
-                    <X
-                      size={24}
-                      color={getOnSolidHex(colorScheme)}
-                    />
+                    <X size={24} color={getOnSolidHex(colorScheme)} />
                   ) : (
-                    <Plus
-                      size={24}
-                      color={getOnSolidHex(colorScheme)}
-                    />
+                    <Plus size={24} color={getOnSolidHex(colorScheme)} />
                   )}
                 </Fab>
               )}
@@ -892,10 +883,13 @@ export default function GroupDetailsScreen() {
                     {groupDetails?.name}
                   </Text>
                   <Text className="text-secondary-950">
-                    Last Update {formatLastUpdate(
-                      groupDetails?.last_updated_at ?? groupDetails?.created_at ?? ""
-                    )} •{" "}
-                    {expenseList.length} expense
+                    Last update{" "}
+                    {formatLastUpdate(
+                      groupDetails?.last_updated_at ??
+                        groupDetails?.created_at ??
+                        ""
+                    )}{" "}
+                    • {expenseList.length} expense
                     {expenseList.length !== 1 ? "s" : ""}
                   </Text>
                 </VStack>
@@ -946,7 +940,9 @@ export default function GroupDetailsScreen() {
                 <HStack className="mx-4 mb-4 p-4 rounded-xl bg-primary-50 items-start gap-x-2">
                   <Archive
                     color={getPrimaryHex(
-                      colorScheme === "dark" ? "text-primary-800" : "text-primary-500",
+                      colorScheme === "dark"
+                        ? "text-primary-800"
+                        : "text-primary-500",
                       colorScheme
                     )}
                   />
@@ -1115,7 +1111,9 @@ export default function GroupDetailsScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1132,7 +1130,9 @@ export default function GroupDetailsScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1155,7 +1155,9 @@ export default function GroupDetailsScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1195,13 +1197,14 @@ export default function GroupDetailsScreen() {
                     hasActiveFilters ? (
                       <EmptyList
                         type={EmptyType.EXPENSE}
-                        content="No expenses match these filters. Clear them to see everything."
+                        content="No expenses match these filters."
                         actions={[
                           {
-                            label: "Clear Filters",
-                            icon: FilterX,
+                            label: "View All",
+                            icon: LayoutList,
                             onPress: () => {
                               setExpenseSearch("");
+                              setSearchOpen(false);
                               setPayerFilter("All");
                               setCategoryFilter(ALL_CATEGORIES);
                               setExpenseDateRange("All");
@@ -1223,7 +1226,9 @@ export default function GroupDetailsScreen() {
                       />
                     )
                   }
-                  ListFooterComponent={previewEmpty ? null : (() => <Box className="h-16" />)}
+                  ListFooterComponent={
+                    previewEmpty ? null : () => <Box className="h-16" />
+                  }
                 />
               </VStack>
             )}

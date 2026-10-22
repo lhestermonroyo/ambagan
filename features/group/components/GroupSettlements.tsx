@@ -58,8 +58,7 @@ import {
   ChevronDown,
   LayoutList,
   Search,
-  X,
-  FilterX
+  X
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -116,16 +115,16 @@ export default function GroupSettlements({
     searchQuery || dateRange !== "All" || settlementTab !== "All"
       ? [
           {
-            label: "Clear Filters",
-            icon: FilterX,
+            label: "View All",
+            icon: LayoutList,
             onPress: () => {
               setSearchQuery("");
+              setSearchOpen(false);
               setDateRange("All");
               setCustomRange(null);
               setSettlementTab("All");
             }
-          },
-          ...emptyActions
+          }
         ]
       : emptyActions;
   const initializedRef = useRef(false);
@@ -299,6 +298,16 @@ export default function GroupSettlements({
       filtered = activePayments
         .filter((p) => p.status === "pending")
         .filter((p) => isWithinRange(p.created_at, cutoff, until));
+    } else if (settlementTab === "Partially Paid") {
+      // A later request can be awaiting confirmation while a confirmed
+      // partial payment has already reduced this settlement's balance.
+      filtered = activePayments
+        .filter((p) =>
+          p.status !== "settled" &&
+          (p.confirmed_paid_amount ?? 0) > 0 &&
+          (p.confirmed_paid_amount ?? 0) < p.amount
+        )
+        .filter((p) => isWithinRange(p.created_at, cutoff, until));
     } else if (settlementTab === "Requested") {
       filtered = activePayments
         .filter((p) => p.status === "requested")
@@ -398,6 +407,11 @@ export default function GroupSettlements({
         : settlementTab === "Settled"
           ? EmptyType.SETTLEMENT_SETTLED
           : EmptyType.SETTLEMENT_ALL;
+  const emptyContent = searchQuery || dateRange !== "All"
+    ? "No payments match these filters."
+    : settlementTab === "Partially Paid"
+      ? "No partially paid settlements. They appear here after a partial payment is confirmed."
+      : undefined;
 
   return (
     <Fragment>
@@ -620,9 +634,7 @@ export default function GroupSettlements({
                 ListEmptyComponent={() => (
                   <EmptyList
                     type={emptyType}
-                    content={searchQuery || dateRange !== "All"
-                      ? "No payments match these filters. Clear them to see everything."
-                      : undefined}
+                    content={emptyContent}
                     actions={actions}
                   />
                 )}
@@ -644,9 +656,7 @@ export default function GroupSettlements({
             ) : previewEmpty || settlementSections.length === 0 ? (
               <EmptyList
                 type={emptyType}
-                content={searchQuery || dateRange !== "All"
-                  ? "No payments match these filters. Clear them to see everything."
-                  : undefined}
+                content={emptyContent}
                 actions={actions}
               />
             ) : (
@@ -675,6 +685,7 @@ export default function GroupSettlements({
       </VStack>
 
       <StatusSheet
+        showPartiallyPaid
         isOpen={statusSheetOpen}
         onClose={() => setStatusSheetOpen(false)}
         status={settlementTab}

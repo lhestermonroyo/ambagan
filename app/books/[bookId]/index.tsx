@@ -1,15 +1,12 @@
-import useBookStore from "@/features/book/states/book.state";
-import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
-import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AndroidHeaderMenu, {
   type AndroidHeaderMenuItem
 } from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
+import ConfirmationSheet from "@/components/ConfirmationSheet";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
-import HeroAmount from "@/components/HeroAmount";
 import EmptyList from "@/components/EmptyList";
-import { useExpenseEmptyActions } from "@/features/expense/hooks/useExpenseEmptyActions";
 import FormButton from "@/components/FormButton";
+import HeroAmount from "@/components/HeroAmount";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
@@ -34,12 +31,14 @@ import PersonalStatusFilterSheet, {
   PersonalStatusFilter,
   personalStatusFilterLabel
 } from "@/features/book/components/PersonalStatusFilterSheet";
+import useBookStore from "@/features/book/states/book.state";
 import CategorySheet, {
   ALL_CATEGORIES,
   categoryFilterLabel,
   categoryFilterOptions
 } from "@/features/expense/components/CategorySheet";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
+import { useExpenseEmptyActions } from "@/features/expense/hooks/useExpenseEmptyActions";
 import { amountTextSize } from "@/features/expense/utils/amountTextSize";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
@@ -50,6 +49,7 @@ import DateRangeSheet, {
   isWithinRange
 } from "@/features/group/components/DateRangeSheet";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
@@ -60,10 +60,10 @@ import { cacheService } from "@/utils/cacheService";
 import { formatLastUpdate, getDateGroupTitle } from "@/utils/formatDate";
 import { useConvertedTotal } from "@/utils/fx";
 import {
-  getPrimaryHex,
-  getSecondaryHex,
+  getOnOutlineHex,
   getOnSolidHex,
-  getOnOutlineHex
+  getPrimaryHex,
+  getSecondaryHex
 } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { format, parseISO } from "date-fns";
@@ -80,6 +80,7 @@ import {
   ChevronDown,
   CircleCheck,
   Clock,
+  FilterX,
   ListPlus,
   Pencil,
   Plus,
@@ -88,8 +89,7 @@ import {
   Search,
   Tag,
   Trash2,
-  X,
-  FilterX
+  X
 } from "lucide-react-native";
 import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -224,12 +224,11 @@ export default function BookDetailScreen() {
       if (!bookId) return;
       if (!isRefresh) setLoading(true);
       try {
-        const [bookRes, expensesRes, totalsRes] =
-          await Promise.all([
-            services.book.getBookById(bookId),
-            services.bookExpense.getPersonalExpensesByBookId(bookId, 0),
-            services.bookExpense.getPersonalBookTotals(bookId)
-          ]);
+        const [bookRes, expensesRes, totalsRes] = await Promise.all([
+          services.book.getBookById(bookId),
+          services.bookExpense.getPersonalExpensesByBookId(bookId, 0),
+          services.bookExpense.getPersonalBookTotals(bookId)
+        ]);
         setBook(bookRes);
         setExpenses(expensesRes.data);
         setHasMore(expensesRes.hasNext);
@@ -521,7 +520,8 @@ export default function BookDetailScreen() {
       }));
       toast({
         title: "Individual Deleted",
-        description: "The Individual entry and its expenses have been permanently deleted.",
+        description:
+          "The Individual entry and its expenses have been permanently deleted.",
         type: "success"
       });
       setDeleteOpen(false);
@@ -531,7 +531,8 @@ export default function BookDetailScreen() {
       toast({
         title: "Cannot Delete Individual Entry",
         description:
-          error?.message ?? "Failed to delete Individual entry. Please try again.",
+          error?.message ??
+          "Failed to delete Individual entry. Please try again.",
         type: "error"
       });
     } finally {
@@ -781,15 +782,9 @@ export default function BookDetailScreen() {
                 onPress={() => setFabOpen((prev) => !prev)}
               >
                 {fabOpen ? (
-                  <X
-                    size={24}
-                    color={getOnSolidHex(colorScheme)}
-                  />
+                  <X size={24} color={getOnSolidHex(colorScheme)} />
                 ) : (
-                  <Plus
-                    size={24}
-                    color={getOnSolidHex(colorScheme)}
-                  />
+                  <Plus size={24} color={getOnSolidHex(colorScheme)} />
                 )}
               </Fab>
             )}
@@ -825,7 +820,11 @@ export default function BookDetailScreen() {
                     {book?.name}
                   </Text>
                   <Text className="text-secondary-950">
-                    Last Update {formatLastUpdate(book?.last_updated_at ?? book?.created_at ?? "")} • {expenses.length}
+                    Last update{" "}
+                    {formatLastUpdate(
+                      book?.last_updated_at ?? book?.created_at ?? ""
+                    )}{" "}
+                    • {expenses.length}
                     {hasMore ? "+" : ""} expense
                     {expenses.length !== 1 ? "s" : ""}
                   </Text>
@@ -873,7 +872,9 @@ export default function BookDetailScreen() {
                         <Box className="bg-success-50 p-1.5 rounded-full">
                           <CircleCheck size={14} color="#2A7948" />
                         </Box>
-                        <Text className="text-secondary-950 text-sm uppercase">Paid</Text>
+                        <Text className="text-secondary-950 text-sm uppercase">
+                          Paid
+                        </Text>
                       </HStack>
                       <CurrencyAmountDisplay
                         items={paidByCurrency}
@@ -891,7 +892,9 @@ export default function BookDetailScreen() {
                         <Box className="bg-warning-50 p-1.5 rounded-full">
                           <Clock size={14} color="#D76C1F" />
                         </Box>
-                        <Text className="text-secondary-950 text-sm uppercase">Pending</Text>
+                        <Text className="text-secondary-950 text-sm uppercase">
+                          Pending
+                        </Text>
                       </HStack>
                       <CurrencyAmountDisplay
                         items={pendingByCurrency}
@@ -1051,7 +1054,9 @@ export default function BookDetailScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1068,7 +1073,9 @@ export default function BookDetailScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1091,7 +1098,9 @@ export default function BookDetailScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1154,22 +1163,26 @@ export default function BookDetailScreen() {
                       />
                     )
                   }
-                  ListFooterComponent={previewEmpty ? null : (() => (
-                    <>
-                      {/* Filtering swaps in the whole ledger, so there's
+                  ListFooterComponent={
+                    previewEmpty
+                      ? null
+                      : () => (
+                          <>
+                            {/* Filtering swaps in the whole ledger, so there's
                           nothing left to page through. */}
-                      {hasMore && !filteringWholeLedger && (
-                        <ListFooter
-                          hasNextPage={hasMore}
-                          loading={loadingMore}
-                          onLoadMore={loadMore}
-                        />
-                      )}
-                      {/* Clears the floating "+" so the last row stays
+                            {hasMore && !filteringWholeLedger && (
+                              <ListFooter
+                                hasNextPage={hasMore}
+                                loading={loadingMore}
+                                onLoadMore={loadMore}
+                              />
+                            )}
+                            {/* Clears the floating "+" so the last row stays
                           tappable — same gap as the group Settlements tab. */}
-                      <Box className="h-16" />
-                    </>
-                  ))}
+                            <Box className="h-16" />
+                          </>
+                        )
+                  }
                 />
               </VStack>
             )}
@@ -1221,7 +1234,11 @@ export default function BookDetailScreen() {
                       >
                         {label}
                       </Text>
-                      <Text bold className={amountTextSize("text-lg", amountText, 11)} numberOfLines={1}>
+                      <Text
+                        bold
+                        className={amountTextSize("text-lg", amountText, 11)}
+                        numberOfLines={1}
+                      >
                         {amountText}
                       </Text>
                     </VStack>

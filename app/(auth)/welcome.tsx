@@ -58,11 +58,11 @@ export default function WelcomeScreen() {
 
             <VStack className="items-center gap-y-3">
               <Text bold size="3xl" className="text-center">
-                Split Bills, Settle Up, No Awkward Math.
+                For Everything You Chip In
               </Text>
               <Text className="text-lg text-secondary-950 text-center">
-                Welcome to Ambagan. Split with your barkada, or track your own.
-                Keep every expense in one place.
+                Rent, groceries, lunch with friends. Keep shared bills and your
+                own spending in one place.
               </Text>
             </VStack>
           </VStack>
