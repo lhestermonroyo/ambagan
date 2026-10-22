@@ -239,7 +239,8 @@ export default function OnboardingScreen() {
               <Button
                 accessibilityLabel="Back"
                 variant="outline"
-                className="h-12 w-14 shrink-0 rounded-full p-0"
+                size="lg"
+                className="w-14 shrink-0 rounded-full p-0"
                 disabled={submitting}
                 onPress={() => setStep(step - 1)}
               >
