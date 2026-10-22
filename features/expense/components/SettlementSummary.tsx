@@ -1,4 +1,5 @@
 import AppAvatar from "@/components/AppAvatar";
+import ApproximateAmount from "@/components/ApproximateAmount";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { HStack } from "@/components/ui/hstack";
@@ -123,6 +124,11 @@ function SettlementSummaryContent({
           >
             {amountText}
           </Text>
+          <ApproximateAmount
+            amount={displayAmount || 0}
+            currency={payment.currency}
+            reportingCurrency={payment.reporting_currency}
+          />
           {!!payment.expense_description && (
             <Text className="text-base text-center">
               {payment.expense_description}

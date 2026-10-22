@@ -39,6 +39,7 @@ export default function SettlementPaymentSheet({ isOpen, onClose, payment: initi
   const { payment, entries, loading, error } = details;
   const [mode, setMode] = useState<PaymentMode>("full");
   const [amount, setAmount] = useState("");
+  const [validateAmount, setValidateAmount] = useState(false);
   const [note, setNote] = useState(received ? "Payment acknowledged! 😊" : "Paid with thanks! 😊");
   const [receipt, setReceipt] = useState<ImagePickerSuccessResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -52,12 +53,15 @@ export default function SettlementPaymentSheet({ isOpen, onClose, payment: initi
   const partialSettlement = usesPartialPaymentFlow(payment, entries);
   const partialForm = mode === "partial" || partialSettlement;
   const receiverBlocked = received && (mode === "partial" || partialSettlement);
-  const valid = !receiverBlocked && !loading && !error && !hasPending && payment.status !== "settled" && remaining > 0 &&
-    (mode === "full" || isValidPartialPaymentAmount(amount, remaining));
+  const canSubmit = !receiverBlocked && !loading && !error && !hasPending && payment.status !== "settled" && remaining > 0;
   const back = () => { if (!locked.current) (onBack ?? onClose)(); };
 
   const submit = async () => {
-    if (locked.current || !valid) return;
+    if (locked.current || !canSubmit) return;
+    if (mode === "partial") {
+      setValidateAmount(true);
+      if (!isValidPartialPaymentAmount(amount, remaining)) return;
+    }
     locked.current = true;
     onBusyChange?.(true);
     setSubmitting(true);
@@ -90,7 +94,7 @@ export default function SettlementPaymentSheet({ isOpen, onClose, payment: initi
         <FormButton text={!partialForm ? (received ? "Mark Settled" : "Request Settled")
           : mode === "partial" ? (received ? "Record Partial Payment" : "Request Partial Payment")
             : received ? "Record Payment" : "Request Payment"}
-          disabled={!valid} loading={submitting} onPress={submit} />
+          disabled={!canSubmit} loading={submitting} onPress={submit} />
       </Box>
   );
   const content = (
@@ -110,7 +114,8 @@ export default function SettlementPaymentSheet({ isOpen, onClose, payment: initi
               {!received && <PaymentModeTabs value={mode} onChange={setMode} disabled={submitting || hasPending} />}
               {mode === "partial" && (
                 <PartialPaymentFields payment={payment} amount={amount} onChangeAmount={setAmount}
-                  received={received} confirmedPaidAmount={payment.confirmed_paid_amount ?? 0} />
+                  received={received} confirmedPaidAmount={payment.confirmed_paid_amount ?? 0}
+                  showValidation={validateAmount} />
               )}
               {!partialForm && payment.rejected_at && (
                 <VStack className="bg-secondary-100 rounded-xl p-4 gap-y-1">

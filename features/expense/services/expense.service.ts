@@ -1507,14 +1507,16 @@ export const getPaymentById = async (
 /** Parent and ledger are read in one database snapshot. */
 export const getSettlementPaymentDetails = async (paymentId: string) => {
   const { data, error } = await supabase.from(tables.PAYMENT_SPLITS_TBL)
-    .select(`${PAYMENT_FIELDS}, payment_history:${tables.SETTLEMENT_PAYMENTS_TBL}(*)`)
+    .select(`${PAYMENT_FIELDS}, group:group_id(currency), payment_history:${tables.SETTLEMENT_PAYMENTS_TBL}(*)`)
     .eq("id", paymentId).single();
   if (error) throw error;
-  const { payment_history, ...row } = data as unknown as Record<string, unknown> & {
+  const { payment_history, group, ...row } = data as unknown as Record<string, unknown> & {
     payment_history: import("@/types/settlementPayments").SettlementPaymentEntry[];
+    group: { currency: string } | { currency: string }[] | null;
   };
+  const reportingGroup = Array.isArray(group) ? group[0] : group;
   return {
-    payment: mapPaymentRows([row])[0],
+    payment: { ...mapPaymentRows([row])[0], reporting_currency: reportingGroup?.currency },
     entries: payment_history as import("@/types/settlementPayments").SettlementPaymentEntry[]
   };
 };

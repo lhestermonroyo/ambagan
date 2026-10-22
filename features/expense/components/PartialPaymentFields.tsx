@@ -1,3 +1,4 @@
+import ApproximateAmount from "@/components/ApproximateAmount";
 import FormInput from "@/components/FormInput";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
@@ -12,23 +13,27 @@ export default function PartialPaymentFields({
   amount,
   onChangeAmount,
   received = false,
-  confirmedPaidAmount = 0
+  confirmedPaidAmount = 0,
+  showValidation = false
 }: {
   payment: Payment;
   amount: string;
   onChangeAmount: (amount: string) => void;
   received?: boolean;
   confirmedPaidAmount?: number;
+  showValidation?: boolean;
 }) {
   const remainingAmount = getRemainingPaymentAmount({ amount: payment.amount, confirmed_paid_amount: confirmedPaidAmount });
   const enteredAmount = Number(amount);
   const validAmount = isValidPartialPaymentAmount(amount, remainingAmount);
   const error =
-    amount.trim() === "" || validAmount
+    !showValidation || validAmount
       ? undefined
-      : enteredAmount >= remainingAmount
-        ? "Enter a smaller amount, or choose Pay in Full."
-        : "Enter an amount above zero, with up to 2 decimal places.";
+      : amount.trim() === ""
+        ? "Amount is required."
+        : enteredAmount >= remainingAmount
+          ? "Enter a smaller amount, or choose Pay in Full."
+          : "Enter an amount above zero, with up to 2 decimal places.";
 
   return (
     <VStack className="gap-y-2">
@@ -43,6 +48,13 @@ export default function PartialPaymentFields({
         maxLength={15}
         errorMessage={error}
       />
+      {validAmount && (
+        <ApproximateAmount
+          amount={enteredAmount}
+          currency={payment.currency}
+          reportingCurrency={payment.reporting_currency}
+        />
+      )}
       {validAmount ? (
         <HStack className="items-center justify-between gap-x-3">
           <Text className="text-sm text-secondary-950 flex-1">

@@ -1,15 +1,14 @@
-import CurrencyCountButton from "@/components/CurrencyCountButton";
+import ApproximateAmount from "@/components/ApproximateAmount";
 import CurrencySelection from "@/components/CurrencySelection";
 import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { currencies } from "@/utils/constants";
-import { BASE_CURRENCY, useConverter } from "@/utils/fx";
+import { BASE_CURRENCY } from "@/utils/fx";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { useState } from "react";
 import { TextInput, useColorScheme } from "react-native";
-import { formatAmount } from "../utils/formatAmount";
 
 const BASE_FONT_SIZE = 56;
 
@@ -54,10 +53,7 @@ export default function ExpenseAmountField({
     BASE_FONT_SIZE,
     (Math.max(inputWidth - 16, 1) / naturalWidth) * BASE_FONT_SIZE
   );
-  const convert = useConverter(reportingCurrency);
   const amount = Number.parseFloat(value) || 0;
-  const converted = convert(amount, currency);
-  const showConversion = currency !== reportingCurrency;
   const symbol = currencies.find((c) => c.value === currency)?.sign ?? currency;
 
   return (
@@ -127,23 +123,8 @@ export default function ExpenseAmountField({
         </Box>
         <Box className="w-10" />
       </HStack>
-      <HStack className="min-h-5 items-center justify-center gap-x-2">
-        {showConversion && (
-          <>
-            <Text className="text-xs text-secondary-950">
-              {converted === null
-                ? "Conversion rate unavailable"
-                : `Approx. ${formatAmount(converted, reportingCurrency)} ${reportingCurrency}`}
-            </Text>
-            <CurrencyCountButton
-              items={[{ currency, amount }]}
-              title="Approximate Value"
-              subtitle="Original amount and reporting currency conversion"
-              convertTo={reportingCurrency}
-              totalLabel="Approximate Total"
-            />
-          </>
-        )}
+      <HStack className="min-h-5 items-center justify-center">
+        <ApproximateAmount amount={amount} currency={currency} reportingCurrency={reportingCurrency} />
       </HStack>
       {!!errorMessage && (
         <Text className="text-sm text-error-500">{errorMessage}</Text>

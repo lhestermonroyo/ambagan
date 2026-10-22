@@ -127,6 +127,9 @@ export type Payment = {
   payer: UserPreview;
   amount: number;
   currency: string;
+  /** Group reporting currency for reference conversions in settlement details.
+   *  The payment itself always uses `currency`. Absent on cached previews. */
+  reporting_currency?: string;
   proof_of_payment: string | null;
   member_note: string | null;
   payer_note: string | null;
