@@ -65,6 +65,7 @@ import {
   X
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { createRefreshGate, dataRevision } from "@/utils/dataRefresh";
 import {
   LayoutAnimation,
   Platform,
@@ -146,6 +147,8 @@ export default function GroupSettlements({
         ]
       : emptyActions;
   const initializedRef = useRef(false);
+  const refreshGate = useRef(createRefreshGate()).current;
+  const settledRequestRef = useRef(0);
 
   useEffect(() => {
     onLoadingChange?.(loading);
@@ -155,22 +158,22 @@ export default function GroupSettlements({
     useMemo(
       () => () => {
         if (groupId && userDetails?.id) {
-          fetchAll();
+          fetchAll(false);
         }
       },
-      [groupId, userDetails?.id]
+      [groupId, userDetails?.id, settlementRefreshToken, dateRange, customRange]
     )
   );
 
   useEffect(() => {
     if (refreshTrigger > 0 && groupId && userDetails?.id) {
-      fetchAll();
+      fetchAll(true);
     }
   }, [refreshTrigger]);
 
   useEffect(() => {
     if (settlementRefreshToken > 0 && groupId && userDetails?.id) {
-      fetchAll();
+      fetchAll(false);
     }
   }, [settlementRefreshToken]);
 
@@ -182,12 +185,21 @@ export default function GroupSettlements({
     fetchSettled(0, getDateRangeBounds(dateRange, customRange));
   }, [dateRange, customRange]);
 
-  const fetchAll = async () => {
+  const fetchAll = (force = false) => {
+    if (!groupId || !userDetails?.id) return Promise.resolve();
+    return refreshGate.run(
+      `${userDetails.id}:${groupId}`,
+      `${dataRevision("settlements")}:${settlementRefreshToken ?? 0}`,
+      loadAll,
+      force
+    ).catch((error) => console.error("Error fetching group payments:", error));
+  };
+
+  const loadAll = async () => {
     if (!groupId || !userDetails?.id) return;
-    setStatusSheetOpen(false);
-    setDateRangeSheetOpen(false);
-    setViewSheetOpen(false);
-    setLoading(true);
+    const historyRequest = ++settledRequestRef.current;
+    // Keep the current content and controls in place during action refreshes.
+    if (!initializedRef.current) setLoading(true);
     try {
       const { start: cutoff, end: until } = getDateRangeBounds(
         dateRange,
@@ -205,9 +217,11 @@ export default function GroupSettlements({
         )
       ]);
       setActivePayments(sortPaymentsByStatus(active));
-      setSettledPayments(settled.data);
-      setSettledPage(0);
-      setHasMoreSettled(settled.hasNext);
+      if (historyRequest === settledRequestRef.current) {
+        setSettledPayments(settled.data);
+        setSettledPage(0);
+        setHasMoreSettled(settled.hasNext);
+      }
       states.group.setState((prev) => ({
         ...prev,
         settlementList: sortPaymentsByStatus([...active, ...settled.data])
@@ -228,9 +242,11 @@ export default function GroupSettlements({
         const cachedActive = cached.active as Payment[];
         const cachedSettled = cached.settled as Payment[];
         setActivePayments(sortPaymentsByStatus(cachedActive));
-        setSettledPayments(cachedSettled);
-        setSettledPage(0);
-        setHasMoreSettled(false);
+        if (historyRequest === settledRequestRef.current) {
+          setSettledPayments(cachedSettled);
+          setSettledPage(0);
+          setHasMoreSettled(false);
+        }
         states.group.setState((prev) => ({
           ...prev,
           settlementList: sortPaymentsByStatus([
@@ -239,9 +255,9 @@ export default function GroupSettlements({
           ])
         }));
         initializedRef.current = true;
-      } else {
-        console.error("Error fetching group payments:", error);
       }
+      // Keep the revision dirty so a failed action refresh can be retried.
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -252,12 +268,14 @@ export default function GroupSettlements({
     bounds: { start: Date | null; end: Date | null }
   ) => {
     if (!groupId || !userDetails?.id) return;
+    const request = ++settledRequestRef.current;
     try {
       const result = await services.expense.getSettledPaymentsByGroupAndUserId(
         groupId,
         userDetails.id,
         { cutoff: bounds.start, until: bounds.end, page }
       );
+      if (request !== settledRequestRef.current) return;
       setSettledPayments((prev) =>
         page === 0 ? result.data : [...prev, ...result.data]
       );
@@ -762,7 +780,7 @@ export default function GroupSettlements({
           setSelectedPayment(null);
         }}
         item={selectedPayment}
-        onRefetch={fetchAll}
+        onRefetch={() => fetchAll(true)}
         showGroupLink={false}
       />
     </Fragment>

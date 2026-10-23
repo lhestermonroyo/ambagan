@@ -87,6 +87,7 @@ import {
   X
 } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createRefreshGate, dataRevision, invalidateData } from "@/utils/dataRefresh";
 import {
   Animated,
   LayoutAnimation,
@@ -154,6 +155,10 @@ export default function FriendDetailScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const initializedRef = useRef(false);
+  const refreshGate = useRef(createRefreshGate()).current;
+  const settledRequestRef = useRef(0);
+  const favoritesRefreshGate = useRef(createRefreshGate()).current;
+  const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0);
   // Deep-link from a settlement notification: the row to tint, a one-shot guard
   // so the sheet only auto-opens on arrival, and a timer to fade the tint after
   // the sheet is dismissed.
@@ -180,10 +185,10 @@ export default function FriendDetailScreen() {
     useMemo(
       () => () => {
         if (!userDetails?.id || !friendId) return;
-        fetchAll(!initialized);
-        loadFavorites();
+        fetchAll();
+        void favoritesRefreshGate.run(userDetails.id, dataRevision("contacts"), () => loadFavorites());
       },
-      [userDetails?.id, friendId, initialized]
+      [userDetails?.id, friendId, dateRange, customRange]
     )
   );
 
@@ -272,9 +277,16 @@ export default function FriendDetailScreen() {
     }
   };
 
-  const fetchAll = async (showLoading = true) => {
+  const fetchAll = (force = false) => {
+    if (!userDetails?.id || !friendId) return Promise.resolve();
+    return refreshGate.run(`${userDetails.id}:${friendId}`, dataRevision("settlements"), loadAll, force)
+      .catch((error) => console.error("Failed to fetch friend settlements:", error));
+  };
+
+  const loadAll = async () => {
     if (!userDetails?.id || !friendId) return;
-    if (showLoading) setLoading(true);
+    const historyRequest = ++settledRequestRef.current;
+    if (!initializedRef.current) setLoading(true);
     try {
       const { start: cutoff, end: until } = getDateRangeBounds(
         dateRange,
@@ -289,9 +301,11 @@ export default function FriendDetailScreen() {
         })
       ]);
       setActiveSettlements(active);
-      setSettledSettlements(settled.data);
-      setSettledPage(0);
-      setHasMoreSettled(settled.hasNext);
+      if (historyRequest === settledRequestRef.current) {
+        setSettledSettlements(settled.data);
+        setSettledPage(0);
+        setHasMoreSettled(settled.hasNext);
+      }
       initializedRef.current = true;
 
       // Cache for offline viewing of this friend's settlements.
@@ -305,15 +319,16 @@ export default function FriendDetailScreen() {
         .catch(() => null);
       if (cached) {
         setActiveSettlements(cached.active as PaymentPreview[]);
-        setSettledSettlements(cached.settled as PaymentPreview[]);
-        setSettledPage(0);
-        setHasMoreSettled(false);
+        if (historyRequest === settledRequestRef.current) {
+          setSettledSettlements(cached.settled as PaymentPreview[]);
+          setSettledPage(0);
+          setHasMoreSettled(false);
+        }
         initializedRef.current = true;
-      } else {
-        console.error("Failed to fetch friend settlements:", error);
       }
+      throw error;
     } finally {
-      if (showLoading) setLoading(false);
+      setLoading(false);
       setInitialized(true);
     }
   };
@@ -323,12 +338,14 @@ export default function FriendDetailScreen() {
     bounds: { start: Date | null; end: Date | null }
   ) => {
     if (!userDetails?.id || !friendId) return;
+    const request = ++settledRequestRef.current;
     try {
       const result = await services.friend.getSettledFriendSettlements(
         userDetails.id,
         friendId,
         { cutoff: bounds.start, until: bounds.end, page }
       );
+      if (request !== settledRequestRef.current) return;
       setSettledSettlements((prev) =>
         page === 0 ? result.data : [...prev, ...result.data]
       );
@@ -353,7 +370,9 @@ export default function FriendDetailScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchAll(false);
+    invalidateData("settlements");
+    setStatsRefreshTrigger((previous) => previous + 1);
+    await fetchAll(true);
     setRefreshing(false);
   };
 
@@ -396,7 +415,7 @@ export default function FriendDetailScreen() {
       }
       const completedAction = pendingAction;
       setPendingAction(null);
-      await fetchAll(false);
+      await fetchAll(true);
       if (partialBatch) {
         void showPaymentFeedback(completedAction === "settle" ? "settlement-completed" : "settlement-requested");
       } else {
@@ -783,16 +802,23 @@ export default function FriendDetailScreen() {
                 ))}
             </VStack>
 
-            {activeTab === "Stats" && userDetails && friendId && (
-              <FriendStatsTab
-                userId={userDetails.id}
-                friendId={friendId}
-                friendName={decodedName}
-              />
+            {userDetails && friendId && (
+              <Box className={activeTab !== "Stats" ? "hidden" : ""}>
+                <FriendStatsTab
+                  key={`${userDetails.id}:${friendId}`}
+                  userId={userDetails.id}
+                  friendId={friendId}
+                  friendName={decodedName}
+                  refreshToken={`${dataRevision("settlements")}:${statsRefreshTrigger}`}
+                />
+              </Box>
             )}
 
-            {activeTab === "Info" && friendId && (
-              <FriendInfoTab friendId={friendId} email={decodedEmail} />
+            {friendId && (
+              <Box className={activeTab !== "Info" ? "hidden" : ""}>
+                <FriendInfoTab key={friendId} friendId={friendId} email={decodedEmail}
+                  refreshToken={statsRefreshTrigger} />
+              </Box>
             )}
 
             {activeTab === "Settlements" && (
@@ -1095,7 +1121,7 @@ export default function FriendDetailScreen() {
         isOpen={actionSheetOpen}
         onClose={handleActionSheetClose}
         item={selectedPayment}
-        onRefetch={() => fetchAll(false)}
+        onRefetch={() => fetchAll(true)}
       />
       <StatusSheet
         isOpen={statusSheetOpen && !loading}

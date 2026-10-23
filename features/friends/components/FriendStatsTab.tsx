@@ -28,17 +28,19 @@ import { exportFriendSettlementsAsCsv } from "@/utils/exportCsv";
 import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
 import { getOnSolidHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { ChevronDown, Download } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useColorScheme } from "react-native";
 
 export default function FriendStatsTab({
   userId,
   friendId,
-  friendName
+  friendName,
+  refreshToken = "0"
 }: {
   userId: string;
   friendId: string;
   friendName: string;
+  refreshToken?: string;
 }) {
   const previewEmpty = useEmptyStatePreview();
   const colorScheme = useColorScheme() ?? "light";
@@ -50,6 +52,7 @@ export default function FriendStatsTab({
   const fx = useFxRates();
 
   const [loading, setLoading] = useState(true);
+  const loadedRef = useRef(false);
   const [settlements, setSettlements] = useState<PaymentPreview[]>([]);
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
   const [customRange, setCustomRange] = useState<CustomDateRange | null>(null);
@@ -62,15 +65,17 @@ export default function FriendStatsTab({
   // ledger once here (all statuses) and derive everything from it.
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    if (!loadedRef.current) setLoading(true);
     services.friend
       .getFriendSettlements(userId, friendId)
       .then((data) => {
-        if (!cancelled) setSettlements(data);
+        if (!cancelled) {
+          setSettlements(data);
+          loadedRef.current = true;
+        }
       })
       .catch((error) => {
         console.error("Failed to load friend stats:", error);
-        if (!cancelled) setSettlements([]);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -78,7 +83,7 @@ export default function FriendStatsTab({
     return () => {
       cancelled = true;
     };
-  }, [userId, friendId]);
+  }, [userId, friendId, refreshToken]);
 
   const { start: cutoff, end: until } = useMemo(
     () => getDateRangeBounds(dateRange, customRange),

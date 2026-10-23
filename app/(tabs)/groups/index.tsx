@@ -47,6 +47,7 @@ import {
   X
 } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
+import { createRefreshGate, dataRevision, invalidateData } from "@/utils/dataRefresh";
 import { Modal, RefreshControl, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SwipeListView } from "react-native-swipe-list-view";
@@ -57,6 +58,7 @@ const TABS = [
 ];
 
 type Entry = Group & { members: Member[] };
+type TabPage = { entries: Entry[]; page: number; hasMore: boolean };
 const initialFilters: Record<GroupMode, GroupFilter> = {
   [GroupMode.GROUP]: "all",
   [GroupMode.INDIVIDUAL]: "all"
@@ -75,7 +77,6 @@ export default function GroupsScreen() {
   const [searchEntries, setSearchEntries] = useState<Entry[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(false);
-  const [initialized, setInitialized] = useState(false);
   const [groups, setGroups] = useState<Entry[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -89,6 +90,10 @@ export default function GroupsScreen() {
   const filtersRef = useRef(initialFilters);
   const requestIdRef = useRef(0);
   const searchRequestIdRef = useRef(0);
+  const tabPages = useRef(new Map<string, TabPage>());
+  const tabRequests = useRef(new Map<string, number>());
+  const refreshGate = useRef(createRefreshGate()).current;
+  const preloadingRef = useRef(true);
 
   const { details: userDetails } = states.user();
 
@@ -102,59 +107,83 @@ export default function GroupsScreen() {
     useMemo(
       () => () => {
         if (!userDetails?.id) return;
-        init(initialized);
+        init();
       },
-      [userDetails?.id, initialized]
+      [userDetails?.id]
     )
   );
 
-  const init = async (isInitialized = false) => {
-    await fetchGroup(0, filtersRef.current[activeTabRef.current], isInitialized);
-    setInitialized(true);
+  const tabKey = (mode: GroupMode, filter: GroupFilter) =>
+    `${userDetails?.id}:${mode}:${filter}`;
+
+  const applyPage = (value: TabPage) => {
+    setGroups(value.entries);
+    setPage(value.page);
+    setHasMore(value.hasMore);
   };
 
-  const fetchGroup = async (
+  const init = async () => {
+    // Both tabs keep their own pages; switching tabs does not discard a list.
+    try {
+      await Promise.all(TABS.map(({ key }) =>
+        fetchGroup(0, filtersRef.current[key], tabPages.current.has(tabKey(key, filtersRef.current[key])), key)
+      ));
+    } finally {
+      preloadingRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  const fetchGroup = (
     pageNum: number,
     filter: GroupFilter,
     isInitialized = false,
-    mode = activeTabRef.current
-  ) => {
-    if (!userDetails?.id) return;
-    const requestId = pageNum === 0 ? ++requestIdRef.current : requestIdRef.current;
-    if (pageNum === 0) setLoadingMore(false);
-    if (!isInitialized) setLoading(true);
-    try {
-      const result = await services.group.getGroupEntriesByUserIdPaginated(
-        userDetails.id,
-        pageNum,
-        filter,
-        mode
-      );
-      if (
-        requestId !== requestIdRef.current || mode !== activeTabRef.current ||
-        filter !== filtersRef.current[mode]
-      ) return;
-      setGroups((prev) => pageNum === 0 ? result.data :
-        [...new Map([...prev, ...result.data].map(entry => [groupEntryKey(entry), entry])).values()]);
-      setPage(pageNum);
-      setHasMore(result.hasNext);
-      if (filter === "all") {
-        states.group.setState((prev) => ({
-          ...prev,
-          list: sortGroupsByActivity([...new Map([
-            ...(pageNum === 0 && !result.hasNext
-              ? prev.list.filter(entry => (entry.mode ?? GroupMode.GROUP) !== mode)
-              : prev.list),
-            ...result.data
-          ].map(entry => [groupEntryKey(entry), entry])).values()]),
-          initialized: true
-        }));
+    mode = activeTabRef.current,
+    force = false
+  ): Promise<void> => {
+    if (!userDetails?.id) return Promise.resolve();
+    const key = tabKey(mode, filter);
+    const load = async () => {
+      const requestId = pageNum === 0
+        ? (tabRequests.current.get(key) ?? 0) + 1
+        : tabRequests.current.get(key) ?? 0;
+      tabRequests.current.set(key, requestId);
+      const isCurrent = () => mode === activeTabRef.current && filter === filtersRef.current[mode];
+      if (pageNum === 0 && isCurrent()) setLoadingMore(false);
+      if (!isInitialized && isCurrent()) setLoading(true);
+      try {
+        const result = await services.group.getGroupEntriesByUserIdPaginated(
+          userDetails.id, pageNum, filter, mode
+        );
+        if (requestId !== tabRequests.current.get(key)) return;
+        const previous = tabPages.current.get(key)?.entries ?? [];
+        const entries = pageNum === 0 ? result.data :
+          [...new Map([...previous, ...result.data].map(entry => [groupEntryKey(entry), entry])).values()];
+        const value = { entries, page: pageNum, hasMore: result.hasNext };
+        tabPages.current.set(key, value);
+        if (isCurrent()) applyPage(value);
+        if (filter === "all") {
+          states.group.setState((prev) => ({
+            ...prev,
+            list: sortGroupsByActivity([...new Map([
+              ...(pageNum === 0 && !result.hasNext
+                ? prev.list.filter(entry => (entry.mode ?? GroupMode.GROUP) !== mode)
+                : prev.list),
+              ...result.data
+            ].map(entry => [groupEntryKey(entry), entry])).values()]),
+            initialized: true
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to fetch groups:", error);
+        throw error;
+      } finally {
+        if (!preloadingRef.current && requestId === tabRequests.current.get(key) && isCurrent()) setLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to fetch groups:", error);
-    } finally {
-      if (requestId === requestIdRef.current) setLoading(false);
-    }
+    };
+    return (pageNum === 0
+      ? refreshGate.run(key, dataRevision("groups"), load, force)
+      : load()).catch(() => {});
   };
 
   const loadMore = async () => {
@@ -168,16 +197,28 @@ export default function GroupsScreen() {
     }
   };
 
+  const showTab = async (mode: GroupMode, filter: GroupFilter) => {
+    requestIdRef.current += 1;
+    const cached = tabPages.current.get(tabKey(mode, filter));
+    setLoadingMore(false);
+    if (cached) {
+      applyPage(cached);
+      setLoading(false);
+    } else {
+      setGroups([]);
+      setPage(0);
+      setHasMore(false);
+      setLoading(true);
+    }
+    await fetchGroup(0, filter, !!cached, mode);
+  };
+
   const handleTabChange = async (tab: GroupMode) => {
     if (tab === activeTabRef.current) return;
     activeTabRef.current = tab;
     setActiveTab(tab);
     setFilterSheetOpen(false);
-    setGroups([]);
-    setPage(0);
-    setHasMore(false);
-    setLoadingMore(false);
-    await fetchGroup(0, filtersRef.current[tab], false, tab);
+    await showTab(tab, filtersRef.current[tab]);
   };
 
   const handleFilterChange = async (filter: GroupFilter) => {
@@ -185,11 +226,7 @@ export default function GroupsScreen() {
     if (filter === filtersRef.current[mode]) return;
     filtersRef.current = { ...filtersRef.current, [mode]: filter };
     setFilters(filtersRef.current);
-    setGroups([]);
-    setPage(0);
-    setHasMore(false);
-    setLoadingMore(false);
-    await fetchGroup(0, filter, false, mode);
+    await showTab(mode, filter);
   };
 
   const handleArchiveGroup = async (entry: Group) => {
@@ -202,7 +239,7 @@ export default function GroupsScreen() {
         description: "You can find it using the Archived filter.",
         type: "success"
       });
-      await fetchGroup(0, filtersRef.current[activeTabRef.current], true);
+      await fetchGroup(0, filtersRef.current[activeTabRef.current], true, activeTabRef.current, true);
     } catch (error) {
       console.error("Failed to archive group:", error);
       toast({
@@ -225,6 +262,9 @@ export default function GroupsScreen() {
         description: "The group has been permanently deleted.",
         type: "success"
       });
+      for (const [key, value] of tabPages.current) {
+        tabPages.current.set(key, { ...value, entries: value.entries.filter((g) => groupEntryKey(g) !== groupEntryKey(entry)) });
+      }
       setGroups((prev) => prev.filter((g) => groupEntryKey(g) !== groupEntryKey(entry)));
       states.group.setState((prev) => ({
         ...prev,
@@ -253,7 +293,7 @@ export default function GroupsScreen() {
         description: "Group has been moved back to your active groups.",
         type: "success"
       });
-      await fetchGroup(0, filtersRef.current[activeTabRef.current], true);
+      await fetchGroup(0, filtersRef.current[activeTabRef.current], true, activeTabRef.current, true);
     } catch (error) {
       console.error("Failed to unarchive group:", error);
       toast({
@@ -268,7 +308,8 @@ export default function GroupsScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchGroup(0, filtersRef.current[activeTabRef.current], true);
+    invalidateData("groups");
+    await fetchGroup(0, filtersRef.current[activeTabRef.current], true, activeTabRef.current, true);
     setRefreshing(false);
   };
 

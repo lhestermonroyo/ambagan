@@ -32,7 +32,8 @@ import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ChevronDown, Search } from "lucide-react-native";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { createRefreshGate, dataRevision, invalidateData } from "@/utils/dataRefresh";
 import { RefreshControl, useColorScheme } from "react-native";
 
 type MainTab = "balances" | "contacts";
@@ -53,7 +54,8 @@ export default function FriendsScreen() {
   const [groupContacts, setGroupContacts] = useState<UserPreview[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchVisible, setSearchVisible] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const initializedRef = useRef(false);
+  const refreshGate = useRef(createRefreshGate()).current;
   const [mainTab, setMainTab] = useState<MainTab>("balances");
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
   const [balanceFilterSheetOpen, setBalanceFilterSheetOpen] = useState(false);
@@ -69,12 +71,19 @@ export default function FriendsScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!userDetails?.id) return;
-      fetchFriends(initialized);
-      loadFavorites();
-      loadRecentFriends();
-      loadGroupContacts();
-    }, [userDetails?.id, initialized])
+      init();
+    }, [userDetails?.id])
   );
+
+  const init = async (force = false) => {
+    if (!userDetails?.id) return;
+    await Promise.all([
+      refreshGate.run(`${userDetails.id}:balances`, dataRevision("settlements"),
+        () => fetchFriends(initializedRef.current), force),
+      refreshGate.run(`${userDetails.id}:contacts`, dataRevision("contacts"),
+        () => Promise.all([loadFavorites(), loadRecentFriends(), loadGroupContacts()]), force)
+    ]);
+  };
 
   const fetchFriends = async (isInitialized = false) => {
     if (!userDetails?.id) return;
@@ -90,7 +99,7 @@ export default function FriendsScreen() {
       console.error("Failed to fetch friends:", error);
     } finally {
       if (!isInitialized) setLoading(false);
-      setInitialized(true);
+      initializedRef.current = true;
     }
   };
 
@@ -118,12 +127,8 @@ export default function FriendsScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([
-      fetchFriends(true),
-      loadFavorites(),
-      loadRecentFriends(),
-      loadGroupContacts()
-    ]);
+    invalidateData("settlements", "contacts");
+    await init(true);
     setRefreshing(false);
   };
 

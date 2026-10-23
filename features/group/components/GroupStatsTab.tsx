@@ -39,6 +39,7 @@ import {
 import { getOnSolidHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { ChevronDown, Download } from "lucide-react-native";
 import { useMemo, useState } from "react";
+import { dataRevision } from "@/utils/dataRefresh";
 import { useColorScheme } from "react-native";
 
 export default function GroupStatsTab({
@@ -53,7 +54,10 @@ export default function GroupStatsTab({
   const previewEmpty = useEmptyStatePreview();
   const { expenseList: savedExpenses, details: groupDetails } = useGroupStore();
   const { details: userDetails } = useUserStore();
-  const expenseList = previewEmpty ? [] : savedExpenses;
+  const expenseList = useMemo(
+    () => previewEmpty ? [] : savedExpenses.filter((expense) => expense.group_id === groupId),
+    [previewEmpty, savedExpenses, groupId]
+  );
   const isPro = userDetails?.plan === "pro";
 
   // The group's own home currency is the one every card leads with (a JPY trip
@@ -88,7 +92,7 @@ export default function GroupStatsTab({
 
   // Member splits for the filtered expenses, fetched once and shared by the
   // personal "Your Activity" card and the group Member Breakdown below.
-  const { splits, loading: splitsLoading } = useMemberSplits(filteredExpenses);
+  const { splits, loading: splitsLoading } = useMemberSplits(filteredExpenses, dataRevision("groupDetails"));
   // A newly empty range can render before the split-fetch effect clears its
   // previous result. Keep those old totals out of the empty charts.
   const visibleSplits = filteredExpenses.length > 0 ? splits : [];

@@ -21,6 +21,7 @@ import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 import { cacheService } from "./cacheService";
 import { getDb } from "./offlineDb";
+import { invalidateData } from "./dataRefresh";
 
 /**
  * Arguments forwarded verbatim to `services.expense.saveExpense` on sync.
@@ -472,6 +473,13 @@ async function enqueue(type: QueueOpType, payload: object): Promise<string> {
     "INSERT INTO pending_queue (id, type, payload, status, created_at) VALUES (?, ?, ?, 'pending', ?)",
     [id, type, JSON.stringify(payload), Date.now()]
   );
+  if (type === "ADD_FAVORITE" || type === "REMOVE_FAVORITE") {
+    invalidateData("contacts");
+  } else if (type.includes("BOOK") || type.includes("PERSONAL_EXPENSE")) {
+    invalidateData("groups");
+  } else if (type !== "UPDATE_PREFERENCES") {
+    invalidateData("groups", "groupDetails", "settlements", "contacts");
+  }
   return id;
 }
 
@@ -502,6 +510,7 @@ export async function getQueue(): Promise<QueuedOp[]> {
 export async function removeFromQueue(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync("DELETE FROM pending_queue WHERE id = ?", [id]);
+  invalidateData("groups", "groupDetails", "settlements", "contacts");
 }
 
 /** Overwrite a queued op's payload in place — used to coalesce an edit into a
@@ -512,6 +521,7 @@ async function updateQueuePayload(id: string, payload: object): Promise<void> {
     JSON.stringify(payload),
     id
   ]);
+  invalidateData("groups", "groupDetails", "settlements", "contacts");
 }
 
 /** The still-pending create op for an expense id (ADD_EXPENSE or CREATE_DRAFT),

@@ -97,6 +97,7 @@ import {
   X
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { createRefreshGate, dataRevision, invalidateData } from "@/utils/dataRefresh";
 import {
   Animated,
   LayoutAnimation,
@@ -136,6 +137,8 @@ export default function GroupDetailsScreen() {
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
+  const detailsRefreshGate = useRef(createRefreshGate()).current;
+  const recurringRefreshGate = useRef(createRefreshGate()).current;
 
   // Expenses tab filters, mirroring the Settlements tab: a payer pill that opens
   // a bottom sheet, plus search + category + date-range icon buttons. Search
@@ -280,7 +283,8 @@ export default function GroupDetailsScreen() {
         // call init(), find the group gone, and fire a second router.replace,
         // triggering the back-to-groups animation twice.
         const initialized = states.group.getState().details?.id === groupId;
-        init(groupId, initialized);
+        void detailsRefreshGate.run(groupId, dataRevision("groupDetails"),
+          () => init(groupId, initialized), !initialized);
       },
       [groupId]
     )
@@ -293,12 +297,12 @@ export default function GroupDetailsScreen() {
     useMemo(
       () => () => {
         if (!groupId) return;
-        services.expense
+        void recurringRefreshGate.run(groupId, `${dataRevision("recurring")}:${recurringRefreshTrigger}`, () => services.expense
           .getRecurringByGroupId(groupId)
           .then((list) =>
             setActiveRecurringCount(list.filter((r) => r.is_active).length)
           )
-          .catch(() => setActiveRecurringCount(0));
+          .catch(() => setActiveRecurringCount(0)));
       },
       [groupId, recurringRefreshTrigger]
     )
@@ -361,9 +365,10 @@ export default function GroupDetailsScreen() {
   const handleRefresh = async () => {
     if (!groupId) return;
     setRefreshing(true);
+    invalidateData("groups", "groupDetails", "settlements", "recurring");
     setSettlementRefreshTrigger((prev) => prev + 1);
     setRecurringRefreshTrigger((prev) => prev + 1);
-    await init(groupId, true);
+    await detailsRefreshGate.run(groupId, dataRevision("groupDetails"), () => init(groupId, true), true);
     setRefreshing(false);
   };
 
@@ -1279,12 +1284,15 @@ export default function GroupDetailsScreen() {
             {tab === "Info" && (
               <GroupDetailsTab onViewMembers={() => setTab("Members")} />
             )}
-            {tab === "Stats" && groupId && userDetails && (
-              <GroupStatsTab
-                groupId={groupId}
-                groupName={groupDetails?.name ?? ""}
-                userId={userDetails.id}
-              />
+            {groupId && userDetails && !loading && (
+              <Box className={tab !== "Stats" ? "hidden" : ""}>
+                <GroupStatsTab
+                  key={groupId}
+                  groupId={groupId}
+                  groupName={groupDetails?.name ?? ""}
+                  userId={userDetails.id}
+                />
+              </Box>
             )}
           </LoadingWrapper>
         </ScrollView>

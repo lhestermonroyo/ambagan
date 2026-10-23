@@ -83,7 +83,6 @@ export default function ExpenseAmountField({
             placeholder="0"
             placeholderTextColor={scheme === "dark" ? "#F5F5F5" : "#262626"}
             keyboardType="decimal-pad"
-            returnKeyType="done"
             autoCorrect={false}
             autoCapitalize="none"
             selectionColor={getPrimaryHex("text-primary-500", scheme)}
@@ -124,7 +123,11 @@ export default function ExpenseAmountField({
         <Box className="w-10" />
       </HStack>
       <HStack className="min-h-5 items-center justify-center">
-        <ApproximateAmount amount={amount} currency={currency} reportingCurrency={reportingCurrency} />
+        <ApproximateAmount
+          amount={amount}
+          currency={currency}
+          reportingCurrency={reportingCurrency}
+        />
       </HStack>
       {!!errorMessage && (
         <Text className="text-sm text-error-500">{errorMessage}</Text>
