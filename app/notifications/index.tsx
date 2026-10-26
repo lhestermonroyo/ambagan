@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
@@ -24,6 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RefreshControl } from "react-native";
 
 export default function NotificationsScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadMoreLoading, setLoadMoreLoading] = useState(false);
@@ -106,7 +108,7 @@ export default function NotificationsScreen() {
       // unresolved) still navigates; the friend screen backstops the miss.
       if (notification.settlement_status === null) {
         toast({
-          title: "No longer available",
+          title: "No Longer Available",
           description:
             "The settlement linked to this notification no longer exists.",
           type: "info"
@@ -130,7 +132,7 @@ export default function NotificationsScreen() {
         router.push(route as any);
       } else {
         toast({
-          title: "No longer available",
+          title: "No Longer Available",
           description:
             "The group or expense linked to this notification no longer exists.",
           type: "info"
@@ -183,7 +185,7 @@ export default function NotificationsScreen() {
           accessibilityLabel="Mark all notifications as read"
           onPress={handleMarkAllRead}
         >
-          {markingAll ? "Marking..." : "Mark all read"}
+          {markingAll ? "Marking..." : "Mark All Read"}
         </Stack.Toolbar.Button>
       }
       androidActions={
@@ -200,7 +202,7 @@ export default function NotificationsScreen() {
               opacity: markingAll || unreadCount === 0 ? 0.4 : 1
             }}
           >
-            {markingAll ? "Marking..." : "Mark all read"}
+            {markingAll ? "Marking..." : "Mark All Read"}
           </Text>
         </Pressable>
       }
@@ -210,7 +212,7 @@ export default function NotificationsScreen() {
         skeleton={<NotificationListSkeleton />}
       >
         <SectionList
-          sections={sections}
+          sections={previewEmpty ? [] : sections}
           keyExtractor={(item) => item.id}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
@@ -227,19 +229,19 @@ export default function NotificationsScreen() {
           stickySectionHeadersEnabled={true}
           ListEmptyComponent={() => (
             <VStack className="flex-1 items-center justify-center p-8">
-              <EmptyList type={EmptyType.NOTIFICATION} />
+              <EmptyList
+                type={EmptyType.NOTIFICATION}
+              />
             </VStack>
           )}
-          ListFooterComponent={
-            list.length > 0 ? (
+          ListFooterComponent={previewEmpty ? null : (list.length > 0 ? (
               <ListFooter
                 hasNextPage={hasNextPage}
                 loading={loadMoreLoading}
                 onLoadMore={handleLoadMore}
                 showEndMessage
               />
-            ) : null
-          }
+            ) : null)}
         />
       </LoadingWrapper>
     </InnerLayout>

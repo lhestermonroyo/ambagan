@@ -6,29 +6,34 @@ import { VStack } from "@/components/ui/vstack";
 import services from "@/services";
 import { User } from "@/types/user";
 import { formatDate } from "@/utils/formatDate";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 export default function FriendInfoTab({
   friendId,
-  email
+  email,
+  refreshToken = 0
 }: {
   friendId: string;
   email: string;
+  refreshToken?: number;
 }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<User | null>(null);
+  const loadedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    if (!loadedRef.current) setLoading(true);
     services.user
       .getUserById(friendId)
       .then((res) => {
-        if (!cancelled) setProfile(res.data);
+        if (!cancelled) {
+          setProfile(res.data);
+          loadedRef.current = true;
+        }
       })
       .catch((error) => {
         console.error("Failed to load friend profile:", error);
-        if (!cancelled) setProfile(null);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -36,7 +41,7 @@ export default function FriendInfoTab({
     return () => {
       cancelled = true;
     };
-  }, [friendId]);
+  }, [friendId, refreshToken]);
 
   // Fall back to the param the row was opened with while the fetch is in
   // flight (or if it fails), so the row never renders blank.
@@ -54,7 +59,7 @@ export default function FriendInfoTab({
         />
         <RowDivider />
         <DetailRow
-          label="Member since"
+          label="Member Since"
           value={loading ? "…" : profile ? formatDate(profile.created_at) : "—"}
         />
         <RowDivider />

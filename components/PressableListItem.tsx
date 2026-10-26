@@ -6,21 +6,34 @@ const PressableListItem = ({
   children,
   onPress,
   className,
-  disabled = false
+  disabled = false,
+  dimDisabled = true,
+  surface = "default"
 }: {
   children: React.ReactNode;
   onPress: () => void;
   className?: string;
   disabled?: boolean;
+  dimDisabled?: boolean;
+  surface?: "default" | "muted";
 }) => {
   return (
-    <Pressable onPress={onPress} disabled={disabled}>
-      {({ pressed }) => (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      className={disabled && !dimDisabled ? "data-[disabled=true]:opacity-100" : undefined}
+    >
+      {({ pressed, hovered }) => (
         <Box
           className={cn(
-            pressed ? "bg-background-50" : "bg-background-0",
-            disabled && "opacity-50",
-            className
+            className,
+            surface === "muted"
+              ? pressed || hovered
+                ? "bg-secondary-200"
+                : "bg-secondary-100"
+              : pressed
+                ? "bg-background-50"
+                : "bg-background-0"
           )}
         >
           {children}

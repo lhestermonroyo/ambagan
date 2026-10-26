@@ -38,7 +38,7 @@ export default function AnalyticsTotalCard({ data }: { data: AnalyticsData }) {
               title="Total Spent"
               subtitle="By currency"
               convertTo={BASE_CURRENCY}
-              totalLabel="Total spent"
+              totalLabel="Total Spent"
             />
           </HStack>
         </HStack>
@@ -71,7 +71,7 @@ export default function AnalyticsTotalCard({ data }: { data: AnalyticsData }) {
           </VStack>
           <Divider orientation="vertical" className="mx-3" />
           <VStack className="flex-1 gap-y-1">
-            <Text className="text-sm text-secondary-950 uppercase">Per day</Text>
+            <Text className="text-sm text-secondary-950 uppercase">Per Day</Text>
             <Text bold className="text-lg" numberOfLines={1} adjustsFontSizeToFit>
               {data.totalApprox ? "≈ " : ""}
               {formatAmount(data.perDay, BASE_CURRENCY)}

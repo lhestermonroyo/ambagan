@@ -112,12 +112,14 @@ const CurrencySelection = ({
   currency,
   onCurrencyChange,
   locked = false,
-  onLockedPress
+  onLockedPress,
+  variant = "field"
 }: {
   currency: string;
   onCurrencyChange: (currency: string) => void;
   locked?: boolean;
   onLockedPress?: () => void;
+  variant?: "field" | "pill";
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const colorScheme = useColorScheme() ?? "light";
@@ -130,17 +132,20 @@ const CurrencySelection = ({
     <Fragment>
       <PressableListItem
         onPress={() => (locked ? onLockedPress?.() : setIsOpen(true))}
-        className="h-14 border border-background-200 items-center justify-center px-2 py-2 rounded-lg"
+        className={variant === "pill"
+          ? "border border-background-200 items-center justify-center px-3 py-1.5 rounded-full"
+          : "h-14 border border-background-200 items-center justify-center px-2 py-2 rounded-lg"}
+        surface={variant === "pill" ? "muted" : "default"}
       >
         <HStack className="items-center justify-center gap-x-2">
-          <Text className="font-semibold">{currencyLabel}</Text>
+          <Text className={variant === "pill" ? "text-sm" : "font-semibold"}>{currencyLabel}</Text>
           {locked ? (
             <Lock
               size={18}
               color={getSecondaryHex("text-secondary-950", colorScheme)}
             />
           ) : (
-            <Icon as="unfold-more" className="text-sm text-secondary-950" />
+            <Icon as={variant === "pill" ? "expand-more" : "unfold-more"} size={variant === "pill" ? 16 : undefined} className="text-sm text-secondary-950" />
           )}
         </HStack>
       </PressableListItem>

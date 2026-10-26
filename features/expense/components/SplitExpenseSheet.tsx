@@ -53,7 +53,7 @@ export default function SplitExpenseSheet({
   isLockedGroup = false,
   groupName,
   onClose,
-  onDone,
+  onDone
 }: SplitExpenseSheetProps) {
   const [draftSplits, setDraftSplits] = useState<Splits>(splits);
   const [draftTab, setDraftTab] = useState<SplitType>(splitType);
@@ -85,7 +85,7 @@ export default function SplitExpenseSheet({
     const entries = Object.entries(draftSplits);
     const included = entries.filter(
       ([, x]) =>
-        (parseFloat(x.amount) || 0) > 0 || (parseFloat(x.percentage) || 0) > 0,
+        (parseFloat(x.amount) || 0) > 0 || (parseFloat(x.percentage) || 0) > 0
     );
     if (total <= 0 || included.length < 1) return { valid: false };
     // A lone payer sharing only with themselves nets to zero — block it (the
@@ -93,19 +93,19 @@ export default function SplitExpenseSheet({
     // up, which the per-mode checks below enforce.
     const payerOnly = isPayerOnlySplit(
       payerIds,
-      included.map(([id]) => id),
+      included.map(([id]) => id)
     );
     if (draftTab === "percentage") {
       const sum = included.reduce(
         (s, [, x]) => s + (parseFloat(x.percentage) || 0),
-        0,
+        0
       );
       return { valid: Math.abs(sum - 100) < 0.01 && !payerOnly };
     }
     if (draftTab === "custom") {
       const sum = included.reduce(
         (s, [, x]) => s + (parseFloat(x.amount) || 0),
-        0,
+        0
       );
       return { valid: Math.abs(sum - total) < 0.01 && !payerOnly };
     }
@@ -138,7 +138,7 @@ export default function SplitExpenseSheet({
           </Text>
         </HStack>
       </Pressable>
-      <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
+      <Text className="text-sm text-secondary-950 px-4 pt-1 pb-4">
         Choose how the total is divided among each member.
       </Text>
 

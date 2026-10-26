@@ -1,3 +1,4 @@
+import ConfirmationHeader from "@/components/ConfirmationHeader";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import {
@@ -20,7 +21,7 @@ import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { getErrorHex } from "@/utils/getColorHex";
-import { AlertTriangle } from "lucide-react-native";
+import { AlertTriangle, Trash2 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -70,7 +71,7 @@ export default function DeleteGroupSheet({
       await onDelete();
     } catch (error: any) {
       toast({
-        title: "Cannot delete group",
+        title: "Cannot Delete Group",
         description:
           error?.message ?? "Failed to delete group. Please try again.",
         type: "error"
@@ -91,23 +92,22 @@ export default function DeleteGroupSheet({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full flex-1">
-          <VStack className="p-4">
-            <Text bold className="text-xl">
-              Delete Group
-            </Text>
-          </VStack>
           <ScrollView className="flex-1">
+            <ConfirmationHeader title="Delete Group" icon={Trash2} destructive />
             <LoadingWrapper isLoading={fetching}>
               <VStack className="gap-y-4">
                 {hasUnsettled ? (
                   <>
                     <HStack className="bg-error-50 rounded-xl gap-x-4 p-4 mx-4 items-start">
                       <AlertTriangle
-                        color={getErrorHex("text-error-600", colorScheme)}
+                        color={getErrorHex(
+                          colorScheme === "dark" ? "text-error-800" : "text-error-600",
+                          colorScheme
+                        )}
                       />
-                      <Text className="text-error-600 flex-1">
+                      <Text className="text-error-600 flex-1 dark:text-error-800">
                         This group has{" "}
-                        <Text bold className="text-error-600">
+                        <Text bold className="text-error-600 dark:text-error-800">
                           {unsettledPayments.length} unsettled{" "}
                           {unsettledPayments.length === 1
                             ? "payment"

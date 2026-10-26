@@ -60,7 +60,7 @@ export default function ImagePickerSheet({
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       Alert.alert(
-        "Permission required",
+        "Permission Required",
         "Permission to access the camera is required."
       );
       return;
@@ -90,7 +90,7 @@ export default function ImagePickerSheet({
           <PressableListItem onPress={handlePickFromLibrary}>
             <HStack className="p-4 gap-x-2 items-start justify-start">
               <Images color={iconColor} />
-              <Text className="text-lg flex-1">Choose from Photos</Text>
+              <Text className="text-lg flex-1">Choose From Photos</Text>
               <Icon as="chevron-right" className="text-secondary-950 self-center" />
             </HStack>
           </PressableListItem>

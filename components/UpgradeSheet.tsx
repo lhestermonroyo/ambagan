@@ -13,7 +13,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { PRO_FEATURES } from "@/constants/proFeatures";
-import { getSecondaryHex } from "@/utils/getColorHex";
+import { getOnSolidHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
 import { ArrowRight } from "lucide-react-native";
 import { useColorScheme } from "react-native";
@@ -58,7 +58,7 @@ export default function UpgradeSheet({
             </HStack>
             <Text className="text-sm text-secondary-950">
               {description ??
-                "From ₱99 for 2 weeks • Monthly & yearly • Cancel anytime"}
+                "2-week pass from ₱99 • Monthly and yearly subscriptions available"}
             </Text>
           </VStack>
 
@@ -88,7 +88,7 @@ export default function UpgradeSheet({
             iconEnd={
               <ArrowRight
                 size={18}
-                color={getSecondaryHex("text-secondary-0", colorScheme)}
+                color={getOnSolidHex(colorScheme)}
               />
             }
             onPress={handleUpgrade}

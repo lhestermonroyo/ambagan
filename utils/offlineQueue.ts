@@ -12,13 +12,16 @@ import {
   PersonalBookTotal,
   PersonalExpense
 } from "@/types/books";
-import { Group, Member } from "@/types/groups";
+import { Group, GroupRole, Member } from "@/types/groups";
+import { individualGroupEntry, isIndividualGroup } from "@/features/group/utils/groupMode";
+import { sortGroupsByActivity } from "@/features/group/utils/groupActivity";
 import { UserPreview } from "@/types/user";
 import NetInfo from "@react-native-community/netinfo";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 import { cacheService } from "./cacheService";
 import { getDb } from "./offlineDb";
+import { invalidateData } from "./dataRefresh";
 
 /**
  * Arguments forwarded verbatim to `services.expense.saveExpense` on sync.
@@ -85,9 +88,12 @@ export type CreateGroupArgs = {
   name: string;
   category: string;
   currency: string;
+  /** What Add Expense prefills. Null = follow `currency`. */
+  default_expense_currency: string | null;
   avatar: null;
   admin_id: string;
   member_ids: string[];
+  admin_member_ids?: string[];
   id?: string;
 };
 
@@ -99,6 +105,11 @@ export type UpdateGroupArgs = {
   name: string;
   category: string;
   currency: string;
+  /** What Add Expense prefills. Null = follow `currency`. Always a real code or
+   *  null by the time it reaches the queue — the CURRENCY_SAME_AS sentinel the
+   *  picker emits is normalized away in the service, so nothing has to survive
+   *  a round trip through SQLite as an empty string. */
+  default_expense_currency: string | null;
   avatar: null;
 };
 
@@ -226,8 +237,8 @@ export type UpdateBookArgs = {
   currency: string;
   /** What Add Expense prefills. Null = follow `currency`. */
   default_expense_currency: string | null;
-  budget: number | null;
-  budget_period: BookBudgetPeriod;
+  budget?: number | null;
+  budget_period?: BookBudgetPeriod;
   /** Group to roll the book up with. Null = standalone. */
   group_id: string | null;
   avatar: null;
@@ -462,6 +473,13 @@ async function enqueue(type: QueueOpType, payload: object): Promise<string> {
     "INSERT INTO pending_queue (id, type, payload, status, created_at) VALUES (?, ?, ?, 'pending', ?)",
     [id, type, JSON.stringify(payload), Date.now()]
   );
+  if (type === "ADD_FAVORITE" || type === "REMOVE_FAVORITE") {
+    invalidateData("contacts");
+  } else if (type.includes("BOOK") || type.includes("PERSONAL_EXPENSE")) {
+    invalidateData("groups");
+  } else if (type !== "UPDATE_PREFERENCES") {
+    invalidateData("groups", "groupDetails", "settlements", "contacts");
+  }
   return id;
 }
 
@@ -492,6 +510,7 @@ export async function getQueue(): Promise<QueuedOp[]> {
 export async function removeFromQueue(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync("DELETE FROM pending_queue WHERE id = ?", [id]);
+  invalidateData("groups", "groupDetails", "settlements", "contacts");
 }
 
 /** Overwrite a queued op's payload in place — used to coalesce an edit into a
@@ -502,6 +521,7 @@ async function updateQueuePayload(id: string, payload: object): Promise<void> {
     JSON.stringify(payload),
     id
   ]);
+  invalidateData("groups", "groupDetails", "settlements", "contacts");
 }
 
 /** The still-pending create op for an expense id (ADD_EXPENSE or CREATE_DRAFT),
@@ -612,6 +632,42 @@ export async function countPersonalExpensesQueuedToday(): Promise<number> {
 // so a queued item shows up immediately and survives an app restart.
 // ---------------------------------------------------------------------------
 
+/** Match the server activity triggers while an operation is queued offline. */
+async function touchGroupActivityOptimistic(
+  groupId: string,
+  userId = states.user.getState().details?.id
+) {
+  const now = Date.now();
+  const touch = <T extends Group>(group: T): T =>
+    group.id === groupId
+      ? {
+          ...group,
+          last_updated_at: new Date(
+            Math.max(now, Date.parse(group.last_updated_at ?? group.created_at) || 0)
+          ).toISOString()
+        }
+      : group;
+
+  states.group.setState((prev) => ({
+    ...prev,
+    list: sortGroupsByActivity(prev.list.map(touch)),
+    details: prev.details ? touch(prev.details) : null
+  }));
+
+  if (!userId) return;
+  try {
+    const cached = await cacheService.getGroupsList(userId);
+    if (cached) {
+      await cacheService.saveGroupsList(
+        userId,
+        sortGroupsByActivity((cached as (Group & { members: Member[] })[]).map(touch))
+      );
+    }
+  } catch {
+    // best-effort; live state still reflects the new activity
+  }
+}
+
 async function injectPendingExpense(groupId: string, expense: ExpensePreview) {
   // Update both the group detail expenseList (if open) and the group list
   // expense_count in a single setState call.
@@ -661,6 +717,7 @@ async function injectPendingExpense(groupId: string, expense: ExpensePreview) {
       // best-effort
     }
   }
+  await touchGroupActivityOptimistic(groupId);
 }
 
 async function clearPendingExpense(groupId: string, clientId: string) {
@@ -967,11 +1024,17 @@ async function injectPendingGroup(
   userId: string,
   group: Group & { members: Member[] }
 ) {
-  states.group.setState((prev) => ({ ...prev, list: [group, ...prev.list] }));
+  states.group.setState((prev) => ({
+    ...prev,
+    list: sortGroupsByActivity([group, ...prev.list])
+  }));
 
   try {
     const cached = (await cacheService.getGroupsList(userId)) ?? [];
-    await cacheService.saveGroupsList(userId, [group, ...cached]);
+    await cacheService.saveGroupsList(
+      userId,
+      sortGroupsByActivity([group, ...(cached as (Group & { members: Member[] })[])])
+    );
   } catch {
     // best-effort
   }
@@ -1047,6 +1110,7 @@ async function replaceExpenseOptimistic(
       )
       .catch(() => {});
   }
+  await touchGroupActivityOptimistic(groupId);
 }
 
 /**
@@ -1101,13 +1165,20 @@ async function removeExpenseOptimistic(groupId: string, expenseId: string) {
       // best-effort
     }
   }
+  await touchGroupActivityOptimistic(groupId);
 }
 
-/** Patch a group's name/category in the live list + caches (offline edit). */
+/** Patch a group's name/category/currencies in the live list + caches (offline
+ *  edit). */
 async function updateGroupOptimistic(
   userId: string,
   groupId: string,
-  patch: { name: string; category: string; currency: string }
+  patch: {
+    name: string;
+    category: string;
+    currency: string;
+    default_expense_currency: string | null;
+  }
 ) {
   const apply = (g: any) =>
     g.id === groupId ? { ...g, ...patch, pending: true } : g;
@@ -1127,6 +1198,7 @@ async function updateGroupOptimistic(
   } catch {
     // best-effort
   }
+  await touchGroupActivityOptimistic(groupId, userId);
 }
 
 /** Flip a group's archived flag in the caches (offline archive/unarchive). The
@@ -1149,6 +1221,7 @@ async function setGroupArchivedInCache(
   } catch {
     // best-effort
   }
+  await touchGroupActivityOptimistic(groupId, userId);
 }
 
 /**
@@ -1168,6 +1241,7 @@ async function updateMembersOptimistic(groupId: string, roster: Member[]) {
   } catch {
     // best-effort
   }
+  await touchGroupActivityOptimistic(groupId);
 }
 
 async function addFavoriteToCache(userId: string, favorite: UserPreview) {
@@ -1437,7 +1511,8 @@ export async function queueUpdateGroup(
         ...createOp.payload.args,
         name: args.name,
         category: args.category,
-        currency: args.currency
+        currency: args.currency,
+        default_expense_currency: args.default_expense_currency
       }
     };
     await updateQueuePayload(createOp.id, patched);
@@ -1448,7 +1523,8 @@ export async function queueUpdateGroup(
   await updateGroupOptimistic(userId, groupId, {
     name: args.name,
     category: args.category,
-    currency: args.currency
+    currency: args.currency,
+    default_expense_currency: args.default_expense_currency
   });
 }
 
@@ -1788,18 +1864,23 @@ export function buildOptimisticGroup(params: {
   name: string;
   category: string;
   currency: string;
+  /** Already normalized by the caller — null = follow `currency`. */
+  default_expense_currency: string | null;
   admin: UserPreview;
   members: UserPreview[];
+  admin_member_ids?: string[];
 }): Group & { members: Member[] } {
   const now = new Date().toISOString();
 
   return {
     id: params.clientId,
     created_at: now,
+    last_updated_at: now,
     admin: params.admin,
     name: params.name,
     category: params.category,
     currency: params.currency,
+    default_expense_currency: params.default_expense_currency,
     avatar: null,
     archived: false,
     expense_count: 0,
@@ -1807,7 +1888,13 @@ export function buildOptimisticGroup(params: {
     members: params.members.map((m) => ({
       ...m,
       group_id: params.clientId,
-      joined_at: now
+      joined_at: now,
+      // Mirrors what createGroup writes on sync, so the owner shows up in the
+      // group's admin list straight away rather than only after the first
+      // online refresh.
+      role: m.id === params.admin.id || params.admin_member_ids?.includes(m.id)
+        ? GroupRole.ADMIN
+        : GroupRole.MEMBER
     }))
   };
 }
@@ -1849,7 +1936,10 @@ async function bumpBookExpenseCount(
       ? { ...b, expense_count: Math.max((b.expense_count ?? 0) + delta, 0) }
       : b;
 
-  states.book.setState((prev) => ({ ...prev, list: prev.list.map(apply) }));
+  states.book.setState((prev) => ({
+    ...prev, list: prev.list.map(apply),
+    details: prev.details?.id === bookId ? apply(prev.details) : prev.details
+  }));
 
   if (!userId) return;
   try {
@@ -1857,6 +1947,8 @@ async function bumpBookExpenseCount(
     if (cached) {
       await cacheService.saveBooksList(userId, (cached as Book[]).map(apply));
     }
+    const detail = await cacheService.getBookDetail(bookId);
+    if (detail) await cacheService.saveBookDetail(bookId, apply(detail.book), detail.expenseList, detail.totals);
   } catch {
     // best-effort
   }
@@ -1894,8 +1986,8 @@ async function updateBookOptimistic(
     category: string;
     currency: string;
     default_expense_currency: string | null;
-    budget: number | null;
-    budget_period: BookBudgetPeriod;
+    budget?: number | null;
+    budget_period?: BookBudgetPeriod;
     group_id: string | null;
   }
 ) {
@@ -2147,9 +2239,11 @@ export function buildOptimisticBook(params: {
   groupId?: string | null;
   userId: string;
 }): Book {
+  const now = new Date().toISOString();
   return {
     id: params.clientId,
-    created_at: new Date().toISOString(),
+    created_at: now,
+    last_updated_at: now,
     user_id: params.userId,
     name: params.name,
     category: params.category,
@@ -2200,6 +2294,68 @@ export function buildOptimisticPersonalExpense(params: {
   };
 }
 
+/** Update the Individual entry in both the private ledger and unified list. */
+async function touchIndividualActivityOptimistic(
+  bookId: string,
+  userId = states.user.getState().details?.id,
+  archived?: boolean
+) {
+  if (!userId) return;
+  const owner = states.user.getState().details;
+  if (owner?.id !== userId) return;
+  const [cachedBooks, cachedDetail] = await Promise.all([
+    cacheService.getBooksList(userId).catch(() => null),
+    cacheService.getBookDetail(bookId).catch(() => null)
+  ]);
+  const current = states.book.getState();
+  const book: Book | undefined = current.list.find(b => b.id === bookId) ??
+    (current.details?.id === bookId ? current.details : undefined) ??
+    (cachedBooks as Book[] | null)?.find(b => b.id === bookId) ?? cachedDetail?.book;
+  if (book && book.user_id !== userId) return;
+  const now = new Date().toISOString();
+  const updated = book ? { ...book, last_updated_at: now, archived: archived ?? book.archived } : null;
+  const apply = (entries: (Group & { members: Member[] })[]) => {
+    const previous = entries.find(g => g.id === bookId && isIndividualGroup(g));
+    const entry = updated ? individualGroupEntry(updated, owner) :
+      previous ? { ...previous, last_updated_at: now, archived: archived ?? previous.archived } : null;
+    return sortGroupsByActivity([
+      ...entries.filter(g => g.id !== bookId || !isIndividualGroup(g)),
+      ...(entry && !entry.archived ? [entry] : [])
+    ]);
+  };
+  states.group.setState(prev => ({ ...prev, list: apply(prev.list) }));
+  if (updated) {
+    states.book.setState(prev => ({
+      ...prev,
+      list: prev.list.map(b => b.id === bookId ? updated : b).filter(b => !b.archived),
+      details: prev.details?.id === bookId ? updated : prev.details
+    }));
+  }
+  try {
+    const groups = await cacheService.getGroupsList(userId);
+    await cacheService.saveGroupsList(userId, apply((groups ?? []) as (Group & { members: Member[] })[]));
+    if (updated) {
+      const books = (cachedBooks ?? []) as Book[];
+      await cacheService.saveBooksList(userId, [
+        ...books.filter(b => b.id !== bookId), ...(updated.archived ? [] : [updated])
+      ]);
+      if (cachedDetail) await cacheService.saveBookDetail(bookId, updated, cachedDetail.expenseList, cachedDetail.totals);
+    }
+  } catch { /* Best effort; the live list is already updated. */ }
+}
+
+/** Called after a confirmed server archive/delete, so offline lists cannot
+ *  resurrect an Individual entry that has already been removed. */
+export async function removeIndividualEntryFromCache(userId: string, bookId: string) {
+  states.group.setState(prev => ({ ...prev, list: prev.list.filter(g => g.id !== bookId || !isIndividualGroup(g)) }));
+  states.book.setState(prev => ({ ...prev, list: prev.list.filter(b => b.id !== bookId) }));
+  try {
+    const [groups, books] = await Promise.all([cacheService.getGroupsList(userId), cacheService.getBooksList(userId)]);
+    if (groups) await cacheService.saveGroupsList(userId, (groups as Group[]).filter(g => g.id !== bookId || !isIndividualGroup(g)));
+    if (books) await cacheService.saveBooksList(userId, (books as Book[]).filter(b => b.id !== bookId));
+  } catch { /* best effort */ }
+}
+
 export async function queueCreateBook(
   userId: string,
   args: CreateBookArgs,
@@ -2214,6 +2370,7 @@ export async function queueCreateBook(
   };
   await enqueue("CREATE_BOOK", payload);
   await injectPendingBook(userId, optimistic);
+  await touchIndividualActivityOptimistic(optimistic.id, userId);
 }
 
 export async function queueUpdateBook(
@@ -2227,10 +2384,13 @@ export async function queueUpdateBook(
     category: args.category,
     currency: args.currency,
     default_expense_currency: args.default_expense_currency,
-    budget: args.budget,
-    budget_period: args.budget_period,
+    ...(args.budget !== undefined ? { budget: args.budget } : {}),
+    ...(args.budget_period !== undefined
+      ? { budget_period: args.budget_period }
+      : {}),
     group_id: args.group_id
   });
+  await touchIndividualActivityOptimistic(bookId, userId);
 }
 
 export async function queueSetBookArchived(
@@ -2244,6 +2404,7 @@ export async function queueSetBookArchived(
   } as SetBookArchivedPayload);
   // Archiving removes the book from the active list; the screen already updates
   // live state, so here we only keep the cached active snapshot in step.
+  await touchIndividualActivityOptimistic(bookId, userId, archived);
   if (archived) await setBookArchivedInCache(userId, bookId);
 }
 
@@ -2261,6 +2422,7 @@ export async function queueAddPersonalExpense(
   };
   await enqueue("ADD_PERSONAL_EXPENSE", payload);
   await injectPendingBookExpense(bookId, optimistic);
+  await touchIndividualActivityOptimistic(bookId);
 }
 
 export async function queueUpdatePersonalExpense(
@@ -2286,6 +2448,7 @@ export async function queueUpdatePersonalExpense(
     oldCurrency,
     oldStatus
   );
+  await touchIndividualActivityOptimistic(bookId);
 }
 
 export async function queueDeletePersonalExpense(
@@ -2300,6 +2463,7 @@ export async function queueDeletePersonalExpense(
     expenseId
   } as DeletePersonalExpensePayload);
   await removeBookExpenseOptimistic(bookId, expenseId, amount, currency, status);
+  await touchIndividualActivityOptimistic(bookId);
 }
 
 export async function queueSetPersonalExpenseStatus(
@@ -2313,6 +2477,7 @@ export async function queueSetPersonalExpenseStatus(
     status
   } as TogglePersonalExpenseStatusPayload);
   await setBookExpenseStatusOptimistic(bookId, expenseId, status);
+  await touchIndividualActivityOptimistic(bookId);
 }
 
 export const _internal = {

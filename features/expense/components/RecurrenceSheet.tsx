@@ -44,7 +44,7 @@ const FREQUENCIES: { label: string; value: RecurrenceFrequency }[] = [
 
 const END_TYPES: { label: string; value: RecurrenceEndType }[] = [
   { label: "Never", value: RecurrenceEndType.NEVER },
-  { label: "On date", value: RecurrenceEndType.ON_DATE },
+  { label: "On Date", value: RecurrenceEndType.ON_DATE },
   { label: "After…", value: RecurrenceEndType.AFTER_COUNT }
 ];
 
@@ -189,7 +189,7 @@ export default function RecurrenceSheet({
 
           {/* Interval */}
           <FormInput
-            label="Repeat every"
+            label="Repeat Every"
             placeholder="1"
             keyboardType="number-pad"
             value={interval ? String(interval) : ""}
@@ -275,14 +275,14 @@ export default function RecurrenceSheet({
               <Text className="text-lg" numberOfLines={1}>
                 {draft.end_date
                   ? format(draft.end_date, "MMMM dd, yyyy")
-                  : "Select end date"}
+                  : "Select End Date"}
               </Text>
             </SelectField>
           )}
 
           {draft.end_type === RecurrenceEndType.AFTER_COUNT && (
             <FormInput
-              label="Number of times"
+              label="Number of Times"
               placeholder="12"
               keyboardType="number-pad"
               value={countText}

@@ -8,6 +8,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import AuthLayout from "@/layouts/AuthLayout";
 import services from "@/services";
 import { getPrimaryHex } from "@/utils/getColorHex";
+import { successHaptic } from "@/utils/haptics";
 import { useRouter } from "expo-router";
 import { MailCheck } from "lucide-react-native";
 import { useState } from "react";
@@ -39,6 +40,7 @@ export default function ForgotPasswordScreen() {
     try {
       await services.auth.resetPassword(email.trim());
       setSent(true);
+      void successHaptic();
     } catch {
       toast({
         title: "Request Failed",
@@ -53,11 +55,11 @@ export default function ForgotPasswordScreen() {
   if (sent) {
     return (
       <AuthLayout
-        title="Check your email"
+        title="Check Your Email"
         subtitle={`We sent a password reset link to ${email.trim()}`}
         footer={
           <FormButton
-            icon={<Icon as="chevron-left" className="text-primary-400" />}
+            icon={<Icon as="chevron-left" className={colorScheme === "dark" ? "text-primary-600" : "text-primary-400"} />}
             variant="outline"
             text="Back to Login"
             onPress={() => router.replace("/(auth)/login")}
@@ -94,7 +96,7 @@ export default function ForgotPasswordScreen() {
       footer={
         <FormButton
           icon={
-            <Icon as="chevron-left" className="text-primary-400 -ml-2 -mr-1" />
+            <Icon as="chevron-left" className={`${colorScheme === "dark" ? "text-primary-600" : "text-primary-400"} -ml-2 -mr-1`} />
           }
           variant="outline"
           text="Back to Login"

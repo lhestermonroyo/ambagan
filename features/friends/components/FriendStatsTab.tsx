@@ -1,6 +1,7 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
-import { SettlementListSkeleton } from "@/components/SkeletonLoader";
+import { FriendStatsSkeleton } from "@/components/SkeletonLoader";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import { Box } from "@/components/ui/box";
 import { Card } from "@/components/ui/card";
@@ -25,20 +26,23 @@ import { EmptyType } from "@/types/general";
 import { groupByCurrency } from "@/utils/currency";
 import { exportFriendSettlementsAsCsv } from "@/utils/exportCsv";
 import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getOnSolidHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { ChevronDown, Download } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useColorScheme } from "react-native";
 
 export default function FriendStatsTab({
   userId,
   friendId,
-  friendName
+  friendName,
+  refreshToken = "0"
 }: {
   userId: string;
   friendId: string;
   friendName: string;
+  refreshToken?: string;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const colorScheme = useColorScheme() ?? "light";
   const toast = useAppToast();
   const { details: userDetails } = states.user();
@@ -48,6 +52,7 @@ export default function FriendStatsTab({
   const fx = useFxRates();
 
   const [loading, setLoading] = useState(true);
+  const loadedRef = useRef(false);
   const [settlements, setSettlements] = useState<PaymentPreview[]>([]);
   const [dateRange, setDateRange] = useState<DateRangeOption>("All");
   const [customRange, setCustomRange] = useState<CustomDateRange | null>(null);
@@ -60,15 +65,17 @@ export default function FriendStatsTab({
   // ledger once here (all statuses) and derive everything from it.
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    if (!loadedRef.current) setLoading(true);
     services.friend
       .getFriendSettlements(userId, friendId)
       .then((data) => {
-        if (!cancelled) setSettlements(data);
+        if (!cancelled) {
+          setSettlements(data);
+          loadedRef.current = true;
+        }
       })
       .catch((error) => {
         console.error("Failed to load friend stats:", error);
-        if (!cancelled) setSettlements([]);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -76,7 +83,7 @@ export default function FriendStatsTab({
     return () => {
       cancelled = true;
     };
-  }, [userId, friendId]);
+  }, [userId, friendId, refreshToken]);
 
   const { start: cutoff, end: until } = useMemo(
     () => getDateRangeBounds(dateRange, customRange),
@@ -197,7 +204,7 @@ export default function FriendStatsTab({
 
       if (payments.length === 0) {
         toast({
-          title: "No data",
+          title: "No Data",
           description: "No settlements found for the selected date range.",
           type: "info"
         });
@@ -208,7 +215,7 @@ export default function FriendStatsTab({
     } catch (error) {
       console.error("Export failed:", error);
       toast({
-        title: "Export failed",
+        title: "Export Failed",
         description: "Could not export settlements. Please try again.",
         type: "error"
       });
@@ -218,21 +225,17 @@ export default function FriendStatsTab({
   };
 
   if (loading) {
-    return (
-      <VStack className="pt-2">
-        <SettlementListSkeleton />
-      </VStack>
-    );
+    return <FriendStatsSkeleton />;
   }
 
-  if (settlements.length === 0) {
+  if (previewEmpty || settlements.length === 0) {
     return (
       <VStack className="pt-6">
         {/* Same reason as the Settlements tab: the type's default copy names a
             group, which this screen isn't. */}
         <EmptyList
           type={EmptyType.SETTLEMENT_ALL}
-          content="No settlements with this friend yet."
+          content="Share a group expense with this friend to see your totals here."
         />
       </VStack>
     );
@@ -265,7 +268,7 @@ export default function FriendStatsTab({
             iconEnd={
               <ChevronDown
                 size={16}
-                color={getPrimaryHex("text-primary-500", colorScheme)}
+                color={getOnOutlineHex(colorScheme)}
               />
             }
             onPress={() => setDateRangeSheetOpen(true)}
@@ -275,7 +278,7 @@ export default function FriendStatsTab({
         {filtered.length === 0 ? (
           <EmptyList
             type={EmptyType.SETTLEMENT_ALL}
-            content="No settlements with this friend in the selected date range."
+            content="No payments in this date range. Try a different range."
           />
         ) : (
           <VStack className="px-4 gap-y-4">
@@ -468,7 +471,7 @@ export default function FriendStatsTab({
                 icon={
                   <Download
                     size={18}
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                    color={getOnSolidHex(colorScheme)}
                   />
                 }
                 loading={exporting}

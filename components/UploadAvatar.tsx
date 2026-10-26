@@ -38,7 +38,7 @@ const UploadAvatar = ({
   const openPicker = () => {
     if (!isOnline) {
       toast({
-        title: "You're offline",
+        title: "You're Offline",
         description:
           "Images can't be uploaded right now. You can still save without one.",
         type: "info"
@@ -62,7 +62,7 @@ const UploadAvatar = ({
       ) : (
         <Box
           className={cn(
-            "border-2 border-background-200 bg-background-50 rounded-full justify-center items-center h-[100] w-[100]"
+            "bg-background-50 rounded-full justify-center items-center h-[100] w-[100]"
           )}
         >
           <Upload

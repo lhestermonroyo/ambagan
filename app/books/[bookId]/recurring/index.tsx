@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import SearchDrawer from "@/components/SearchDrawer";
 import { Pressable } from "@/components/ui/pressable";
@@ -32,6 +33,7 @@ import { useColorScheme } from "react-native";
  * otherwise.
  */
 export default function BookRecurringScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const router = useRouter();
   const toast = useAppToast();
   const { isOnline } = useNetwork();
@@ -42,6 +44,7 @@ export default function BookRecurringScreen() {
   const [list, setList] = useState<PersonalRecurring[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchInput, setSearchInput] = useState("");
@@ -51,12 +54,14 @@ export default function BookRecurringScreen() {
     if (!bookId) return;
     try {
       setList(await services.bookRecurring.getPersonalRecurringByBookId(bookId));
+      setLoadFailed(false);
     } catch {
+      setLoadFailed(true);
       // Recurring reads aren't cached, so offline they simply fail — that's the
       // offline empty state, not an error worth a toast.
       if (isOnline) {
         toast({
-          title: "Couldn't load",
+          title: "Couldn't Load",
           description: "Failed to load recurring expenses. Please try again.",
           type: "error"
         });
@@ -129,6 +134,7 @@ export default function BookRecurringScreen() {
           items={list}
           loading={loading}
           isOnline={isOnline}
+          emptyContent={loadFailed && isOnline ? "Couldn't load recurring expenses. Try again." : undefined}
         />
       </ScrollView>
 
@@ -148,16 +154,18 @@ export default function BookRecurringScreen() {
           >
             <VStack className="pt-4 gap-y-2">
               <Text className="text-sm text-secondary-950 px-4" bold>
-                {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+                {previewEmpty ? 0 : filtered.length} result{previewEmpty || filtered.length !== 1 ? "s" : ""}
               </Text>
-              {filtered.length > 0 ? (
+              {!previewEmpty && filtered.length > 0 ? (
                 <BookRecurring
                   bookId={bookId}
                   items={filtered}
                   onItemPress={openFromSearch}
                 />
               ) : (
-                <EmptyList type={EmptyType.SEARCH} />
+                <EmptyList
+                  type={EmptyType.SEARCH}
+                />
               )}
             </VStack>
           </ScrollView>

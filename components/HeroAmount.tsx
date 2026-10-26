@@ -4,6 +4,7 @@ import { VStack } from "@/components/ui/vstack";
 import { AmountTextSize } from "@/features/expense/utils/amountTextSize";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { ReactNode } from "react";
+import { AmountSkeleton } from "./SkeletonLoader";
 
 /**
  * The headline band of a hero card: a small caps label over one big figure,
@@ -66,9 +67,7 @@ export default function HeroAmount({
         {labelAccessory}
       </HStack>
       {isLoading ? (
-        <Text bold className={cn(amountSize, onColor && "text-white")}>
-          —
-        </Text>
+        <AmountSkeleton size={amountSize} tone={tone} width={168} />
       ) : (
         <HStack className="items-end gap-x-2">
           <Text

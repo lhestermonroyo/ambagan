@@ -8,14 +8,17 @@ import SettlementAvatar from "@/features/expense/components/SettlementAvatar";
 import StatusBadge from "@/features/expense/components/StatusBadge";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { getSettlementDateLabel } from "@/features/expense/utils/settlementDate.util";
-import states from "@/states";
+import useUserState from "@/features/user/states/user.state";
 import { Payment, PaymentPreview } from "@/types/expenses";
+import { SettlementView } from "@/types/user";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 
 export default function SettlementItem({
   item,
   onPress,
-  highlighted = false
+  highlighted = false,
+  confirmedPaidAmount,
+  view
 }: {
   item: PaymentPreview | Payment;
   // Omit onPress for a display-only row — no press feedback and no chevron.
@@ -24,12 +27,38 @@ export default function SettlementItem({
   // Tints the row to draw the eye to it — used when deep-linked from a
   // notification so the referenced settlement is unmistakable.
   highlighted?: boolean;
+  // Optional display override. Live rows use item.confirmed_paid_amount;
+  // item.amount always stays the original debt.
+  confirmedPaidAmount?: number;
+  // Used by the example in the Settlement View picker.
+  view?: SettlementView;
 }) {
-  const { details: userDetails, settlementView } = states.user();
+  const userDetails = useUserState((state) => state.details);
+  const preferredView = useUserState((state) => state.settlementView);
+  const settlementView = view ?? preferredView;
 
   const isUserPayer = item.payer.id === userDetails?.id;
   const isUserMember = item.member.id === userDetails?.id;
   const pressable = !!onPress;
+  const paidAmount = confirmedPaidAmount ?? item.confirmed_paid_amount ?? 0;
+  const isPartiallyPaid =
+    item.status !== "settled" &&
+    Number.isFinite(item.amount) &&
+    Number.isFinite(paidAmount) &&
+    paidAmount > 0 &&
+    paidAmount < item.amount;
+  const remainingAmount = isPartiallyPaid
+    ? item.amount - paidAmount
+    : item.amount;
+  // A new request can be awaiting review on an already partially paid item.
+  // Preserve that actionable status instead of hiding it behind payment progress.
+  const displayStatus =
+    isPartiallyPaid && item.status === "pending"
+      ? "partially_paid"
+      : item.status;
+  const paidSummary = isPartiallyPaid
+    ? `${formatAmount(paidAmount, item.currency)} of ${formatAmount(item.amount, item.currency)} paid`
+    : null;
 
   // "You" when the current user is that party, otherwise their first name.
   const memberLabel = isUserMember ? "You" : `${item.member.first_name}`;
@@ -67,11 +96,40 @@ export default function SettlementItem({
         "text-lg font-medium",
         isUserMember ? "text-error-400" : undefined
       )}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.75}
     >
       {isUserMember && "-"}
-      {formatAmount(item.amount, item.currency)}
+      {formatAmount(remainingAmount, item.currency)}
+      {isPartiallyPaid && (
+        <Text className="text-sm text-secondary-950"> left</Text>
+      )}
     </Text>
   );
+
+  const paymentProgress = paidSummary ? (
+    <VStack className="gap-y-2">
+      <Text className="text-sm text-secondary-950">{paidSummary}</Text>
+      <Box
+        className="h-1 rounded-full bg-secondary-200 overflow-hidden"
+        accessible
+        accessibilityRole="progressbar"
+        accessibilityLabel="Confirmed payment progress"
+        accessibilityValue={{
+          min: 0,
+          max: item.amount,
+          now: paidAmount,
+          text: paidSummary
+        }}
+      >
+        <Box
+          className="h-full rounded-full bg-primary-500"
+          style={{ width: `${(paidAmount / item.amount) * 100}%` }}
+        />
+      </Box>
+    </VStack>
+  ) : null;
 
   let content: React.ReactNode;
 
@@ -79,7 +137,7 @@ export default function SettlementItem({
     content = (
       <HStack className="gap-x-3 items-start">
         <SettlementAvatar isPayer={isUserPayer} />
-        <VStack className="flex-1 gap-y-2">
+        <VStack className="flex-1 min-w-0 gap-y-2">
           <HStack className="gap-x-2 items-center">
             <Text
               className="text-sm text-secondary-950 uppercase flex-1"
@@ -98,29 +156,16 @@ export default function SettlementItem({
             </HStack>
           </HStack>
           <HStack className="gap-x-2 items-center">
-            <Text className="text-lg flex-1" numberOfLines={1}>
-              <Text className={cn("text-lg", isUserMember && "font-medium")}>
-                {memberLabel}
-              </Text>{" "}
-              {isUserMember ? "pay" : "pays"}{" "}
-              <Text className={cn("text-lg", isUserPayer && "font-medium")}>
-                {payerLabel}
-              </Text>
+            <Text className="text-lg flex-1 min-w-0" numberOfLines={1}>
+              {memberLabel} {isUserMember ? "pay" : "pays"} {payerLabel}
             </Text>
-            <Text
-              className={cn(
-                "text-lg font-medium",
-                isUserMember ? "text-error-400" : undefined
-              )}
-            >
-              {isUserMember && "-"}
-              {formatAmount(item.amount, item.currency)}
-            </Text>
-            <StatusBadge status={item.status} iconOnly />
+            {amount}
+            <StatusBadge status={displayStatus} iconOnly />
             {pressable && (
               <Icon as="chevron-right" className="text-secondary-950" />
             )}
           </HStack>
+          {paymentProgress}
         </VStack>
       </HStack>
     );
@@ -128,10 +173,10 @@ export default function SettlementItem({
     content = (
       <HStack className="gap-x-3 items-start">
         <SettlementAvatar isPayer={isUserPayer} />
-        <VStack className="flex-1 gap-y-2">
+        <VStack className="flex-1 min-w-0 gap-y-2">
           {header}
           <HStack className="gap-x-2 items-center">
-            <HStack className="flex-1 items-center gap-x-2">
+            <HStack className="flex-1 min-w-0 items-center gap-x-2">
               <Text
                 className={cn("text-lg shrink", isUserMember && "font-medium")}
                 numberOfLines={1}
@@ -147,11 +192,12 @@ export default function SettlementItem({
               </Text>
             </HStack>
             {amount}
-            <StatusBadge status={item.status} iconOnly />
+            <StatusBadge status={displayStatus} iconOnly />
             {pressable && (
               <Icon as="chevron-right" className="text-secondary-950" />
             )}
           </HStack>
+          {paymentProgress}
         </VStack>
       </HStack>
     );
@@ -160,7 +206,7 @@ export default function SettlementItem({
     content = (
       <HStack className="gap-x-3 items-start">
         <SettlementAvatar isPayer={isUserPayer} />
-        <VStack className="gap-y-2 flex-1">
+        <VStack className="gap-y-2 flex-1 min-w-0">
           {item.expense_description && (
             <HStack className="gap-x-4 items-center">
               <Text
@@ -181,9 +227,12 @@ export default function SettlementItem({
             </HStack>
           )}
           <HStack className="gap-x-4">
-            <VStack className="flex-1">
+            <VStack className="flex-1 min-w-0">
               <HStack className="items-center gap-x-1">
-                <Text className={cn("text-lg", isUserMember && "font-medium")}>
+                <Text
+                  className={cn("text-lg shrink", isUserMember && "font-medium")}
+                  numberOfLines={1}
+                >
                   {item.member.first_name} {item.member.last_name}
                   {isUserMember && " (You)"}
                 </Text>
@@ -197,7 +246,10 @@ export default function SettlementItem({
               </HStack>
               <Text className="text-sm text-secondary-950">pays</Text>
               <HStack className="items-center gap-x-1">
-                <Text className={cn("text-lg", isUserPayer && "font-medium")}>
+                <Text
+                  className={cn("text-lg shrink", isUserPayer && "font-medium")}
+                  numberOfLines={1}
+                >
                   {item.payer.first_name} {item.payer.last_name}
                   {isUserPayer && " (You)"}
                 </Text>
@@ -210,24 +262,19 @@ export default function SettlementItem({
                 )}
               </HStack>
             </VStack>
-            <HStack className="gap-x-2 items-center">
+            <HStack className="gap-x-2 items-center shrink-0">
               <VStack className="items-end gap-y-1">
-                <Text
-                  className={cn(
-                    "text-lg font-medium",
-                    isUserMember ? "text-error-400" : undefined
-                  )}
-                >
-                  {isUserMember && "-"}
-                  {formatAmount(item.amount, item.currency)}
-                </Text>
-                <StatusBadge status={item.status} size="md" />
+                {amount}
+                <HStack className="self-end">
+                  <StatusBadge status={displayStatus} size="md" />
+                </HStack>
               </VStack>
               {pressable && (
                 <Icon as="chevron-right" className="text-secondary-950" />
               )}
             </HStack>
           </HStack>
+          {paymentProgress}
         </VStack>
       </HStack>
     );

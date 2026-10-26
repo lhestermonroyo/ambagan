@@ -21,6 +21,7 @@ import { CircleIcon } from "lucide-react-native";
 export const statusOptions = [
   "All",
   "Pending",
+  "Partially Paid",
   "Requested",
   "Settled"
 ] as const;
@@ -30,12 +31,14 @@ export default function StatusSheet({
   isOpen,
   onClose,
   status,
-  onSelect
+  onSelect,
+  showPartiallyPaid = false
 }: {
   isOpen: boolean;
   onClose: () => void;
   status: SettlementStatus;
   onSelect: (s: SettlementStatus) => void;
+  showPartiallyPaid?: boolean;
 }) {
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose}>
@@ -56,7 +59,9 @@ export default function StatusSheet({
             }}
           >
             <FlatList
-              data={statusOptions}
+              data={showPartiallyPaid
+                ? statusOptions
+                : statusOptions.filter((option) => option !== "Partially Paid")}
               keyExtractor={(item) => item}
               scrollEnabled={false}
               renderItem={({ item: option }) => (

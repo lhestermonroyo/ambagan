@@ -1,4 +1,6 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
+import ConfirmationHeader from "@/components/ConfirmationHeader";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import LoadingWrapper from "@/components/LoadingWrapper";
@@ -28,12 +30,13 @@ import services from "@/services";
 import states from "@/states";
 import { Payment } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
-import { Member } from "@/types/groups";
+import { GroupRole, Member } from "@/types/groups";
+import { isGroupOwner } from "@/features/group/utils/groupRoles";
 import { getErrorHex, getPrimaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { getUserSubtitle } from "@/utils/userDisplay";
-import { AlertTriangle, CircleIcon } from "lucide-react-native";
-import { Fragment, useEffect, useState } from "react";
+import { AlertTriangle, CircleIcon, LogOut, Trash2 } from "lucide-react-native";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
 export default function LeaveGroupSheet({
@@ -45,6 +48,7 @@ export default function LeaveGroupSheet({
   onClose: () => void;
   onLeave: (groupDeleted: boolean) => void;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const { details: groupDetails, memberList } = states.group.getState();
   const { details: userDetails } = states.user();
   const colorScheme = useColorScheme() ?? "light";
@@ -56,9 +60,23 @@ export default function LeaveGroupSheet({
 
   const toast = useAppToast();
 
-  const isAdmin = groupDetails?.admin.id === userDetails?.id;
-  const otherMembers = memberList.filter((m) => m.id !== userDetails?.id);
-  const isSoleAdmin = isAdmin && otherMembers.length === 0;
+  // Only the OWNER has to hand the group over. A co-admin leaving is an
+  // ordinary departure — the group keeps its owner and its other admins.
+  const isOwner = isGroupOwner(groupDetails, userDetails?.id);
+  // Existing admins first: they already manage the group, so they're the
+  // natural successors to offer at the top of the transfer list.
+  const otherMembers = useMemo(
+    () =>
+      memberList
+        .filter((m) => m.id !== userDetails?.id)
+        .sort(
+          (a, b) =>
+            Number(b.role === GroupRole.ADMIN) -
+            Number(a.role === GroupRole.ADMIN)
+        ),
+    [memberList, userDetails?.id]
+  );
+  const isSoleMember = isOwner && otherMembers.length === 0;
 
   useEffect(() => {
     if (isOpen && groupDetails?.id && userDetails?.id) {
@@ -94,7 +112,7 @@ export default function LeaveGroupSheet({
     // needs a live connection, so it isn't supported offline.
     if (!(await offlineQueue.isOnline())) {
       toast({
-        title: "You're offline",
+        title: "You're Offline",
         description: "Leaving a group requires an internet connection.",
         type: "error"
       });
@@ -128,9 +146,9 @@ export default function LeaveGroupSheet({
   };
 
   const hasUnsettled = unsettledPayments.length > 0;
-  const adminNeedsSelection = isAdmin && !isSoleAdmin && !selectedNewAdmin;
+  const adminNeedsSelection = isOwner && !isSoleMember && !selectedNewAdmin;
   const canLeave = !fetching && !hasUnsettled && !adminNeedsSelection;
-  const snapPoints = hasUnsettled || (isAdmin && !isSoleAdmin) ? [90] : [30];
+  const snapPoints = hasUnsettled || (isOwner && !isSoleMember) ? [90] : [30];
 
   return (
     <Actionsheet isOpen={isOpen} onClose={onClose} snapPoints={snapPoints}>
@@ -140,23 +158,22 @@ export default function LeaveGroupSheet({
           <ActionsheetDragIndicator />
         </ActionsheetDragIndicatorWrapper>
         <VStack className="w-full flex-1">
-          <VStack className="p-4">
-            <Text bold className="text-xl">
-              Leave Group
-            </Text>
-          </VStack>
           <ScrollView className="flex-1">
+            <ConfirmationHeader title="Leave Group" icon={isSoleMember ? Trash2 : LogOut} destructive />
             <VStack className="gap-y-4">
               <LoadingWrapper isLoading={fetching}>
                 {hasUnsettled ? (
                   <Fragment>
                     <HStack className="bg-error-50 rounded-xl gap-x-4 p-4 mx-4 items-start">
                       <AlertTriangle
-                        color={getErrorHex("text-error-600", colorScheme)}
+                        color={getErrorHex(
+                          colorScheme === "dark" ? "text-error-800" : "text-error-600",
+                          colorScheme
+                        )}
                       />
-                      <Text className="text-error-600 flex-1">
+                      <Text className="text-error-600 flex-1 dark:text-error-800">
                         You have{" "}
-                        <Text bold className="text-error-600">
+                        <Text bold className="text-error-600 dark:text-error-800">
                           {unsettledPayments.length} unsettled{" "}
                           {unsettledPayments.length === 1
                             ? "payment"
@@ -179,34 +196,40 @@ export default function LeaveGroupSheet({
                       )}
                     />
                   </Fragment>
-                ) : isSoleAdmin ? (
+                ) : isSoleMember ? (
                   <HStack className="bg-primary-50 rounded-xl gap-x-3 p-4 items-start">
                     <AlertTriangle
-                      color={getPrimaryHex("text-primary-600", colorScheme)}
+                      color={getPrimaryHex(
+                        colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                        colorScheme
+                      )}
                     />
-                    <Text className="text-primary-600 flex-1">
+                    <Text className="text-primary-600 flex-1 dark:text-primary-800">
                       You are the only member. Leaving will{" "}
-                      <Text bold className="text-primary-600">
+                      <Text bold className="text-primary-600 dark:text-primary-800">
                         permanently delete this group
                       </Text>{" "}
                       and all its data.
                     </Text>
                   </HStack>
-                ) : isAdmin ? (
+                ) : isOwner ? (
                   <VStack className="px-4 gap-y-4">
                     <HStack className="bg-primary-50 rounded-xl gap-x-3 p-4 items-start">
                       <AlertTriangle
                         size={18}
-                        color={getPrimaryHex("text-primary-600", colorScheme)}
+                        color={getPrimaryHex(
+                          colorScheme === "dark" ? "text-primary-800" : "text-primary-600",
+                          colorScheme
+                        )}
                       />
-                      <Text className="text-primary-600 flex-1">
-                        You are the group admin. Select a member to transfer
-                        admin to before leaving.
+                      <Text className="text-primary-600 flex-1 dark:text-primary-800">
+                        You own this group. Pick who takes over as owner
+                        before you leave.
                       </Text>
                     </HStack>
 
                     <VStack className="gap-y-1">
-                      <Text className="font-medium">Transfer admin to</Text>
+                      <Text className="font-medium">Transfer Ownership to</Text>
                       <RadioGroup
                         value={selectedNewAdmin?.id ?? ""}
                         onChange={(id) => {
@@ -217,7 +240,7 @@ export default function LeaveGroupSheet({
                         <FlatList
                           className="rounded-xl overflow-hidden"
                           scrollEnabled={false}
-                          data={otherMembers}
+                          data={previewEmpty ? [] : otherMembers}
                           keyExtractor={(item) => item.id}
                           renderItem={({ item: member }) => (
                             <Radio
@@ -236,7 +259,9 @@ export default function LeaveGroupSheet({
                                     {member.first_name} {member.last_name}
                                   </Text>
                                   <Text className="text-secondary-950 text-sm">
-                                    {getUserSubtitle(member)}
+                                    {member.role === GroupRole.ADMIN
+                                      ? "Admin"
+                                      : getUserSubtitle(member)}
                                   </Text>
                                 </VStack>
                               </HStack>
@@ -251,7 +276,10 @@ export default function LeaveGroupSheet({
                             </Box>
                           )}
                           ListEmptyComponent={() => (
-                            <EmptyList type={EmptyType.MEMBER} />
+                            <EmptyList
+                              type={EmptyType.MEMBER}
+                              content="No one to transfer ownership to. Add another member before leaving."
+                            />
                           )}
                         />
                       </RadioGroup>
@@ -281,7 +309,7 @@ export default function LeaveGroupSheet({
                 <FormButton
                   className="flex-1"
                   action="negative"
-                  text={isSoleAdmin ? "Delete Group" : "Leave Group"}
+                  text={isSoleMember ? "Delete Group" : "Leave Group"}
                   loading={loading}
                   disabled={!canLeave}
                   onPress={handleLeave}

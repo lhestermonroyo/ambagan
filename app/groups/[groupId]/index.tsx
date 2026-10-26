@@ -12,7 +12,11 @@ import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
 import ProBadge from "@/components/ProBadge";
 import SearchInput from "@/components/SearchInput";
-import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import {
+  ContainerDetailsSkeleton,
+  ContainerHeaderSkeleton,
+  ContainerTabsSkeleton
+} from "@/components/SkeletonLoader";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
@@ -29,7 +33,9 @@ import CategorySheet, {
   categoryFilterOptions,
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
+import { useExpenseEmptyActions } from "@/features/expense/hooks/useExpenseEmptyActions";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
+import { groupSettlementBalancesByCurrency as groupByCurrency } from "@/features/expense/utils/settlementPayments.util";
 import DateRangeSheet, {
   CustomDateRange,
   DateRangeOption,
@@ -39,13 +45,17 @@ import DateRangeSheet, {
 } from "@/features/group/components/DateRangeSheet";
 import DeleteGroupSheet from "@/features/group/components/DeleteGroupSheet";
 import GroupDetailsTab from "@/features/group/components/GroupDetailsTab";
+import GroupMembersTab from "@/features/group/components/GroupMembersTab";
 import GroupSettlements from "@/features/group/components/GroupSettlements";
 import GroupStatsTab from "@/features/group/components/GroupStatsTab";
 import LeaveGroupSheet from "@/features/group/components/LeaveGroupSheet";
 import PayerSheet, {
   PayerOption
 } from "@/features/group/components/PayerSheet";
+import { isGroupAdmin, isGroupOwner } from "@/features/group/utils/groupRoles";
+import useUserStore from "@/features/user/states/user.state";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
@@ -53,10 +63,14 @@ import states from "@/states";
 import { ExpensePreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
-import { groupByCurrency } from "@/utils/currency";
-import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
+import { formatLastUpdate, getDateGroupTitle } from "@/utils/formatDate";
 import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import {
+  getOnOutlineHex,
+  getOnSolidHex,
+  getPrimaryHex,
+  getSecondaryHex
+} from "@/utils/getColorHex";
 import { differenceInDays, format, parseISO } from "date-fns";
 import {
   Stack,
@@ -69,6 +83,7 @@ import {
   ArchiveRestore,
   CalendarRange,
   ChevronDown,
+  LayoutList,
   ListPlus,
   LogOut,
   Pencil,
@@ -82,6 +97,7 @@ import {
   X
 } from "lucide-react-native";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { createRefreshGate, dataRevision, invalidateData } from "@/utils/dataRefresh";
 import {
   Animated,
   LayoutAnimation,
@@ -102,10 +118,15 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const tabs = ["Settlements", "Expenses", "Stats", "Info"] as const;
+const tabs = ["Settlements", "Expenses", "Stats", "Members", "Info"] as const;
+const EMPTY_LIST: never[] = [];
 
 export default function GroupDetailsScreen() {
-  const [loading, setLoading] = useState(false);
+  const params = useLocalSearchParams();
+  const groupId = params.groupId as string | undefined;
+  const previewEmpty = useEmptyStatePreview();
+  const [fetchingDetails, setLoading] = useState(false);
+  const [settlementsLoading, setSettlementsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [settlementRefreshTrigger, setSettlementRefreshTrigger] = useState(0);
   const [recurringRefreshTrigger, setRecurringRefreshTrigger] = useState(0);
@@ -116,6 +137,8 @@ export default function GroupDetailsScreen() {
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const [tab, setTab] = useState<(typeof tabs)[number]>("Settlements");
+  const detailsRefreshGate = useRef(createRefreshGate()).current;
+  const recurringRefreshGate = useRef(createRefreshGate()).current;
 
   // Expenses tab filters, mirroring the Settlements tab: a payer pill that opens
   // a bottom sheet, plus search + category + date-range icon buttons. Search
@@ -136,19 +159,37 @@ export default function GroupDetailsScreen() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const {
-    details: groupDetails,
-    expenseList,
-    settlementList,
-    memberList
+    details: storedGroupDetails,
+    expenseList: storedExpenseList,
+    settlementList: storedSettlementList,
+    memberList: storedMemberList,
+    list: groupList,
+    headerPreview
   } = states.group();
-  const { details: userDetails } = states.user();
+  const groupDetails =
+    storedGroupDetails?.id === groupId ? storedGroupDetails : null;
+  const groupHeader =
+    groupDetails ??
+    (headerPreview?.id === groupId ? headerPreview : null) ??
+    groupList.find((group) => group.id === groupId);
+  const expenseList = groupDetails ? storedExpenseList : EMPTY_LIST;
+  const settlementList = useMemo(
+    () => storedSettlementList.filter((payment) => payment.group_id === groupId),
+    [storedSettlementList, groupId]
+  );
+  const memberList = groupDetails ? storedMemberList : EMPTY_LIST;
+  const loading = fetchingDetails || !groupDetails;
+  const headerExpenseCount = groupDetails
+    ? expenseList.length
+    : groupHeader?.expense_count ?? 0;
+  const { details: userDetails, settlementView } = useUserStore();
 
   const isPro = userDetails?.plan === "pro";
 
   // This group's own home currency drives which balance line surfaces first (a
   // JPY trip group shows JPY first). Falls back to the app's home currency
   // until the group detail loads / for legacy rows.
-  const primaryCurrency = groupDetails?.currency ?? BASE_CURRENCY;
+  const primaryCurrency = groupHeader?.currency ?? BASE_CURRENCY;
 
   // A split needs at least two people, so expenses are gated until the group
   // has a second member (joined via invite, or added as a phone contact).
@@ -213,8 +254,10 @@ export default function GroupDetailsScreen() {
     outputRange: [-16, 0],
     extrapolate: "clamp"
   });
-  const params = useLocalSearchParams();
-  const groupId = params.groupId as string | undefined;
+  const expenseEmptyActions = useExpenseEmptyActions({
+    groupId,
+    onViewMembers: () => setTab("Members")
+  });
 
   useEffect(() => {
     const incoming = params.tab as (typeof tabs)[number] | undefined;
@@ -240,7 +283,8 @@ export default function GroupDetailsScreen() {
         // call init(), find the group gone, and fire a second router.replace,
         // triggering the back-to-groups animation twice.
         const initialized = states.group.getState().details?.id === groupId;
-        init(groupId, initialized);
+        void detailsRefreshGate.run(groupId, dataRevision("groupDetails"),
+          () => init(groupId, initialized), !initialized);
       },
       [groupId]
     )
@@ -253,12 +297,12 @@ export default function GroupDetailsScreen() {
     useMemo(
       () => () => {
         if (!groupId) return;
-        services.expense
+        void recurringRefreshGate.run(groupId, `${dataRevision("recurring")}:${recurringRefreshTrigger}`, () => services.expense
           .getRecurringByGroupId(groupId)
           .then((list) =>
             setActiveRecurringCount(list.filter((r) => r.is_active).length)
           )
-          .catch(() => setActiveRecurringCount(0));
+          .catch(() => setActiveRecurringCount(0)));
       },
       [groupId, recurringRefreshTrigger]
     )
@@ -321,9 +365,10 @@ export default function GroupDetailsScreen() {
   const handleRefresh = async () => {
     if (!groupId) return;
     setRefreshing(true);
+    invalidateData("groups", "groupDetails", "settlements", "recurring");
     setSettlementRefreshTrigger((prev) => prev + 1);
     setRecurringRefreshTrigger((prev) => prev + 1);
-    await init(groupId, true);
+    await detailsRefreshGate.run(groupId, dataRevision("groupDetails"), () => init(groupId, true), true);
     setRefreshing(false);
   };
 
@@ -336,7 +381,7 @@ export default function GroupDetailsScreen() {
         details: prev.details ? { ...prev.details, archived: false } : null
       }));
       toast({
-        title: "Group restored",
+        title: "Group Restored",
         description: "Group has been moved back to your active groups.",
         type: "success"
       });
@@ -467,10 +512,15 @@ export default function GroupDetailsScreen() {
     return [draftSection, ...dateSections];
   }, [filteredExpenseList]);
 
-  const isAdmin = groupDetails?.admin.id === userDetails?.id;
+  // Two levels, and the gates below split on which one an action needs:
+  // an admin (owner or co-admin) manages members and the invite link, while
+  // editing, archiving and deleting the group stay with the owner.
+  const isAdmin = isGroupAdmin(groupDetails, memberList, userDetails?.id);
+  const isOwner = isGroupOwner(groupDetails, userDetails?.id);
 
   const shouldSuggestArchive = useMemo(() => {
-    if (!isAdmin || !groupDetails || groupDetails.archived || loading)
+    // Archiving is the owner's call, so only nudge them.
+    if (!isOwner || !groupDetails || groupDetails.archived || loading)
       return false;
     if (expenseList.length === 0) return false;
 
@@ -488,7 +538,7 @@ export default function GroupDetailsScreen() {
 
     const lastActivity = new Date(Math.max(...dates.map((d) => d.getTime())));
     return differenceInDays(new Date(), lastActivity) >= 30;
-  }, [isAdmin, groupDetails, loading, expenseList, settlementList]);
+  }, [isOwner, groupDetails, loading, expenseList, settlementList]);
 
   const handleArchiveGroup = async () => {
     setArchiving(true);
@@ -503,7 +553,7 @@ export default function GroupDetailsScreen() {
         settlementList: []
       }));
       toast({
-        title: "Group archived",
+        title: "Group Archived",
         description: "You can find it in the Archived tab.",
         type: "success"
       });
@@ -530,7 +580,7 @@ export default function GroupDetailsScreen() {
       settlementList: []
     }));
     toast({
-      title: "Group deleted",
+      title: "Group Deleted",
       description: "The group has been permanently deleted.",
       type: "success"
     });
@@ -542,9 +592,9 @@ export default function GroupDetailsScreen() {
   const ensureCanAddExpense = () => {
     if (!canAddExpense) {
       toast({
-        title: "Add a member first",
+        title: "Add a Member First",
         description:
-          "A group needs at least two members before you can add an expense. Add someone from Group Info → Edit Members.",
+          "A group needs at least two members before you can add an expense. Add someone from the group's Members tab.",
         type: "info"
       });
       return false;
@@ -566,7 +616,7 @@ export default function GroupDetailsScreen() {
 
     const iconColor = getSecondaryHex("text-secondary-950", colorScheme);
 
-    const menuItems: AndroidHeaderMenuItem[] = isAdmin
+    const menuItems: AndroidHeaderMenuItem[] = isOwner
       ? [
           ...(!groupDetails?.archived
             ? [
@@ -642,79 +692,79 @@ export default function GroupDetailsScreen() {
         onBack={handleBack}
         gestureEnabled={false}
         actions={
-          loading ? undefined : isAdmin ? (
-            [
-              !groupDetails?.archived && groupDetails?.invite_token ? (
-                <Stack.Toolbar.Button
-                  key="share"
-                  icon="square.and.arrow.up"
+          // One array, always — a fragment here is silently dropped by the
+          // native toolbar. Share is admin-level (owner or co-admin); Edit /
+          // Archive / Delete stay owner-only, so a co-admin's menu is just
+          // "Leave Group", same as any member's.
+          loading
+            ? undefined
+            : [
+                isAdmin &&
+                !groupDetails?.archived &&
+                groupDetails?.invite_token ? (
+                  <Stack.Toolbar.Button
+                    key="share"
+                    icon="square.and.arrow.up"
+                    tintColor={getSecondaryHex(
+                      "text-secondary-950",
+                      colorScheme
+                    )}
+                    accessibilityLabel="Share group invite"
+                    onPress={() => router.push(`/groups/${groupId}/share`)}
+                  />
+                ) : null,
+                <Stack.Toolbar.Menu
+                  key="menu"
+                  icon="ellipsis"
                   tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
-                  accessibilityLabel="Share group invite"
-                  onPress={() => router.push(`/groups/${groupId}/share`)}
-                />
-              ) : null,
-              <Stack.Toolbar.Menu
-                key="menu"
-                icon="ellipsis"
-                tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
-                accessibilityLabel="More group options"
-              >
-                {!groupDetails?.archived && (
-                  <Stack.Toolbar.MenuAction
-                    icon="pencil"
-                    onPress={() => router.push(`/groups/${groupId}/edit`)}
-                  >
-                    Edit
-                  </Stack.Toolbar.MenuAction>
-                )}
-                <Stack.Toolbar.MenuAction
-                  icon="rectangle.portrait.and.arrow.right"
-                  onPress={() => setLeaveSheetOpen(true)}
+                  accessibilityLabel="More group options"
                 >
-                  Leave Group
-                </Stack.Toolbar.MenuAction>
-                {groupDetails?.archived ? (
+                  {isOwner && !groupDetails?.archived && (
+                    <Stack.Toolbar.MenuAction
+                      icon="pencil"
+                      onPress={() => router.push(`/groups/${groupId}/edit`)}
+                    >
+                      Edit
+                    </Stack.Toolbar.MenuAction>
+                  )}
                   <Stack.Toolbar.MenuAction
-                    icon="tray.and.arrow.up"
-                    onPress={handleUnarchiveGroup}
+                    icon="rectangle.portrait.and.arrow.right"
+                    onPress={() => setLeaveSheetOpen(true)}
                   >
-                    Unarchive
+                    Leave Group
                   </Stack.Toolbar.MenuAction>
-                ) : (
-                  <Stack.Toolbar.MenuAction
-                    icon="archivebox"
-                    onPress={handleArchiveGroup}
-                  >
-                    Archive
-                  </Stack.Toolbar.MenuAction>
-                )}
-                <Stack.Toolbar.MenuAction
-                  icon="trash"
-                  destructive
-                  onPress={() => setDeleteSheetOpen(true)}
-                >
-                  Delete Group
-                </Stack.Toolbar.MenuAction>
-              </Stack.Toolbar.Menu>
-            ]
-          ) : (
-            <Stack.Toolbar.Menu
-              icon="ellipsis"
-              tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
-              accessibilityLabel="More group options"
-            >
-              <Stack.Toolbar.MenuAction
-                icon="rectangle.portrait.and.arrow.right"
-                onPress={() => setLeaveSheetOpen(true)}
-              >
-                Leave Group
-              </Stack.Toolbar.MenuAction>
-            </Stack.Toolbar.Menu>
-          )
+                  {isOwner &&
+                    (groupDetails?.archived ? (
+                      <Stack.Toolbar.MenuAction
+                        icon="tray.and.arrow.up"
+                        onPress={handleUnarchiveGroup}
+                      >
+                        Unarchive
+                      </Stack.Toolbar.MenuAction>
+                    ) : (
+                      <Stack.Toolbar.MenuAction
+                        icon="archivebox"
+                        onPress={handleArchiveGroup}
+                      >
+                        Archive
+                      </Stack.Toolbar.MenuAction>
+                    ))}
+                  {isOwner && (
+                    <Stack.Toolbar.MenuAction
+                      icon="trash"
+                      destructive
+                      onPress={() => setDeleteSheetOpen(true)}
+                    >
+                      Delete Group
+                    </Stack.Toolbar.MenuAction>
+                  )}
+                </Stack.Toolbar.Menu>
+              ]
         }
         androidActions={renderGroupAndroidActions()}
       >
-        {(tab === "Expenses" || tab === "Settlements") &&
+        {!loading &&
+          (tab === "Expenses" || tab === "Settlements") &&
           !groupDetails?.archived && (
             <>
               {/* Speed-dial rendered in a Modal so its dim masks the WHOLE
@@ -825,57 +875,57 @@ export default function GroupDetailsScreen() {
                   onPress={handleFabPress}
                 >
                   {fabOpen ? (
-                    <X
-                      size={24}
-                      color={getSecondaryHex("text-secondary-0", colorScheme)}
-                    />
+                    <X size={24} color={getOnSolidHex(colorScheme)} />
                   ) : (
-                    <Plus
-                      size={24}
-                      color={getSecondaryHex("text-secondary-0", colorScheme)}
-                    />
+                    <Plus size={24} color={getOnSolidHex(colorScheme)} />
                   )}
                 </Fab>
               )}
             </>
           )}
-        <LoadingWrapper isLoading={loading} skeleton={<ExpenseListSkeleton />}>
-          <ScrollView
-            className="flex-1"
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: false }
-            )}
-            scrollEventThrottle={16}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-              />
-            }
-          >
-            <VStack className="gap-y-6 py-4">
+        <ScrollView
+          className="flex-1"
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+          )}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
+          <VStack className="gap-y-6 py-4">
+            {groupHeader ? (
               <HStack className="px-4 gap-x-4 items-center">
                 <VStack>
                   <AppAvatar
                     className="self-center"
-                    uri={groupDetails?.avatar || ""}
-                    name={groupDetails?.name || "Group Avatar"}
+                    uri={groupHeader.avatar || ""}
+                    name={groupHeader.name}
                     size="lg"
                   />
                 </VStack>
-                <VStack>
+                <VStack className="flex-1">
                   <Text bold className="text-2xl" numberOfLines={3}>
-                    {groupDetails?.name}
+                    {groupHeader.name}
                   </Text>
                   <Text className="text-secondary-950">
-                    {formatDate(groupDetails?.created_at || "")} •{" "}
-                    {expenseList.length} expense
-                    {expenseList.length !== 1 ? "s" : ""}
+                    Last update{" "}
+                    {formatLastUpdate(
+                      groupHeader.last_updated_at ?? groupHeader.created_at
+                    )}{" "}
+                    • {headerExpenseCount} expense
+                    {headerExpenseCount !== 1 ? "s" : ""}
                   </Text>
                 </VStack>
               </HStack>
+            ) : (
+              <ContainerHeaderSkeleton />
+            )}
 
+            {loading || (tab === "Settlements" && settlementsLoading) ? (
+              <ContainerTabsSkeleton />
+            ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <HStack className="gap-x-2 px-4">
                   {tabs.map((type) => (
@@ -889,9 +939,11 @@ export default function GroupDetailsScreen() {
                   ))}
                 </HStack>
               </ScrollView>
-            </VStack>
+            )}
+          </VStack>
 
-            {groupDetails?.archived ? (
+          {!loading &&
+            (groupDetails?.archived ? (
               <HStack className="mx-4 mb-4 p-4 rounded-xl bg-secondary-100 gap-x-2 items-start">
                 <Archive
                   color={getPrimaryHex("text-primary-500", colorScheme)}
@@ -899,14 +951,14 @@ export default function GroupDetailsScreen() {
                 <VStack className="flex-1 gap-y-4">
                   <VStack className="gap-y-1">
                     <Text className="text-lg font-semibold">
-                      This group is archived
+                      This Group Is Archived
                     </Text>
                     <Text>
                       New expenses are disabled. Unarchive to continue adding
                       expenses.
                     </Text>
                   </VStack>
-                  {isAdmin && (
+                  {isOwner && (
                     <FormButton
                       text="Unarchive"
                       loading={archiving}
@@ -920,14 +972,19 @@ export default function GroupDetailsScreen() {
               showArchiveBanner && (
                 <HStack className="mx-4 mb-4 p-4 rounded-xl bg-primary-50 items-start gap-x-2">
                   <Archive
-                    color={getPrimaryHex("text-primary-500", colorScheme)}
+                    color={getPrimaryHex(
+                      colorScheme === "dark"
+                        ? "text-primary-800"
+                        : "text-primary-500",
+                      colorScheme
+                    )}
                   />
                   <VStack className="flex-1 gap-y-3">
                     <VStack className="gap-y-0.5">
                       <Text className="text-lg font-semibold">
-                        Ready to archive?
+                        Ready to Archive?
                       </Text>
-                      <Text className="text-sm text-secondary-950">
+                      <Text className="text-sm text-secondary-950 dark:text-typography-700">
                         All settled up with no activity for 30+ days.
                       </Text>
                     </VStack>
@@ -947,11 +1004,29 @@ export default function GroupDetailsScreen() {
                   </VStack>
                 </HStack>
               )
-            )}
+            ))}
 
-            <Box className={tab !== "Settlements" ? "hidden" : ""}>
-              <GroupSettlements refreshTrigger={settlementRefreshTrigger} />
-            </Box>
+          <Box className={tab !== "Settlements" ? "hidden" : ""}>
+            <GroupSettlements
+              key={groupId}
+              groupId={groupId}
+              currency={primaryCurrency}
+              groupLoading={loading}
+              onLoadingChange={setSettlementsLoading}
+              refreshTrigger={settlementRefreshTrigger}
+              emptyActions={loading ? [] : expenseEmptyActions}
+            />
+          </Box>
+          <LoadingWrapper
+            isLoading={loading && tab !== "Settlements"}
+            skeleton={
+              <ContainerDetailsSkeleton
+                tab={tab}
+                settlementView={settlementView}
+                showHeader={false}
+              />
+            }
+          >
             {tab === "Expenses" && (
               <VStack className="pb-2 gap-y-4">
                 <Pressable
@@ -967,7 +1042,7 @@ export default function GroupDetailsScreen() {
                       <VStack className="flex-1">
                         <HStack className="items-center gap-x-2">
                           <Text className="text-lg" bold>
-                            Recurring expenses
+                            Recurring Expenses
                           </Text>
                           {!isPro && <ProBadge />}
                         </HStack>
@@ -1004,14 +1079,11 @@ export default function GroupDetailsScreen() {
                       <FormButton
                         size="sm"
                         variant="outline"
-                        text={payerFilter === "All" ? "Everyone" : "Paid by me"}
+                        text={payerFilter === "All" ? "Everyone" : "Paid by Me"}
                         iconEnd={
                           <ChevronDown
                             size={16}
-                            color={getPrimaryHex(
-                              "text-primary-500",
-                              colorScheme
-                            )}
+                            color={getOnOutlineHex(colorScheme)}
                           />
                         }
                         onPress={() => setPayerSheetOpen(true)}
@@ -1079,7 +1151,7 @@ export default function GroupDetailsScreen() {
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
                           <Text
-                            className="text-sm text-primary-600 max-w-[160px]"
+                            className="text-sm text-primary-600 max-w-[160px] dark:text-primary-800"
                             numberOfLines={1}
                           >
                             &ldquo;{expenseSearch}&rdquo;
@@ -1087,7 +1159,9 @@ export default function GroupDetailsScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1098,13 +1172,15 @@ export default function GroupDetailsScreen() {
                           onPress={() => setCategoryFilter(ALL_CATEGORIES)}
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
-                          <Text className="text-sm text-primary-600">
+                          <Text className="text-sm text-primary-600 dark:text-primary-800">
                             {categoryFilterLabel(categoryFilter)}
                           </Text>
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1118,7 +1194,7 @@ export default function GroupDetailsScreen() {
                           }}
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
-                          <Text className="text-sm text-primary-600">
+                          <Text className="text-sm text-primary-600 dark:text-primary-800">
                             {formatDateRangeLabel(
                               expenseDateRange,
                               expenseCustomRange
@@ -1127,7 +1203,9 @@ export default function GroupDetailsScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1143,7 +1221,7 @@ export default function GroupDetailsScreen() {
                 <SectionList
                   className="flex-1"
                   scrollEnabled={false}
-                  sections={formattedExpenseList}
+                  sections={previewEmpty ? [] : formattedExpenseList}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }: { item: ExpensePreview }) => (
                     <ExpenseItem
@@ -1167,32 +1245,57 @@ export default function GroupDetailsScreen() {
                     hasActiveFilters ? (
                       <EmptyList
                         type={EmptyType.EXPENSE}
-                        content="No expenses match your filters. Try adjusting your search, payer, category, or date range."
+                        content="No expenses match these filters."
+                        actions={[
+                          {
+                            label: "View All",
+                            icon: LayoutList,
+                            onPress: () => {
+                              setExpenseSearch("");
+                              setSearchOpen(false);
+                              setPayerFilter("All");
+                              setCategoryFilter(ALL_CATEGORIES);
+                              setExpenseDateRange("All");
+                              setExpenseCustomRange(null);
+                            }
+                          }
+                        ]}
                       />
                     ) : canAddExpense ? (
-                      <EmptyList type={EmptyType.EXPENSE} />
+                      <EmptyList
+                        type={EmptyType.EXPENSE}
+                        actions={expenseEmptyActions}
+                      />
                     ) : (
                       <EmptyList
                         type={EmptyType.EXPENSE}
-                        content=" This group has no other members yet. Add members from
-                        Info → Edit Members to start splitting expenses."
+                        content="Bring your group together. Add members to start splitting expenses."
+                        actions={expenseEmptyActions}
                       />
                     )
                   }
-                  ListFooterComponent={() => <Box className="h-16" />}
+                  ListFooterComponent={
+                    previewEmpty ? null : () => <Box className="h-16" />
+                  }
                 />
               </VStack>
             )}
-            {tab === "Info" && <GroupDetailsTab />}
-            {tab === "Stats" && groupId && userDetails && (
-              <GroupStatsTab
-                groupId={groupId}
-                groupName={groupDetails?.name ?? ""}
-                userId={userDetails.id}
-              />
+            {tab === "Members" && <GroupMembersTab />}
+            {tab === "Info" && (
+              <GroupDetailsTab onViewMembers={() => setTab("Members")} />
             )}
-          </ScrollView>
-        </LoadingWrapper>
+            {groupId && userDetails && !loading && (
+              <Box className={tab !== "Stats" ? "hidden" : ""}>
+                <GroupStatsTab
+                  key={groupId}
+                  groupId={groupId}
+                  groupName={groupDetails?.name ?? ""}
+                  userId={userDetails.id}
+                />
+              </Box>
+            )}
+          </LoadingWrapper>
+        </ScrollView>
 
         {/* Compact sticky stats — Settlements tab only. Pinned just under the
             native header as an absolute overlay that fades in once the group
@@ -1320,7 +1423,7 @@ function ExpenseItem({
   expense: ExpensePreview;
   onOpen: () => void;
 }) {
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
 
   const sortedPayers = useMemo(() => {
     const list = expense.payer_list;
@@ -1374,7 +1477,7 @@ function ExpenseItem({
                   variant="solid"
                   className="rounded-full bg-warning-50 px-3"
                 >
-                  <BadgeText className="font-bold text-xs uppercase text-warning-600">
+                  <BadgeText className="font-bold text-xs uppercase text-warning-600 dark:text-warning-800">
                     Draft
                   </BadgeText>
                 </Badge>

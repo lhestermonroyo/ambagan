@@ -42,7 +42,11 @@ export default function PersonalInfoScreen() {
 
   const handleSaveAvatar = async () => {
     if (!pendingAvatar) return;
-    if (!(await ensureOnline("Updating your avatar needs an internet connection.")))
+    if (
+      !(await ensureOnline(
+        "Updating your avatar needs an internet connection."
+      ))
+    )
       return;
 
     setSavingAvatar(true);
@@ -160,7 +164,7 @@ function DetailRow({
   onPress: () => void;
 }) {
   return (
-    <PressableListItem onPress={onPress} className="bg-secondary-100 p-4">
+    <PressableListItem onPress={onPress} surface="muted" className="p-4">
       <HStack className="items-start gap-x-4 justify-between">
         <Box className="flex-1">
           <Text className="text-secondary-950">{label}</Text>

@@ -5,6 +5,7 @@ const initialState: GroupState = {
   list: [],
   initialized: false,
   details: null,
+  headerPreview: null,
   memberList: [],
   expenseList: [],
   settlementList: [],

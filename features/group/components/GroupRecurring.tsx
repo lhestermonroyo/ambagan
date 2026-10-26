@@ -1,5 +1,6 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
-import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import { RecurringListSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { VStack } from "@/components/ui/vstack";
 import RecurringItem from "@/features/expense/components/RecurringItem";
@@ -36,6 +37,7 @@ export default function GroupRecurring({
    *  drawer before navigating). */
   onItemPress?: (item: RecurringExpense) => void;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const router = useRouter();
 
   const handlePress = (item: RecurringExpense) => {
@@ -44,22 +46,18 @@ export default function GroupRecurring({
   };
 
   if (loading && items.length === 0) {
-    return (
-      <VStack className="p-4">
-        <ExpenseListSkeleton />
-      </VStack>
-    );
+    return <RecurringListSkeleton />;
   }
 
-  if (items.length === 0) {
+  if (previewEmpty || items.length === 0) {
     return (
       <EmptyList
         type={EmptyType.EXPENSE}
         content={
-          emptyContent ??
-          (isOnline
-            ? "No recurring expenses yet. Set one up from the Add Expense screen by choosing a Repeat option."
-            : "You're offline. Reconnect to view recurring expenses.")
+        emptyContent ??
+        (isOnline
+        ? "Make repeat bills easier. Add an expense and choose how often it repeats."
+        : "You're offline. Reconnect to view recurring expenses.")
         }
       />
     );

@@ -14,7 +14,7 @@ import { PrimitiveIcon, UIIcon } from '@gluestack-ui/core/icon/creator';
 const SCOPE = 'ALERT';
 
 const alertStyle = tva({
-  base: 'items-center py-3 px-4 rounded-md flex-row gap-2 border-outline-100',
+  base: 'items-center py-3 px-4 rounded-md flex-row gap-2',
 
   variants: {
     action: {
@@ -27,7 +27,7 @@ const alertStyle = tva({
 
     variant: {
       solid: '',
-      outline: 'border bg-background-0',
+      outline: 'bg-background-0',
     },
   },
 });
@@ -73,11 +73,11 @@ const alertTextStyle = tva({
   },
   parentVariants: {
     action: {
-      error: 'text-error-800',
-      warning: 'text-warning-800',
-      success: 'text-success-800',
-      info: 'text-info-800',
-      muted: 'text-background-800',
+      error: 'text-error-800 dark:text-error-900',
+      warning: 'text-warning-800 dark:text-warning-900',
+      success: 'text-success-800 dark:text-success-900',
+      info: 'text-info-800 dark:text-info-900',
+      muted: 'text-background-800 dark:text-typography-900',
     },
   },
 });
@@ -96,11 +96,11 @@ const alertIconStyle = tva({
   },
   parentVariants: {
     action: {
-      error: 'text-error-800',
-      warning: 'text-warning-800',
-      success: 'text-success-800',
-      info: 'text-info-800',
-      muted: 'text-background-800',
+      error: 'text-error-800 dark:text-error-900',
+      warning: 'text-warning-800 dark:text-warning-900',
+      success: 'text-success-800 dark:text-success-900',
+      info: 'text-info-800 dark:text-info-900',
+      muted: 'text-background-800 dark:text-typography-900',
     },
   },
 });
@@ -207,7 +207,10 @@ const AlertIcon = React.forwardRef<
       <UIAlert.Icon
         ref={ref}
         {...props}
-        className={alertIconStyle({ class: className })}
+        className={alertIconStyle({
+          parentVariants: { action: parentAction },
+          class: className,
+        })}
         size={size}
       />
     );
@@ -219,7 +222,10 @@ const AlertIcon = React.forwardRef<
       <UIAlert.Icon
         ref={ref}
         {...props}
-        className={alertIconStyle({ class: className })}
+        className={alertIconStyle({
+          parentVariants: { action: parentAction },
+          class: className,
+        })}
       />
     );
   }

@@ -33,7 +33,7 @@ const features = [
   },
   {
     icon: Receipt,
-    title: "Expenses with Receipts",
+    title: "Expenses With Receipts",
     description:
       "Log expenses with descriptions, dates, and optional proof-of-payment photo."
   },
@@ -95,17 +95,17 @@ export default function AboutScreen() {
       <ScrollView className="flex-1">
         <VStack className="gap-y-6 pb-8">
           <Box className="bg-primary-400 items-center justify-center py-10 gap-y-2">
-            <Text bold className="text-4xl text-background-0">
+            <Text bold className="text-4xl text-background-0 dark:text-white">
               ambagan
             </Text>
-            <Text className="text-background-0 opacity-80">
+            <Text className="text-background-0 dark:text-white opacity-80">
               Version {VERSION}
             </Text>
           </Box>
 
           <VStack className="px-4 gap-y-2">
             <Text bold className="text-xl">
-              What is Ambagan?
+              What Is Ambagan?
             </Text>
             <Text className="text-sm text-secondary-950 leading-relaxed">
               Ambagan is a group expense splitting app designed for Filipinos

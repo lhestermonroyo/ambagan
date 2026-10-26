@@ -1,3 +1,5 @@
+import useUserStore from "@/features/user/states/user.state";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import ApproxRateNote from "@/components/ApproxRateNote";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -23,22 +25,18 @@ import DateRangeSheet, {
   getDateRangeBounds
 } from "@/features/group/components/DateRangeSheet";
 import InnerLayout from "@/layouts/InnerLayout";
-import states from "@/states";
 import { EmptyType } from "@/types/general";
-import { getPrimaryHex } from "@/utils/getColorHex";
+import { getOnOutlineHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
 export default function AnalyticsScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
-  const { details: userDetails } = states.user();
-
-  // Below the hooks on purpose — bailing before them would change the hook
-  // count between renders the moment the user details land.
-  if (!userDetails) return null;
+  const { details: userDetails } = useUserStore();
 
   const [scope, setScope] = useState<AnalyticsScope>("all");
   const [dateRange, setDateRange] = useState<DateRangeOption>("1M");
@@ -57,13 +55,15 @@ export default function AnalyticsScreen() {
     scope
   );
 
-  const isEmpty = !data || data.expenseCount === 0;
+  const isEmpty = previewEmpty || !data || data.expenseCount === 0;
   // Fronting is a group-only idea, and a period where nothing was fronted has
   // nothing to say about it.
   const showFronting =
     !!data &&
     scope !== "personal" &&
     (data.fronted > 0 || data.frontedShare > 0);
+
+  if (!userDetails) return null;
 
   return (
     <InnerLayout title="Spending Analytics" onBack={() => router.back()}>
@@ -90,7 +90,7 @@ export default function AnalyticsScreen() {
               iconEnd={
                 <ChevronDown
                   size={16}
-                  color={getPrimaryHex("text-primary-500", colorScheme)}
+                  color={getOnOutlineHex(colorScheme)}
                 />
               }
               onPress={() => setDateRangeSheetOpen(true)}
@@ -98,7 +98,7 @@ export default function AnalyticsScreen() {
           </HStack>
 
           <LoadingWrapper isLoading={loading} skeleton={<AnalyticsSkeleton />}>
-            {error ? (
+            {error && !previewEmpty ? (
               // No cache behind this screen, so a failed read is the only thing
               // an empty state could mean — say so rather than claiming the user
               // has no expenses.
@@ -155,13 +155,15 @@ const emptyMessage = (
   const ranged = dateRange !== "All";
   if (scope === "personal") {
     return ranged
-      ? "No personal expenses in the selected date range."
-      : "No personal expenses yet. Add one in a book to see it here.";
+      ? "No Individual expenses in this date range. Clear filters to see the rest."
+      : "Track your own spending. Add an Individual expense to see your totals.";
   }
   if (scope === "groups") {
     return ranged
-      ? "No group expenses in the selected date range."
-      : "No group expenses yet.";
+      ? "No group expenses in this date range. Clear filters to see the rest."
+      : "See how your group spends. Add a shared expense to get started.";
   }
-  return ranged ? "No expenses in the selected date range." : undefined;
+  return ranged
+    ? "No expenses in this date range. Clear filters to see the rest."
+    : "Get to know your spending. Add an expense or scan a receipt.";
 };

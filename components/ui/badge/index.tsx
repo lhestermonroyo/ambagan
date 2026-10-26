@@ -40,10 +40,10 @@ const badgeTextStyle = tva({
 
   parentVariants: {
     action: {
-      error: 'text-error-600',
-      warning: 'text-warning-600',
-      success: 'text-success-600',
-      info: 'text-info-600',
+      error: 'text-error-600 dark:text-error-800',
+      warning: 'text-warning-600 dark:text-warning-800',
+      success: 'text-success-600 dark:text-success-800',
+      info: 'text-info-600 dark:text-info-800',
       muted: 'text-background-800',
     },
     size: {
@@ -81,10 +81,10 @@ const badgeIconStyle = tva({
   base: 'fill-none',
   parentVariants: {
     action: {
-      error: 'text-error-600',
-      warning: 'text-warning-600',
-      success: 'text-success-600',
-      info: 'text-info-600',
+      error: 'text-error-600 dark:text-error-800',
+      warning: 'text-warning-600 dark:text-warning-800',
+      success: 'text-success-600 dark:text-success-800',
+      info: 'text-info-600 dark:text-info-800',
       muted: 'text-background-800',
     },
     size: {
@@ -177,7 +177,10 @@ const BadgeIcon = React.forwardRef<
       <UIIcon
         ref={ref}
         {...props}
-        className={badgeIconStyle({ class: className })}
+        className={badgeIconStyle({
+          parentVariants: { action: parentAction },
+          class: className,
+        })}
         size={size}
       />
     );
@@ -189,7 +192,10 @@ const BadgeIcon = React.forwardRef<
       <UIIcon
         ref={ref}
         {...props}
-        className={badgeIconStyle({ class: className })}
+        className={badgeIconStyle({
+          parentVariants: { action: parentAction },
+          class: className,
+        })}
       />
     );
   }

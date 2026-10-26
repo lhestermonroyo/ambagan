@@ -2,35 +2,28 @@ import AndroidHeaderMenu, {
   type AndroidHeaderMenuItem
 } from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
+import ConfirmationSheet from "@/components/ConfirmationSheet";
+import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
+import HeroAmount from "@/components/HeroAmount";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import ListFooter from "@/components/ListFooter";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import ProBadge from "@/components/ProBadge";
 import SearchInput from "@/components/SearchInput";
-import { ExpenseListSkeleton } from "@/components/SkeletonLoader";
+import { ContainerDetailsSkeleton } from "@/components/SkeletonLoader";
 import UpgradeSheet from "@/components/UpgradeSheet";
 import { Box } from "@/components/ui/box";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { Fab } from "@/components/ui/fab";
-import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import {
-  Modal,
-  ModalBody,
-  ModalBackdrop,
-  ModalContent,
-  ModalFooter,
-  ModalHeader
-} from "@/components/ui/modal";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import BookBudgetCard from "@/features/book/components/BookBudgetCard";
 import BookInfoTab from "@/features/book/components/BookInfoTab";
 import BookStatsTab from "@/features/book/components/BookStatsTab";
 import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
@@ -38,12 +31,15 @@ import PersonalStatusFilterSheet, {
   PersonalStatusFilter,
   personalStatusFilterLabel
 } from "@/features/book/components/PersonalStatusFilterSheet";
+import useBookStore from "@/features/book/states/book.state";
 import CategorySheet, {
   ALL_CATEGORIES,
   categoryFilterLabel,
   categoryFilterOptions
 } from "@/features/expense/components/CategorySheet";
 import CurrencyAmountDisplay from "@/features/expense/components/CurrencyAmountDisplay";
+import { useExpenseEmptyActions } from "@/features/expense/hooks/useExpenseEmptyActions";
+import { amountTextSize } from "@/features/expense/utils/amountTextSize";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import DateRangeSheet, {
   CustomDateRange,
@@ -53,6 +49,7 @@ import DateRangeSheet, {
   isWithinRange
 } from "@/features/group/components/DateRangeSheet";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
@@ -60,9 +57,14 @@ import states from "@/states";
 import { Book, PersonalBookTotal, PersonalExpense } from "@/types/books";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
-import { formatDate, getDateGroupTitle } from "@/utils/formatDate";
+import { formatLastUpdate, getDateGroupTitle } from "@/utils/formatDate";
 import { useConvertedTotal } from "@/utils/fx";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import {
+  getOnOutlineHex,
+  getOnSolidHex,
+  getPrimaryHex,
+  getSecondaryHex
+} from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { format, parseISO } from "date-fns";
 import {
@@ -76,6 +78,9 @@ import {
   ArchiveRestore,
   CalendarRange,
   ChevronDown,
+  CircleCheck,
+  Clock,
+  FilterX,
   ListPlus,
   Pencil,
   Plus,
@@ -130,33 +135,24 @@ const moveTotalsBucket = (
   return next;
 };
 
-/** Whether a date falls in the calendar month a monthly budget is measuring. */
-const isInCurrentMonth = (date: string): boolean => {
-  const d = new Date(date);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-  );
-};
-
 export default function BookDetailScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const router = useRouter();
+  const expenseEmptyActions = useExpenseEmptyActions({ bookId });
   const toast = useAppToast();
   const ensureOnline = useEnsureOnline();
   const colorScheme = useColorScheme() ?? "light";
 
   const { details: userDetails } = states.user();
+  const { list: cachedBooks } = useBookStore();
   const isPro = userDetails?.plan === "pro";
 
   const [book, setBook] = useState<Book | null>(
-    states.book().list.find((b) => b.id === bookId) ?? null
+    cachedBooks.find((b) => b.id === bookId) ?? null
   );
   const [expenses, setExpenses] = useState<PersonalExpense[]>([]);
   const [totals, setTotals] = useState<PersonalBookTotal[]>([]);
-  // This calendar month's spend — only used by the budget card on a 'monthly'
-  // book (a 'total' budget measures against `totals` instead).
-  const [monthTotals, setMonthTotals] = useState<PersonalBookTotal[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -219,7 +215,7 @@ export default function BookDetailScreen() {
       );
     } catch (error) {
       // Leave the paginated pages as the fallback source.
-      console.error("Failed to load all book expenses:", error);
+      console.error("Failed to load all Individual entry expenses:", error);
     }
   }, [bookId]);
 
@@ -228,19 +224,16 @@ export default function BookDetailScreen() {
       if (!bookId) return;
       if (!isRefresh) setLoading(true);
       try {
-        const [bookRes, expensesRes, totalsRes, monthTotalsRes] =
-          await Promise.all([
-            services.book.getBookById(bookId),
-            services.bookExpense.getPersonalExpensesByBookId(bookId, 0),
-            services.bookExpense.getPersonalBookTotals(bookId),
-            services.bookExpense.getPersonalBookMonthTotals(bookId)
-          ]);
+        const [bookRes, expensesRes, totalsRes] = await Promise.all([
+          services.book.getBookById(bookId),
+          services.bookExpense.getPersonalExpensesByBookId(bookId, 0),
+          services.bookExpense.getPersonalBookTotals(bookId)
+        ]);
         setBook(bookRes);
         setExpenses(expensesRes.data);
         setHasMore(expensesRes.hasNext);
         setPage(0);
         setTotals(totalsRes);
-        setMonthTotals(monthTotalsRes);
         states.book.setState((prev) => ({
           ...prev,
           details: bookRes,
@@ -259,12 +252,6 @@ export default function BookDetailScreen() {
           setBook(cached.book);
           setExpenses(cached.expenseList);
           setTotals(cached.totals);
-          // Derived from the same cached snapshot — never throws once we're here.
-          setMonthTotals(
-            await services.bookExpense
-              .getPersonalBookMonthTotals(bookId)
-              .catch(() => [])
-          );
           setHasMore(false);
           states.book.setState((prev) => ({
             ...prev,
@@ -272,7 +259,7 @@ export default function BookDetailScreen() {
             expenseList: cached.expenseList
           }));
         } else {
-          console.error("Failed to load book:", error);
+          console.error("Failed to load Individual entry:", error);
         }
       } finally {
         setLoading(false);
@@ -340,19 +327,11 @@ export default function BookDetailScreen() {
         ...prev,
         expenseList: prev.expenseList.map(map)
       }));
-      // Shift this expense's amount into the target bucket so the split totals
-      // card tracks the toggle live.
+      // Keep the per-status totals in step for filtering and cached summaries.
       const from = status === "paid" ? "pending" : "paid";
       setTotals((prev) =>
         moveTotalsBucket(prev, expense.currency, expense.amount, from, status)
       );
-      // Same shift for the budget card, but only when the expense actually
-      // falls in the month the card is measuring.
-      if (isInCurrentMonth(expense.expense_date || expense.created_at)) {
-        setMonthTotals((prev) =>
-          moveTotalsBucket(prev, expense.currency, expense.amount, from, status)
-        );
-      }
     };
 
     apply(next);
@@ -495,16 +474,16 @@ export default function BookDetailScreen() {
         list: prev.list.filter((b) => b.id !== bookId)
       }));
       toast({
-        title: "Book archived",
+        title: "Individual Archived",
         description: "You can find it in the Archived tab.",
         type: "success"
       });
       router.back();
     } catch (error) {
-      console.error("Failed to archive book:", error);
+      console.error("Failed to archive Individual entry:", error);
       toast({
         title: "Error",
-        description: "Failed to archive book. Please try again.",
+        description: "Failed to archive Individual entry. Please try again.",
         type: "error"
       });
     }
@@ -516,15 +495,15 @@ export default function BookDetailScreen() {
       await services.book.unarchiveBook(bookId);
       setBook((prev) => (prev ? { ...prev, archived: false } : prev));
       toast({
-        title: "Book restored",
-        description: "Book moved back to your active books.",
+        title: "Individual Restored",
+        description: "Individual moved back to your active Individual entries.",
         type: "success"
       });
     } catch (error) {
-      console.error("Failed to unarchive book:", error);
+      console.error("Failed to unarchive Individual entry:", error);
       toast({
         title: "Error",
-        description: "Failed to restore book. Please try again.",
+        description: "Failed to restore Individual entry. Please try again.",
         type: "error"
       });
     }
@@ -540,18 +519,20 @@ export default function BookDetailScreen() {
         list: prev.list.filter((b) => b.id !== bookId)
       }));
       toast({
-        title: "Book deleted",
-        description: "The book and its expenses have been permanently deleted.",
+        title: "Individual Deleted",
+        description:
+          "The Individual entry and its expenses have been permanently deleted.",
         type: "success"
       });
       setDeleteOpen(false);
       router.back();
     } catch (error: any) {
-      console.error("Failed to delete book:", error);
+      console.error("Failed to delete Individual entry:", error);
       toast({
-        title: "Cannot delete book",
+        title: "Cannot Delete Individual Entry",
         description:
-          error?.message ?? "Failed to delete book. Please try again.",
+          error?.message ??
+          "Failed to delete Individual entry. Please try again.",
         type: "error"
       });
     } finally {
@@ -561,10 +542,7 @@ export default function BookDetailScreen() {
 
   const isArchived = !!book?.archived;
 
-  // Show the book's primary currency first, then any other currencies used
-  // (a trip book can mix PHP + JPY). Each currency stands alone — they're never
-  // converted against each other, so the card shows the primary one and hides
-  // the rest behind a "+N" breakdown sheet, as the group net balance does.
+  // Combine all recorded expenses, converting only for the summary display.
   const primaryCurrency = book?.currency ?? "PHP";
   const displayTotals = totals.length
     ? [...totals].sort((a, b) =>
@@ -576,6 +554,10 @@ export default function BookDetailScreen() {
       )
     : [{ currency: primaryCurrency, paid: 0, pending: 0 }];
 
+  const recordedByCurrency = displayTotals.map((t) => ({
+    currency: t.currency,
+    amount: t.paid + t.pending
+  }));
   const paidByCurrency = displayTotals.map((t) => ({
     currency: t.currency,
     amount: t.paid
@@ -584,37 +566,13 @@ export default function BookDetailScreen() {
     currency: t.currency,
     amount: t.pending
   }));
-
-  // Mirrors BookBudgetCard's own render guard — decides whether the Paid/Pending
-  // totals live inside that card or as their own pair of cards.
-  const hasBudget = !!book?.budget && book.budget > 0;
-
-  // Compact sticky stats — the same numbers the cards above show, converted on
-  // the same terms so the bar can never disagree with what it fades in from.
-  // The budget column measures the budget's own window (this month for a
-  // 'monthly' cap, the whole book for a 'total' one); Paid/Pending are
-  // book-wide, matching the cards.
-  const budgetWindowPaid = useMemo(
-    () =>
-      (book?.budget_period === "total" ? totals : monthTotals).map((t) => ({
-        currency: t.currency,
-        amount: t.paid
-      })),
-    [book?.budget_period, totals, monthTotals]
-  );
-  const compactBudgetSpent = useConvertedTotal(
-    budgetWindowPaid,
-    primaryCurrency
-  );
+  const compactTotal = useConvertedTotal(recordedByCurrency, primaryCurrency);
   const compactPaid = useConvertedTotal(paidByCurrency, primaryCurrency);
   const compactPending = useConvertedTotal(pendingByCurrency, primaryCurrency);
+  const totalAmountText = `${compactTotal.convertedCurrencies.length > 0 ? "≈ " : ""}${formatAmount(compactTotal.total, primaryCurrency)}`;
 
-  const budgetRemaining = (book?.budget ?? 0) - compactBudgetSpent.total;
-  const isOverBudget = budgetRemaining < 0;
-
-  // Roughly the height of the book header + tabs + the stats card the bar
-  // stands in for — the budget card is the taller of the two.
-  const COMPACT_THRESHOLD = hasBudget ? 320 : 230;
+  // Header, tabs and total card scroll out before the compact summary appears.
+  const COMPACT_THRESHOLD = 320;
   const compactOpacity = scrollY.interpolate({
     inputRange: [COMPACT_THRESHOLD - 60, COMPACT_THRESHOLD],
     outputRange: [0, 1],
@@ -655,7 +613,7 @@ export default function BookDetailScreen() {
           },
       {
         key: "delete",
-        label: "Delete Book",
+        label: "Delete Individual",
         icon: Trash2,
         destructive: true,
         onPress: () => setDeleteOpen(true)
@@ -665,7 +623,7 @@ export default function BookDetailScreen() {
     return (
       <HStack className="items-center gap-x-8 pr-1">
         <AndroidHeaderMenu
-          accessibilityLabel="More book options"
+          accessibilityLabel="More Individual entry options"
           items={items}
         />
       </HStack>
@@ -675,7 +633,7 @@ export default function BookDetailScreen() {
   return (
     <Fragment>
       <InnerLayout
-        title="Book Details"
+        title="Individual Details"
         onBack={() => router.back()}
         gestureEnabled={false}
         actions={
@@ -683,7 +641,7 @@ export default function BookDetailScreen() {
             <Stack.Toolbar.Menu
               icon="ellipsis"
               tintColor={getSecondaryHex("text-secondary-950", colorScheme)}
-              accessibilityLabel="More book options"
+              accessibilityLabel="More Individual entry options"
             >
               {!isArchived && (
                 <Stack.Toolbar.MenuAction
@@ -713,7 +671,7 @@ export default function BookDetailScreen() {
                 destructive
                 onPress={() => setDeleteOpen(true)}
               >
-                Delete Book
+                Delete Individual
               </Stack.Toolbar.MenuAction>
             </Stack.Toolbar.Menu>
           )
@@ -824,22 +782,16 @@ export default function BookDetailScreen() {
                 onPress={() => setFabOpen((prev) => !prev)}
               >
                 {fabOpen ? (
-                  <X
-                    size={24}
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
-                  />
+                  <X size={24} color={getOnSolidHex(colorScheme)} />
                 ) : (
-                  <Plus
-                    size={24}
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
-                  />
+                  <Plus size={24} color={getOnSolidHex(colorScheme)} />
                 )}
               </Fab>
             )}
           </>
         )}
 
-        <LoadingWrapper isLoading={loading} skeleton={<ExpenseListSkeleton />}>
+        <LoadingWrapper isLoading={loading} skeleton={<ContainerDetailsSkeleton personal tab={tab} />}>
           <ScrollView
             className="flex-1"
             onScroll={Animated.event(
@@ -860,7 +812,7 @@ export default function BookDetailScreen() {
                 <AppAvatar
                   className="self-center"
                   uri={book?.avatar || ""}
-                  name={book?.name || "Book"}
+                  name={book?.name || "Individual"}
                   size="lg"
                 />
                 <VStack className="flex-1">
@@ -868,7 +820,11 @@ export default function BookDetailScreen() {
                     {book?.name}
                   </Text>
                   <Text className="text-secondary-950">
-                    {formatDate(book?.created_at || "")} • {expenses.length}
+                    Last update{" "}
+                    {formatLastUpdate(
+                      book?.last_updated_at ?? book?.created_at ?? ""
+                    )}{" "}
+                    • {expenses.length}
                     {hasMore ? "+" : ""} expense
                     {expenses.length !== 1 ? "s" : ""}
                   </Text>
@@ -893,65 +849,65 @@ export default function BookDetailScreen() {
 
             {tab === "Expenses" && (
               <VStack className="gap-y-6 pb-4">
-                {/* Budget progress — renders only when the book has a cap set.
-                    A monthly budget measures this calendar month; a total one
-                    measures the whole book. The Paid/Pending totals ride along
-                    in the card's footer. */}
-                {book && hasBudget && (
-                  <BookBudgetCard
-                    book={book}
-                    totals={
-                      book.budget_period === "total" ? totals : monthTotals
+                <VStack className="mx-4 p-4 rounded-xl bg-secondary-100 gap-y-4">
+                  <HeroAmount
+                    label="Total Expenses"
+                    amountText={totalAmountText}
+                    amountSize={amountTextSize("text-3xl", totalAmountText, 12)}
+                    currency={primaryCurrency}
+                    chip={
+                      <CurrencyCountButton
+                        items={recordedByCurrency}
+                        title="Total Expenses"
+                        subtitle="All recorded expenses, by currency"
+                        convertTo={primaryCurrency}
+                        totalLabel="Total Expenses"
+                      />
                     }
-                    paidByCurrency={paidByCurrency}
-                    pendingByCurrency={pendingByCurrency}
-                    primaryCurrency={primaryCurrency}
                   />
-                )}
-
-                {/* No budget to hang them off — Paid (settled) and Pending
-                    (upcoming/unpaid) share one card, split by a rule. Same
-                    two-column shape as the budget card's footer, so the book
-                    reads the same whether or not a cap is set. */}
-                {!hasBudget && (
-                  <VStack className="mx-4 p-4 rounded-xl bg-secondary-100">
-                    <HStack className="items-stretch">
-                      <VStack className="flex-1 gap-y-1 pr-3">
-                        <Text
-                          bold
-                          className="text-sm text-secondary-950 uppercase"
-                        >
+                  <Divider />
+                  <HStack className="items-stretch">
+                    <VStack className="flex-1 gap-y-2">
+                      <HStack className="items-center gap-x-2">
+                        <Box className="bg-success-50 p-1.5 rounded-full">
+                          <CircleCheck size={14} color="#2A7948" />
+                        </Box>
+                        <Text className="text-secondary-950 text-sm uppercase">
                           Paid
                         </Text>
-                        <CurrencyAmountDisplay
-                          items={paidByCurrency}
-                          label="Paid"
-                          subtitle="Settled spend, by currency"
-                          primaryCurrency={primaryCurrency}
-                          amountClassName="text-background-950"
-                          fitAmount
-                        />
-                      </VStack>
-                      <Divider orientation="vertical" className="mx-4" />
-                      <VStack className="flex-1 gap-y-1 pl-3">
-                        <Text
-                          bold
-                          className="text-sm text-secondary-950 uppercase"
-                        >
+                      </HStack>
+                      <CurrencyAmountDisplay
+                        items={paidByCurrency}
+                        label="Paid"
+                        subtitle="Paid expenses, by currency"
+                        primaryCurrency={primaryCurrency}
+                        convertTo={primaryCurrency}
+                        totalLabel="Total Paid"
+                        fitAmount
+                      />
+                    </VStack>
+                    <Divider orientation="vertical" className="mx-4" />
+                    <VStack className="flex-1 gap-y-2">
+                      <HStack className="items-center gap-x-2">
+                        <Box className="bg-warning-50 p-1.5 rounded-full">
+                          <Clock size={14} color="#D76C1F" />
+                        </Box>
+                        <Text className="text-secondary-950 text-sm uppercase">
                           Pending
                         </Text>
-                        <CurrencyAmountDisplay
-                          items={pendingByCurrency}
-                          label="Pending"
-                          subtitle="Upcoming spend, by currency"
-                          primaryCurrency={primaryCurrency}
-                          amountClassName="text-background-950"
-                          fitAmount
-                        />
-                      </VStack>
-                    </HStack>
-                  </VStack>
-                )}
+                      </HStack>
+                      <CurrencyAmountDisplay
+                        items={pendingByCurrency}
+                        label="Pending"
+                        subtitle="Pending expenses, by currency"
+                        primaryCurrency={primaryCurrency}
+                        convertTo={primaryCurrency}
+                        totalLabel="Total Pending"
+                        fitAmount
+                      />
+                    </VStack>
+                  </HStack>
+                </VStack>
 
                 {/* Recurring-expenses entry card — taps through to the standalone
                     /recurring route, mirroring the group detail Expenses tab. */}
@@ -968,7 +924,7 @@ export default function BookDetailScreen() {
                       <VStack className="flex-1">
                         <HStack className="items-center gap-x-2">
                           <Text className="text-lg" bold>
-                            Recurring expenses
+                            Recurring Expenses
                           </Text>
                           {!isPro && <ProBadge />}
                         </HStack>
@@ -1013,10 +969,7 @@ export default function BookDetailScreen() {
                         iconEnd={
                           <ChevronDown
                             size={16}
-                            color={getPrimaryHex(
-                              "text-primary-500",
-                              colorScheme
-                            )}
+                            color={getOnOutlineHex(colorScheme)}
                           />
                         }
                         onPress={() => {
@@ -1093,7 +1046,7 @@ export default function BookDetailScreen() {
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
                           <Text
-                            className="text-sm text-primary-600 max-w-[160px]"
+                            className="text-sm text-primary-600 max-w-[160px] dark:text-primary-800"
                             numberOfLines={1}
                           >
                             &ldquo;{expenseSearch}&rdquo;
@@ -1101,7 +1054,9 @@ export default function BookDetailScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1112,13 +1067,15 @@ export default function BookDetailScreen() {
                           onPress={() => setCategoryFilter(ALL_CATEGORIES)}
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
-                          <Text className="text-sm text-primary-600">
+                          <Text className="text-sm text-primary-600 dark:text-primary-800">
                             {categoryFilterLabel(categoryFilter)}
                           </Text>
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1132,7 +1089,7 @@ export default function BookDetailScreen() {
                           }}
                           className="flex-row items-center gap-x-1 bg-primary-100 border border-primary-200 rounded-full px-3 py-1"
                         >
-                          <Text className="text-sm text-primary-600">
+                          <Text className="text-sm text-primary-600 dark:text-primary-800">
                             {formatDateRangeLabel(
                               expenseDateRange,
                               expenseCustomRange
@@ -1141,7 +1098,9 @@ export default function BookDetailScreen() {
                           <X
                             size={12}
                             color={getPrimaryHex(
-                              "text-primary-600",
+                              colorScheme === "dark"
+                                ? "text-primary-800"
+                                : "text-primary-600",
                               colorScheme
                             )}
                           />
@@ -1155,7 +1114,7 @@ export default function BookDetailScreen() {
                     so the row itself has no swipe actions. */}
                 <SectionList
                   scrollEnabled={false}
-                  sections={expenseSections}
+                  sections={previewEmpty ? [] : expenseSections}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }: { item: PersonalExpense }) => (
                     <PersonalExpenseItem
@@ -1182,28 +1141,48 @@ export default function BookDetailScreen() {
                     hasActiveFilters ? (
                       <EmptyList
                         type={EmptyType.EXPENSE}
-                        content="No expenses match your filters. Try adjusting your search, category, or date range."
+                        content="No expenses match these filters. Clear them to see everything."
+                        actions={[
+                          {
+                            label: "Clear Filters",
+                            icon: FilterX,
+                            onPress: () => {
+                              setExpenseSearch("");
+                              setCategoryFilter(ALL_CATEGORIES);
+                              setStatusFilter("all");
+                              setExpenseDateRange("All");
+                              setExpenseCustomRange(null);
+                            }
+                          }
+                        ]}
                       />
                     ) : (
-                      <EmptyList type={EmptyType.EXPENSE} />
+                      <EmptyList
+                        type={EmptyType.EXPENSE}
+                        actions={expenseEmptyActions}
+                      />
                     )
                   }
-                  ListFooterComponent={() => (
-                    <>
-                      {/* Filtering swaps in the whole ledger, so there's
+                  ListFooterComponent={
+                    previewEmpty
+                      ? null
+                      : () => (
+                          <>
+                            {/* Filtering swaps in the whole ledger, so there's
                           nothing left to page through. */}
-                      {hasMore && !filteringWholeLedger && (
-                        <ListFooter
-                          hasNextPage={hasMore}
-                          loading={loadingMore}
-                          onLoadMore={loadMore}
-                        />
-                      )}
-                      {/* Clears the floating "+" so the last row stays
+                            {hasMore && !filteringWholeLedger && (
+                              <ListFooter
+                                hasNextPage={hasMore}
+                                loading={loadingMore}
+                                onLoadMore={loadMore}
+                              />
+                            )}
+                            {/* Clears the floating "+" so the last row stays
                           tappable — same gap as the group Settlements tab. */}
-                      <Box className="h-16" />
-                    </>
-                  )}
+                            <Box className="h-16" />
+                          </>
+                        )
+                  }
                 />
               </VStack>
             )}
@@ -1223,8 +1202,8 @@ export default function BookDetailScreen() {
         </LoadingWrapper>
 
         {/* Compact sticky stats — Expenses tab only. Pinned just under the
-            native header as an absolute overlay that fades in once the budget /
-            Paid-Pending cards scroll away. Like group details, it animates only
+            native header as an absolute overlay that fades in once the total
+            card scrolls away. Like group details, it animates only
             opacity + translateY (never height) and stays non-interactive, so it
             never reflows the list and scroll/touches pass through. */}
         {tab === "Expenses" && !loading && (
@@ -1239,59 +1218,33 @@ export default function BookDetailScreen() {
             }}
           >
             <HStack className="px-6 py-3 gap-x-4 items-center justify-center">
-              {/* Only books with a cap get this column — the other two then
-                  split the row between them. */}
-              {hasBudget && (
-                <>
-                  <VStack className="items-center flex-1">
-                    <Text
-                      className="text-secondary-950 text-sm uppercase tracking-widest"
-                      numberOfLines={1}
-                    >
-                      {isOverBudget ? "Over" : "Left"}
-                    </Text>
-                    <Text
-                      bold
-                      className={`text-lg ${isOverBudget ? "text-error-400" : ""}`}
-                      numberOfLines={1}
-                    >
-                      {compactBudgetSpent.convertedCurrencies.length > 0
-                        ? "≈ "
-                        : ""}
-                      {formatAmount(
-                        Math.abs(budgetRemaining),
-                        book?.currency ?? primaryCurrency
-                      )}
-                    </Text>
-                  </VStack>
-                  <Text className="text-secondary-200">|</Text>
-                </>
-              )}
-              <VStack className="items-center flex-1">
-                <Text
-                  className="text-secondary-950 text-sm uppercase tracking-widest"
-                  numberOfLines={1}
-                >
-                  Paid
-                </Text>
-                <Text bold className="text-lg" numberOfLines={1}>
-                  {compactPaid.convertedCurrencies.length > 0 ? "≈ " : ""}
-                  {formatAmount(compactPaid.total, primaryCurrency)}
-                </Text>
-              </VStack>
-              <Text className="text-secondary-200">|</Text>
-              <VStack className="items-center flex-1">
-                <Text
-                  className="text-secondary-950 text-sm uppercase tracking-widest"
-                  numberOfLines={1}
-                >
-                  Pending
-                </Text>
-                <Text bold className="text-lg" numberOfLines={1}>
-                  {compactPending.convertedCurrencies.length > 0 ? "≈ " : ""}
-                  {formatAmount(compactPending.total, primaryCurrency)}
-                </Text>
-              </VStack>
+              {[
+                { label: "Total", summary: compactTotal },
+                { label: "Paid", summary: compactPaid },
+                { label: "Pending", summary: compactPending }
+              ].map(({ label, summary }, index) => {
+                const amountText = `${summary.convertedCurrencies.length > 0 ? "≈ " : ""}${formatAmount(summary.total, primaryCurrency)}`;
+                return (
+                  <Fragment key={label}>
+                    {index > 0 && <Text className="text-secondary-200">|</Text>}
+                    <VStack className="items-center flex-1">
+                      <Text
+                        className="text-secondary-950 text-sm uppercase tracking-widest"
+                        numberOfLines={1}
+                      >
+                        {label}
+                      </Text>
+                      <Text
+                        bold
+                        className={amountTextSize("text-lg", amountText, 11)}
+                        numberOfLines={1}
+                      >
+                        {amountText}
+                      </Text>
+                    </VStack>
+                  </Fragment>
+                );
+              })}
             </HStack>
           </Animated.View>
         )}
@@ -1327,39 +1280,16 @@ export default function BookDetailScreen() {
       />
 
       {/* Delete-book confirm (menu-triggered) — mirrors DeleteGroupSheet. */}
-      <Modal
+      <ConfirmationSheet
         isOpen={deleteOpen}
-        onClose={() => !deleting && setDeleteOpen(false)}
-      >
-        <ModalBackdrop />
-        <ModalContent>
-          <ModalHeader>
-            <Heading size="lg">Delete Book</Heading>
-          </ModalHeader>
-          <ModalBody>
-            <Text>
-              Permanently deleting this book will remove all of its personal
-              expenses. This cannot be undone.
-            </Text>
-          </ModalBody>
-          <ModalFooter>
-            <HStack className="gap-x-2">
-              <FormButton
-                variant="outline"
-                text="Cancel"
-                disabled={deleting}
-                onPress={() => setDeleteOpen(false)}
-              />
-              <FormButton
-                text="Delete"
-                action="negative"
-                loading={deleting}
-                onPress={handleDeleteBook}
-              />
-            </HStack>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+        onClose={() => setDeleteOpen(false)}
+        title="Delete Individual"
+        description="Permanently deleting this Individual entry will remove all of its individual expenses. This cannot be undone."
+        confirmText="Delete"
+        isDelete
+        loading={deleting}
+        onConfirm={handleDeleteBook}
+      />
     </Fragment>
   );
 }

@@ -95,7 +95,7 @@ export default function NetBalanceDisplay({
           title="Net Balance"
           subtitle={subtitle}
           convertTo={currency}
-          totalLabel="Net balance"
+          totalLabel="Net Balance"
         />
       }
     />

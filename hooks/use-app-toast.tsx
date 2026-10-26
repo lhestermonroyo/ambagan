@@ -5,8 +5,10 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { BANNER_CONTENT_HEIGHT } from "@/hooks/useBanner";
 import { useNetwork } from "@/hooks/useNetwork";
+import { successHaptic } from "@/utils/haptics";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { useRouter } from "expo-router";
+import { CircleCheck, CircleX, Info, MessageCircle, TriangleAlert } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,6 +20,14 @@ type ToastActionType =
   | "info"
   | "muted"
   | undefined;
+
+const TOAST_ICONS = {
+  success: CircleCheck,
+  error: CircleX,
+  warning: TriangleAlert,
+  info: Info,
+  muted: MessageCircle
+};
 
 // An optional tappable link rendered under the toast body — e.g. an offline
 // message linking to the relevant Help Center FAQ. Tapping navigates to `route`
@@ -32,6 +42,9 @@ type ToastParams = {
   description: string;
   type?: ToastActionType;
   link?: ToastLink;
+  /** Defaults to success toasts. Background sync can opt out; local saves and
+   * other completed actions with an informational toast can opt in. */
+  haptic?: boolean;
 };
 
 interface ToastData extends ToastParams {
@@ -65,6 +78,7 @@ const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     setToasts((prev) => [...prev, toastData]);
+    if (params.haptic ?? (params.type === "success")) void successHaptic();
 
     setTimeout(() => {
       dismissToast(newId);
@@ -91,6 +105,7 @@ interface ToastItemProps {
 
 const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   const router = useRouter();
+  const toastIcon = TOAST_ICONS[toast.type ?? "muted"];
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.9)).current;
@@ -146,11 +161,18 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
       <Box
         className={cn(
           getBackgroundColor(toast.type),
-          "px-4 py-2 rounded-lg mx-2 shadow-lg"
+          "px-4 py-3 rounded-lg mx-2 shadow-lg"
         )}
       >
-        <Box className="flex-row items-center justify-between">
-          <VStack space="xs" className="flex-1 mr-2">
+        <Box className="flex-row items-center gap-x-3">
+          <Box className="h-14 w-14 rounded-full bg-white/20 items-center justify-center shrink-0">
+            <Icon
+              as={toastIcon}
+              className="text-white h-8 w-8"
+              accessible={false}
+            />
+          </Box>
+          <VStack space="xs" className="flex-1 min-w-0">
             {toast.title && (
               <Text size="lg" className="text-white font-medium">
                 {toast.title}
@@ -174,7 +196,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
 
           <Pressable
             onPress={() => onDismiss(toast.id)}
-            className="ml-2 p-1 -mr-1 -mt-1"
+            className="self-start shrink-0 p-1 -mr-1 -mt-1"
           >
             <Icon as={CloseIcon} className="text-white" size="sm" />
           </Pressable>

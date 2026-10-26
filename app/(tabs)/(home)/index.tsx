@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
 import CurrencyCountButton from "@/components/CurrencyCountButton";
 import EmptyList from "@/components/EmptyList";
@@ -5,6 +6,7 @@ import HeroColumn from "@/components/HeroColumn";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import {
+  ExpenseListSkeleton,
   FriendCardListSkeleton,
   GroupListSkeleton,
   SettlementListSkeleton
@@ -21,28 +23,33 @@ import {
 } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import BookItem from "@/features/book/components/BookItem";
+import IndividualTotalsPane, {
+  useIndividualTotalsSummary
+} from "@/features/book/components/IndividualTotalsPane";
 import PersonalExpenseItem from "@/features/book/components/PersonalExpenseItem";
-import PersonalSpendingPane, {
-  usePersonalSpendSummary
-} from "@/features/book/components/PersonalSpendingPane";
 import ExpenseDestinationSheet from "@/features/expense/components/ExpenseDestinationSheet";
 import NetBalanceDisplay, {
   HERO_MAX_CHARS
 } from "@/features/expense/components/NetBalanceDisplay";
 import SettlementActionSheet from "@/features/expense/components/SettlementActionSheet";
 import SettlementItem from "@/features/expense/components/SettlementItem";
+import { getSettlementUpdatedAt } from "@/features/expense/utils/settlementDate.util";
 import {
   amountTextSize,
   smallerAmountSize
 } from "@/features/expense/utils/amountTextSize";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import GroupItem from "@/features/group/components/GroupItem";
+import {
+  groupEntryHref,
+  groupEntryKey,
+  isIndividualGroup
+} from "@/features/group/utils/groupMode";
 import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 import services from "@/services";
 import states from "@/states";
-import { Book, PersonalExpense, PersonalOverview } from "@/types/books";
+import { PersonalExpense, PersonalOverview } from "@/types/books";
 import { FriendSummary, PaymentPreview } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { BASE_CURRENCY, useConvertedTotal } from "@/utils/fx";
@@ -92,6 +99,7 @@ const HERO_SHARED = 0;
 const HERO_PERSONAL = 1;
 
 export default function HomeScreen() {
+  const previewEmpty = useEmptyStatePreview();
   // Cold-launch landing screen: holds the native splash until this screen's
   // first frame is drawn, so the launch never flashes the bare window.
   useHideSplashOnFirstFrame();
@@ -100,12 +108,10 @@ export default function HomeScreen() {
     stats: false,
     activities: false,
     groups: false,
-    books: false,
     friends: false,
     personal: false
   });
   const [friends, setFriends] = useState<FriendSummary[]>([]);
-  const [books, setBooks] = useState<Book[]>([]);
   const [personalExpenses, setPersonalExpenses] = useState<PersonalExpense[]>(
     []
   );
@@ -188,10 +194,10 @@ export default function HomeScreen() {
   );
   const compactPay = useConvertedTotal(displayStats.toPay, BASE_CURRENCY);
 
-  // Personal spending is the hero's second page, and the compact bar mirrors
+  // Individual Totals is the hero's second page, and the compact bar mirrors
   // whichever page is showing — so these figures are derived here rather than
   // left inside the page, on the same terms it renders them.
-  const personalSummary = usePersonalSpendSummary(personalOverview);
+  const personalSummary = useIndividualTotalsSummary(personalOverview);
 
   const { width: heroPageWidth } = useWindowDimensions();
   const heroScrollX = useRef(new Animated.Value(0)).current;
@@ -293,7 +299,6 @@ export default function HomeScreen() {
     await Promise.all([
       fetchStats(isInitialized),
       fetchGroups(isInitialized),
-      fetchBooks(isInitialized),
       fetchActivities(isInitialized),
       fetchFriends(isInitialized),
       fetchPersonal(isInitialized),
@@ -314,7 +319,7 @@ export default function HomeScreen() {
       const overview = await services.bookExpense.getPersonalOverview(userId);
       setPersonalOverview(overview);
     } catch (error) {
-      console.error("Failed to fetch personal spending:", error);
+      console.error("Failed to fetch Individual totals:", error);
     } finally {
       setLoading((prev) => ({ ...prev, personal: false }));
     }
@@ -370,7 +375,7 @@ export default function HomeScreen() {
         await Notifications.scheduleNotificationAsync({
           identifier: SETTLEMENT_REMINDER_ID,
           content: {
-            title: "You have unpaid settlements",
+            title: "You Have Unpaid Settlements",
             body: "Don't forget to settle up with your group members."
           },
           trigger: {
@@ -398,7 +403,7 @@ export default function HomeScreen() {
 
     // The two recent-activity sections share one loading flag, so they're
     // fetched side by side — and caught independently, so a failure on one side
-    // (e.g. personal expenses offline) still fills the other.
+    // (e.g. individual expenses offline) still fills the other.
     await Promise.all([
       (async () => {
         try {
@@ -427,7 +432,7 @@ export default function HomeScreen() {
           );
           setPersonalExpenses(recent);
         } catch (error) {
-          console.error("Failed to fetch recent personal expenses:", error);
+          console.error("Failed to fetch recent individual expenses:", error);
         }
       })()
     ]);
@@ -443,7 +448,7 @@ export default function HomeScreen() {
     }
 
     try {
-      const response = await services.group.getGroupsByUserId(userId);
+      const response = await services.group.getGroupEntriesByUserId(userId);
 
       if (!response) return;
 
@@ -458,48 +463,16 @@ export default function HomeScreen() {
       // with rendering or navigation.
       if (!isInitialized && userId) {
         InteractionManager.runAfterInteractions(() => {
-          prefetchGroupDetails(userId, response).catch(() => {});
+          prefetchGroupDetails(
+            userId,
+            response.filter((g) => !isIndividualGroup(g))
+          ).catch(() => {});
         });
       }
     } catch (error) {
       console.error("Failed to fetch groups:", error);
     } finally {
       setLoading((prev) => ({ ...prev, groups: false }));
-    }
-  };
-
-  // Only the first page is needed — the Overview shows the 3 most recent books
-  // and hands off to the Books tab for the rest. Paginated (not getBooksByUserId)
-  // so the offline cache fallback comes along for free.
-  const fetchBooks = async (isInitialized = false) => {
-    if (!userId) return;
-
-    if (!isInitialized) {
-      setLoading((prev) => ({ ...prev, books: true }));
-    }
-
-    try {
-      const response = await services.book.getBooksByUserIdPaginated(
-        userId,
-        0,
-        "all"
-      );
-
-      if (!response) return;
-
-      setBooks(response.data);
-      // Mirror into book state the same way the Books tab does (first page of
-      // "all"), so screens that never load books themselves — the scanner's
-      // destination check — can tell "no books yet" from "not loaded yet".
-      states.book.setState((prev) => ({
-        ...prev,
-        list: response.data,
-        initialized: true
-      }));
-    } catch (error) {
-      console.error("Failed to fetch books:", error);
-    } finally {
-      setLoading((prev) => ({ ...prev, books: false }));
     }
   };
 
@@ -527,13 +500,13 @@ export default function HomeScreen() {
   };
 
   const groupsPreview = useMemo(() => groupList.slice(0, 3), [groupList]);
-  const booksPreview = useMemo(() => books.slice(0, 3), [books]);
   const friendsPreview = useMemo(() => friends.slice(0, 5), [friends]);
 
   // The two ledgers stay in their own sections — a settlement and a personal
   // expense read too differently to sit in one list.
   const settlementsPreview = useMemo(
-    () => activityList.slice(0, 3),
+    () => [...activityList].sort((a, b) =>
+      new Date(getSettlementUpdatedAt(b)).getTime() - new Date(getSettlementUpdatedAt(a)).getTime()).slice(0, 3),
     [activityList]
   );
   const personalExpensesPreview = useMemo(
@@ -588,7 +561,6 @@ export default function HomeScreen() {
     router.push("/scan" as any);
   }, [ensureOnline, router]);
 
-  const handleOpenBooks = useCallback(() => router.push("/books"), [router]);
   const handleOpenHelp = useCallback(
     () => router.push("/profile/help-center"),
     [router]
@@ -621,17 +593,7 @@ export default function HomeScreen() {
     ({ item }: { item: (typeof groupList)[0] }) => (
       <GroupItem
         details={item}
-        onOpen={() => router.push(`/groups/${item.id}`)}
-      />
-    ),
-    [router]
-  );
-
-  const renderBookItem = useCallback(
-    ({ item }: { item: Book }) => (
-      <BookItem
-        details={item}
-        onOpen={() => router.push(`/books/${item.id}`)}
+        onOpen={() => router.push(groupEntryHref(item))}
       />
     ),
     [router]
@@ -784,11 +746,10 @@ export default function HomeScreen() {
                     </VStack>
 
                     <Box style={{ width: heroPageWidth }} className="px-4">
-                      <PersonalSpendingPane
+                      <IndividualTotalsPane
                         overview={personalOverview}
                         isLoading={loading.personal}
                         amountSize={heroAmountSize}
-                        onPress={handleOpenBooks}
                       />
                     </Box>
                   </Animated.ScrollView>
@@ -800,7 +761,7 @@ export default function HomeScreen() {
                     activePage={heroPage}
                     onGoToPage={goToHeroPage}
                     prevLabel="Show net balance"
-                    nextLabel="Show personal spending"
+                    nextLabel="Show Individual totals"
                   />
                 </VStack>
 
@@ -845,7 +806,7 @@ export default function HomeScreen() {
                 isLoading={loading.friends}
                 skeleton={<FriendCardListSkeleton />}
               >
-                {friends.length > 0 ? (
+                {!previewEmpty && friends.length > 0 ? (
                   <HScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -861,7 +822,11 @@ export default function HomeScreen() {
                     </HStack>
                   </HScrollView>
                 ) : (
-                  <EmptyList type={EmptyType.FRIEND} />
+                  <EmptyList
+                    compact
+                    type={EmptyType.FRIEND}
+                    content="Split a group expense to see balances with friends."
+                  />
                 )}
               </LoadingWrapper>
             </VStack>
@@ -880,38 +845,18 @@ export default function HomeScreen() {
                 skeleton={<GroupListSkeleton count={3} />}
               >
                 <FlatList
-                  data={groupsPreview}
+                  data={previewEmpty ? [] : groupsPreview}
                   scrollEnabled={false}
-                  keyExtractor={(item) => item.id.toString()}
+                  keyExtractor={groupEntryKey}
                   renderItem={renderGroupItem}
                   ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
-                    <EmptyList type={EmptyType.GROUP} />
+                    <EmptyList
+                      compact
+                      type={EmptyType.GROUP}
+                      content="Your groups and Individual entries will appear here."
+                    />
                   )}
-                />
-              </LoadingWrapper>
-            </VStack>
-
-            <VStack className="gap-y-2">
-              <HStack className="items-center justify-between px-4">
-                <Text bold className="text-2xl">
-                  Recent Books
-                </Text>
-                <Button variant="link" onPress={() => router.push("/books")}>
-                  <Text className="text-primary-400 font-medium">View All</Text>
-                </Button>
-              </HStack>
-              <LoadingWrapper
-                isLoading={loading.books}
-                skeleton={<GroupListSkeleton count={3} />}
-              >
-                <FlatList
-                  data={booksPreview}
-                  scrollEnabled={false}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={renderBookItem}
-                  ItemSeparatorComponent={ListDivider}
-                  ListEmptyComponent={() => <EmptyList type={EmptyType.BOOK} />}
                 />
               </LoadingWrapper>
             </VStack>
@@ -924,18 +869,22 @@ export default function HomeScreen() {
               </HStack>
               <LoadingWrapper
                 isLoading={loading.activities}
-                skeleton={<SettlementListSkeleton count={3} />}
+                skeleton={<SettlementListSkeleton count={3} view={settlementView} />}
               >
                 <FlatList
                   key={settlementView}
-                  data={settlementsPreview}
+                  data={previewEmpty ? [] : settlementsPreview}
                   extraData={settlementView}
                   scrollEnabled={false}
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={renderSettlementItem}
                   ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
-                    <EmptyList type={EmptyType.ACTIVITY} />
+                    <EmptyList
+                      compact
+                      type={EmptyType.ACTIVITY}
+                      content="Payments from shared expenses will appear here."
+                    />
                   )}
                 />
               </LoadingWrapper>
@@ -944,21 +893,25 @@ export default function HomeScreen() {
             <VStack className="gap-y-2">
               <HStack className="items-center justify-between px-4">
                 <Text bold className="text-2xl">
-                  Recent Personal Expenses
+                  Recent Individual Expenses
                 </Text>
               </HStack>
               <LoadingWrapper
                 isLoading={loading.activities}
-                skeleton={<SettlementListSkeleton count={3} />}
+                skeleton={<ExpenseListSkeleton count={3} personal />}
               >
                 <FlatList
-                  data={personalExpensesPreview}
+                  data={previewEmpty ? [] : personalExpensesPreview}
                   scrollEnabled={false}
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={renderPersonalExpenseItem}
                   ItemSeparatorComponent={ListDivider}
                   ListEmptyComponent={() => (
-                    <EmptyList type={EmptyType.EXPENSE} />
+                    <EmptyList
+                      compact
+                      type={EmptyType.EXPENSE}
+                      content="Your Individual expenses will appear here."
+                    />
                   )}
                 />
               </LoadingWrapper>
@@ -972,7 +925,7 @@ export default function HomeScreen() {
 
         {/* Compact hero bar — pinned just under the native header, fades in as
           the hero scrolls away. It mirrors whichever hero page was left showing,
-          so scrolling away from personal spending doesn't silently hand back a
+          so scrolling away from Individual totals doesn't silently hand back a
           net balance. Purely informational, so it stays non-interactive and lets
           scroll/touches pass through to the list. */}
         <Animated.View
@@ -986,16 +939,19 @@ export default function HomeScreen() {
           <HStack className="px-6 py-3 gap-x-4 items-center justify-center">
             {heroPage === HERO_PERSONAL ? (
               <>
-                <CompactStat label="Spent" value={personalSummary.amountText} />
-                <CompactDivider />
                 <CompactStat
-                  label="vs Last"
-                  value={personalSummary.trend.value}
+                  label="Total"
+                  value={personalOverview ? personalSummary.amountText : "—"}
                 />
                 <CompactDivider />
                 <CompactStat
-                  label="Over"
-                  value={personalSummary.budget.value}
+                  label="Paid"
+                  value={personalOverview ? personalSummary.paidText : "—"}
+                />
+                <CompactDivider />
+                <CompactStat
+                  label="Pending"
+                  value={personalOverview ? personalSummary.pendingText : "—"}
                 />
               </>
             ) : (
@@ -1154,8 +1110,8 @@ const FriendCard = React.memo(function FriendCard({
       {({ pressed }) => (
         <Box
           className={cn(
-            pressed ? "bg-secondary-100" : "bg-secondary-50",
-            "w-48 border border-secondary-500 rounded-lg p-4"
+            pressed ? "bg-secondary-200" : "bg-secondary-100",
+            "w-48 rounded-lg p-4"
           )}
         >
           <VStack className="gap-y-2">
@@ -1410,7 +1366,7 @@ function StatItem({
               : "You owe across all groups, per currency"
           }
           convertTo={primaryCurrency}
-          totalLabel={isReceive ? "Total to collect" : "Total to pay"}
+          totalLabel={isReceive ? "Total to Collect" : "Total to Pay"}
         />
       }
     />

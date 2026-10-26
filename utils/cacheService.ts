@@ -362,12 +362,8 @@ export const cacheService = {
     return { count: row.count, dayKey: row.day_key };
   },
 
-  // The Overview personal-spending card's whole payload — this month, last
-  // month to date, and budget usage — as last read from the server, so the card
-  // shows its last value offline. The table name predates the card carrying
-  // more than a monthly total; a row written by an older build holds a bare
-  // totals array, which getPersonalOverview below discards rather than
-  // half-reads.
+  // Individual Totals as last read from the server, for offline launches.
+  // Retain the existing cache table; discard older monthly-only payloads.
   async savePersonalOverview(
     userId: string,
     data: PersonalOverview
@@ -387,9 +383,8 @@ export const cacheService = {
     );
     if (!row) return null;
     const parsed = JSON.parse(row.data);
-    // Legacy shape (a PersonalBookTotal[]) — no comparison or budgets in it, so
-    // there's nothing to salvage; the next successful fetch overwrites it.
-    if (!parsed || Array.isArray(parsed) || !Array.isArray(parsed.thisMonth)) {
+    // Monthly snapshots cannot stand in for all recorded expenses.
+    if (!parsed || Array.isArray(parsed) || !Array.isArray(parsed.totals)) {
       return null;
     }
     return parsed as PersonalOverview;

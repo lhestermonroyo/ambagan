@@ -32,11 +32,7 @@ const FormButton: FC<IFormButtonProps> = ({
 }) => {
   return (
     <Button
-      className={cn(
-        "disabled:opacity-70 rounded-full",
-        size === "lg" ? "h-12" : "",
-        className
-      )}
+      className={cn("disabled:opacity-70 rounded-full", className)}
       size={size}
       variant={variant}
       action={action}
@@ -50,7 +46,10 @@ const FormButton: FC<IFormButtonProps> = ({
       ) : (
         <ButtonText
           className={cn(
-            action === "secondary" && "text-inherit dark:text-secondary-950"
+            action === "secondary" &&
+              (variant === "solid"
+                ? "text-inherit dark:text-white"
+                : "text-inherit dark:text-primary-600")
           )}
         >
           {text}
@@ -60,7 +59,9 @@ const FormButton: FC<IFormButtonProps> = ({
       {loading && (
         <ButtonSpinner
           className={
-            variant === "outline" ? "text-primary-400" : "text-background-0"
+            variant === "outline"
+              ? "text-primary-400 dark:text-primary-600"
+              : "text-background-0 dark:text-white"
           }
         />
       )}

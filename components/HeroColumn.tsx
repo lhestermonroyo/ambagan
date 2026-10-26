@@ -4,6 +4,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { ReactNode } from "react";
+import { AmountSkeleton } from "./SkeletonLoader";
 
 /**
  * One half-width stat under a hero's headline: a badged icon and label over a
@@ -53,9 +54,7 @@ export default function HeroColumn({
         </Text>
       </HStack>
       {isLoading ? (
-        <Text bold className="text-xl text-white">
-          —
-        </Text>
+        <AmountSkeleton tone="onColor" />
       ) : (
         <HStack className="items-center gap-x-2">
           <Text

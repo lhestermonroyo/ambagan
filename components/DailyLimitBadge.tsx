@@ -24,7 +24,7 @@ export default function DailyLimitBadge({
     >
       <BadgeText
         className={`font-bold text-sm uppercase ${
-          isLimitReached ? "text-error-600" : "text-primary-400"
+          isLimitReached ? "text-error-600 dark:text-error-800" : "text-primary-400 dark:text-primary-800"
         }`}
       >
         {isLimitReached ? "LIMIT REACHED" : `${remaining} / ${limit} LEFT`}

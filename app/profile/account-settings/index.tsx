@@ -10,7 +10,7 @@ import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
-import { getSecondaryHex } from "@/utils/getColorHex";
+import { getOnSolidHex } from "@/utils/getColorHex";
 import { useRouter } from "expo-router";
 import { Eye, EyeOff, Trash } from "lucide-react-native";
 import { useState } from "react";
@@ -117,7 +117,7 @@ export default function AccountSettingsScreen() {
       return;
     await services.auth.deleteAccount();
     signOut();
-    router.replace("/(auth)/login");
+    router.replace("/(auth)/welcome");
   };
 
   return (
@@ -192,7 +192,7 @@ export default function AccountSettingsScreen() {
                 icon={
                   <Trash
                     size={18}
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                    color={getOnSolidHex(colorScheme)}
                   />
                 }
                 action="negative"

@@ -11,11 +11,7 @@ import LinkExpirationSheet from "@/features/group/components/LinkExpirationSheet
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import states from "@/states";
-import {
-  getErrorHex,
-  getPrimaryHex,
-  getSecondaryHex
-} from "@/utils/getColorHex";
+import { getErrorHex, getOnSolidHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { format } from "date-fns";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -315,7 +311,7 @@ export default function ShareGroupScreen() {
             dialogTitle: "Save QR Code"
           });
           toast({
-            title: "QR code saved",
+            title: "QR Code Saved",
             description: "The invite QR code has been saved to your device.",
             type: "success"
           });
@@ -346,7 +342,7 @@ export default function ShareGroupScreen() {
       const copied =
         result.activityType === "com.apple.UIKit.activity.CopyToPasteboard";
       toast({
-        title: copied ? "Link copied" : "Invite link shared",
+        title: copied ? "Link Copied" : "Invite Link Shared",
         description: copied
           ? "The invite link has been copied to your clipboard."
           : "Your group invite link has been shared.",
@@ -371,7 +367,7 @@ export default function ShareGroupScreen() {
             </VStack>
 
             <Box className="items-center py-2">
-              <Box className="rounded-2xl overflow-hidden border border-secondary-500">
+              <Box className="rounded-2xl overflow-hidden bg-secondary-100">
                 <InviteCardSvg
                   card={card}
                   creatorName={creatorName}
@@ -383,9 +379,12 @@ export default function ShareGroupScreen() {
                 <HStack className="mt-4 gap-x-2 items-center">
                   <AlertCircle
                     size={16}
-                    color={getErrorHex("text-error-500", colorScheme)}
+                    color={getErrorHex(
+                      colorScheme === "dark" ? "text-error-800" : "text-error-500",
+                      colorScheme
+                    )}
                   />
-                  <Text className="text-error-500 text-sm">
+                  <Text className="text-error-500 text-sm dark:text-error-800">
                     This link has expired — reset it to invite members.
                   </Text>
                 </HStack>
@@ -401,7 +400,7 @@ export default function ShareGroupScreen() {
                 icon={
                   <Share2
                     size={18}
-                    color={getSecondaryHex("text-secondary-0", colorScheme)}
+                    color={getOnSolidHex(colorScheme)}
                   />
                 }
               />
@@ -414,7 +413,7 @@ export default function ShareGroupScreen() {
                 icon={
                   <Download
                     size={18}
-                    color={getPrimaryHex("text-primary-500", colorScheme)}
+                    color={getOnOutlineHex(colorScheme)}
                   />
                 }
               />
@@ -425,7 +424,7 @@ export default function ShareGroupScreen() {
             <VStack className="gap-y-4">
               <VStack>
                 <Text bold className="text-xl">
-                  Reset invite link
+                  Reset Invite Link
                 </Text>
                 <Text className="text-sm text-secondary-950">
                   New link and QR. The current one stops immediately.
@@ -433,7 +432,7 @@ export default function ShareGroupScreen() {
               </VStack>
 
               <PressableListItem
-                className="p-4 border border-background-200 rounded-lg"
+                className="p-4 rounded-lg"
                 onPress={() => setExpirationSheetOpen(true)}
               >
                 <HStack className="items-center justify-between">

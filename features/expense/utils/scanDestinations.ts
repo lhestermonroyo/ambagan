@@ -56,21 +56,21 @@ export const countScanDestinations = (destinations: ScanDestinations) =>
  */
 export const loadScanDestinations = async (userId: string) => {
   const [groups, books] = await Promise.allSettled([
-    services.group.getGroupsByUserIdPaginated(userId, 0, "all"),
-    services.book.getBooksByUserIdPaginated(userId, 0, "all")
+    services.group.getGroupEntriesByUserId(userId),
+    services.book.getBooksByUserId(userId)
   ]);
 
   if (groups.status === "fulfilled") {
     states.group.setState((prev) => ({
       ...prev,
-      list: groups.value.data,
+      list: groups.value,
       initialized: true
     }));
   }
   if (books.status === "fulfilled") {
     states.book.setState((prev) => ({
       ...prev,
-      list: books.value.data,
+      list: books.value,
       initialized: true
     }));
   }

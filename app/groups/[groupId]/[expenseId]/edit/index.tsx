@@ -1,11 +1,9 @@
-import AmountInput from "@/components/AmountInput";
+import { hasSettlementHistory } from "@/features/expense/utils/settlementPayments.util";
 import AppAvatar from "@/components/AppAvatar";
 import AppAvatarGroup from "@/components/AppAvatarGroup";
 import CategoryIcon from "@/components/CategoryIcon";
-import CurrencySelection from "@/components/CurrencySelection";
 import DatePickerModal from "@/components/DatePickerModal";
 import FormButton from "@/components/FormButton";
-import FormTextarea from "@/components/FormTextarea";
 import Icon from "@/components/Icon";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import PressableListItem from "@/components/PressableListItem";
@@ -13,8 +11,6 @@ import SelectField from "@/components/SelectField";
 import { Box } from "@/components/ui/box";
 import {
   FormControl,
-  FormControlError,
-  FormControlErrorText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
@@ -27,9 +23,12 @@ import UploadImage from "@/components/UploadImage";
 import CategorySheet, {
   expenseCategoryMeta
 } from "@/features/expense/components/CategorySheet";
+import ExpenseAmountField from "@/features/expense/components/ExpenseAmountField";
+import ExpenseDescriptionField from "@/features/expense/components/ExpenseDescriptionField";
 import ExpenseOptions, {
   ExpenseOptionChip
 } from "@/features/expense/components/ExpenseOptions";
+import ExpenseSplitBreakdown from "@/features/expense/components/ExpenseSplitBreakdown";
 import PayerContributionSheet from "@/features/expense/components/PayerContributionSheet";
 import SplitExpenseSheet from "@/features/expense/components/SplitExpenseSheet";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
@@ -39,6 +38,7 @@ import {
   getPercentagePerPerson
 } from "@/features/expense/utils/split.util";
 import useAppToast from "@/hooks/use-app-toast";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
@@ -67,7 +67,7 @@ type SplitTypeValue = (typeof splitTypes)[number]["value"];
 
 /**
  * Edit Expense: the same single-screen form as Add Expense (amount, description,
- * date, a Paid-by row + Split card that each open a fullscreen sheet), but seeded
+ * a Paid-by row + Split card that each open a fullscreen sheet), but seeded
  * from an existing expense and locked to its group. Doubles as the Finalize
  * screen for a draft — same form, the primary action writes splits + notifies the
  * group instead of just saving changes. Blocks when a settlement is already in
@@ -84,6 +84,7 @@ export default function EditExpenseScreen() {
   const isPro = currentUser?.plan === "pro";
 
   const toast = useAppToast();
+  const showFeedback = useActionFeedback();
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
 
   const [loading, setLoading] = useState(true);
@@ -214,7 +215,7 @@ export default function EditExpenseScreen() {
 
       // Block editing once any settlement has moved past "pending" — replacing
       // the splits would silently drop that progress.
-      const hasProgress = paymentList.some((p) => p.status !== "pending");
+      const hasProgress = paymentList.some((p) => hasSettlementHistory(p));
       if (hasProgress) {
         setBlockReason("settled");
         setLoading(false);
@@ -349,7 +350,7 @@ export default function EditExpenseScreen() {
   const handleOpenPayerSheet = () => {
     if (parsedAmount <= 0) {
       toast({
-        title: "Enter an amount first",
+        title: "Enter an Amount First",
         description: "Add the expense amount before choosing payers.",
         type: "info"
       });
@@ -483,7 +484,7 @@ export default function EditExpenseScreen() {
   const handleOpenSplitSheet = () => {
     if (parsedAmount <= 0) {
       toast({
-        title: "Enter an amount first",
+        title: "Enter an Amount First",
         description: "Add the expense amount before customizing the split.",
         type: "info"
       });
@@ -535,7 +536,7 @@ export default function EditExpenseScreen() {
     if (!online) {
       if (isDraft) {
         toast({
-          title: "You're offline",
+          title: "You're Offline",
           description: "Finalizing a draft requires an internet connection.",
           type: "error"
         });
@@ -609,9 +610,10 @@ export default function EditExpenseScreen() {
       );
 
       toast({
-        title: "Saved offline",
+        title: "Saved Offline",
         description: "Your changes will sync automatically when you're online.",
-        type: "info"
+        type: "info",
+        haptic: true
       });
       router.back();
       return;
@@ -660,13 +662,15 @@ export default function EditExpenseScreen() {
         settlementRefreshToken: prev.settlementRefreshToken + 1
       }));
 
-      toast({
-        title: isDraft ? "Draft Finalized" : "Expense Updated",
-        description: isDraft
-          ? "Your expense has been split and shared with the group."
-          : "Your changes have been saved.",
-        type: "success"
-      });
+      if (isDraft) {
+        await showFeedback("draft-finalized", { afterNavigation: true });
+      } else {
+        toast({
+          title: "Expense Updated",
+          description: "Your changes have been saved.",
+          type: "success"
+        });
+      }
       router.back();
     } catch (error: any) {
       console.log("Error saving expense:", error);
@@ -849,8 +853,8 @@ export default function EditExpenseScreen() {
 
 /**
  * The scrollable form body. Extracted so the block/loading branches above stay
- * readable — it's the same layout as Add Expense (amount, description, date, the
- * Paid-by row, the consolidated group + split card, and the proof upload).
+ * readable — it uses the same amount and description fields, consolidated group
+ * + split card, and optional fields as Add Expense.
  */
 function ScrollableContent(props: {
   amount: string;
@@ -967,7 +971,7 @@ function ScrollableContent(props: {
     },
     {
       key: "receipt",
-      label: proofUri ? "Receipt added" : "Receipt",
+      label: proofUri ? "Receipt Added" : "Receipt",
       isDefault: !proofUri,
       icon: (color) => <Paperclip size={16} color={color} />,
       // The one chip that expands instead of opening a sheet: the uploader is a
@@ -979,40 +983,21 @@ function ScrollableContent(props: {
   return (
     <ScrollView className="flex-1 px-4">
       <VStack className="gap-y-6 pt-2 pb-4">
-        <FormControl size="md" isInvalid={!!amountError}>
-          <FormControlLabel>
-            <FormControlLabelText>Amount</FormControlLabelText>
-          </FormControlLabel>
-          <HStack className="gap-x-2 items-end h-14">
-            <CurrencySelection
-              currency={currency}
-              onCurrencyChange={setCurrency}
-              locked={!isPro}
-              onLockedPress={onCurrencyLockedPress}
-            />
-            <VStack className="flex-1">
-              <AmountInput
-                className="h-full"
-                placeholder="0.00"
-                value={amount}
-                onChangeText={setAmount}
-              />
-            </VStack>
-          </HStack>
-          {amountError && (
-            <FormControlError>
-              <FormControlErrorText>{amountError}</FormControlErrorText>
-            </FormControlError>
-          )}
-        </FormControl>
+        <ExpenseAmountField
+          value={amount}
+          onChangeText={setAmount}
+          currency={currency}
+          onCurrencyChange={setCurrency}
+          reportingCurrency={selectedGroup.currency}
+          locked={!isPro}
+          onLockedPress={onCurrencyLockedPress}
+          errorMessage={amountError}
+        />
 
-        <FormTextarea
-          label="Description"
+        <ExpenseDescriptionField
           placeholder="Enter description (e.g., Dinner at KFC Baguio)"
           value={description}
           onChangeText={setDescription}
-          autoCapitalize="none"
-          size="sm"
           errorMessage={descriptionError}
         />
 
@@ -1023,27 +1008,36 @@ function ScrollableContent(props: {
           <FormControl size="md">
             <VStack
               className={cn(
-                "border rounded-lg overflow-hidden",
+                "rounded-xl overflow-hidden bg-secondary-100",
                 !splitValid || !payersValid
-                  ? "border-error-300"
-                  : "border-background-200"
+                  ? "border border-error-300"
+                  : undefined
               )}
             >
               {/* Group name (locked — editing can't move an expense's group). */}
-              <Box className="px-4 pt-4 pb-3">
-                <Text
-                  bold
-                  className="text-sm text-secondary-950 uppercase"
-                  numberOfLines={1}
-                >
-                  {selectedGroup.name}
-                </Text>
+              <Box className="p-4">
+                <HStack className="items-center gap-x-3">
+                  <AppAvatar
+                    name={selectedGroup.name}
+                    uri={selectedGroup.avatar || undefined}
+                    size="md"
+                  />
+                  <VStack className="flex-1 min-w-0">
+                    <Text className="text-sm text-secondary-950">
+                      Trip / Group
+                    </Text>
+                    <Text className="text-base font-medium" numberOfLines={1}>
+                      {selectedGroup.name}
+                    </Text>
+                  </VStack>
+                </HStack>
               </Box>
 
               {/* Paid by → the payer contribution sheet. */}
               <PressableListItem
                 onPress={handleOpenPayerSheet}
-                className="h-20 justify-center px-4 border-t border-background-200"
+                surface="muted"
+                className="min-h-[76px] justify-center px-4 py-3 border-t border-background-200"
               >
                 <HStack className="items-center gap-x-3">
                   {isMultiPayer ? (
@@ -1063,13 +1057,13 @@ function ScrollableContent(props: {
                         currentUser?.first_name ??
                         "You"
                       }
-                      size="sm"
+                      size="md"
                       uri={payerMembers[0]?.avatar ?? currentUser?.avatar ?? ""}
                     />
                   )}
                   <VStack className="flex-1">
                     <Text className="text-sm text-secondary-950">Paid by</Text>
-                    <Text className="text-lg" numberOfLines={1}>
+                    <Text className="text-base font-medium" numberOfLines={1}>
                       {payerLabel}
                     </Text>
                   </VStack>
@@ -1093,7 +1087,8 @@ function ScrollableContent(props: {
                   belong in the breakdown below. */}
               <PressableListItem
                 onPress={handleOpenSplitSheet}
-                className="h-20 justify-center px-4 border-t border-background-200"
+                surface="muted"
+                className="min-h-[76px] justify-center px-4 py-3 border-t border-background-200"
               >
                 <HStack className="items-center gap-x-3">
                   <AppAvatarGroup
@@ -1105,7 +1100,7 @@ function ScrollableContent(props: {
                     <Text className="text-sm text-secondary-950">
                       {splitTypeLabel}
                     </Text>
-                    <Text className="text-lg" numberOfLines={1}>
+                    <Text className="text-base font-medium" numberOfLines={1}>
                       {splitAmongText}
                     </Text>
                   </VStack>
@@ -1113,12 +1108,14 @@ function ScrollableContent(props: {
                     <VStack className="items-end">
                       <Text
                         bold
-                        className="text-2xl text-primary-500"
+                        className="text-lg text-primary-500"
                         numberOfLines={1}
                       >
                         {formatAmount(perIncluded, currency)}
                       </Text>
-                      <Text className="text-secondary-950 text-sm">each</Text>
+                      <Text className="text-secondary-950 text-xs uppercase tracking-widest">
+                        each
+                      </Text>
                     </VStack>
                   )}
                   <Icon
@@ -1135,43 +1132,13 @@ function ScrollableContent(props: {
                 </Text>
               )}
 
-              {/* Per-person breakdown: name + % + amount. */}
-              <PressableListItem
-                onPress={() => setShowBreakdown((prev) => !prev)}
-                className="px-4 py-3 border-t border-background-200"
-              >
-                <HStack className="items-center justify-center gap-x-1">
-                  <Text bold className="text-sm text-primary-500">
-                    {showBreakdown ? "Hide breakdown" : "Show breakdown"}
-                  </Text>
-                  <Icon
-                    as={showBreakdown ? "expand-less" : "expand-more"}
-                    size={18}
-                    className="text-primary-500"
-                  />
-                </HStack>
-              </PressableListItem>
-
-              {showBreakdown && (
-                <VStack className="border-t border-background-200 gap-y-2 py-2">
-                  {breakdownRows.map((row) => (
-                    <HStack
-                      key={row.id}
-                      className="justify-between items-center gap-x-2 px-4 py-2"
-                    >
-                      <Text className="flex-1" numberOfLines={1}>
-                        {row.name}
-                      </Text>
-                      <Text className="text-secondary-950 text-sm w-14 text-right">
-                        {row.percentage.toFixed(1)}%
-                      </Text>
-                      <Text bold className="text-right">
-                        {formatAmount(row.amount, currency)}
-                      </Text>
-                    </HStack>
-                  ))}
-                </VStack>
-              )}
+              <ExpenseSplitBreakdown
+                surface="muted"
+                expanded={showBreakdown}
+                onToggle={() => setShowBreakdown((prev) => !prev)}
+                rows={breakdownRows}
+                currency={currency}
+              />
             </VStack>
           </FormControl>
         ) : null}
@@ -1221,7 +1188,7 @@ function ScrollableContent(props: {
 
           <VStack className="gap-y-1">
             <UploadImage
-              title="Upload Proof of Payment (optional)"
+              title="Upload Proof of Payment (Optional)"
               key={proofUri ?? "none"}
               defaultUri={proofUri}
               onSelect={setProofOfPayment}

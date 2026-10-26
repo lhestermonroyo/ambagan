@@ -10,6 +10,7 @@ import {
   useLinkedBookTotals
 } from "@/features/group/hooks/useCombinedSpend";
 import useAppToast from "@/hooks/use-app-toast";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import services from "@/services";
 import states from "@/states";
 import { Book } from "@/types/books";
@@ -53,17 +54,26 @@ export default function CombinedSpendSection({
   cutoff: Date | null;
   until: Date | null;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const router = useRouter();
   const toast = useAppToast();
   const colorScheme = useColorScheme() ?? "light";
   const { details: userDetails } = states.user();
 
-  const { book, paid, pending, loading, refresh } = useLinkedBookTotals(
+  const {
+    book,
+    paid: linkedPaid,
+    pending: linkedPending,
+    loading,
+    refresh
+  } = useLinkedBookTotals(
     groupId,
     cutoff,
     until,
     targetCurrency
   );
+  const paid = previewEmpty ? { amount: 0, approx: false } : linkedPaid;
+  const pending = previewEmpty ? { amount: 0, approx: false } : linkedPending;
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [linkable, setLinkable] = useState<Book[]>([]);
@@ -86,7 +96,7 @@ export default function CombinedSpendSection({
       setPickerOpen(true);
     } catch {
       toast({
-        title: "Couldn't load your books",
+        title: "Couldn't Load Your Books",
         description: "Check your connection and try again.",
         type: "error"
       });
@@ -100,14 +110,14 @@ export default function CombinedSpendSection({
     try {
       await services.book.linkBookToGroup(selected.id, groupId);
       toast({
-        title: "Book linked",
+        title: "Book Linked",
         description: `${selected.name} now rolls up with this group.`,
         type: "success"
       });
       refresh();
     } catch (error) {
       toast({
-        title: "Couldn't link book",
+        title: "Couldn't Link Book",
         description:
           error instanceof Error ? error.message : "Please try again.",
         type: "error"
@@ -123,13 +133,13 @@ export default function CombinedSpendSection({
       <>
         <Divider />
         <PressableListItem
-          className="p-4 border border-background-200 rounded-lg"
+          className="p-4 rounded-lg"
           disabled={linking}
           onPress={openPicker}
         >
           <HStack className="gap-x-4 items-center">
             <VStack className="flex-1">
-              <Text className="text-lg">Link a personal book</Text>
+              <Text className="text-lg">Link a Personal Book</Text>
               <Text className="text-sm text-secondary-950">
                 Tracking your own spending here too? Link a book to see what this{" "}
                 {groupCategory === "trip" ? "trip" : "group"} really cost you.
@@ -156,7 +166,7 @@ export default function CombinedSpendSection({
         onClose={() => setPickerOpen(false)}
         books={linkable}
         onSelect={handleLink}
-        title="Link which book?"
+        title="Link Which Book?"
       />
 
       <Divider />
@@ -174,7 +184,7 @@ export default function CombinedSpendSection({
             findable. */}
         <VStack className="gap-y-2">
           <BreakdownRow
-            label="Your share (group)"
+            label="Your Share (Group)"
             amount={yourShare}
             currency={targetCurrency}
             approx={shareApprox}

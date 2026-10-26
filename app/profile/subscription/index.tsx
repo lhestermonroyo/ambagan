@@ -15,11 +15,14 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { PRO_FEATURES } from "@/constants/proFeatures";
+import useUserState from "@/features/user/states/user.state";
 import useAppToast from "@/hooks/use-app-toast";
 import InnerLayout from "@/layouts/InnerLayout";
 import services from "@/services";
 import states from "@/states";
 import { getPrimaryHex } from "@/utils/getColorHex";
+import { successHaptic } from "@/utils/haptics";
+import { setCachedUserSession } from "@/utils/userCache";
 
 import { differenceInCalendarDays, format } from "date-fns";
 import { Stack, useRouter } from "expo-router";
@@ -55,7 +58,7 @@ const PLANS: {
   {
     key: "two_week",
     label: "2 Weeks",
-    sublabel: "Great for a single trip",
+    sublabel: "One-time pass — no auto-renewal",
     fallbackPrice: TWO_WEEK_PRICE,
     fallbackSuffix: "/ 2 wks"
   },
@@ -77,13 +80,14 @@ const PLANS: {
 ];
 
 export default function SubscriptionScreen() {
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserState();
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
-  const [loadingOffering, setLoadingOffering] = useState(false);
+  const [loadingOffering, setLoadingOffering] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanType>("monthly");
+  const [activationPending, setActivationPending] = useState(false);
 
   const router = useRouter();
   const toast = useAppToast();
@@ -150,22 +154,90 @@ export default function SubscriptionScreen() {
   };
 
   useEffect(() => {
-    fetchOffering();
-  }, []);
+    const userId = userDetails?.id;
+    if (!userId) return;
+    let cancelled = false;
+    async function loadOffering(id: string) {
+      try {
+        const pending = await services.purchase.hasPendingPurchase(id);
+        if (cancelled) return;
+        setLoadingOffering(true);
+        setActivationPending(pending);
+        const current = await services.purchase.getOfferings();
+        if (!cancelled) setOffering(current);
+      } catch (error) {
+        console.error("Failed to fetch offerings:", error);
+      } finally {
+        if (!cancelled) setLoadingOffering(false);
+      }
+    }
+    void loadOffering(userId);
+    return () => { cancelled = true; };
+  }, [userDetails?.id]);
 
-  const fetchOffering = async () => {
-    setLoadingOffering(true);
+  const handleRestore = async (retryActivation = false) => {
+    const purchasingUserId = userDetails?.id;
+    if (!purchasingUserId) return;
+    setRestoring(true);
     try {
-      const current = await services.purchase.getOfferings();
-      setOffering(current);
-    } catch (error) {
-      console.error("Failed to fetch offerings:", error);
+      const customerInfo = retryActivation
+        ? await services.purchase.getCustomerInfo()
+        : await services.purchase.restorePurchases();
+      const { plan, plan_expires_at } =
+        await services.purchase.syncPlanToSupabase(customerInfo, {
+          expectedUserId: purchasingUserId
+        });
+
+      states.user.setState((prev) => ({
+        ...prev,
+        details: prev.details?.id === purchasingUserId
+          ? { ...prev.details, plan, plan_expires_at }
+          : prev.details
+      }));
+      const currentUser = states.user.getState();
+      if (currentUser.details?.id !== purchasingUserId) return;
+      await setCachedUserSession({
+        userId: currentUser.details.id,
+        details: currentUser.details,
+        appearanceMode: currentUser.appearanceMode
+      });
+      if (states.user.getState().details?.id !== purchasingUserId) return;
+      setActivationPending(false);
+
+      if (plan === "pro") {
+        void successHaptic();
+        router.push({
+          pathname: "/subscription-success",
+          params: { restored: "1" }
+        });
+      } else {
+        toast({
+          title: "No Active Pro Access",
+          description: "No active subscription or unexpired Pro pass was found for this account.",
+          type: "info"
+        });
+      }
+    } catch {
+      if (states.user.getState().details?.id !== purchasingUserId) return;
+      toast({
+        title: retryActivation ? "Activation Pending" : "Restore Failed",
+        description: retryActivation || activationPending
+          ? "We couldn’t activate Pro yet. Your payment is saved; retry activation when your connection is available. Do not purchase again."
+          : "Could not restore purchase. Please try again.",
+        type: "error"
+      });
     } finally {
-      setLoadingOffering(false);
+      setRestoring(false);
     }
   };
 
   const handleSubscribe = async () => {
+    const purchasingUserId = userDetails?.id;
+    if (!purchasingUserId) return;
+    if (activationPending) {
+      await handleRestore(true);
+      return;
+    }
     if (!activePkg) {
       toast({
         title: "Product Unavailable",
@@ -177,43 +249,54 @@ export default function SubscriptionScreen() {
     }
 
     setPurchasing(true);
+    let purchaseConfirmed = false;
     try {
       const customerInfo = await services.purchase.purchasePackage(activePkg);
+      purchaseConfirmed = true;
 
-      // The 2-week pass is a consumable — it grants no recurring entitlement,
-      // so we stamp a 14-day window ourselves, stacking onto any unexpired
-      // window so an early repurchase never loses days. Auto-renewable plans
-      // let RevenueCat's active entitlement drive the expiry.
       const { plan, plan_expires_at } =
-        await services.purchase.syncPlanToSupabase(
-          customerInfo,
-          selectedPlan === "two_week"
-            ? {
-                setWindowExpiresAt: services.purchase.computeTwoWeekExpiry(
-                  userDetails?.plan_expires_at ?? null
-                )
-              }
-            : undefined
-        );
+        await services.purchase.syncPlanToSupabase(customerInfo, {
+          expectedUserId: purchasingUserId
+        });
+
+      if (plan !== "pro") {
+        throw new Error("Pro access was not activated after purchase");
+      }
 
       states.user.setState((prev) => ({
         ...prev,
-        details: prev.details
+        details: prev.details?.id === purchasingUserId
           ? { ...prev.details, plan, plan_expires_at }
           : prev.details
       }));
+      const currentUser = states.user.getState();
+      if (currentUser.details?.id !== purchasingUserId) return;
+      await setCachedUserSession({
+        userId: currentUser.details.id,
+        details: currentUser.details,
+        appearanceMode: currentUser.appearanceMode
+      });
+      if (states.user.getState().details?.id !== purchasingUserId) return;
+      setActivationPending(false);
 
-      toast({
-        title: "Welcome to Pro!",
-        description:
-          selectedPlan === "two_week"
-            ? "Your 2-week Pro pass is active — enjoy all features."
-            : "No daily limits — enjoy all features.",
-        type: "success"
+      void successHaptic();
+      router.push({
+        pathname: "/subscription-success",
+        params: { plan: selectedPlan }
       });
     } catch (error) {
       console.error("Purchase failed:", error);
+      if (states.user.getState().details?.id !== purchasingUserId) return;
       if (services.purchase.isPurchaseCancelled(error)) return;
+      if (purchaseConfirmed || services.purchase.isActivationPending(error)) {
+        setActivationPending(true);
+        toast({
+          title: "Payment Received",
+          description: "Pro activation is pending. Tap Retry activation or Restore; you don’t need to purchase again.",
+          type: "info"
+        });
+        return;
+      }
       toast({
         title: "Purchase Failed",
         description: "Could not complete the purchase. Please try again.",
@@ -224,48 +307,13 @@ export default function SubscriptionScreen() {
     }
   };
 
-  const handleRestore = async () => {
-    setRestoring(true);
-    try {
-      const customerInfo = await services.purchase.restorePurchases();
-      const { plan, plan_expires_at } =
-        await services.purchase.syncPlanToSupabase(customerInfo, {
-          currentWindowExpiresAt: userDetails?.plan_expires_at ?? null
-        });
-
-      states.user.setState((prev) => ({
-        ...prev,
-        details: prev.details
-          ? { ...prev.details, plan, plan_expires_at }
-          : prev.details
-      }));
-
-      const restored = plan === "pro";
-      toast({
-        title: restored ? "Purchase Restored" : "No Purchase Found",
-        description: restored
-          ? "Your Ambagan Pro has been restored."
-          : "No previous purchase found for this account.",
-        type: restored ? "success" : "info"
-      });
-    } catch {
-      toast({
-        title: "Restore Failed",
-        description: "Could not restore purchase. Please try again.",
-        type: "error"
-      });
-    } finally {
-      setRestoring(false);
-    }
-  };
-
   const handleManageSubscription = async () => {
     setManagingSubscription(true);
     try {
       await services.purchase.showManageSubscriptions();
     } catch {
       toast({
-        title: "Unable to open",
+        title: "Unable to Open",
         description:
           "Could not open subscription management. Try via Settings → Apple ID → Subscriptions.",
         type: "error"
@@ -286,7 +334,7 @@ export default function SubscriptionScreen() {
             tintColor={tintColor}
             disabled={purchasing || restoring}
             accessibilityLabel="Restore purchase"
-            onPress={handleRestore}
+            onPress={() => handleRestore()}
           >
             {restoring ? "Restoring..." : "Restore"}
           </Stack.Toolbar.Button>
@@ -298,7 +346,7 @@ export default function SubscriptionScreen() {
             className="pr-1"
             disabled={purchasing || restoring}
             aria-label="Restore purchase"
-            onPress={handleRestore}
+            onPress={() => handleRestore()}
           >
             <Text
               className="font-medium"
@@ -366,7 +414,8 @@ export default function SubscriptionScreen() {
                 <ProBadge size="lg" />
               </HStack>
               <Text className="text-secondary-950">
-                One subscription, all features — cancel anytime.
+                All Pro features with a 2-week pass or a monthly or yearly
+                subscription.
               </Text>
             </VStack>
           )}
@@ -379,7 +428,7 @@ export default function SubscriptionScreen() {
             >
               <VStack className="gap-y-2">
                 <Text bold className="text-2xl">
-                  Choose a plan
+                  Choose a Plan
                 </Text>
                 <VStack className="gap-y-2">
                   {PLANS.map((plan) => {
@@ -395,10 +444,10 @@ export default function SubscriptionScreen() {
                         onPress={() => setSelectedPlan(plan.key)}
                       >
                         <Box
-                          className={`rounded-2xl p-4 ${
+                          className={`rounded-2xl border p-4 ${
                             isSelected
-                              ? "bg-primary-0 border border-primary-200"
-                              : "bg-background-50 border border-background-50"
+                              ? "bg-primary-50 border-primary-200"
+                              : "bg-secondary-100 border-secondary-100"
                           }`}
                         >
                           <HStack className="items-center justify-between">
@@ -406,7 +455,7 @@ export default function SubscriptionScreen() {
                               <HStack className="items-center gap-x-2">
                                 <Text
                                   bold
-                                  className={`text-lg ${isSelected ? "text-primary-500" : ""}`}
+                                  className={`text-lg ${isSelected ? "text-primary-700" : ""}`}
                                 >
                                   {plan.label}
                                 </Text>
@@ -414,7 +463,7 @@ export default function SubscriptionScreen() {
                                   <Box className="bg-success-400 px-2 py-0.5 rounded-full">
                                     <Text
                                       bold
-                                      className="text-background-0 text-xs"
+                                      className="text-background-0 dark:text-white text-xs"
                                     >
                                       {plan.badge}
                                     </Text>
@@ -422,7 +471,9 @@ export default function SubscriptionScreen() {
                                 )}
                               </HStack>
                               {plan.sublabel && (
-                                <Text className="text-secondary-950 text-sm">
+                                <Text
+                                  className={`text-sm ${isSelected ? "text-primary-600" : "text-secondary-950"}`}
+                                >
                                   {plan.sublabel}
                                 </Text>
                               )}
@@ -431,11 +482,11 @@ export default function SubscriptionScreen() {
                             <HStack className="items-center gap-x-4">
                               <Text
                                 bold
-                                className={`text-xl ${isSelected ? "text-primary-500" : ""}`}
+                                className={`text-xl ${isSelected ? "text-primary-700" : ""}`}
                               >
                                 {priceLabel}
                                 <Text
-                                  className={`text-sm ${isSelected ? "text-primary-500" : "text-secondary-950"}`}
+                                  className={`text-sm ${isSelected ? "text-primary-600" : "text-secondary-950"}`}
                                 >
                                   {" "}
                                   {plan.fallbackSuffix}
@@ -458,7 +509,7 @@ export default function SubscriptionScreen() {
           {/* Feature list */}
           <VStack className="gap-y-2">
             <Text bold className="text-2xl">
-              {isPro ? "Your Pro Features" : "What you get"}
+              {isPro ? "Your Pro Features" : "What You Get"}
             </Text>
             <Box className="rounded-2xl overflow-hidden bg-background-50">
               {PRO_FEATURES.map((feature, index) => (
@@ -480,6 +531,11 @@ export default function SubscriptionScreen() {
                 </Box>
               ))}
             </Box>
+            <Text className="text-sm text-secondary-950">
+              Free includes Groups and private Individual entries, receipt
+              scanning, linked spending totals, and notifications, with separate
+              daily limits of 5 group expenses and 5 individual expenses.
+            </Text>
           </VStack>
         </VStack>
       </ScrollView>
@@ -497,8 +553,8 @@ export default function SubscriptionScreen() {
 
           {!isPro && (
             <FormButton
-              text={ctaLabel()}
-              loading={purchasing}
+              text={activationPending ? "Retry Activation" : ctaLabel()}
+              loading={purchasing || restoring}
               disabled={purchasing || restoring || loadingOffering}
               onPress={handleSubscribe}
             />
@@ -507,8 +563,9 @@ export default function SubscriptionScreen() {
 
         {!isPro && (
           <Text className="text-center text-secondary-950 text-sm leading-relaxed">
-            Subscription renews automatically.{"\n"}
-            Cancel anytime via App Store settings.
+            {selectedPlan === "two_week"
+              ? "One-time purchase for 14 days of Pro. Does not renew automatically."
+              : "Subscription renews automatically.\nCancel anytime via App Store settings."}
           </Text>
         )}
       </SafeAreaView>

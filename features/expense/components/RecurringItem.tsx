@@ -63,7 +63,7 @@ export default function RecurringItem({
 
   return (
     <Pressable
-      className="bg-background-50 rounded-lg p-4 gap-y-4 data-[hover=true]:bg-background-100 data-[active=true]:bg-background-100"
+      className="bg-background-50 rounded-lg p-4 gap-y-4 data-[hover=true]:bg-secondary-100 data-[active=true]:bg-secondary-100"
       onPress={onPress}
     >
       <VStack className="gap-y-2">
@@ -86,7 +86,7 @@ export default function RecurringItem({
                 <BadgeText
                   className={`font-bold text-xs uppercase ${
                     details.is_active
-                      ? "text-success-600"
+                      ? "text-success-600 dark:text-success-800"
                       : "text-typography-700"
                   }`}
                 >

@@ -1,4 +1,5 @@
 import { Group, Member } from "@/types/groups";
+import { isIndividualGroup } from "./groupMode";
 
 /** Minimum members a group needs before an expense can be split within it — the
  *  creator plus at least one other person. Groups below this can't have an
@@ -11,6 +12,7 @@ type GroupWithMembers = Group & { members?: Member[] };
 
 /** True when a group has enough members to add/split an expense. */
 export const hasEnoughMembersForExpense = (group: GroupWithMembers) =>
+  !isIndividualGroup(group) &&
   (group.members?.length ?? 0) >= MIN_GROUP_MEMBERS_FOR_EXPENSE;
 
 /** The current user's own join timestamp for a group (epoch ms), read from its

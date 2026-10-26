@@ -1,3 +1,4 @@
+import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AndroidHeaderMenu from "@/components/AndroidHeaderMenu";
 import CategoryIcon from "@/components/CategoryIcon";
 import EmptyList from "@/components/EmptyList";
@@ -7,16 +8,7 @@ import { ExpenseDetailsSkeleton } from "@/components/SkeletonLoader";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
-import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import {
-  Modal,
-  ModalBody,
-  ModalBackdrop,
-  ModalContent,
-  ModalFooter,
-  ModalHeader
-} from "@/components/ui/modal";
 import { RefreshControl } from "@/components/ui/refresh-control";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -85,7 +77,7 @@ export default function BookRecurringDetailsScreen() {
       // offline empty state below, not an error worth a toast.
       if (isOnline) {
         toast({
-          title: "Couldn't load",
+          title: "Couldn't Load",
           description:
             "Failed to load this recurring expense. Please try again.",
           type: "error"
@@ -114,7 +106,7 @@ export default function BookRecurringDetailsScreen() {
   const requireConnection = async () => {
     if (await offlineQueue.isOnline()) return true;
     toast({
-      title: "You're offline",
+      title: "You're Offline",
       description:
         "Recurring expenses need a connection. Reconnect to manage this series.",
       type: "info"
@@ -131,7 +123,7 @@ export default function BookRecurringDetailsScreen() {
     try {
       await services.bookRecurring.setPersonalRecurringActive(item.id, next);
       toast({
-        title: next ? "Series resumed" : "Series paused",
+        title: next ? "Series Resumed" : "Series Paused",
         description: next
           ? "Future occurrences will post on schedule again."
           : "No new occurrences will post until you resume.",
@@ -140,7 +132,7 @@ export default function BookRecurringDetailsScreen() {
     } catch {
       setItem((prev) => (prev ? { ...prev, is_active: !next } : prev));
       toast({
-        title: "Couldn't update",
+        title: "Couldn't Update",
         description: "Failed to change this series. Please try again.",
         type: "error"
       });
@@ -156,7 +148,7 @@ export default function BookRecurringDetailsScreen() {
     try {
       await services.bookRecurring.deletePersonalRecurring(item.id);
       toast({
-        title: "Series deleted",
+        title: "Series Deleted",
         description: "Future occurrences won't be posted. Past ones remain.",
         type: "success"
       });
@@ -164,7 +156,7 @@ export default function BookRecurringDetailsScreen() {
       router.back();
     } catch {
       toast({
-        title: "Couldn't delete",
+        title: "Couldn't Delete",
         description: "Failed to delete this series. Please try again.",
         type: "error"
       });
@@ -185,7 +177,7 @@ export default function BookRecurringDetailsScreen() {
           icon={item.is_active ? "pause" : "play"}
           onPress={handleToggleActive}
         >
-          {item.is_active ? "Pause series" : "Resume series"}
+          {item.is_active ? "Pause Series" : "Resume Series"}
         </Stack.Toolbar.MenuAction>
         <Stack.Toolbar.MenuAction
           icon="trash"
@@ -206,7 +198,7 @@ export default function BookRecurringDetailsScreen() {
         items={[
           {
             key: "toggle",
-            label: item.is_active ? "Pause series" : "Resume series",
+            label: item.is_active ? "Pause Series" : "Resume Series",
             icon: item.is_active ? Pause : Play,
             onPress: handleToggleActive
           },
@@ -243,15 +235,15 @@ export default function BookRecurringDetailsScreen() {
         actions={renderActions()}
         androidActions={renderAndroidActions()}
       >
-        <LoadingWrapper isLoading={loading} skeleton={<ExpenseDetailsSkeleton />}>
+        <LoadingWrapper isLoading={loading} skeleton={<ExpenseDetailsSkeleton recurring personal />}>
           {!item ? (
             <VStack className="flex-1 py-16">
               <EmptyList
                 type={EmptyType.EXPENSE}
                 content={
-                  isOnline
-                    ? "This recurring expense couldn't be loaded. Pull back and try again."
-                    : "You're offline. Reconnect to view this recurring expense."
+                isOnline
+                ? "Couldn't load this recurring expense. Try again."
+                : "You're offline. Reconnect to view this recurring expense."
                 }
               />
             </VStack>
@@ -285,7 +277,7 @@ export default function BookRecurringDetailsScreen() {
                       <BadgeText
                         className={`font-bold text-xs uppercase ${
                           item.is_active
-                            ? "text-success-600"
+                            ? "text-success-600 dark:text-success-800"
                             : "text-typography-700"
                         }`}
                       >
@@ -380,39 +372,16 @@ export default function BookRecurringDetailsScreen() {
         </LoadingWrapper>
       </InnerLayout>
 
-      <Modal
+      <ConfirmationSheet
         isOpen={deleteModalOpen}
-        onClose={() => !busy && setDeleteModalOpen(false)}
-      >
-        <ModalBackdrop />
-        <ModalContent>
-          <ModalHeader>
-            <Heading size="lg">Delete recurring series?</Heading>
-          </ModalHeader>
-          <ModalBody>
-            <Text className="text-sm text-secondary-950">
-              Future occurrences won't be posted. Expenses already created stay
-              in the book. This can't be undone.
-            </Text>
-          </ModalBody>
-          <ModalFooter>
-            <HStack className="gap-x-2">
-              <FormButton
-                variant="outline"
-                text="Cancel"
-                disabled={busy}
-                onPress={() => setDeleteModalOpen(false)}
-              />
-              <FormButton
-                text="Delete"
-                action="negative"
-                loading={busy}
-                onPress={handleDelete}
-              />
-            </HStack>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Recurring Series?"
+        description="Future occurrences won't be posted. Expenses already created stay in the Individual entry. This can't be undone."
+        confirmText="Delete"
+        isDelete
+        loading={busy}
+        onConfirm={handleDelete}
+      />
     </Fragment>
   );
 }

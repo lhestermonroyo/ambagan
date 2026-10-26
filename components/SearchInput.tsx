@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import { TextInputProps } from "react-native";
+import { ComponentProps, Ref, useEffect, useState } from "react";
+import { TextInput, TextInputProps } from "react-native";
 import Icon from "./Icon";
 import { Button } from "./ui/button";
 import { Input, InputField, InputIcon, InputSlot } from "./ui/input";
 
 interface IFormInputProps extends TextInputProps {
+  inputRef?: Ref<TextInput>;
   label?: string;
   placeholder: string;
   value: string;
@@ -35,6 +36,7 @@ const SearchInput: React.FC<IFormInputProps> = ({
   isReadOnly = false,
   isDisabled = false,
   errorMessage,
+  inputRef,
   ...props
 }) => {
   const [searchValue, setSearchValue] = useState(value ?? "");
@@ -67,6 +69,8 @@ const SearchInput: React.FC<IFormInputProps> = ({
       </InputSlot>
 
       <InputField
+        // Gluestack forwards the native TextInput, but types its ref as props.
+        ref={inputRef as unknown as ComponentProps<typeof InputField>["ref"]}
         autoCapitalize="none"
         placeholder={placeholder}
         value={searchValue}

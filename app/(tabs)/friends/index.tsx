@@ -1,9 +1,14 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchDrawer from "@/components/SearchDrawer";
-import { FriendListSkeleton } from "@/components/SkeletonLoader";
+import {
+  ContainerTabsSkeleton,
+  FilterBarSkeleton,
+  FriendListSkeleton
+} from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
@@ -11,6 +16,10 @@ import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import FriendRow from "@/features/friends/components/FriendRow";
+import BalanceFilterSheet, {
+  balanceFilterLabel,
+  type BalanceFilter
+} from "@/features/friends/components/BalanceFilterSheet";
 import { useFavoriteToggle } from "@/features/group/hooks/useFavoriteToggle";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
@@ -18,38 +27,39 @@ import states from "@/states";
 import { FriendSummary } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { UserPreview } from "@/types/user";
+import { getOnOutlineHex } from "@/utils/getColorHex";
 import { BASE_CURRENCY, getRate, useFxRates } from "@/utils/fx";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Search } from "lucide-react-native";
-import { useCallback, useMemo, useState } from "react";
-import { RefreshControl } from "react-native";
+import { ChevronDown, Search } from "lucide-react-native";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { createRefreshGate, dataRevision, invalidateData } from "@/utils/dataRefresh";
+import { RefreshControl, useColorScheme } from "react-native";
 
 type MainTab = "balances" | "contacts";
-type BalanceFilter = "all" | "collect" | "pay";
 
 const MAIN_TABS: { key: MainTab; label: string }[] = [
   { key: "balances", label: "Balances" },
   { key: "contacts", label: "Contacts" }
 ];
 
-const BALANCE_FILTERS: { key: BalanceFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "collect", label: "To collect" },
-  { key: "pay", label: "To pay" }
-];
-
 export default function FriendsScreen() {
-  const [loading, setLoading] = useState(false);
+  const previewEmpty = useEmptyStatePreview();
+  const [loading, setLoading] = useState(true);
+  const [contactsLoading, setContactsLoading] = useState(true);
+  const contentLoading = loading || contactsLoading;
   const [refreshing, setRefreshing] = useState(false);
   const [friends, setFriends] = useState<FriendSummary[]>([]);
   const [recentFriends, setRecentFriends] = useState<UserPreview[]>([]);
   const [groupContacts, setGroupContacts] = useState<UserPreview[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchVisible, setSearchVisible] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const initializedRef = useRef(false);
+  const refreshGate = useRef(createRefreshGate()).current;
   const [mainTab, setMainTab] = useState<MainTab>("balances");
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
+  const [balanceFilterSheetOpen, setBalanceFilterSheetOpen] = useState(false);
+  const colorScheme = useColorScheme() ?? "light";
 
   const { details: userDetails } = states.user();
   const fx = useFxRates();
@@ -61,12 +71,19 @@ export default function FriendsScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!userDetails?.id) return;
-      fetchFriends(initialized);
-      loadFavorites();
-      loadRecentFriends();
-      loadGroupContacts();
-    }, [userDetails?.id, initialized])
+      init();
+    }, [userDetails?.id])
   );
+
+  const init = async (force = false) => {
+    if (!userDetails?.id) return;
+    await Promise.all([
+      refreshGate.run(`${userDetails.id}:balances`, dataRevision("settlements"),
+        () => fetchFriends(initializedRef.current), force),
+      refreshGate.run(`${userDetails.id}:contacts`, dataRevision("contacts"),
+        () => Promise.all([loadFavorites(), loadRecentFriends(), loadGroupContacts()]), force)
+    ]);
+  };
 
   const fetchFriends = async (isInitialized = false) => {
     if (!userDetails?.id) return;
@@ -82,7 +99,7 @@ export default function FriendsScreen() {
       console.error("Failed to fetch friends:", error);
     } finally {
       if (!isInitialized) setLoading(false);
-      setInitialized(true);
+      initializedRef.current = true;
     }
   };
 
@@ -103,17 +120,15 @@ export default function FriendsScreen() {
       setGroupContacts(data);
     } catch (error) {
       console.error("Failed to load group contacts:", error);
+    } finally {
+      setContactsLoading(false);
     }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([
-      fetchFriends(true),
-      loadFavorites(),
-      loadRecentFriends(),
-      loadGroupContacts()
-    ]);
+    invalidateData("settlements", "contacts");
+    await init(true);
     setRefreshing(false);
   };
 
@@ -230,7 +245,7 @@ export default function FriendsScreen() {
           key: "search",
           sf: "magnifyingglass",
           lucide: Search,
-          label: "Search friends",
+          label: "Search Friends",
           onPress: () => setSearchVisible(true)
         }
       ]}
@@ -243,48 +258,71 @@ export default function FriendsScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <VStack className="bg-background-0 pb-4 gap-y-4 pt-2">
-            {/* Balances / Contacts tabs under the search */}
-            {!isSearchActive && (
-              <HStack className="px-4 gap-x-2">
-                {MAIN_TABS.map((tab) => (
-                  <FormButton
-                    key={tab.key}
-                    className="flex-1"
-                    size="sm"
-                    variant={mainTab === tab.key ? "solid" : "outline"}
-                    text={tab.label}
-                    onPress={() => setMainTab(tab.key)}
-                  />
-                ))}
-              </HStack>
-            )}
-
-            {/* Balance direction filter — only on the Balances tab, not searching */}
-            {!isSearchActive && mainTab === "balances" && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <HStack className="gap-x-2 px-4">
-                  {BALANCE_FILTERS.map((filter) => (
+          <LoadingWrapper
+            isLoading={contentLoading}
+            skeleton={
+              <VStack className="pb-4 gap-y-4 pt-2">
+                {!isSearchActive && (
+                  <>
+                    <ContainerTabsSkeleton widths={[112, 112]} fill />
+                    {mainTab === "balances" && <FilterBarSkeleton />}
+                  </>
+                )}
+              </VStack>
+            }
+          >
+            <VStack className="bg-background-0 pb-4 gap-y-4 pt-2">
+              {/* Balances / Contacts tabs under the search */}
+              {!isSearchActive && (
+                <HStack className="px-4 gap-x-2">
+                  {MAIN_TABS.map((tab) => (
                     <FormButton
-                      key={filter.key}
+                      key={tab.key}
+                      className="flex-1"
                       size="sm"
-                      variant={
-                        balanceFilter === filter.key ? "solid" : "outline"
-                      }
-                      text={filter.label}
-                      onPress={() => setBalanceFilter(filter.key)}
+                      variant={mainTab === tab.key ? "solid" : "outline"}
+                      text={tab.label}
+                      onPress={() => {
+                        setBalanceFilterSheetOpen(false);
+                        setMainTab(tab.key);
+                      }}
                     />
                   ))}
                 </HStack>
-              </ScrollView>
-            )}
-          </VStack>
+              )}
 
-          <LoadingWrapper isLoading={loading} skeleton={<FriendListSkeleton />}>
+              {/* Balance direction filter — only on the Balances tab, not searching */}
+              {!isSearchActive && mainTab === "balances" && (
+                <HStack className="px-4 items-center">
+                  <FormButton
+                    size="sm"
+                    variant="outline"
+                    text={balanceFilterLabel(balanceFilter)}
+                    iconEnd={
+                      <ChevronDown
+                        size={16}
+                        color={getOnOutlineHex(colorScheme)}
+                      />
+                    }
+                    onPress={() => setBalanceFilterSheetOpen(true)}
+                  />
+                </HStack>
+              )}
+            </VStack>
+          </LoadingWrapper>
+
+          <LoadingWrapper
+            isLoading={contentLoading}
+            skeleton={
+              <FriendListSkeleton
+                showBalance={mainTab === "balances" || isSearchActive}
+              />
+            }
+          >
             {isSearchActive ? (
               // Unified global search across balances + contacts.
               <FlatList
-                data={searchResults}
+                data={previewEmpty ? [] : searchResults}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
@@ -299,15 +337,15 @@ export default function FriendsScreen() {
                 ItemSeparatorComponent={ListDivider}
                 ListHeaderComponent={() => (
                   <Text className="text-sm text-secondary-950 px-4 pb-2" bold>
-                    {searchResults.length} result
-                    {searchResults.length !== 1 ? "s" : ""}
+                    {previewEmpty ? 0 : searchResults.length} result
+                    {previewEmpty || searchResults.length !== 1 ? "s" : ""}
                   </Text>
                 )}
                 ListEmptyComponent={() => <EmptyList type={EmptyType.SEARCH} />}
               />
             ) : mainTab === "balances" ? (
               <FlatList
-                data={balanceList}
+                data={previewEmpty ? [] : balanceList}
                 keyExtractor={(item) => item.friend.id}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
@@ -320,12 +358,21 @@ export default function FriendsScreen() {
                   />
                 )}
                 ItemSeparatorComponent={ListDivider}
-                ListEmptyComponent={() => <EmptyList type={EmptyType.FRIEND} />}
+                ListEmptyComponent={() => (
+                  <EmptyList
+                    type={EmptyType.FRIEND}
+                    content={
+                      balanceFilter !== "all"
+                        ? "No balances match this filter. View all to see the rest."
+                        : "Share a group expense to see who owes what."
+                    }
+                  />
+                )}
               />
             ) : (
               // Contacts directory — favorites pinned, then everyone else.
               <VStack className="gap-y-2">
-                {favoriteContacts.length > 0 && (
+                {!previewEmpty && favoriteContacts.length > 0 && (
                   <VStack className="gap-y-2">
                     <Text
                       bold
@@ -343,28 +390,30 @@ export default function FriendsScreen() {
                   </VStack>
                 )}
                 <VStack className="gap-y-2">
-                  {favoriteContacts.length > 0 && otherContacts.length > 0 && (
-                    <Text
-                      bold
-                      className="text-sm text-secondary-950 uppercase px-4 pt-2"
-                    >
-                      All Contacts
-                    </Text>
-                  )}
+                  {!previewEmpty &&
+                    favoriteContacts.length > 0 &&
+                    otherContacts.length > 0 && (
+                      <Text
+                        bold
+                        className="text-sm text-secondary-950 uppercase px-4 pt-2"
+                      >
+                        All Contacts
+                      </Text>
+                    )}
                   <FlatList
-                    data={otherContacts}
+                    data={previewEmpty ? [] : otherContacts}
                     keyExtractor={(item) => item.id}
                     scrollEnabled={false}
                     renderItem={renderContactRow}
                     ItemSeparatorComponent={ListDivider}
                     ListEmptyComponent={() =>
-                      favoriteContacts.length === 0 ? (
+                      previewEmpty || favoriteContacts.length === 0 ? (
                         // The FRIEND default is about outstanding settlements,
                         // which is the Balances tab's concern — an empty
                         // contacts directory just means no shared groups yet.
                         <EmptyList
                           type={EmptyType.FRIEND}
-                          content="No contacts yet. People you share a group with will show up here."
+                          content="Meet your group here. People you split expenses with will appear here."
                         />
                       ) : null
                     }
@@ -374,6 +423,13 @@ export default function FriendsScreen() {
             )}
           </LoadingWrapper>
         </ScrollView>
+
+        <BalanceFilterSheet
+          isOpen={balanceFilterSheetOpen && !contentLoading}
+          onClose={() => setBalanceFilterSheetOpen(false)}
+          filter={balanceFilter}
+          onSelect={setBalanceFilter}
+        />
 
         <SearchDrawer
           isOpen={searchVisible}
@@ -385,7 +441,7 @@ export default function FriendsScreen() {
         >
           {isSearchActive ? (
             <FlatList
-              data={searchResults}
+              data={previewEmpty ? [] : searchResults}
               keyExtractor={(item) => item.id}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingBottom: 24 }}
@@ -404,8 +460,8 @@ export default function FriendsScreen() {
               ItemSeparatorComponent={ListDivider}
               ListHeaderComponent={
                 <Text className="text-sm text-secondary-950 px-4 py-2" bold>
-                  {searchResults.length} result
-                  {searchResults.length !== 1 ? "s" : ""}
+                  {previewEmpty ? 0 : searchResults.length} result
+                  {previewEmpty || searchResults.length !== 1 ? "s" : ""}
                 </Text>
               }
               ListEmptyComponent={<EmptyList type={EmptyType.SEARCH} />}

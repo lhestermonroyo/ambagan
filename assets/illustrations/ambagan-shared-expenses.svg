@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 640 640" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">A little shared, a little your own</title>
+  <desc id="description">Three friends connected to a shared peso receipt, two settled shares, and a personal expense notebook. An asymmetrical cut-paper illustration on a transparent canvas.</desc>
+
+  <!-- Loose connections follow the receipt entries, rather than an orbit. -->
+  <g stroke="#7C3AED" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="2 11">
+    <path d="M176 218C181 261 204 281 250 286"/>
+    <path d="M461 276C446 279 446 318 413 326"/>
+    <path d="M184 420C224 434 204 374 253 367"/>
+  </g>
+
+  <!-- A private notebook, tucked beneath the shared receipt. -->
+  <g transform="rotate(12 434 451)" stroke-linejoin="round">
+    <path d="M379 381L481 378Q493 379 493 392L496 511Q496 522 484 524L384 527Q374 526 374 515L372 395Q372 384 379 381Z" fill="#7C3AED" stroke="#2E1065" stroke-width="4"/>
+    <path d="M385 390L480 388L483 510L387 515Z" fill="#FFF9EE"/>
+    <path d="M386 392L387 516" stroke="#2E1065" stroke-width="3.5"/>
+    <path d="M397 410L466 409M398 429L450 428M398 449L465 448M399 468L447 467" stroke="#DDD6FE" stroke-width="5" stroke-linecap="round"/>
+    <path d="M457 382L458 408L467 400L474 406L473 380" fill="#DDD6FE" stroke="#2E1065" stroke-width="3"/>
+    <path d="M367 403L380 402M368 428L381 427M369 453L382 452M370 479L383 478M371 504L384 503" stroke="#2E1065" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- A single receipt; the slightly uneven edge is the paper, not a shadow. -->
+  <g transform="rotate(-7 321 309)" stroke-linejoin="round">
+    <path d="M227 144Q226 137 234 137L383 140L411 173L408 463L394 455L381 466L366 457L352 468L337 459L322 469L308 460L293 470L278 461L264 471L250 463L236 473L224 463Z" fill="#FFF9EE" stroke="#2E1065" stroke-width="4.5"/>
+    <path d="M383 140L380 171Q380 177 387 177L411 173Z" fill="#DDD6FE" stroke="#2E1065" stroke-width="4"/>
+
+    <!-- Outlined peso mark: no font dependency, and no other lettering. -->
+    <g stroke="#7C3AED" stroke-width="7" stroke-linecap="round">
+      <path d="M271 240L271 185L289 185C325 185 325 221 290 221L272 221"/>
+      <path d="M260 198L320 198M260 208L320 208"/>
+    </g>
+    <path d="M342 205L366 205M342 221L356 221" stroke="#DDD6FE" stroke-width="6" stroke-linecap="round"/>
+    <path d="M250 260L382 262" stroke="#2E1065" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="2 7"/>
+
+    <!-- Three shares, with two already settled. -->
+    <path d="M262 290L321 291M262 332L337 333M262 374L315 375" stroke="#2E1065" stroke-width="6" stroke-linecap="round"/>
+    <path d="M263 303L297 304M263 345L309 346M263 387L292 388" stroke="#DDD6FE" stroke-width="5" stroke-linecap="round"/>
+    <g fill="#7C3AED">
+      <path d="M246 286Q251 286 251 291Q250 296 245 295Q241 294 242 290Q242 286 246 286Z"/>
+      <path d="M246 328Q251 328 251 333Q250 338 245 337Q241 336 242 332Q242 328 246 328Z"/>
+      <path d="M246 370Q251 370 251 375Q250 380 245 379Q241 378 242 374Q242 370 246 370Z"/>
+    </g>
+    <path d="M356 331L364 340L380 319M353 373L363 382L380 360" stroke="#568567" stroke-width="6.5" stroke-linecap="round"/>
+    <path d="M250 414L381 416" stroke="#2E1065" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="2 7"/>
+    <path d="M264 435L316 436M351 435L371 435" stroke="#7C3AED" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <!-- Friend one: cropped hair, a raised eyebrow, and a violet shirt. -->
+  <g transform="translate(87 101) rotate(-9 61 68)" stroke="#2E1065" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 112C15 93 15 61 24 35C34 9 83 5 100 29C114 49 112 88 107 117L84 125L34 125Z" fill="#DDD6FE" stroke="none"/>
+    <path d="M12 129C15 108 27 99 46 96L77 97C96 100 108 111 112 129L77 137L37 135Z" fill="#7C3AED" stroke-width="3.5"/>
+    <path d="M47 87L46 102Q60 114 75 101L74 83" fill="#C98F67" stroke-width="3.5"/>
+    <path d="M33 53C29 39 35 24 53 22C77 18 90 32 87 54L84 76C79 93 67 100 55 95C42 91 35 79 33 65C23 65 24 51 33 53Z" fill="#C98F67" stroke-width="3.5"/>
+    <path d="M32 56L30 37L39 24L36 17L51 19L62 12L67 19L82 19L92 33L89 56L80 51L77 37L65 42L48 38L40 56Z" fill="#2E1065" stroke-width="2.5"/>
+    <path d="M45 59L52 57M68 57L74 59" stroke-width="2.5"/>
+    <path d="M49 65L49 68M71 65L71 68M61 68L59 76L63 77" stroke-width="2.8"/>
+    <path d="M51 83Q60 89 70 81" stroke-width="3"/>
+    <path d="M41 116L38 131M85 118L87 133" stroke="#DDD6FE" stroke-width="3"/>
+  </g>
+
+  <!-- Friend two: a high bun, a relaxed smile, and an off-white collar. -->
+  <g transform="translate(453 194) rotate(8 49 65)" stroke="#2E1065" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 53C5 29 24 15 51 18C81 19 98 38 96 65L93 113L71 124L26 121L6 106Z" fill="#DDD6FE" stroke="none"/>
+    <path d="M27 41C20 19 31 6 45 8C53 -1 72 5 74 17C89 24 86 38 77 48" fill="#2E1065" stroke-width="3"/>
+    <path d="M25 51Q22 31 43 26Q76 19 83 50L89 95L72 107L33 103L19 95Z" fill="#2E1065" stroke-width="3"/>
+    <path d="M5 129C8 109 23 101 40 99L66 98C87 102 98 112 101 131L75 137L31 135Z" fill="#FFF9EE" stroke-width="3.5"/>
+    <path d="M40 85L39 101L52 116L67 101L66 83" fill="#E3B38B" stroke-width="3.5"/>
+    <path d="M30 51C31 36 47 32 58 32C62 43 69 46 77 47L76 72C72 89 61 97 50 94C37 91 31 80 30 66C22 67 21 53 30 53Z" fill="#E3B38B" stroke-width="3.5"/>
+    <path d="M39 61Q43 57 47 61M61 61Q65 57 69 61" stroke-width="2.7"/>
+    <path d="M54 65L51 73L56 75M44 81Q54 91 65 80" stroke-width="2.7"/>
+    <path d="M27 104L39 123L52 116L66 124L80 106" stroke-width="3"/>
+  </g>
+
+  <!-- Friend three: softly wavy hair, round glasses, and a lavender shirt. -->
+  <g transform="translate(92 383) rotate(-4 60 69)" stroke="#2E1065" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 37C23 16 57 10 80 20C108 31 113 65 104 96L93 120L36 131L13 115C5 96 3 61 14 37Z" fill="#DDD6FE" stroke="none"/>
+    <path d="M8 134C11 111 24 103 43 101L74 101C92 105 106 115 109 136L80 142L35 140Z" fill="#DDD6FE" stroke-width="3.5"/>
+    <path d="M44 86L43 104Q59 117 73 103L72 84" fill="#B97450" stroke-width="3.5"/>
+    <path d="M29 58C23 38 38 24 57 24C81 24 91 37 86 62L83 79C79 93 68 101 55 96C40 92 33 80 32 69C21 69 21 56 29 58Z" fill="#B97450" stroke-width="3.5"/>
+    <path d="M29 59C17 53 18 40 27 35C23 24 35 16 45 21C52 10 67 15 72 23C87 19 96 33 89 43L89 62L80 57L77 44C68 48 60 42 56 37C50 47 40 44 36 43L37 60Z" fill="#2E1065" stroke-width="2.5"/>
+    <path d="M37 64Q38 57 46 58Q55 58 55 66Q55 74 47 74Q38 73 37 64ZM62 65Q62 57 71 58Q80 58 80 66Q80 74 72 74Q63 74 62 65ZM55 64L62 64" stroke-width="2.5"/>
+    <path d="M47 64L47 67M71 64L71 67M58 72L56 79L60 79" stroke-width="2.6"/>
+    <path d="M48 85Q57 91 67 85" stroke-width="2.8"/>
+    <path d="M37 120L35 137M84 121L87 137" stroke-width="3"/>
+    <path d="M48 106Q58 121 70 106" stroke-width="3"/>
+  </g>
+</svg>

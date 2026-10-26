@@ -9,6 +9,7 @@ import useAppToast from "@/hooks/use-app-toast";
 import AuthLayout from "@/layouts/AuthLayout";
 import services from "@/services";
 import states from "@/states";
+import { successHaptic } from "@/utils/haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
@@ -75,7 +76,7 @@ export default function SignUpScreen() {
 
       if (alreadyRegistered) {
         toast({
-          title: "Email already in use",
+          title: "Email Already in Use",
           description:
             "This email already has an account. Please log in instead.",
           type: "error"
@@ -92,6 +93,7 @@ export default function SignUpScreen() {
         ...prev,
         session: response.session
       }));
+      void successHaptic();
       router.push("/onboarding");
     } catch (error: any) {
       // With confirmations OFF, a duplicate email throws instead of obfuscating.
@@ -103,7 +105,7 @@ export default function SignUpScreen() {
 
       if (alreadyRegistered) {
         toast({
-          title: "Email already in use",
+          title: "Email Already in Use",
           description:
             "This email already has an account. Please log in instead.",
           type: "error"
@@ -128,12 +130,13 @@ export default function SignUpScreen() {
     <AuthLayout
       title="Create Account"
       subtitle="Sign up to get started"
+      onBack={() => router.dismissTo("/(auth)/welcome")}
       footer={
         <HStack className="gap-x-1">
           <Text className="text-lg text-secondary-950">
             Already have an account?
           </Text>
-          <Link onPress={() => router.back()}>
+          <Link onPress={() => router.replace("/(auth)/login")}>
             <Text className="text-lg font-medium text-primary-400">Login</Text>
           </Link>
         </HStack>

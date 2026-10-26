@@ -1,3 +1,6 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
+import EmptyList from "@/components/EmptyList";
+import { EmptyType } from "@/types/general";
 import AppAvatar from "@/components/AppAvatar";
 import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
@@ -70,6 +73,7 @@ export default function ContactPickerSheet({
   knownUsers?: UserPreview[];
   onAdd: (members: UserPreview[]) => void;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const [permission, setPermission] =
     useState<Contacts.PermissionStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -133,7 +137,7 @@ export default function ContactPickerSheet({
     } catch (error) {
       console.error("Failed to load contacts:", error);
       toast({
-        title: "Couldn't load contacts",
+        title: "Couldn't Load Contacts",
         description: "Please try again.",
         type: "error",
       });
@@ -208,7 +212,7 @@ export default function ContactPickerSheet({
     toast({
       title:
         added.length === 1
-          ? "1 contact added"
+          ? "1 Contact Added"
           : `${added.length} contacts added`,
       description: "Keep adding, or tap Done when you're finished.",
       type: "success",
@@ -253,7 +257,7 @@ export default function ContactPickerSheet({
           <Icon as="arrow-back-ios" className="text-secondary-950" />
           <VStack className="flex-1 gap-y-1">
             <Text bold className="text-xl">
-              Add from Contacts
+              Add From Contacts
             </Text>
             <Text className="text-sm text-secondary-950 w-full">
               They can claim these expenses once they join Ambagan.
@@ -285,7 +289,7 @@ export default function ContactPickerSheet({
           >
             <FlatList
               className="flex-1"
-              data={filtered}
+              data={previewEmpty ? [] : filtered}
               keyExtractor={(item) => item.key}
               renderItem={({ item }) => {
                 const linked = linkedUserFor(item);
@@ -334,13 +338,16 @@ export default function ContactPickerSheet({
               }}
               ItemSeparatorComponent={ListDivider}
               ListEmptyComponent={() => (
-                <VStack className="p-4 items-center">
-                  <Text className="text-sm text-secondary-950">
-                    {loading ? "Loading contacts…" : "No contacts found."}
-                  </Text>
-                </VStack>
+                loading ? (
+                  <Text className="p-4 text-center text-sm text-secondary-950">Loading contacts…</Text>
+                ) : (
+                  <EmptyList
+                    type={searchInput.trim() ? EmptyType.SEARCH : EmptyType.USER}
+                    content={searchInput.trim() ? "No matches yet. Try another name or clear your search." : "No new contacts to add. Refresh after saving a contact with a phone number."}
+                  />
+                )
               )}
-              ListFooterComponent={() => <Box className="h-4" />}
+              ListFooterComponent={previewEmpty ? null : (() => <Box className="h-4" />)}
             />
           </CheckboxGroup>
         </VStack>

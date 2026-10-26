@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
  *
  * Drafts are ignored — they carry an amount but no splits yet.
  */
-export function useMemberSplits(expenses: ExpensePreview[]) {
+export function useMemberSplits(expenses: ExpensePreview[], refreshToken = "0") {
   const [splits, setSplits] = useState<MemberSplit[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -33,13 +33,14 @@ export function useMemberSplits(expenses: ExpensePreview[]) {
   const requestIdRef = useRef(0);
 
   useEffect(() => {
+    const requestId = ++requestIdRef.current;
     const ids = expenseIdsKey ? expenseIdsKey.split(",") : [];
     if (ids.length === 0) {
       setSplits([]);
+      setLoading(false);
       return;
     }
 
-    const requestId = ++requestIdRef.current;
     setLoading(true);
     services.expense
       .getMemberSplitsByExpenseIds(ids)
@@ -53,7 +54,8 @@ export function useMemberSplits(expenses: ExpensePreview[]) {
       .finally(() => {
         if (requestId === requestIdRef.current) setLoading(false);
       });
-  }, [expenseIdsKey]);
+    return () => { requestIdRef.current += 1; };
+  }, [expenseIdsKey, refreshToken]);
 
   return { splits, loading };
 }

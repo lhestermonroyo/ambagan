@@ -1,18 +1,7 @@
 import { Fragment, useState } from "react";
-import FormButton from "./FormButton";
+import ConfirmationSheet from "./ConfirmationSheet";
 import Icon from "./Icon";
 import { Button } from "./ui/button";
-import { Heading } from "./ui/heading";
-import { HStack } from "./ui/hstack";
-import {
-  Modal,
-  ModalBackdrop,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader
-} from "./ui/modal";
-import { Text } from "./ui/text";
 
 const ConfirmIconButton = ({
   icon,
@@ -21,6 +10,7 @@ const ConfirmIconButton = ({
   onConfirm,
   confirmTitle,
   confirmDescription,
+  confirmIcon,
   isDelete = false,
   isLoading = false,
   ...buttonProps
@@ -31,6 +21,7 @@ const ConfirmIconButton = ({
   onConfirm: () => void;
   confirmTitle?: string;
   confirmDescription?: string;
+  confirmIcon?: React.ComponentProps<typeof ConfirmationSheet>["icon"];
   isDelete?: boolean;
   isLoading?: boolean;
 } & React.ComponentProps<typeof Button>) => {
@@ -46,64 +37,18 @@ const ConfirmIconButton = ({
       <Button {...buttonProps} onPress={() => setIsOpen(true)}>
         <Icon as={icon} size={iconSize || 24} className={iconClassName} />
       </Button>
-      <ConfirmModal
+      <ConfirmationSheet
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         onConfirm={handleConfirm}
         title={confirmTitle}
         description={confirmDescription}
-        isLoading={isLoading}
+        icon={confirmIcon}
+        loading={isLoading}
+        confirmText="Yes"
         isDelete={isDelete}
       />
     </Fragment>
-  );
-};
-
-const ConfirmModal = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  isLoading,
-  title = "Confirm Action",
-  description = "Are you sure you want to proceed?",
-  isDelete = false
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  isLoading?: boolean;
-  title?: string;
-  description?: string;
-  isDelete: boolean;
-}) => {
-  return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalBackdrop />
-      <ModalContent>
-        <ModalHeader>
-          <Heading size="lg">{title}</Heading>
-        </ModalHeader>
-        <ModalBody>
-          <Text className="text-sm text-secondary-950">{description}</Text>
-        </ModalBody>
-        <ModalFooter>
-          <HStack className="gap-x-2">
-            <FormButton
-              variant="outline"
-              text="Cancel"
-              disabled={isLoading}
-              onPress={onClose}
-            />
-            <FormButton
-              text="Yes"
-              action={isDelete ? "negative" : "primary"}
-              loading={isLoading}
-              onPress={onConfirm}
-            />
-          </HStack>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
   );
 };
 

@@ -90,8 +90,6 @@ export default function GroupMemberBreakdown({
     [rows],
   );
 
-  if (!loading && rows.length === 0) return null;
-
   return (
     <Card className="rounded-xl bg-secondary-100">
       <VStack className="gap-y-4">
@@ -106,6 +104,10 @@ export default function GroupMemberBreakdown({
 
         {loading && rows.length === 0 ? (
           <Text className="text-secondary-950">—</Text>
+        ) : rows.length === 0 ? (
+          <Text className="text-sm text-secondary-950">
+            Member totals will appear as expenses are added.
+          </Text>
         ) : (
           <VStack className="gap-y-4">
             {rows.map((row) => {

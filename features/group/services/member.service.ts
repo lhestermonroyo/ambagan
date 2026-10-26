@@ -1,7 +1,7 @@
 import { createOrGetPlaceholder } from "@/features/user/services/user.service";
 import { createNotification } from "@/features/notifications/services/notification.service";
 import { NotificationType } from "@/types/notifications";
-import { Member } from "@/types/groups";
+import { GroupRole, Member } from "@/types/groups";
 import { UserPreview } from "@/types/user";
 import { tables } from "@/utils/constants";
 import { supabase } from "@/utils/supabase";
@@ -64,9 +64,9 @@ export const leaveGroup = async (
 
   if (groupError) throw groupError;
 
-  const isAdmin = groupData.admin_id === userId;
+  const isOwner = groupData.admin_id === userId;
 
-  if (isAdmin) {
+  if (isOwner) {
     if (!newAdminId) {
       const { data: otherMembers, error: membersError } = await supabase
         .from(tables.GROUP_MEMBERS_TBL)
@@ -95,6 +95,18 @@ export const leaveGroup = async (
       .eq("id", groupId);
 
     if (transferError) throw transferError;
+
+    // Ownership carries admin with it. The new owner is an admin structurally
+    // (RLS reads groups_tbl.admin_id), but their membership row still has to
+    // say so or they'd be missing from the group's admin list in the UI. Done
+    // as the OLD owner, while they still pass the owner check on the row.
+    // Non-fatal: the transfer above is what actually matters, and
+    // is_group_admin() covers them either way.
+    await supabase
+      .from(tables.GROUP_MEMBERS_TBL)
+      .update({ role: GroupRole.ADMIN })
+      .eq("group_id", groupId)
+      .eq("member_id", newAdminId);
   }
 
   const { error } = await supabase
@@ -177,7 +189,7 @@ export const getMembersByGroupId = async (groupId: string) => {
   const { data, error } = await supabase
     .from(tables.GROUP_MEMBERS_TBL)
     .select(
-      `id, group_id, joined_at, member:member_id (id, email, phone, first_name, last_name, avatar, is_placeholder)`
+      `id, group_id, joined_at, role, member:member_id (id, email, phone, first_name, last_name, avatar, is_placeholder)`
     )
     .eq("group_id", groupId);
 
@@ -188,7 +200,10 @@ export const getMembersByGroupId = async (groupId: string) => {
   return (data as any[]).map((item) => ({
     ...item["member"],
     joined_at: item.joined_at,
-    group_id: item.group_id
+    group_id: item.group_id,
+    // Rows written before co-admins shipped have no role; treat them as plain
+    // members (the column's own default) rather than leaving it undefined.
+    role: (item.role as GroupRole) ?? GroupRole.MEMBER
   })) as Member[];
 };
 
@@ -200,7 +215,7 @@ export const getMembersByGroupIds = async (groupIds: string[]) => {
   const { data, error } = await supabase
     .from(tables.GROUP_MEMBERS_TBL)
     .select(
-      `id, group_id, joined_at, member:member_id (id, first_name, last_name, avatar)`
+      `id, group_id, joined_at, role, member:member_id (id, first_name, last_name, avatar)`
     )
     .in("group_id", groupIds);
 
@@ -211,6 +226,34 @@ export const getMembersByGroupIds = async (groupIds: string[]) => {
   return (data as any[]).map((item) => ({
     ...item["member"],
     joined_at: item.joined_at,
-    group_id: item.group_id
+    group_id: item.group_id,
+    // Rows written before co-admins shipped have no role; treat them as plain
+    // members (the column's own default) rather than leaving it undefined.
+    role: (item.role as GroupRole) ?? GroupRole.MEMBER
   })) as Member[];
+};
+
+/**
+ * Promote a member to co-admin, or demote one back. OWNER ONLY — enforced by
+ * set_group_member_role(), which also refuses to touch the owner's own row and
+ * rejects anyone who isn't a member of the group.
+ *
+ * Online-only, like the other structural admin actions (resetting the invite
+ * link): there's no safe optimistic story for a permission change, and a queued
+ * promotion could land after the person had already been removed.
+ */
+export const setMemberRole = async (
+  groupId: string,
+  memberId: string,
+  role: GroupRole
+) => {
+  const { error } = await supabase.rpc("set_group_member_role", {
+    _group_id: groupId,
+    _member_id: memberId,
+    _role: role
+  });
+
+  if (error) throw error;
+
+  return { success: true };
 };

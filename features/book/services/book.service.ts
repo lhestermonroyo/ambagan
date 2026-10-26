@@ -14,13 +14,13 @@ import { v4 as uuid } from "uuid";
 // resolves to null both when the book is unlinked AND when the owner has since
 // left the group (groups_tbl RLS hides it) — callers must treat a set `group_id`
 // with a null `linked_group` as "linked, but not readable", not as unlinked.
-const BOOK_SELECT = `id, created_at, user_id, name, category, avatar, currency, default_expense_currency, budget, budget_period, archived, group_id, linked_group:${tables.GROUPS_TBL}!personal_books_tbl_group_id_fkey(id, name, avatar, currency, category)`;
+const BOOK_SELECT = `id, created_at, last_updated_at, user_id, name, category, avatar, currency, default_expense_currency, budget, budget_period, archived, group_id, linked_group:${tables.GROUPS_TBL}!personal_books_tbl_group_id_fkey(id, name, avatar, currency, category)`;
 
 export const LINKED_GROUP_CONFLICT_MESSAGE =
-  "You already have a book linked to this group. Unlink it first, or pick a different group.";
+  "You already have an Individual entry linked to this group. Unlink it first, or pick a different group.";
 
 export const NOT_GROUP_MEMBER_MESSAGE =
-  "You can only link a book to a group you're a member of.";
+  "You can only link an Individual entry to a group you're a member of.";
 
 /**
  * True for the `personal_books_user_group_uniq` collision — the one-book-per-
@@ -79,7 +79,7 @@ export const saveBook = async ({
   }
 
   if (user_id !== user.data.user.id) {
-    throw new Error("Book owner must be the authenticated user");
+    throw new Error("Individual owner must be the authenticated user");
   }
 
   const bookId = id ?? uuid();
@@ -134,7 +134,7 @@ export const saveBook = async ({
   }
 
   return {
-    message: "Book created successfully",
+    message: "Individual created successfully",
     data: { bookId }
   };
 };
@@ -169,13 +169,15 @@ export const updateBook = async (
           payload.default_expense_currency !== payload.currency
             ? payload.default_expense_currency
             : null,
-        budget: payload.budget ?? null,
-        budget_period: payload.budget_period ?? "monthly",
+        ...(payload.budget !== undefined ? { budget: payload.budget } : {}),
+        ...(payload.budget_period !== undefined
+          ? { budget_period: payload.budget_period }
+          : {}),
         group_id: payload.group_id ?? null,
         avatar: null
       });
     }
-    return { message: "Book will be updated when you're back online" };
+    return { message: "Individual will be updated when you're back online" };
   }
 
   const user = await supabase.auth.getUser();
@@ -242,7 +244,7 @@ export const updateBook = async (
   if (isNotGroupMember(error)) throw new Error(NOT_GROUP_MEMBER_MESSAGE);
   if (error) throw error;
 
-  return { message: "Book updated successfully" };
+  return { message: "Individual updated successfully" };
 };
 
 /**
@@ -260,7 +262,7 @@ export const linkBookToGroup = async (
 ) => {
   if (!(await offlineQueue.isOnline())) {
     throw new Error(
-      "Linking a book to a group needs an internet connection. Please try again when you're back online."
+      "Linking an Individual entry to a group needs an internet connection. Please try again when you're back online."
     );
   }
 
@@ -278,7 +280,7 @@ export const linkBookToGroup = async (
   if (error) throw error;
 
   return {
-    message: groupId ? "Book linked to group" : "Book unlinked from group"
+    message: groupId ? "Individual linked to group" : "Individual unlinked from group"
   };
 };
 
@@ -324,7 +326,7 @@ export const deleteBook = async (bookId: string) => {
   // delete must not run optimistically and then diverge from the server.
   if (!(await offlineQueue.isOnline())) {
     throw new Error(
-      "Deleting a book needs an internet connection. Please try again when you're back online."
+      "Deleting an Individual entry needs an internet connection. Please try again when you're back online."
     );
   }
 
@@ -353,7 +355,8 @@ export const deleteBook = async (bookId: string) => {
 
   if (error) throw error;
 
-  return { success: true, message: "Book deleted successfully" };
+  await offlineQueue.removeIndividualEntryFromCache(user.data.user.id, bookId);
+  return { success: true, message: "Individual deleted successfully" };
 };
 
 export const getBooksByUserId = async (userId: string): Promise<Book[]> => {
@@ -486,6 +489,7 @@ export const archiveBook = async (bookId: string) => {
     .eq("user_id", user.data.user.id);
 
   if (error) throw error;
+  await offlineQueue.removeIndividualEntryFromCache(user.data.user.id, bookId);
   return { success: true };
 };
 

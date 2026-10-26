@@ -57,7 +57,7 @@ export default function PushNotificationPermissionSheet({
             </VStack>
             <VStack className="gap-y-2 items-center">
               <Text bold className="text-2xl text-center">
-                Stay in the loop!
+                Stay in the Loop!
               </Text>
               <Text className="text-sm text-secondary-950 text-center px-4">
                 Enable push notifications to get updates on settlements,

@@ -1,18 +1,18 @@
 import FormButton from "@/components/FormButton";
 import FormInput from "@/components/FormInput";
-import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { HStack } from "@/components/ui/hstack";
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icon";
 import { Link } from "@/components/ui/link";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import useAppToast from "@/hooks/use-app-toast";
+import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 import AuthLayout from "@/layouts/AuthLayout";
 import services from "@/services";
 import states from "@/states";
+import { successHaptic } from "@/utils/haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { useHideSplashOnFirstFrame } from "@/hooks/useHideSplash";
 
 export default function LoginScreen() {
   // Cold-launch landing screen: holds the native splash until this screen's
@@ -91,12 +91,13 @@ export default function LoginScreen() {
         session: response.session
       }));
 
+      void successHaptic();
       router.replace("/(tabs)/(home)");
     } catch (error: any) {
       console.log("Error logging in:", error);
 
       // Invalid credentials also covers a Google-first user who never set a
-      // password — point them at the Google button (or Forgot Password to add
+      // password — point them at Google on welcome (or Forgot Password to add
       // one) instead of a dead-end generic error.
       const invalidCreds =
         error?.code === "invalid_credentials" ||
@@ -105,7 +106,7 @@ export default function LoginScreen() {
       toast({
         title: "Login Failed",
         description: invalidCreds
-          ? "Incorrect email or password. If you signed up with Google, tap Continue with Google below."
+          ? "Incorrect email or password. If you signed up with Google, go back and choose Login With Google."
           : "An error occurred while logging in. Please try again.",
         type: "error"
       });
@@ -116,14 +117,15 @@ export default function LoginScreen() {
 
   return (
     <AuthLayout
-      title="Welcome Back!"
-      subtitle="Login to your account to continue"
+      title="Log In to Ambagan"
+      subtitle="Enter your credentials to continue"
+      onBack={() => router.dismissTo("/(auth)/welcome")}
       footer={
         <HStack className="gap-x-1">
           <Text className="text-lg text-secondary-950">No account yet?</Text>
-          <Link onPress={() => router.push("/sign-up")}>
+          <Link onPress={() => router.replace("/(auth)/sign-up")}>
             <Text className="text-lg font-medium text-primary-400">
-              Sign up
+              Sign Up
             </Text>
           </Link>
         </HStack>
@@ -160,8 +162,6 @@ export default function LoginScreen() {
         </Link>
 
         <FormButton text="Login" loading={submitting} onPress={handleSubmit} />
-
-        <SocialAuthButtons />
       </VStack>
     </AuthLayout>
   );

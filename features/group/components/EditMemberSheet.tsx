@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppSheet from "@/components/AppSheet";
 import EmptyList from "@/components/EmptyList";
 import FormButton from "@/components/FormButton";
@@ -5,7 +6,7 @@ import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import LoadingWrapper from "@/components/LoadingWrapper";
 import SearchInput from "@/components/SearchInput";
-import { FriendListSkeleton } from "@/components/SkeletonLoader";
+import { MemberEditorSkeleton } from "@/components/SkeletonLoader";
 import { Box } from "@/components/ui/box";
 import { FlatList } from "@/components/ui/flat-list";
 import { HStack } from "@/components/ui/hstack";
@@ -22,6 +23,7 @@ import services from "@/services";
 import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
+import { groupAdmins, isGroupOwner } from "@/features/group/utils/groupRoles";
 import { UserPreview } from "@/types/user";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import { filterContacts, getSavedContacts } from "@/utils/offlineContacts";
@@ -29,8 +31,8 @@ import * as offlineQueue from "@/utils/offlineQueue";
 import { normalizePhone } from "@/utils/phone";
 import { addRecentUsers, getRecentUsers } from "@/utils/recentUsers";
 import { UserPlus } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
-import { Platform, useColorScheme } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Platform, TextInput, useColorScheme } from "react-native";
 import RecentFavoritesTab from "./RecentFavoritesTab";
 import SelectedMemberItem from "./SelectedMemberItem";
 import { UserCheckboxItem } from "./UserCheckboxItem";
@@ -42,9 +44,11 @@ export default function EditMembersSheet({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [searching, setSearching] = useState(false);
+  const searchRef = useRef<TextInput>(null);
   const [searchInput, setSearchInput] = useState("");
   const [users, setUsers] = useState<UserPreview[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -69,11 +73,27 @@ export default function EditMembersSheet({
 
   const showToast = useAppToast();
 
+  // Members this sheet may not touch, mirroring what RLS allows.
+  //
+  // The owner is always here — nobody removes the group's owner; they leave and
+  // hand it over. A CO-ADMIN sees the other admins here too: they may manage
+  // ordinary members, but only the owner decides who else is an admin, so a
+  // co-admin removing a peer would be rejected server-side. The owner sees no
+  // extra protection — demoting or removing an admin is theirs to do.
+  const protectedMemberIds = useMemo(() => {
+    if (!groupDetails) return new Set<string>();
+    const ids = new Set<string>([groupDetails.admin.id]);
+    if (!isGroupOwner(groupDetails, userDetails?.id)) {
+      groupAdmins(groupDetails, memberList).forEach((m) => ids.add(m.id));
+    }
+    return ids;
+  }, [groupDetails, memberList, userDetails?.id]);
+
   useEffect(() => {
     if (isOpen && userDetails?.id) {
       init();
       loadRecentUsers();
-      loadFavorites((u) => u.id !== groupDetails?.admin.id);
+      loadFavorites((u) => !protectedMemberIds.has(u.id));
     }
   }, [isOpen]);
 
@@ -91,7 +111,7 @@ export default function EditMembersSheet({
 
       await Promise.all(
         memberList
-          .filter((member) => member.id !== groupDetails.admin.id)
+          .filter((member) => !protectedMemberIds.has(member.id))
           .map(async (member) => {
             const hasUnpaid = await services.expense.getUnpaidPayments(
               groupDetails.id,
@@ -126,13 +146,13 @@ export default function EditMembersSheet({
         const contacts = await getSavedContacts(userDetails!.id);
         setUsers(
           filterContacts(contacts, searchInput).filter(
-            (u) => u.id !== groupDetails?.admin.id,
+            (u) => !protectedMemberIds.has(u.id),
           ),
         );
         return;
       }
       const data = await services.user.searchUsers(searchInput);
-      const filteredUsers = data.filter((u) => u.id !== groupDetails?.admin.id);
+      const filteredUsers = data.filter((u) => !protectedMemberIds.has(u.id));
 
       setUsers(filteredUsers);
     } catch (error) {
@@ -143,7 +163,7 @@ export default function EditMembersSheet({
   const loadRecentUsers = async () => {
     try {
       const recent = await getRecentUsers(userDetails!.id);
-      setRecentUsers(recent.filter((u) => u.id !== groupDetails?.admin.id));
+      setRecentUsers(recent.filter((u) => !protectedMemberIds.has(u.id)));
     } catch (error) {
       console.error("Error loading recent users:", error);
     }
@@ -162,10 +182,10 @@ export default function EditMembersSheet({
   }, [searching, tab, users, favoriteUsers, recentUsers, lockedMembers]);
 
   const emptyText = searching
-    ? "No results found on your search."
+    ? "No matches yet. Try another name or clear your search."
     : tab === "favorites"
-      ? "No favorites added yet."
-      : "No recent users.";
+      ? "Search for someone to add to your group."
+      : "Bring your group together. Search for someone to add.";
 
   const emptyType = searching
     ? EmptyType.SEARCH
@@ -246,7 +266,7 @@ export default function EditMembersSheet({
       // Phone contacts need the placeholder RPC (online) to get real ids.
       if (!online && services.member.hasUnresolvedContacts(members)) {
         showToast({
-          title: "You're offline",
+          title: "You're Offline",
           description:
             "Adding phone contacts as members needs an internet connection. Remove them or reconnect.",
           type: "error",
@@ -269,7 +289,7 @@ export default function EditMembersSheet({
       const membersToRemove = memberList
         .filter(
           (member) =>
-            member.id !== groupDetails.admin.id &&
+            !protectedMemberIds.has(member.id) &&
             !allMembers.some((m) => m.id === member.id),
         )
         .map((member) => member.id);
@@ -292,20 +312,29 @@ export default function EditMembersSheet({
 
       // Offline → queue the roster change with an optimistic update. The cached
       // member list is updated too, so an offline-added expense reflects the new
-      // roster. Member editing is admin-only, so there's a single authorized
-      // editor and no cross-user conflict.
+      // roster. Roster editing is admin-only; with co-admins there can now be
+      // more than one authorized editor, so two admins editing offline at once
+      // both sync (adds upsert, removes are idempotent) with last-write-wins on
+      // a genuine conflict.
       if (!online) {
         const now = new Date().toISOString();
 
-        // The admin is always a member but is filtered out of the editable list
-        // (init excludes them), so re-include them in the optimistic roster. The
-        // online path stores getMembersByGroupId, which returns the admin too,
-        // and the group's "needs 2+ members" gate counts them — dropping the
-        // admin would make a group with one added member look like it has a
-        // single member and wrongly block adding expenses.
-        const adminMember =
-          memberList.find((m) => m.id === groupDetails.admin.id) ??
-          ({
+        // Protected members (the owner, plus the other admins when a co-admin
+        // is the one editing) are filtered out of the editable list by `init`,
+        // so re-include them in the optimistic roster. The online path stores
+        // getMembersByGroupId, which returns everyone, and the group's "needs
+        // 2+ members" gate counts them — dropping them would make a group with
+        // one added member look like it has a single member and wrongly block
+        // adding expenses.
+        // Every protected id except the owner comes straight out of memberList,
+        // so only the owner can need synthesizing (a cache written before they
+        // were in the roster).
+        const protectedMembers: Member[] = Array.from(protectedMemberIds)
+          .map((id) => memberList.find((m) => m.id === id))
+          .filter(Boolean) as Member[];
+
+        if (!protectedMembers.some((m) => m.id === groupDetails.admin.id)) {
+          protectedMembers.unshift({
             id: groupDetails.admin.id,
             email: groupDetails.admin.email ?? "",
             phone: groupDetails.admin.phone ?? "",
@@ -315,9 +344,10 @@ export default function EditMembersSheet({
             joined_at: now,
             group_id: groupDetails.id,
           } as Member);
+        }
 
         const roster: Member[] = [
-          adminMember,
+          ...protectedMembers,
           ...allMembers.map(
             (m) =>
               ({
@@ -342,10 +372,11 @@ export default function EditMembersSheet({
         await addRecentUsers(membersToSave, userDetails!.id);
 
         showToast({
-          title: "Saved offline",
+          title: "Saved Offline",
           description:
             "Member changes will sync automatically when you're back online.",
           type: "info",
+          haptic: true,
         });
         handleClose();
         return;
@@ -422,7 +453,7 @@ export default function EditMembersSheet({
             <FormButton
               variant="link"
               size="md"
-              text="Add from Contacts"
+              text="Add From Contacts"
               icon={
                 <UserPlus
                   size={18}
@@ -433,7 +464,7 @@ export default function EditMembersSheet({
             />
           )}
         </HStack>
-        <LoadingWrapper isLoading={loading} skeleton={<FriendListSkeleton />}>
+        <LoadingWrapper isLoading={loading} skeleton={<MemberEditorSkeleton />}>
           <VStack className="w-full gap-y-4 pb-4">
             <VStack>
               {formattedMembers.length > 0 && (
@@ -480,6 +511,7 @@ export default function EditMembersSheet({
             <Box className="px-4">
               <SearchInput
                 placeholder="Search users"
+                inputRef={searchRef}
                 value={searchInput}
                 onChangeText={(val) => setSearchInput(val)}
                 onSetSearching={setSearching}
@@ -496,14 +528,17 @@ export default function EditMembersSheet({
               <RecentFavoritesTab tab={tab} onTabChange={setTab} />
             )}
           </VStack>
-          <ScrollView className="flex-1 w-full">
-            {displayUsers.length === 0 && (
-              <EmptyList type={emptyType} content={emptyText} />
+          <ScrollView keyboardShouldPersistTaps="handled" className="flex-1 w-full">
+            {(previewEmpty || displayUsers.length === 0) && (
+              <EmptyList
+                type={emptyType}
+                content={emptyText}
+              />
             )}
             <FlatList
               scrollEnabled={false}
               className="flex-1"
-              data={displayUsers}
+              data={previewEmpty ? [] : displayUsers}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => {
                 const isLocked = lockedMembers.some(

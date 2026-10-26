@@ -22,6 +22,8 @@ export default function FormLayout({
   subtitle,
   onBack,
   footer,
+  titleAlign = "left",
+  footerDivider = false,
   actions,
   androidActions
 }: {
@@ -30,6 +32,8 @@ export default function FormLayout({
   subtitle?: string;
   onBack: () => void;
   footer: React.ReactNode[];
+  titleAlign?: "left" | "center";
+  footerDivider?: boolean;
   actions?: React.ReactNode;
   androidActions?: React.ReactNode;
 }) {
@@ -46,11 +50,11 @@ export default function FormLayout({
           headerLargeTitle: false,
           headerShadowVisible: false,
           headerBackVisible: false,
-          headerTitleAlign: "left",
+          headerTitleAlign: titleAlign,
           headerStyle: { backgroundColor: isDark ? "#121212" : "#FFFFFF" },
           headerTintColor: tintColor,
           headerTitle: () => (
-            <VStack className="flex-1 items-start justify-center">
+            <VStack className={`flex-1 justify-center ${titleAlign === "center" ? "items-center" : "items-start"}`}>
               <Text bold className="text-xl">
                 {title}
               </Text>
@@ -96,7 +100,7 @@ export default function FormLayout({
         behavior="padding"
       >
         {children}
-        <SafeAreaView edges={["bottom"]}>
+        <SafeAreaView edges={["bottom"]} className={footerDivider ? "border-t border-background-100" : undefined}>
           <Box className="items-center justify-center p-4">
             <HStack className="gap-x-2">
               {footer.map((item, index) => (

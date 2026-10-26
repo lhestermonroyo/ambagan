@@ -6,7 +6,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
-import { getPrimaryHex } from "@/utils/getColorHex";
+import { getOnOutlineHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { ReactNode } from "react";
 import { ScrollView, useColorScheme } from "react-native";
@@ -31,7 +31,7 @@ export type ExpenseOptionChip = {
 function OptionChip({ chip }: { chip: ExpenseOptionChip }) {
   const colorScheme = (useColorScheme() ?? "light") as "light" | "dark";
   const changed = !chip.isDefault;
-  const color = getPrimaryHex("text-primary-500", colorScheme);
+  const color = getOnOutlineHex(colorScheme);
 
   if (!changed) {
     return (
@@ -62,7 +62,7 @@ function OptionChip({ chip }: { chip: ExpenseOptionChip }) {
             bold={changed}
             numberOfLines={1}
             className={cn(
-              "text-sm max-w-[160px]",
+              "text-sm max-w-[160px] dark:text-primary-600",
               changed ? "text-primary-500" : "text-secondary-950"
             )}
           >
@@ -125,7 +125,7 @@ export default function ExpenseOptions({
         <HStack className="items-center gap-x-4">
           <HStack className="flex-1 items-center gap-x-4">
             <Text bold className="text-sm uppercase text-secondary-950">
-              More options
+              More Options
             </Text>
             <Divider className="border-secondary-100 flex-1" />
           </HStack>

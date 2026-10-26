@@ -11,7 +11,6 @@ export default function Index() {
     case "onboarding":
       return <Redirect href="/onboarding" />;
     case "login":
-      return <Redirect href="/(auth)/login" />;
     case "welcome":
       return <Redirect href="/(auth)/welcome" />;
     default:

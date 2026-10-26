@@ -1,5 +1,5 @@
 import Logo from "./Logo";
-import { Spinner } from "./ui/spinner";
+import LiquidDots from "./LiquidDots";
 import { View } from "./ui/view";
 import { VStack } from "./ui/vstack";
 
@@ -16,9 +16,9 @@ const SplashLoading = ({
 
   return (
     <View className="flex-1 justify-center items-center bg-secondary-0">
-      <VStack className="gap-y-12">
+      <VStack className="items-center gap-y-12">
         <Logo type="splash" />
-        <Spinner size="large" className="text-background-950" />
+        <LiquidDots />
       </VStack>
     </View>
   );

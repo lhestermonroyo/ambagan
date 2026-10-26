@@ -1,3 +1,7 @@
+import { hasSettlementHistory } from "@/features/expense/utils/settlementPayments.util";
+import useUserStore from "@/features/user/states/user.state";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
+import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AndroidHeaderMenu from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
@@ -10,16 +14,7 @@ import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { FlatList } from "@/components/ui/flat-list";
-import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import {
-  Modal,
-  ModalBody,
-  ModalBackdrop,
-  ModalContent,
-  ModalFooter,
-  ModalHeader
-} from "@/components/ui/modal";
 import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -41,8 +36,9 @@ import {
 } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { cacheService } from "@/utils/cacheService";
+import { splitTypeLabels } from "@/utils/constants";
 import { formatDate } from "@/utils/formatDate";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getSecondaryHex, getOnOutlineHex } from "@/utils/getColorHex";
 import { getUserSubtitle } from "@/utils/userDisplay";
 import {
   Stack,
@@ -55,6 +51,7 @@ import { Fragment, ReactNode, useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
 export default function ExpenseDetailsScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const { details: groupDetails } = states.group();
   const {
     details: expenseDetails,
@@ -62,7 +59,7 @@ export default function ExpenseDetailsScreen() {
     memberSplitList,
     paymentSplitList
   } = states.expense();
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
 
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
@@ -322,7 +319,7 @@ export default function ExpenseDetailsScreen() {
   // Editing replaces the splits wholesale, which is only safe while every
   // settlement is still pending. Mirror the server-side guard in the UI.
   const hasSettlementProgress = useMemo(
-    () => paymentSplitList.some((p) => p.status !== "pending"),
+    () => paymentSplitList.some((p) => hasSettlementHistory(p)),
     [paymentSplitList]
   );
 
@@ -482,9 +479,9 @@ export default function ExpenseDetailsScreen() {
               <EmptyList
                 type={EmptyType.EXPENSE}
                 content={
-                  isOnline
-                    ? "This expense couldn't be loaded. Pull back and try again."
-                    : "This expense isn't available offline yet. It'll appear once you're back online and it syncs."
+                isOnline
+                ? "Couldn't load this expense. Try again."
+                : "This expense isn't saved offline yet. Reconnect and try again."
                 }
               />
             </VStack>
@@ -507,7 +504,7 @@ export default function ExpenseDetailsScreen() {
                         variant="solid"
                         className="rounded-full bg-warning-50 px-3"
                       >
-                        <BadgeText className="font-bold text-xs uppercase text-warning-600">
+                        <BadgeText className="font-bold text-xs uppercase text-warning-600 dark:text-warning-800">
                           Draft
                         </BadgeText>
                       </Badge>
@@ -551,7 +548,7 @@ export default function ExpenseDetailsScreen() {
                       <Divider className="border-secondary-200" />
                     </Box>
                     <DetailRow
-                      label="Created By"
+                      label="Created by"
                       value={
                         <HStack className="gap-x-3 items-center">
                           <AppAvatar
@@ -576,8 +573,8 @@ export default function ExpenseDetailsScreen() {
                         <DetailRow
                           label="Split Type"
                           value={
-                            <Text className="capitalize">
-                              {expenseDetails.split_type}
+                            <Text>
+                              {splitTypeLabels[expenseDetails.split_type] ?? expenseDetails.split_type}
                             </Text>
                           }
                         />
@@ -597,10 +594,7 @@ export default function ExpenseDetailsScreen() {
                             icon={
                               <FileImage
                                 size={18}
-                                color={getPrimaryHex(
-                                  "text-primary-500",
-                                  colorScheme
-                                )}
+                                color={getOnOutlineHex(colorScheme)}
                               />
                             }
                             onPress={() => setImageViewerOpen(true)}
@@ -618,10 +612,10 @@ export default function ExpenseDetailsScreen() {
                 {isDraft ? (
                   <VStack className="gap-y-4 px-4">
                     <VStack className="bg-warning-50 rounded-xl p-4 gap-y-1">
-                      <Text bold className="text-warning-700">
-                        This expense is a draft
+                      <Text bold className="text-warning-700 dark:text-warning-800">
+                        This Expense Is a Draft
                       </Text>
-                      <Text className="text-sm text-warning-700">
+                      <Text className="text-sm text-warning-700 dark:text-warning-800">
                         Only you can see it. Finalize it to set who paid and
                         split it among members — that's when it counts toward
                         balances and everyone gets notified.
@@ -649,12 +643,15 @@ export default function ExpenseDetailsScreen() {
                       <FlatList
                         className="flex-1"
                         scrollEnabled={false}
-                        data={sortedPayerList}
+                        data={previewEmpty ? [] : sortedPayerList}
                         keyExtractor={(item) => item.id.toString()}
                         renderItem={({ item }) => <PayerItem payer={item} />}
                         ItemSeparatorComponent={ListDivider}
                         ListEmptyComponent={() => (
-                          <EmptyList type={EmptyType.MEMBER} />
+                          <EmptyList
+                            type={EmptyType.MEMBER}
+                            content="No members to show for this expense. Head back to your group."
+                          />
                         )}
                       />
                     </VStack>
@@ -666,14 +663,17 @@ export default function ExpenseDetailsScreen() {
                       <FlatList
                         className="flex-1"
                         scrollEnabled={false}
-                        data={sortedMemberSplits}
+                        data={previewEmpty ? [] : sortedMemberSplits}
                         keyExtractor={(item) => item.id.toString()}
                         renderItem={({ item }) => (
                           <MemberSplitItem memberSplit={item} />
                         )}
                         ItemSeparatorComponent={ListDivider}
                         ListEmptyComponent={() => (
-                          <EmptyList type={EmptyType.MEMBER} />
+                          <EmptyList
+                            type={EmptyType.MEMBER}
+                            content="No members to show for this expense. Head back to your group."
+                          />
                         )}
                       />
                     </VStack>
@@ -693,39 +693,16 @@ export default function ExpenseDetailsScreen() {
         title="Proof of Payment"
       />
 
-      <Modal
+      <ConfirmationSheet
         isOpen={deleteModalOpen}
-        onClose={() => !deleting && setDeleteModalOpen(false)}
-      >
-        <ModalBackdrop />
-        <ModalContent>
-          <ModalHeader>
-            <Heading size="lg">Delete Expense</Heading>
-          </ModalHeader>
-          <ModalBody>
-            <Text className="text-sm text-secondary-950">
-              Deleting this expense will remove splits and payments associated
-              with it. Are you sure you want to proceed?
-            </Text>
-          </ModalBody>
-          <ModalFooter>
-            <HStack className="gap-x-2">
-              <FormButton
-                variant="outline"
-                text="Cancel"
-                disabled={deleting}
-                onPress={() => setDeleteModalOpen(false)}
-              />
-              <FormButton
-                text="Yes"
-                action="negative"
-                loading={deleting}
-                onPress={() => handleDeleteExpense(expenseId)}
-              />
-            </HStack>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Expense"
+        description="Deleting this expense will remove splits and payments associated with it. Are you sure you want to proceed?"
+        confirmText="Yes"
+        isDelete
+        loading={deleting}
+        onConfirm={() => handleDeleteExpense(expenseId)}
+      />
     </Fragment>
   );
 }
@@ -740,7 +717,7 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
   const isMe = memberSplit.member.id === userDetails?.id;
 
   return (
@@ -772,7 +749,7 @@ function MemberSplitItem({ memberSplit }: { memberSplit: MemberSplit }) {
 }
 
 function PayerItem({ payer }: { payer: ExpensePayer }) {
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
   const isMe = payer.payer.id === userDetails?.id;
 
   return (

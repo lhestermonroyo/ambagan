@@ -8,7 +8,7 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 import { formatAmount } from "@/features/expense/utils/formatAmount";
 import { Payment, PaymentPreview } from "@/types/expenses";
-import { groupByCurrency } from "@/utils/currency";
+import { groupSettlementBalancesByCurrency as groupByCurrency } from "@/features/expense/utils/settlementPayments.util";
 import { Fragment, useMemo, useState } from "react";
 import { LayoutAnimation } from "react-native";
 import SettlementItem from "./SettlementItem";
@@ -44,7 +44,7 @@ export default function SettlementGroupCard({
   };
 
   return (
-    <Box className="rounded-xl border border-secondary-200 overflow-hidden bg-background-0">
+    <Box className="rounded-xl overflow-hidden bg-background-0">
       <Pressable onPress={toggle}>
         <HStack className="items-center gap-x-3 p-4 bg-background-50">
           <Text
@@ -61,7 +61,7 @@ export default function SettlementGroupCard({
             <CurrencyCountButton
               items={totals}
               title={title}
-              subtitle="Total per currency"
+              subtitle="Total per Currency"
             />
           </HStack>
           <Icon

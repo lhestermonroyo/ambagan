@@ -52,7 +52,7 @@ export function UserCheckboxItem({
             }`}
           >
             {isChecked && (
-              <Icon as="check" size={16} className="text-background-0" />
+              <Icon as="check" size={16} className="text-background-0 dark:text-white" />
             )}
           </Box>
           <HStack className="gap-x-3 items-center flex-1">

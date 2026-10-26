@@ -73,7 +73,7 @@ export default function CategoryGauge({
   slices,
   total,
   currency,
-  label = "Total spent",
+  label = "Total Spent",
   approx = false
 }: {
   /** Largest first. Slices with a zero amount are ignored. */

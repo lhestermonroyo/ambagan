@@ -35,7 +35,7 @@ const avatarStyle = tva({
 });
 
 const avatarFallbackTextStyle = tva({
-  base: 'text-typography-0 font-semibold overflow-hidden text-transform:uppercase web:cursor-default',
+  base: 'text-typography-0 dark:text-white font-semibold overflow-hidden text-transform:uppercase web:cursor-default',
 
   parentVariants: {
     size: {

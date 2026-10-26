@@ -1,6 +1,9 @@
+import useBookStore from "@/features/book/states/book.state";
+import useGroupStore from "@/features/group/states/group.state";
+import useUserStore from "@/features/user/states/user.state";
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
 import EmptyList from "@/components/EmptyList";
-import FormButton from "@/components/FormButton";
 import Icon from "@/components/Icon";
 import ListDivider from "@/components/ListDivider";
 import PressableListItem from "@/components/PressableListItem";
@@ -19,7 +22,6 @@ import {
   scanFormHref
 } from "@/features/expense/utils/scanDestinations";
 import InnerLayout from "@/layouts/InnerLayout";
-import states from "@/states";
 import { EmptyType } from "@/types/general";
 import { formatDate } from "@/utils/formatDate";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -42,13 +44,14 @@ const SEARCH_MIN_DESTINATIONS = 6;
  * with the receipt still in hand.
  */
 export default function ScanDestinationScreen() {
+  const previewEmpty = useEmptyStatePreview();
   const router = useRouter();
   const { scanId } = useLocalSearchParams<{ scanId: string }>();
-  const { details: userDetails } = states.user();
+  const { details: userDetails } = useUserStore();
   // Subscribed, not read once: creating a group/book from the empty state below
   // refills these stores, and this screen is where the user lands afterwards.
-  const { list: groupList, initialized: groupsInitialized } = states.group();
-  const { list: bookList, initialized: booksInitialized } = states.book();
+  const { list: groupList, initialized: groupsInitialized } = useGroupStore();
+  const { list: bookList, initialized: booksInitialized } = useBookStore();
 
   const { groups, books } = scanDestinations(
     groupList,
@@ -60,7 +63,7 @@ export default function ScanDestinationScreen() {
   // scanner warms both stores before pushing here, so this only covers a
   // prefetch that failed or a deep link straight into this screen.
   const loading = !groupsInitialized || !booksInitialized;
-  const isEmpty = groups.length + books.length === 0;
+  const isEmpty = previewEmpty || groups.length + books.length === 0;
 
   // `searching` tracks the debounced query rather than "the field has focus", so
   // the sections and the no-results state flip in step with the filtering.
@@ -103,7 +106,7 @@ export default function ScanDestinationScreen() {
   };
 
   return (
-    <InnerLayout title="Where should this go?" onBack={() => router.back()}>
+    <InnerLayout title="Where Should This Go?" onBack={() => router.back()}>
       {loading && isEmpty ? (
         <VStack className="flex-1 items-center justify-center">
           <Spinner size="large" />
@@ -112,19 +115,8 @@ export default function ScanDestinationScreen() {
         <VStack className="flex-1 justify-center gap-y-6 p-6">
           <EmptyList
             type={EmptyType.GROUP}
-            content="You don't have a group or a personal book yet — an expense needs somewhere to live. Create one and your scanned receipt will be waiting."
+            content="Create a group or Individual entry for this receipt. Your scan will be waiting."
           />
-          <VStack className="gap-y-2">
-            <FormButton
-              text="Create a Group"
-              onPress={() => router.push("/groups/create")}
-            />
-            <FormButton
-              variant="outline"
-              text="Create a Book"
-              onPress={() => router.push("/books/create")}
-            />
-          </VStack>
         </VStack>
       ) : (
         <VStack className="flex-1">
@@ -133,7 +125,7 @@ export default function ScanDestinationScreen() {
           {showSearch && (
             <Box className="px-4 pt-2 pb-1">
               <SearchInput
-                placeholder="Search groups and books"
+                placeholder="Search groups and Individual entries"
                 value={searchInput}
                 onChangeText={setSearchInput}
                 onSetSearching={setSearching}
@@ -156,7 +148,7 @@ export default function ScanDestinationScreen() {
               <Box className="pt-8">
                 <EmptyList
                   type={EmptyType.SEARCH}
-                  content={`No group or book matches "${searchInput.trim()}".`}
+                  content={`No group or Individual entry matches "${searchInput.trim()}".`}
                 />
               </Box>
             ) : (
@@ -164,7 +156,7 @@ export default function ScanDestinationScreen() {
                 {matchedGroups.length > 0 && (
                   <VStack className="w-full">
                     <SectionHeader
-                      label="Split with a group"
+                      label="Split With a Group"
                       count={matchedGroups.length}
                     />
                     {matchedGroups.map((group, index) => (
@@ -184,7 +176,7 @@ export default function ScanDestinationScreen() {
                 {matchedBooks.length > 0 && (
                   <VStack className="w-full">
                     <SectionHeader
-                      label="Track it yourself"
+                      label="Track It Yourself"
                       count={matchedBooks.length}
                     />
                     {matchedBooks.map((book, index) => (

@@ -20,7 +20,7 @@ export type Notification = {
    * `type`. Null for non-settlement notifications or when the split (e.g. its
    * expense) no longer exists. Undefined when not yet resolved (e.g. offline).
    */
-  settlement_status?: PaymentStatus | null;
+  settlement_status?: PaymentStatus | "partially_paid" | null;
 };
 
 export enum NotificationType {

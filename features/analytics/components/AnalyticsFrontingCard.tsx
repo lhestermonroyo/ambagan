@@ -46,7 +46,7 @@ export default function AnalyticsFrontingCard({
           <VStack className="gap-y-2">
             <HStack className="items-center justify-between gap-x-3">
               <Text className="text-sm text-secondary-950 flex-1">
-                You fronted
+                You Fronted
               </Text>
               <Text numberOfLines={1} adjustsFontSizeToFit>
                 {approx}
@@ -55,7 +55,7 @@ export default function AnalyticsFrontingCard({
             </HStack>
             <HStack className="items-center justify-between gap-x-3">
               <Text className="text-sm text-secondary-950 flex-1">
-                Your share
+                Your Share
               </Text>
               <Text numberOfLines={1} adjustsFontSizeToFit>
                 {approx}

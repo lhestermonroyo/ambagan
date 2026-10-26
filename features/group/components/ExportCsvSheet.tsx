@@ -26,7 +26,7 @@ import {
 import useAppToast from "@/hooks/use-app-toast";
 import services from "@/services";
 import { exportGroupSettlementsAsCsv } from "@/utils/exportCsv";
-import { getSecondaryHex } from "@/utils/getColorHex";
+import { getOnSolidHex } from "@/utils/getColorHex";
 import { CircleIcon, Download } from "lucide-react-native";
 import { useState } from "react";
 import { useColorScheme } from "react-native";
@@ -62,7 +62,7 @@ export default function ExportCsvSheet({
 
       if (payments.length === 0) {
         toast({
-          title: "No data",
+          title: "No Data",
           description: "No settlements found for the selected date range.",
           type: "info"
         });
@@ -74,7 +74,7 @@ export default function ExportCsvSheet({
     } catch (error) {
       console.error("Export failed:", error);
       toast({
-        title: "Export failed",
+        title: "Export Failed",
         description: "Could not export settlements. Please try again.",
         type: "error"
       });
@@ -133,7 +133,7 @@ export default function ExportCsvSheet({
             icon={
               <Download
                 size={18}
-                color={getSecondaryHex("text-secondary-0", colorScheme)}
+                color={getOnSolidHex(colorScheme)}
               />
             }
             loading={exporting}

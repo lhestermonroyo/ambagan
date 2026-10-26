@@ -1,3 +1,4 @@
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import FormButton from "@/components/FormButton";
 import { Box } from "@/components/ui/box";
 import { Spinner } from "@/components/ui/spinner";
@@ -26,6 +27,7 @@ export default function JoinGroupScreen() {
 
   const { token } = useLocalSearchParams<{ token: string }>();
   const router = useRouter();
+  const showFeedback = useActionFeedback();
   const colorScheme = useColorScheme() ?? "light";
   const [status, setStatus] = useState<"joining" | "error">("joining");
   const [errorMsg, setErrorMsg] = useState("");
@@ -79,13 +81,14 @@ export default function JoinGroupScreen() {
       // it fails; the list will refresh on next focus.
       if (details?.id) {
         try {
-          const groups = await services.group.getGroupsByUserId(details.id);
+          const groups = await services.group.getGroupEntriesByUserId(details.id);
           states.group.setState((prev) => ({ ...prev, list: groups }));
         } catch {
           // ignore — next focus will refetch
         }
       }
 
+      await showFeedback("group-joined", { afterNavigation: true });
       router.replace(`/groups/${groupId}` as any);
     } catch (error: any) {
       setStatus("error");
@@ -112,12 +115,15 @@ export default function JoinGroupScreen() {
             <Box className="h-16 w-16 items-center justify-center rounded-full bg-error-50">
               <AlertCircle
                 size={32}
-                color={getErrorHex("text-error-500", colorScheme)}
+                color={getErrorHex(
+                  colorScheme === "dark" ? "text-error-800" : "text-error-500",
+                  colorScheme
+                )}
               />
             </Box>
             <VStack className="gap-y-1">
               <Text bold className="text-xl text-center">
-                Couldn&apos;t join group
+                Couldn&apos;t Join Group
               </Text>
               <Text className="text-center text-secondary-950">{errorMsg}</Text>
             </VStack>

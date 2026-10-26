@@ -160,7 +160,7 @@ export default function GroupPersonalStats({
             empty range — so hold the headline as an em dash until they land. */}
         {loading ? (
           <VStack className="items-center py-8 gap-y-1">
-            <Text className="text-sm text-secondary-950">Your share</Text>
+            <Text className="text-sm text-secondary-950">Your Share</Text>
             <Text bold className="text-2xl">
               —
             </Text>
@@ -170,7 +170,7 @@ export default function GroupPersonalStats({
             slices={categorySlices}
             total={yourShare}
             currency={primaryCurrency}
-            label="Your share"
+            label="Your Share"
             approx={shareApprox}
           />
         )}
@@ -215,9 +215,11 @@ export default function GroupPersonalStats({
             <Text className="text-sm text-secondary-950">
               {loading
                 ? " "
-                : yourNet >= 0
-                  ? "you fronted extra"
-                  : "you owe the group"}
+                : yourNet === 0
+                  ? "all balanced"
+                  : yourNet > 0
+                    ? "you fronted extra"
+                    : "you owe the group"}
             </Text>
           </VStack>
         </HStack>

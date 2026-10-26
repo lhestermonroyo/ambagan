@@ -3,6 +3,7 @@ import CategoryIcon from "@/components/CategoryIcon";
 import Icon from "@/components/Icon";
 import PressableListItem from "@/components/PressableListItem";
 import { HStack } from "@/components/ui/hstack";
+import { Icon as UIIcon } from "@/components/ui/icon";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -36,9 +37,9 @@ export default function PersonalExpenseItem({
       text={isPaid ? "Paid" : "Pending"}
       icon={
         isPaid ? (
-          <CircleCheck size={12} color="#2A7948" />
+          <UIIcon as={CircleCheck} size="2xs" className="text-success-600 dark:text-success-800" />
         ) : (
-          <Clock size={12} color="#D76C1F" />
+          <UIIcon as={Clock} size="2xs" className="text-warning-600 dark:text-warning-800" />
         )
       }
     />
@@ -74,7 +75,7 @@ export default function PersonalExpenseItem({
                 onPress={onToggleStatus}
                 className={togglingStatus ? "opacity-50" : undefined}
                 accessibilityRole="button"
-                accessibilityLabel={`Mark ${isPaid ? "pending" : "paid"}`}
+                accessibilityLabel={`Mark ${isPaid ? "Pending" : "Paid"}`}
               >
                 {pill}
               </Pressable>

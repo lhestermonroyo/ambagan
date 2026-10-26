@@ -55,7 +55,7 @@ const AvatarGroupItem = ({ avatar, size, isLast, index }: AvatarGroupItemProps) 
         />
       )}
       {showFallback && (
-        <AvatarFallbackText className="text-background-0">
+        <AvatarFallbackText className="text-background-0 dark:text-white">
           {avatar.name[0]?.toUpperCase() || "A"}
         </AvatarFallbackText>
       )}

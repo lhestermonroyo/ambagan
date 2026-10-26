@@ -103,6 +103,7 @@ export default function EditGroupScreen() {
           name: fromState.name,
           avatar: null,
           category: fromState.category,
+          // Older cached groups may not include a currency.
           currency: fromState.currency ?? "PHP"
         });
         setDefaultAvatar(fromState.avatar || null);
@@ -206,7 +207,7 @@ export default function EditGroupScreen() {
 
               <FormInput
                 type="text"
-                label="Group Name"
+                label="Name"
                 placeholder="Enter group name (e.g. Japan 2026)"
                 value={values.name}
                 onChangeText={(text) => {
@@ -251,8 +252,8 @@ export default function EditGroupScreen() {
                 </SelectField>
                 <FormControlHelper>
                   <FormControlHelperText>
-                    New expenses start in it, and totals convert to it. Existing
-                    expenses keep theirs.
+                    Totals, stats and balances convert to it, for every member.
+                    Existing expenses keep the currency they were entered in.
                   </FormControlHelperText>
                 </FormControlHelper>
               </FormControl>
@@ -271,6 +272,7 @@ export default function EditGroupScreen() {
 
       <CurrencySelectionSheet
         isOpen={currencySheetOpen}
+        title="Currency"
         currency={values.currency}
         onClose={() => setCurrencySheetOpen(false)}
         onCurrencyChange={(value) => setValues({ ...values, currency: value })}

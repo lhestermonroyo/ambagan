@@ -1,13 +1,14 @@
 import { LucideIcon } from "@/components/LucideIcon";
 import { View } from "@/components/ui/view";
 import PushNotificationPermissionSheet from "@/features/user/components/PushNotificationPermissionSheet";
+import { useActionFeedbackState } from "@/features/user/states/actionFeedback.state";
 import services from "@/services";
 import states from "@/states";
 import { getTourSeen } from "@/utils/featureTour";
 import { getPrimaryHex } from "@/utils/getColorHex";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useCallback, useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
@@ -30,6 +31,8 @@ export default function TabLayout() {
   const [firstRunStep, setFirstRunStep] = useState<FirstRunStep>("checking");
   const { details: userDetails, session } = states.user();
   const router = useRouter();
+  const isFocused = useIsFocused();
+  const feedbackBusy = useActionFeedbackState((state) => !!state.request);
 
   // Safety net: if we have a session but no user details yet, refetch
   useEffect(() => {
@@ -53,7 +56,7 @@ export default function TabLayout() {
   // group they came for, and meets the tour on their next visit to a tab.
   useEffect(() => {
     const userId = userDetails?.id;
-    if (!userId || firstRunStep !== "checking") return;
+    if (!userId || firstRunStep !== "checking" || !isFocused || feedbackBusy) return;
 
     let cancelled = false;
     (async () => {
@@ -70,7 +73,7 @@ export default function TabLayout() {
     return () => {
       cancelled = true;
     };
-  }, [userDetails?.id, firstRunStep, router]);
+  }, [userDetails?.id, firstRunStep, router, isFocused, feedbackBusy]);
 
   // The tour is a route on the root stack, so dismissing it — by button, swipe,
   // or back — hands focus back here. That's the signal to move on, and it's the
@@ -83,9 +86,9 @@ export default function TabLayout() {
 
   // Step 2 — notification priming, once the tour is out of the way.
   useEffect(() => {
-    if (!userDetails?.id || firstRunStep !== "done") return;
+    if (!userDetails?.id || firstRunStep !== "done" || !isFocused || feedbackBusy) return;
     checkAndPromptPermission();
-  }, [userDetails?.id, firstRunStep]);
+  }, [userDetails?.id, firstRunStep, isFocused, feedbackBusy]);
 
   const checkAndPromptPermission = async () => {
     try {
@@ -148,18 +151,7 @@ export default function TabLayout() {
           <NativeTabs.Trigger.Label>Groups</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
-        <NativeTabs.Trigger name="books">
-          <NativeTabs.Trigger.Icon
-            renderingMode="template"
-            src={
-              <NativeTabs.Trigger.VectorIcon
-                family={LucideIcon}
-                name="notebook-pen"
-              />
-            }
-          />
-          <NativeTabs.Trigger.Label>Books</NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="books" hidden />
 
         <NativeTabs.Trigger name="friends">
           <NativeTabs.Trigger.Icon
@@ -186,7 +178,7 @@ export default function TabLayout() {
       </NativeTabs>
 
       <PushNotificationPermissionSheet
-        isOpen={permissionSheetOpen}
+        isOpen={permissionSheetOpen && isFocused && !feedbackBusy}
         onClose={handleClose}
       />
     </View>

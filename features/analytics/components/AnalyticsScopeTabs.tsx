@@ -5,7 +5,7 @@ import { AnalyticsScope } from "@/features/analytics/hooks/useAnalytics";
 const SCOPES: { value: AnalyticsScope; label: string }[] = [
   { value: "all", label: "All" },
   { value: "groups", label: "Groups" },
-  { value: "personal", label: "Personal" }
+  { value: "personal", label: "Individual" }
 ];
 
 /**

@@ -1,4 +1,4 @@
-import { ExpenseCategory } from "@/types/expenses";
+import { ExpenseCategory, SplitType } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { GroupCategory } from "@/types/groups";
 import {
@@ -39,6 +39,7 @@ export const tables = {
   EXPENSE_PAYERS_TBL: "expense_payers_tbl",
   MEMBER_SPLITS_TBL: "member_splits_tbl",
   PAYMENT_SPLITS_TBL: "payment_splits_tbl",
+  SETTLEMENT_PAYMENTS_TBL: "settlement_payments_tbl",
   NOTIFICATIONS_TBL: "notifications_tbl",
   USER_FAVORITES_TBL: "user_favorites_tbl",
   USER_PREFERENCES_TBL: "user_preferences_tbl",
@@ -51,7 +52,11 @@ export const tables = {
 
   // Indicative FX rates, refreshed weekly by the refresh-fx-rates Edge
   // Function. Read-only to the app (see utils/fx.ts).
-  FX_RATES_TBL: "fx_rates_tbl"
+  FX_RATES_TBL: "fx_rates_tbl",
+
+  // One row per platform describing the newest shipped build and the oldest
+  // still-supported one. Read-only to the app (see app-version.service.ts).
+  APP_VERSIONS_TBL: "app_versions_tbl"
 };
 
 // apply signs to all currencies
@@ -279,6 +284,12 @@ export const expenseCategories: CategoryOption[] = [
   }
 ];
 
+export const splitTypeLabels: Record<SplitType, string> = {
+  [SplitType.EQUAL]: "Equal",
+  [SplitType.PERCENTAGE]: "Percentage",
+  [SplitType.CUSTOM]: "Custom"
+};
+
 export const splitTypes = [
   {
     label: "Equally",
@@ -297,87 +308,87 @@ export const splitTypes = [
 export const emptyTypes = [
   {
     type: EmptyType.FRIEND,
-    content: "No friends with outstanding settlements yet.",
+    content: "Share a group expense to see who owes what.",
     icon: "👫"
   },
   {
     type: EmptyType.ACTIVITY,
-    content: "No activities yet.",
+    content: "Your spending activity starts with an expense.",
     icon: "📋"
   },
   {
     type: EmptyType.GROUP,
-    content: "No groups yet. Create or join a group to get started!",
+    content: "Split bills with friends. Create a group or scan an invite to join.",
     icon: "🏠"
   },
   {
     type: EmptyType.BOOK,
-    content: "No books yet. Create one to start tracking your personal spending!",
+    content: "Track your own spending. Create your first Individual entry.",
     icon: "📒"
   },
   {
     type: EmptyType.EXPENSE,
-    content: "No expenses yet. Start adding some!",
+    content: "Track your spending. Add an expense or scan a receipt.",
     icon: "💸"
   },
   {
     type: EmptyType.SETTLEMENT,
-    content: "No settlements yet.",
+    content: "Split an expense to see who owes what.",
     icon: "🤝"
   },
   {
     type: EmptyType.NOTIFICATION,
-    content: "No notifications yet.",
+    content: "You're all caught up. Group updates will appear here.",
     icon: "🔔"
   },
   {
     type: EmptyType.USER,
-    content: "No users found.",
+    content: "Find someone by searching their name or email.",
     icon: "👤"
   },
   {
     type: EmptyType.FAVORITE,
-    content: "No favorites yet.",
+    content: "Keep friends close. Search for someone to add to favorites.",
     icon: "❤️"
   },
   {
     type: EmptyType.SEARCH,
-    content: "No results found on your search.",
+    content: "No matches yet. Try another search or clear it to see everything.",
     icon: "😔"
   },
   {
     type: EmptyType.MEMBER,
-    content: "No members found.",
+    content: "Add people to your group to start splitting expenses.",
     icon: "👥"
   },
   {
     type: EmptyType.OUTSTANDING,
-    content: "You're all settled up with this person.",
+    content: "You're all settled up. Share another expense whenever you're ready.",
     icon: "🎉"
   },
   {
     type: EmptyType.HISTORY,
-    content: "No settled payments with this person yet.",
+    content: "Completed payments with this friend will appear here.",
     icon: "📭"
   },
   {
     type: EmptyType.SETTLEMENT_ALL,
-    content: "No settlements in this group yet.",
+    content: "Split an expense to see who owes what.",
     icon: "🤝"
   },
   {
     type: EmptyType.SETTLEMENT_PENDING,
-    content: "No pending settlements.",
+    content: "All clear. Payments waiting to be settled will appear here.",
     icon: "⏳"
   },
   {
     type: EmptyType.SETTLEMENT_REQUESTED,
-    content: "No requested settlements.",
+    content: "Payment requests will appear here when someone sends one.",
     icon: "📨"
   },
   {
     type: EmptyType.SETTLEMENT_SETTLED,
-    content: "No settled payments yet.",
+    content: "Completed payments will appear here once they're settled.",
     icon: "✅"
   }
 ];
@@ -413,17 +424,17 @@ export const avatarColors = {
 
 export const introSlideContent = [
   {
-    title: "Who paid for what again?",
+    title: "Who Paid for What Again?",
     description:
       "Stop the awkward back-and-forth. Ambagan tracks every shared expense so you always know exactly who owes what."
   },
   {
-    title: "Split it. Settle it. Done.",
+    title: "Split It. Settle It. Done.",
     description:
       "Add expenses, split them your way — equally, by percentage, or custom — and request settlements with one tap."
   },
   {
-    title: "No more IOUs. Just good vibes.",
+    title: "No More IOUs. Just Good Vibes.",
     description:
       "Whether it's a group trip, dinner with friends, or shared bills — Ambagan keeps money from getting in the way."
   }

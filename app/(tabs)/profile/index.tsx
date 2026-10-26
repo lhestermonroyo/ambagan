@@ -19,7 +19,7 @@ import { useEnsureOnline } from "@/hooks/useEnsureOnline";
 import TabLayout from "@/layouts/TabLayout";
 import services from "@/services";
 import states from "@/states";
-import { getPrimaryHex, getSecondaryHex } from "@/utils/getColorHex";
+import { getPrimaryHex, getSecondaryHex, getOnSolidHex } from "@/utils/getColorHex";
 import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
@@ -29,6 +29,7 @@ import {
   CircleQuestionMark,
   Copyright,
   Eye,
+  FlaskConical,
   LayoutDashboard,
   LayoutList,
   LogOut,
@@ -91,7 +92,7 @@ export default function ProfileScreen() {
         ? "Arrow"
         : "Full";
 
-  const heroViewLabel = heroView === "personal" ? "Personal" : "Balance";
+  const heroViewLabel = heroView === "personal" ? "Individual Totals" : "Net Balance";
 
   const isPro = userDetails?.plan === "pro";
 
@@ -182,7 +183,7 @@ export default function ProfileScreen() {
               />
             ),
             label: "Overview Hero",
-            description: "Open on net balance or personal spending",
+            description: "Open on Net Balance or Individual Totals",
             value: <Text className="text-lg font-medium">{heroViewLabel}</Text>,
             onPress: () => setHeroViewOpen(true)
           }
@@ -195,7 +196,7 @@ export default function ProfileScreen() {
             icon: (
               <Sparkles color={getPrimaryHex("text-primary-400", colorScheme)} />
             ),
-            label: "How Ambagan works",
+            label: "How Ambagan Works",
             description: "A quick tour of what you can do in the app",
             onPress: () => router.push("/feature-tour")
           },
@@ -243,7 +244,7 @@ export default function ProfileScreen() {
     }
 
     signOut();
-    router.replace("/(auth)/login");
+    router.replace("/(auth)/welcome");
   };
 
   return (
@@ -300,16 +301,16 @@ export default function ProfileScreen() {
                     />
                   </Box>
                   <VStack className="flex-1">
-                    <Text bold className="text-background-0 text-xl">
+                    <Text bold className="text-background-0 dark:text-white text-xl">
                       {isPro ? "You're on Pro!" : "Upgrade to Pro!"}
                     </Text>
-                    <Text className="text-background-0 opacity-80">
+                    <Text className="text-background-0 dark:text-white opacity-80">
                       {isPro
                         ? "Manage your active subscription"
                         : "No daily limits, CSV exports & more"}
                     </Text>
                   </VStack>
-                  <Icon as="chevron-right" className="text-secondary-0" />
+                  <Icon as="chevron-right" className="text-secondary-0 dark:text-white" />
                 </Box>
               </Pressable>
             </VStack>
@@ -333,6 +334,20 @@ export default function ProfileScreen() {
                 </VStack>
               ))}
 
+              {__DEV__ && (
+                <VStack>
+                  <Text bold className="text-sm text-secondary-950 uppercase px-4 pt-4 pb-2">
+                    Development
+                  </Text>
+                  <MenuItem item={{
+                    icon: <FlaskConical color={getPrimaryHex("text-primary-400", colorScheme)} />,
+                    label: "Empty State Preview",
+                    description: "Simulate empty lists using your existing screens",
+                    onPress: () => router.push("/profile/empty-state-preview")
+                  }} />
+                </VStack>
+              )}
+
               <VStack className="px-4 mt-8 gap-y-4">
                 <FormButton
                   text="Sign Out"
@@ -341,7 +356,7 @@ export default function ProfileScreen() {
                   icon={
                     <LogOut
                       size={18}
-                      color={getSecondaryHex("text-secondary-0", colorScheme)}
+                      color={getOnSolidHex(colorScheme)}
                     />
                   }
                 />

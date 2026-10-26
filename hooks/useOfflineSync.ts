@@ -278,7 +278,7 @@ export function useOfflineSync() {
         const userId = states.user.getState().details?.id;
         if (userId) {
           services.group
-            .getGroupsByUserId(userId)
+            .getGroupEntriesByUserId(userId)
             .then((list) =>
               states.group.setState((prev) => ({ ...prev, list }))
             )
@@ -287,16 +287,17 @@ export function useOfflineSync() {
 
         if (success > 0) {
           toast({
-            title: "Back online",
+            title: "Back Online",
             description: `${success} offline ${
               success === 1 ? "change" : "changes"
             } synced.`,
-            type: "success"
+            type: "success",
+            haptic: false
           });
         }
         if (failed > 0) {
           toast({
-            title: "Some changes didn't sync",
+            title: "Some Changes Didn't Sync",
             description: `${failed} ${
               failed === 1 ? "change" : "changes"
             } couldn't be synced and will be retried later.`,
@@ -307,7 +308,7 @@ export function useOfflineSync() {
         // won't be retried again, so this won't re-fire on future reconnects).
         if (dead > 0) {
           toast({
-            title: "Some changes couldn't be synced",
+            title: "Some Changes Couldn't Be Synced",
             description: `${dead} ${
               dead === 1 ? "change" : "changes"
             } couldn't be synced after several attempts and have stopped retrying.`,

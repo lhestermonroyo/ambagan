@@ -17,14 +17,14 @@ export function useEnsureOnline() {
   return async (message?: string): Promise<boolean> => {
     if (await offlineQueue.isOnline()) return true;
     toast({
-      title: "You're offline",
+      title: "You're Offline",
       description:
         message ??
         "This action needs an internet connection. Please try again when you're back online.",
       type: "error",
       // Deep-links to the Offline Mode FAQ (opens + scrolls to its first item).
       link: {
-        label: "See what works offline",
+        label: "See What Works Offline",
         route: "/profile/help-center?section=offline"
       }
     });

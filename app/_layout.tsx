@@ -1,3 +1,7 @@
+import AppUpdateGate from "@/components/AppUpdateGate";
+import ActionFeedbackPresenter from "@/components/ActionFeedbackPresenter";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
+import EmptyStatePreviewBanner from "@/components/EmptyStatePreviewBanner";
 import NetworkBanner from "@/components/NetworkBanner";
 import OfflineSync from "@/components/OfflineSync";
 import { Box } from "@/components/ui/box";
@@ -85,6 +89,7 @@ export default function RootLayout() {
     "GoogleSans-BoldItalic": require("@/assets/fonts/GoogleSans-BoldItalic.ttf")
   });
   const router = useRouter();
+  const showFeedback = useActionFeedback();
   const { colorScheme } = useColorScheme();
   const isDark = (colorScheme ?? "light") === "dark";
 
@@ -224,7 +229,7 @@ export default function RootLayout() {
                 );
               } else {
                 toast({
-                  title: "No longer available",
+                  title: "No Longer Available",
                   description:
                     "The settlement linked to this notification no longer exists.",
                   type: "info"
@@ -241,7 +246,7 @@ export default function RootLayout() {
               router.push(route as any);
             } else {
               toast({
-                title: "No longer available",
+                title: "No Longer Available",
                 description:
                   "The group or expense linked to this notification no longer exists.",
                 type: "info"
@@ -363,23 +368,22 @@ export default function RootLayout() {
   // within seconds of coming back online instead of waiting for a cold launch.
   const refreshPlan = async (id: string) => {
     try {
-      const before = states.user.getState();
       const customerInfo = await services.purchase.getCustomerInfo();
-      // Pass the stored window so an unexpired (non-renewing) 2-week pass
-      // survives the sync; an expired one reverts to free.
+      // Reconcile confirmed receipts as well as recurring entitlements. This
+      // recovers a payment whose access write failed on a previous launch.
       const { plan, plan_expires_at } =
         await services.purchase.syncPlanToSupabase(customerInfo, {
-          currentWindowExpiresAt: before.details?.plan_expires_at ?? null
+          expectedUserId: id
         });
       states.user.setState((prev) => ({
         ...prev,
-        details: prev.details
+        details: prev.details?.id === id
           ? { ...prev.details, plan, plan_expires_at }
           : prev.details
       }));
 
       const after = states.user.getState();
-      if (after.details) {
+      if (after.details?.id === id) {
         await setCachedUserSession({
           userId: id,
           details: after.details,
@@ -433,7 +437,7 @@ export default function RootLayout() {
           ...prev,
           session: null,
           details: null,
-          routeIntent: "login"
+          routeIntent: "welcome"
         }));
         return;
       }
@@ -474,6 +478,7 @@ export default function RootLayout() {
       if (!token) return;
       const groupId = await services.group.joinGroupByToken(token);
       await clearPendingInviteToken();
+      await showFeedback("group-joined", { afterPath: `/groups/${groupId}` });
       router.push(`/groups/${groupId}` as any);
     } catch {
       // silently ignore — stale/invalid token, don't block the user
@@ -528,6 +533,7 @@ export default function RootLayout() {
                   shorter spacer lets UIKit shrink each header's own top inset,
                   landing its title/buttons back under the banner. */}
               {banner.visible && <Box style={{ height: banner.height - 4 }} />}
+              {__DEV__ && <EmptyStatePreviewBanner />}
               <Stack
                 screenOptions={{
                   headerShown: false,
@@ -561,9 +567,56 @@ export default function RootLayout() {
                   name="feature-tour"
                   options={{ presentation: "modal" }}
                 />
+                <Stack.Screen
+                  name="settlement"
+                  options={{
+                    presentation: "fullScreenModal",
+                    animation: "slide_from_bottom",
+                    gestureEnabled: false
+                  }}
+                />
+                <Stack.Screen
+                  name="subscription-success"
+                  options={{
+                    presentation: "modal",
+                    animation: "slide_from_bottom"
+                  }}
+                />
+                <Stack.Screen
+                  name="action-success"
+                  options={{
+                    presentation: "modal",
+                    animation: "slide_from_bottom"
+                  }}
+                />
+                {/* The out-of-date-build prompt. Two presentations off one
+                    route, because the two cases are genuinely different
+                    screens to the user:
+
+                    - OPTIONAL — a plain modal. Swipe-down and Android back
+                      both dismiss it, and the route snoozes on the way out.
+                    - REQUIRED (`forced=1`, i.e. below min_supported_version) —
+                      fullScreenModal with the swipe disabled, so the only way
+                      forward is the store. The hardware back button is blocked
+                      in the route itself; gestureEnabled doesn't cover it. */}
+                <Stack.Screen
+                  name="update-available"
+                  options={({ route }) => {
+                    const forced =
+                      (route.params as { forced?: string } | undefined)
+                        ?.forced === "1";
+                    return {
+                      presentation: forced ? "fullScreenModal" : "modal",
+                      gestureEnabled: !forced,
+                      animation: "slide_from_bottom"
+                    };
+                  }}
+                />
               </Stack>
+              <ActionFeedbackPresenter />
               <StatusBar style="auto" />
               <OfflineSync />
+              <AppUpdateGate />
               <NetworkBanner />
             </ThemeProvider>
           </ToastProvider>

@@ -5,10 +5,28 @@ reason can be re-checked rather than re-derived.
 
 ---
 
-## 1. Split `groups_tbl.currency` into reporting + entry
+## 1. Split `groups_tbl.currency` into reporting + entry — ✅ **DONE 2026-08-19**
 
 Mirror the book change that shipped in v1.4 (`personal_books_tbl.currency` +
 `default_expense_currency`) onto groups.
+
+> **Shipped.** Migration
+> [`2026-08-19_group_default_expense_currency.sql`](../../../migrations/2026-08-19_group_default_expense_currency.sql),
+> deployment steps + smoke tests in §A2 of the
+> [v1.5 checklist](./DEPLOYMENT_CHECKLIST.md). The gate below was satisfied: the
+> book split reached prod 2026-08-07 with both rules intact.
+>
+> Landed: the migration; `Group.default_expense_currency`;
+> [`groupCurrency.ts`](../../../features/group/utils/groupCurrency.ts)
+> (`groupEntryCurrency` + `normalizeEntryCurrency`); `saveGroup` / `updateGroup`
+> + both group SELECTs; `CreateGroupArgs` / `UpdateGroupArgs` /
+> `buildOptimisticGroup` / the create-fold in `queueUpdateGroup`; the group
+> `add-expense` seed; `GroupDetailsTab`; and the create + edit group forms.
+>
+> Two touchpoints listed below turned out to need no change: **scan-receipt**
+> routes its draft through `add-expense`, which already resolves the seed (and
+> lets a scanned currency win), and the **recurring template** is created from
+> that same form, so both inherit the fix from one resolve point.
 
 ### Why
 
@@ -40,7 +58,7 @@ them re-picks JPY on every expense.
   the `CURRENCY_SAME_AS` sentinel round-tripping through the offline queue.
   **Gate this item on those passing on books first.**
 
-### Open decision — do NOT inherit this from books
+### Open decision — do NOT inherit this from books — ✅ **RESOLVED 2026-08-19**
 
 A book's currencies are the owner's alone. A group's are **shared**: the
 creator's "default for new expenses" would apply to every member's entry.
@@ -52,7 +70,25 @@ Books never had to answer this. Current instinct is the group's default wins —
 it's what makes a trip group cohere, and `currency` is already shared this way —
 but make the call deliberately rather than discovering it after ship.
 
+**Resolution: the group's default wins, because there is nothing to lose to.**
+The question presumed a per-member preferred currency, and the app no longer has
+one — `default_currency` was dropped as a user setting (see `BASE_CURRENCY` in
+[`utils/fx.ts`](../../../utils/fx.ts) and the note in
+[`preferences.service.ts`](../../../features/user/services/preferences.service.ts)),
+precisely because a single user-level currency could never serve both "what a
+new container starts in" and "what cross-container rollups fold into". So the
+group's setting is the only per-container answer available, which is also the
+instinct above.
+
+What this *does* commit to, and what the UI must therefore say out loud: only
+the **admin** can set it (group edit is admin-only, enforced in `updateGroup`
+and by RLS), and every member's Add Expense follows. The edit form's helper text
+names that explicitly ("for everyone") rather than leaving it to be discovered.
+Revisit only if a per-user currency preference is ever reintroduced.
+
 ### Shape (follows the book implementation exactly)
+
+*(All of the below is what shipped.)*
 
 - Migration: `groups_tbl.default_expense_currency text` — **nullable, no
   DEFAULT**. NULL = follow `currency`. `^[A-Z]{3}$` shape check. Ends with
@@ -268,6 +304,128 @@ optional field**. Hiding who's in a group behind "More options" would bury the
 point of a group.
 
 There is nothing left to collapse; the section would cost a tap and buy nothing.
+
+---
+
+## 6. Multiple admins per group — ✅ **DONE 2026-08-19**
+
+A group had exactly one admin: `groups_tbl.admin_id`, fixed at create time. That
+single column was the source of every admin gate in the app **and** in RLS, so
+the creator was the only person who could touch the roster or the invite link.
+If they went quiet, the roster could not be fixed by anyone.
+
+> **Shipped.** Migration
+> [`2026-08-19_group_co_admins.sql`](../../../migrations/2026-08-19_group_co_admins.sql),
+> deployment steps + audits + smoke tests in §A3 of the
+> [v1.5 checklist](./DEPLOYMENT_CHECKLIST.md).
+
+### The model — two levels, not one
+
+| | Owner (`groups_tbl.admin_id`) | Admin (`group_members_tbl.role`) | Member |
+|---|---|---|---|
+| Add / remove members | ✅ | ✅ | — |
+| Share + reset invite link | ✅ | ✅ | — |
+| Edit group details | ✅ | — | — |
+| Archive / restore, delete | ✅ | — | — |
+| Promote / demote admins | ✅ | — | — |
+
+Exactly one owner, zero or more admins. `admin_id` is **kept** as the owner —
+not replaced by a pure role table — so every existing row, policy and query
+keeps working, and the group can never end up with nobody in charge.
+
+### Why the split, rather than "admin = admin"
+
+The whole point is a second pair of hands on the roster. Full parity would mean
+any promoted member could delete the group and its entire expense history, and
+could demote the owner out of their own group. Roster + invites is the part that
+actually goes stale when one person is unavailable; the destructive half does
+not benefit from being shared. Free for everyone — this is a safety valve, not a
+value-add, and paywalling "someone else can fix the member list" would be a bad
+trade.
+
+### What landed
+
+- The migration: `role` + its check + a partial index, an owner backfill,
+  `is_group_owner()`, the widened `is_group_admin()`, additive roster-write
+  policies (a co-admin may remove members but **not** another admin), and the
+  owner-only `set_group_member_role()` RPC.
+- [`groupRoles.ts`](../../../features/group/utils/groupRoles.ts) —
+  `isGroupOwner` / `isGroupAdmin` / `groupAdmins` / `groupNonAdmins`, the client
+  mirror of the two SQL helpers. Every gate goes through it.
+- `Member.role` + the `GroupRole` enum; `role` read in both roster SELECTs and
+  written for the owner on create (online **and** in `buildOptimisticGroup`).
+- A new **Members tab** on the group screen
+  ([`GroupMembersTab`](../../../features/group/components/GroupMembersTab.tsx)),
+  between Stats and Info, with Members | Admins sub-tabs and the owner's
+  **inline** promote/demote control on each row — see "Why the roster moved"
+  below.
+- `GroupDetailsTab` keeps the metadata only: an Owner row, an Admins row once
+  there is more than one, and a Members row that jumps to the new tab. Both it
+  and the Members tab subscribe to the group store instead of reading
+  `getState()` once, so a promotion repaints immediately.
+- `app/groups/[groupId]/index.tsx`: the toolbar/menu split — share is
+  admin-level, Edit / Archive / Delete stay owner-only, on both the iOS
+  `Stack.Toolbar` and the Android menu.
+- `EditMemberSheet`: a single `protectedMemberIds` set replaces the old
+  "filter out the admin" special case — the owner always, plus the other admins
+  when a **co-admin** is the one editing (matching what RLS will allow).
+- `LeaveGroupSheet`: only the **owner** must hand over, existing admins are
+  offered first in the transfer list, and the new owner's membership row is
+  promoted as part of the transfer.
+- Help Center: two new Q&As (multiple admins, what happens when the owner
+  leaves), plus the offline capability lists.
+
+### Why the roster moved to its own tab
+
+The Info tab was carrying two unrelated things: six read-once metadata rows, and
+a list that grows with the group. Seeing who was in a 12-person group meant
+scrolling past the currency and the created-at date every time — and co-admins
+added a second dimension to that list, which is when it stopped being a
+footnote.
+
+The Members | Admins toggle came along with it, now carrying counts —
+`Members (9)` / `Admins (2)` — so the shape of the group is readable without
+switching. Members lists everyone who isn't an admin; Admins lists the owner
+first (pinned: they outrank the rows below and can't be demoted) followed by
+whoever they promoted.
+
+**Each row carries an ellipsis menu**
+([`MemberActionsSheet`](../../../features/group/components/MemberActionsSheet.tsx)),
+not a separate management screen: **Friend Details** (routes to
+`/friends/[friendId]`, which works for phone-contact ghosts too — it's a
+per-user settlement view) plus, for the owner only, **Make admin** /
+**Remove admin**. The sheet's contents mirror what `set_group_member_role()`
+allows rather than offering an action that returns an error, so a co-admin sees
+only Friend Details, and the owner's own row never offers demotion. Items are
+icon + label only; the sheet's header carries the member's avatar, name and
+role, since the ellipsis that opened it sits in a column of near-identical rows.
+
+An `AppRowMenu` built on `@expo/ui`'s SwiftUI `Menu` (the native iOS dropdown,
+gluestack on Android) was tried here and reverted — the app's own bottom sheet
+is the house style for row actions, and matching it beat matching the platform.
+
+The ellipsis is hidden on your own row — Friend Details on yourself is
+meaningless and nobody can change their own role. The write stays online-only;
+the row swaps its ellipsis for "Saving…" while it's in flight, tracked as a
+**set** of ids because each row has its own menu and two promotions can overlap.
+Two earlier passes were replaced by the sheet: a `ManageAdminsSheet` (one
+owner-only management sheet) and a bare inline "Make admin" button.
+
+Info keeps a `Members · 12` row so the metadata block stays complete; tapping it
+switches tabs. `?tab=Members` deep-links straight there, since the screen already
+validates the incoming tab param against the `tabs` tuple.
+
+### Deliberately not included
+
+- **No notification on promotion.** It would need a new `NotificationType`, a
+  rendering case, a routing case and a push copy — for an event the person sees
+  the moment they open the group. Revisit if promotions turn out to be common.
+- **No offline promote/demote.** A queued permission change could land after the
+  person was removed from the group. Online-only, like resetting the invite
+  link.
+- **Group list filters stay owner-based.** "Groups I created" still means
+  `admin_id`, not "groups I can manage" — it is a provenance filter, not a
+  permission one.
 
 ---
 

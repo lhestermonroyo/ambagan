@@ -14,25 +14,23 @@ import {
   SplitType
 } from "@/types/expenses";
 import { getSecondaryHex } from "@/utils/getColorHex";
-import { ChevronDown, ChevronUp } from "lucide-react-native";
-import { useState } from "react";
-import {
-  ActivityIndicator,
-  LayoutAnimation,
-  Platform,
-  UIManager,
-  useColorScheme
-} from "react-native";
+import { ChevronDown } from "lucide-react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, useColorScheme } from "react-native";
+import Animated, {
+  Easing,
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from "react-native-reanimated";
 import { formatAmount } from "../utils/formatAmount";
 
-// LayoutAnimation needs to be opted into on old-architecture Android; no-op
-// elsewhere. Animates the expand/collapse of the breakdown.
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+const transition = {
+  duration: 280,
+  easing: Easing.inOut(Easing.cubic),
+  reduceMotion: ReduceMotion.System
+};
 
 type BreakdownData = {
   expense: Expense;
@@ -58,6 +56,28 @@ export default function SettlementBreakdown({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [data, setData] = useState<BreakdownData | null>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+  const height = useSharedValue(0);
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    // Measure independently of the clipped container. Animate again when the
+    // loading row is replaced by the full computation or an error message.
+    height.value = withTiming(expanded ? contentHeight : 0, transition);
+  }, [expanded, contentHeight, height]);
+
+  useEffect(() => {
+    progress.value = withTiming(expanded ? 1 : 0, transition);
+  }, [expanded, progress]);
+
+  const contentStyle = useAnimatedStyle(() => ({
+    height: height.value,
+    opacity: progress.value,
+    overflow: "hidden"
+  }));
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${progress.value * 180}deg` }]
+  }));
 
   const loadBreakdown = async () => {
     setLoading(true);
@@ -78,7 +98,6 @@ export default function SettlementBreakdown({
   };
 
   const toggle = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const next = !expanded;
     setExpanded(next);
     // Fetch once, on first expand.
@@ -113,15 +132,15 @@ export default function SettlementBreakdown({
   })();
 
   const payerPaidLabel = isPayer
-    ? "You paid"
-    : `${payment.payer.first_name} paid`;
+    ? "You Paid"
+    : `${payment.payer.first_name} Paid`;
   const memberShareLabel = isMember
-    ? "Your share"
-    : `${payment.member.first_name}'s share`;
+    ? "Your Share"
+    : `${payment.member.first_name}'s Share`;
   const settlementLabel = isMember
-    ? `You pay ${payment.payer.first_name}`
+    ? `You Pay ${payment.payer.first_name}`
     : isPayer
-      ? `You receive from ${payment.member.first_name}`
+      ? `You Receive From ${payment.member.first_name}`
       : `${payment.member.first_name} → ${payment.payer.first_name}`;
 
   // With multiple payers, or when the member also paid, netting can split a
@@ -134,21 +153,31 @@ export default function SettlementBreakdown({
 
   return (
     <Box className="bg-secondary-100 rounded-xl overflow-hidden">
-      <Pressable onPress={toggle}>
+      <Pressable
+        onPress={toggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+      >
         <HStack className="items-center justify-between p-4">
           <Text bold className="text-secondary-950">
-            Breakdown of computation
+            Breakdown of Computation
           </Text>
-          {expanded ? (
-            <ChevronUp size={20} color={iconColor} />
-          ) : (
+          <Animated.View style={chevronStyle}>
             <ChevronDown size={20} color={iconColor} />
-          )}
+          </Animated.View>
         </HStack>
       </Pressable>
 
-      {expanded && (
-        <VStack>
+      <Animated.View
+        style={contentStyle}
+        pointerEvents={expanded ? "auto" : "none"}
+        accessibilityElementsHidden={!expanded}
+        importantForAccessibility={expanded ? "auto" : "no-hide-descendants"}
+      >
+        <VStack
+          style={{ position: "absolute", top: 0, left: 0, right: 0 }}
+          onLayout={(event) => setContentHeight(event.nativeEvent.layout.height)}
+        >
           <Box className="mx-4">
             <Divider className="border-secondary-200" />
           </Box>
@@ -162,7 +191,7 @@ export default function SettlementBreakdown({
           ) : error ? (
             <VStack className="p-4 gap-y-2">
               <Text className="text-sm text-secondary-950">
-                Couldn't load the breakdown. Check your connection and try
+                Couldn&apos;t load the breakdown. Check your connection and try
                 again.
               </Text>
               <Pressable onPress={loadBreakdown}>
@@ -174,7 +203,7 @@ export default function SettlementBreakdown({
           ) : data ? (
             <VStack className="px-4 py-2">
               <BreakdownRow
-                label="Total expense"
+                label="Total Expense"
                 value={formatAmount(data.expense.amount, payment.currency)}
               />
               <BreakdownRow label="Split" value={splitLabel} />
@@ -212,7 +241,7 @@ export default function SettlementBreakdown({
             </VStack>
           ) : null}
         </VStack>
-      )}
+      </Animated.View>
     </Box>
   );
 }

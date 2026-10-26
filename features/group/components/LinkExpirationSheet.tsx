@@ -27,9 +27,9 @@ import { useEffect, useState } from "react";
 
 const EXPIRY_OPTIONS: { label: string; ttl: number | null }[] = [
   { label: "Never", ttl: null },
-  { label: "1 hour", ttl: 60 * 60 },
-  { label: "24 hours", ttl: 24 * 60 * 60 },
-  { label: "7 days", ttl: 7 * 24 * 60 * 60 }
+  { label: "1 Hour", ttl: 60 * 60 },
+  { label: "24 Hours", ttl: 24 * 60 * 60 },
+  { label: "7 Days", ttl: 7 * 24 * 60 * 60 }
 ];
 
 // RadioGroup values must be strings; map ttl <-> a stable key.
@@ -84,7 +84,7 @@ export default function LinkExpirationSheet({
           : prev.details
       }));
       toast({
-        title: "Invite link reset",
+        title: "Invite Link Reset",
         description:
           selectedTtl === null
             ? "A new link was generated. The old one no longer works."
@@ -97,7 +97,7 @@ export default function LinkExpirationSheet({
       onClose();
     } catch {
       toast({
-        title: "Couldn't reset link",
+        title: "Couldn't Reset Link",
         description: "Please check your connection and try again.",
         type: "error"
       });

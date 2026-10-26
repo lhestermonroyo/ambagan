@@ -6,6 +6,9 @@ import { ColorSchemeName } from "react-native";
 const normalizeScheme = (colorScheme: ColorSchemeName): "light" | "dark" =>
   colorScheme === "dark" ? "dark" : "light";
 
+export const getOnSolidHex = (colorScheme: ColorSchemeName = "light") =>
+  normalizeScheme(colorScheme) === "dark" ? "#FFFFFF" : "#FDFDFD";
+
 export const getSuccessHex = (
   className: keyof (typeof successColorMap)["light" | "dark"],
   colorScheme: ColorSchemeName = "light"
@@ -26,6 +29,12 @@ export const getPrimaryHex = (
 ) => {
   return primaryColorMap[normalizeScheme(colorScheme)][className] || className;
 };
+
+export const getOnOutlineHex = (colorScheme: ColorSchemeName = "light") =>
+  getPrimaryHex(
+    normalizeScheme(colorScheme) === "dark" ? "text-primary-600" : "text-primary-500",
+    colorScheme
+  );
 
 export const getSecondaryHex = (
   className: keyof (typeof secondaryColorMap)["light" | "dark"],

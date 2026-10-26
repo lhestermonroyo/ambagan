@@ -1,3 +1,4 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
 import AppAvatar from "@/components/AppAvatar";
 import AppSheet from "@/components/AppSheet";
 import EmptyList from "@/components/EmptyList";
@@ -48,6 +49,7 @@ export default function LinkedGroupSheet({
   selectedGroupId: string | null;
   onSelect: (groupId: string | null) => void;
 }) {
+  const previewEmpty = useEmptyStatePreview();
   const [selected, setSelected] = useState(selectedGroupId ?? NONE);
 
   return (
@@ -81,8 +83,8 @@ export default function LinkedGroupSheet({
         </HStack>
       </Pressable>
       <Text className="text-sm text-secondary-950 px-4 pt-1 pb-2">
-        Adds your share of the group&apos;s expenses to this book&apos;s total.
-        Your personal expenses stay private.
+        Adds your share of the group&apos;s expenses to this Individual entry&apos;s total.
+        Your individual expenses stay private.
       </Text>
 
       <RadioGroup
@@ -92,7 +94,7 @@ export default function LinkedGroupSheet({
       >
         <FlatList
           className="flex-1"
-          data={groups}
+          data={previewEmpty ? [] : groups}
           keyExtractor={(item) => (item as Group).id}
           ListHeaderComponent={
             <>
@@ -103,9 +105,9 @@ export default function LinkedGroupSheet({
                 onPress={() => setSelected(NONE)}
               >
                 <VStack className="flex-1">
-                  <Text className="text-lg">Not linked</Text>
+                  <Text className="text-lg">Not Linked</Text>
                   <Text className="text-sm text-secondary-950">
-                    Keep this book standalone.
+                    Keep this Individual entry standalone.
                   </Text>
                 </VStack>
                 <RadioIndicator>
@@ -142,7 +144,12 @@ export default function LinkedGroupSheet({
           ItemSeparatorComponent={() => (
             <Divider className="border-secondary-200" />
           )}
-          ListEmptyComponent={() => <EmptyList type={EmptyType.GROUP} />}
+          ListEmptyComponent={() => (
+            <EmptyList
+              type={EmptyType.GROUP}
+              content="No groups to link yet. You can link one later."
+            />
+          )}
         />
       </RadioGroup>
     </AppSheet>

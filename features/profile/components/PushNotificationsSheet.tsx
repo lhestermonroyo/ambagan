@@ -188,13 +188,16 @@ export default function PushNotificationsSheet({
               <VStack className="mx-4 p-4 bg-primary-50 rounded-xl gap-y-4">
                 <HStack className="gap-x-2 items-start">
                   <AlertCircle
-                    color={getPrimaryHex("text-primary-500", colorScheme)}
+                    color={getPrimaryHex(
+                      colorScheme === "dark" ? "text-primary-800" : "text-primary-500",
+                      colorScheme
+                    )}
                   />
                   <VStack className="flex-1 gap-y-2">
-                    <Text bold className="text-lg text-primary-600">
-                      Notifications not enabled
+                    <Text bold className="text-lg text-primary-600 dark:text-primary-800">
+                      Notifications Not Enabled
                     </Text>
-                    <Text className="text-primary-500">
+                    <Text className="text-primary-500 dark:text-primary-800">
                       You haven't enabled push notifications yet. Enable them to
                       get real-time updates on settlements, expenses, and group
                       activity.
@@ -211,12 +214,12 @@ export default function PushNotificationsSheet({
             {permissionStatus === "denied" && (
               <VStack className="mx-4 p-4 bg-error-50 rounded-xl gap-y-4">
                 <HStack className="gap-x-2 items-start">
-                  <BellOff color={getErrorHex("text-error-500", colorScheme)} />
+                  <BellOff color={getErrorHex(colorScheme === "dark" ? "text-error-800" : "text-error-500", colorScheme)} />
                   <VStack className="flex-1 gap-y-2">
-                    <Text bold className="text-lg text-error-600">
-                      Notifications are disabled
+                    <Text bold className="text-lg text-error-600 dark:text-error-800">
+                      Notifications Are Disabled
                     </Text>
-                    <Text className="text-error-500">
+                    <Text className="text-error-500 dark:text-error-800">
                       Push notifications are turned off in your device settings.
                       Go to Settings to allow us to send you notifications.
                     </Text>

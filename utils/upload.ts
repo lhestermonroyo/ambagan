@@ -2,7 +2,7 @@ import { decode } from "base64-arraybuffer";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import { ImagePickerAsset } from "expo-image-picker";
-import { supabase } from "./supabase";
+import { supabase, USE_DEV_BACKEND } from "./supabase";
 
 type Bucket = "avatars" | "receipts" | "group_covers";
 
@@ -12,14 +12,9 @@ const COMPRESS_OPTIONS: Record<Bucket, { maxWidth: number; quality: number }> = 
   receipts: { maxWidth: 1024, quality: 0.8 }
 };
 
-// Storage is project-level and ignores the Postgres `db.schema` switch, so a dev
-// build would otherwise upload into (and hand out prod URLs for) the live
-// buckets. Route dev uploads to dedicated `<bucket>-dev` buckets to keep prod
-// storage clean — mirrors the db.schema / edgeFn `-dev` split (see
-// utils/supabase.ts). The `-dev` buckets must exist in the dashboard with the
-// same public/RLS settings as prod.
+// Storage ignores db.schema, so explicitly follow the selected backend.
 const resolveBucket = (bucket: Bucket): string =>
-  __DEV__ ? `${bucket}-dev` : bucket;
+  USE_DEV_BACKEND ? `${bucket}-dev` : bucket;
 
 const compressImage = async (uri: string, bucket: Bucket): Promise<string> => {
   const { maxWidth, quality } = COMPRESS_OPTIONS[bucket];
@@ -54,8 +49,7 @@ export const uploadFile = async (asset: ImagePickerAsset, bucket: Bucket) => {
   const compressedUri = await compressImage(asset.uri, bucket);
   const blob = await uriToBlob(compressedUri);
 
-  // Compression profile keys off the logical bucket; the actual storage bucket
-  // is `<bucket>-dev` in dev builds so prod storage stays untouched.
+  // Compression uses the logical bucket; uploads follow the selected backend.
   const storageBucket = resolveBucket(bucket);
   const filePath = `${Date.now()}_${asset.fileName?.replace(/\.[^.]+$/, "")}.jpg`;
   const { error } = await supabase.storage

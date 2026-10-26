@@ -67,7 +67,7 @@ const USER_STATE = create<UserState>((set, get) => ({
       heroView: "balance",
       // Reset the routing intent so a stale "tabs"/"splash" from the previous
       // account can't survive into the next login and mis-route index.tsx.
-      routeIntent: "login"
+      routeIntent: "welcome"
     });
     // Drop the offline profile cache so the next account never hydrates ours.
     clearCachedUserSession();
@@ -82,7 +82,7 @@ const USER_STATE = create<UserState>((set, get) => ({
     // supabase-js awaits auth subscribers under its auth lock, so if that handler
     // awaited slow work, this sign-out would stall and race the next login. With
     // it detached, sign-out resolves fast and can't tear down the next session.
-    // Fire-and-forget keeps navigation to login instant. The Google cache clear
+    // Fire-and-forget keeps navigation to welcome instant. The Google cache clear
     // is fired separately — its native call can be slow and must not share a task
     // with (and thus delay) the Supabase sign-out.
     clearLocalSession().catch((error) =>

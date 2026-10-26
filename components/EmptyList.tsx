@@ -1,9 +1,20 @@
 import { EmptyType } from "@/types/general";
+import useUserStore from "@/features/user/states/user.state";
 import { emptyTypes } from "@/utils/constants";
-import { useColorScheme } from "nativewind";
-import { Image } from "react-native";
+import { getOnOutlineHex, getOnSolidHex } from "@/utils/getColorHex";
+import { LucideIcon } from "lucide-react-native";
+import { Image, useColorScheme } from "react-native";
 import { Text } from "./ui/text";
 import { VStack } from "./ui/vstack";
+import FormButton from "./FormButton";
+
+export type EmptyListAction = {
+  label: string;
+  icon?: LucideIcon;
+  onPress: () => void;
+  variant?: "solid" | "outline";
+  disabled?: boolean;
+};
 
 const IMAGES = {
   book: {
@@ -103,37 +114,75 @@ const BOX: Partial<Record<ImageKey, typeof DEFAULT_BOX>> = {
 
 const EmptyList = ({
   type,
-  content
+  content,
+  actions = [],
+  compact = false
 }: {
   type: EmptyType;
   // Optional copy override — falls back to the default text for `type`.
   content?: string;
+  actions?: EmptyListAction[];
+  compact?: boolean;
 }) => {
-  // nativewind's, not react-native's: App Appearance (Light/Dark/System) is
-  // applied by GluestackUIProvider via nativewind's setColorScheme, so the
-  // react-native hook reports the OS scheme and ignores the in-app choice.
-  const { colorScheme } = useColorScheme();
+  // Respect the app override while keeping theme subscriptions tied to the
+  // component lifecycle, including empty states discarded during navigation.
+  const systemScheme = useColorScheme();
+  const appearanceMode = useUserStore((state) => state.appearanceMode);
+  const colorScheme = appearanceMode === "system" ? systemScheme : appearanceMode;
   const empty = emptyTypes.find((item) => item.type === type);
   const imageKey = TYPE_TO_IMAGE[type];
   const source = IMAGES[imageKey][colorScheme === "dark" ? "dark" : "light"];
+  const imageBox = BOX[imageKey] ?? DEFAULT_BOX;
+  const imageScale = compact ? 0.7 : 1;
 
   return (
     // The box is centred in a fixed-height slot so a shorter override can't
     // shift the copy up relative to the other empty states.
-    <VStack className="w-full justify-center items-center gap-y-3 py-6">
+    <VStack className={compact
+      ? "w-full justify-center items-center gap-y-2 py-4"
+      : "w-full justify-center items-center gap-y-3 py-6"}>
       <VStack
         className="justify-center items-center"
-        style={{ height: DEFAULT_BOX.height }}
+        style={{ height: DEFAULT_BOX.height * imageScale }}
       >
         <Image
           source={source}
-          style={BOX[imageKey] ?? DEFAULT_BOX}
+          style={{
+            width: imageBox.width * imageScale,
+            height: imageBox.height * imageScale
+          }}
           resizeMode="contain"
         />
       </VStack>
       <Text className="text-center text-secondary-950 px-4">
         {content ?? empty?.content}
       </Text>
+      {actions.length > 0 && (
+        <VStack className="w-full max-w-[320px] gap-y-2 px-4 pt-2">
+          {actions.map((action, index) => {
+            const ActionIcon = action.icon;
+            const variant = action.variant ?? (index === 0 ? "solid" : "outline");
+            return (
+              <FormButton
+                key={action.label}
+                text={action.label}
+                size="md"
+                variant={variant}
+                icon={ActionIcon ? (
+                  <ActionIcon
+                    size={18}
+                    color={variant === "solid"
+                      ? getOnSolidHex(colorScheme)
+                      : getOnOutlineHex(colorScheme)}
+                  />
+                ) : undefined}
+                onPress={action.onPress}
+                disabled={action.disabled}
+              />
+            );
+          })}
+        </VStack>
+      )}
     </VStack>
   );
 };

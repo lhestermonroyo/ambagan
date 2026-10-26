@@ -31,7 +31,7 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 export default function MoreOptions({
   expanded,
   onToggle,
-  label = "More options",
+  label = "More Options",
   children
 }: {
   expanded: boolean;

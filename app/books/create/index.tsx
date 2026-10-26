@@ -1,4 +1,3 @@
-import AmountInput from "@/components/AmountInput";
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
 import {
@@ -11,15 +10,11 @@ import MoreOptions from "@/components/MoreOptions";
 import SelectField from "@/components/SelectField";
 import {
   FormControl,
-  FormControlError,
-  FormControlErrorText,
   FormControlHelper,
   FormControlHelperText,
   FormControlLabel,
   FormControlLabelText
 } from "@/components/ui/form-control";
-import { HStack } from "@/components/ui/hstack";
-import { Pressable } from "@/components/ui/pressable";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
@@ -30,27 +25,28 @@ import CategorySheet, {
   groupCategoryMeta
 } from "@/features/expense/components/CategorySheet";
 import useAppToast from "@/hooks/use-app-toast";
+import { useActionFeedback } from "@/hooks/useActionFeedback";
 import FormLayout from "@/layouts/FormLayout";
 import services from "@/services";
 import states from "@/states";
-import { BookBudgetPeriod } from "@/types/books";
 import { Group, GroupCategory } from "@/types/groups";
 import { categories, currencies } from "@/utils/constants";
 import { BASE_CURRENCY } from "@/utils/fx";
 import * as offlineQueue from "@/utils/offlineQueue";
-import { cn } from "@gluestack-ui/utils/nativewind-utils";
 import { ImagePickerSuccessResult } from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
-const budgetPeriods: { value: BookBudgetPeriod; label: string }[] = [
-  { value: "monthly", label: "Every month" },
-  { value: "total", label: "Never (total)" }
-];
-
 export default function CreateBookScreen() {
+  const params = useLocalSearchParams<{ bookId?: string }>();
+  return typeof params.bookId === "string" && params.bookId
+    ? <EditIndividualScreen />
+    : <Redirect href={{ pathname: "/groups/create", params: { mode: "individual" } }} />;
+}
+
+function EditIndividualScreen() {
   const params = useLocalSearchParams();
   const bookId = typeof params.bookId === "string" ? params.bookId : undefined;
   const isEdit = !!bookId;
@@ -65,28 +61,25 @@ export default function CreateBookScreen() {
     avatar: null as ImagePickerSuccessResult | null,
     defaultAvatar: undefined as string | undefined,
     category: GroupCategory.GENERAL as string,
-    // The book's REPORTING currency — budget, totals, roll-up. Every book starts
+    // The entry's reporting currency — totals, stats, roll-up. Every entry starts
     // in the app's home currency. Pro users can change it here; for free users
     // the selection is locked, pinning them to PHP.
     currency: BASE_CURRENCY,
-    // What Add Expense prefills, kept separate so a trip can be budgeted in PHP
+    // What Add Expense prefills, kept separate so a trip can be reported in PHP
     // and entered in JPY. CURRENCY_SAME_AS (the default) = follow `currency`,
     // and is stored as null so a later currency edit carries over.
     defaultExpenseCurrency: CURRENCY_SAME_AS,
-    // Budget is optional and free for everyone. Empty string = no budget set.
-    budget: "",
-    budgetPeriod: "monthly" as BookBudgetPeriod,
     // Optional roll-up link to a group. Free for everyone — no Pro gate.
     groupId: null as string | null
   });
-  const [formErrors, setFormErrors] = useState({ name: "", budget: "" });
+  const [formErrors, setFormErrors] = useState({ name: "" });
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
   const [entryCurrencySheetOpen, setEntryCurrencySheetOpen] = useState(false);
   const [groupSheetOpen, setGroupSheetOpen] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  // Budget / currencies / linked group collapse behind "More options" — all of
+  // Entry currency / linked group collapse behind "More options" — all of
   // them optional with a working default, so creating starts closed on just the
   // name. Editing opens the section when the loaded book has actually set one of
   // them (see the hydrate effect), since collapsed it would hide a setting the
@@ -95,6 +88,7 @@ export default function CreateBookScreen() {
 
   const router = useRouter();
   const toast = useAppToast();
+  const showFeedback = useActionFeedback();
 
   // Edit mode — hydrate the form from the existing book.
   useEffect(() => {
@@ -112,17 +106,10 @@ export default function CreateBookScreen() {
           currency: book.currency,
           defaultExpenseCurrency:
             book.default_expense_currency ?? CURRENCY_SAME_AS,
-          budget: book.budget != null ? String(book.budget) : "",
-          budgetPeriod: book.budget_period ?? "monthly",
           groupId: book.group_id
         }));
-        // Anything the user actually set INSIDE the section has to be visible on
-        // open. `currency` is deliberately absent — it sits above the section
-        // now, so a non-PHP book would spring it open for a field already on
-        // screen. budget_period is absent for its own reason: it's meaningless
-        // without a budget, and its default alone shouldn't spring anything.
+        // Expand saved optional settings when editing.
         if (
-          book.budget != null ||
           book.group_id != null ||
           book.default_expense_currency != null
         ) {
@@ -132,7 +119,7 @@ export default function CreateBookScreen() {
       .catch(() => {
         toast({
           title: "Error",
-          description: "Couldn't load this book. Please try again.",
+          description: "Couldn't load this Individual entry. Please try again.",
           type: "error"
         });
         router.back();
@@ -174,34 +161,21 @@ export default function CreateBookScreen() {
       values.defaultExpenseCurrency
         ? (currencies.find((c) => c.value === values.defaultExpenseCurrency)
             ?.label ?? values.defaultExpenseCurrency)
-        : "Same as book currency",
+        : "Same as Individual Entry Currency",
     [values.defaultExpenseCurrency]
   );
 
   // The entry-currency field only earns its place once the two can actually
   // differ — which needs Pro (free users are pinned to PHP on both). Shown to
   // any Pro user rather than only after the book currency moves off PHP, so a
-  // PHP-budgeted trip abroad — the whole point of the field — is reachable
+  // PHP-reported trip abroad — the whole point of the field — is reachable
   // without first having to change something else.
   const showEntryCurrency = isPro;
 
-  // Blank = no budget (a valid choice). Anything typed has to be a positive
-  // number — the DB enforces the same via personal_books_budget_positive_chk.
-  const parsedBudget = values.budget.trim() ? parseFloat(values.budget) : null;
-
   const handleSubmit = async () => {
-    const nextErrors = {
-      name: values.name.trim() ? "" : "Name is required",
-      budget:
-        parsedBudget !== null && (isNaN(parsedBudget) || parsedBudget <= 0)
-          ? "Enter a budget greater than 0, or leave it blank"
-          : ""
-    };
+    const nextErrors = { name: values.name.trim() ? "" : "Name is required" };
     setFormErrors(nextErrors);
-    // The budget lives inside "More options", so an error on it has to open the
-    // section — otherwise Create just silently does nothing.
-    if (nextErrors.budget) setOptionsExpanded(true);
-    if (nextErrors.name || nextErrors.budget) return;
+    if (nextErrors.name) return;
 
     if (!userDetails?.id) return;
 
@@ -219,8 +193,8 @@ export default function CreateBookScreen() {
         category: values.category,
         currency: values.currency,
         defaultExpenseCurrency: defaultExpenseCurrency,
-        budget: parsedBudget,
-        budgetPeriod: values.budgetPeriod,
+        budget: null,
+        budgetPeriod: "monthly",
         groupId: values.groupId,
         userId: userDetails.id
       });
@@ -231,8 +205,8 @@ export default function CreateBookScreen() {
           category: values.category,
           currency: values.currency,
           default_expense_currency: defaultExpenseCurrency,
-          budget: parsedBudget,
-          budget_period: values.budgetPeriod,
+          budget: null,
+          budget_period: "monthly",
           group_id: values.groupId,
           avatar: null,
           user_id: userDetails.id
@@ -240,12 +214,13 @@ export default function CreateBookScreen() {
         optimistic
       );
       toast({
-        title: "Saved offline",
+        title: "Saved Offline",
         description:
-          "Your book will be created automatically when you're back online.",
-        type: "info"
+          "Your Individual entry will be created automatically when you're back online.",
+        type: "info",
+        haptic: true
       });
-      router.replace("/books");
+      router.replace("/groups");
       return;
     }
 
@@ -257,13 +232,11 @@ export default function CreateBookScreen() {
           category: values.category,
           currency: values.currency,
           default_expense_currency: defaultExpenseCurrency,
-          budget: parsedBudget,
-          budget_period: values.budgetPeriod,
           group_id: values.groupId,
           avatar: values.avatar
         });
         toast({
-          title: "Book updated",
+          title: "Individual Updated",
           description: "Your changes have been saved.",
           type: "success"
         });
@@ -274,21 +247,27 @@ export default function CreateBookScreen() {
           category: values.category,
           currency: values.currency,
           default_expense_currency: defaultExpenseCurrency,
-          budget: parsedBudget,
-          budget_period: values.budgetPeriod,
+          budget: null,
+          budget_period: "monthly",
           group_id: values.groupId,
           avatar: values.avatar,
           user_id: userDetails.id
         });
-        toast({
-          title: "Book created",
-          description: "Book created successfully.",
-          type: "success"
+        const shown = await showFeedback("individual-created", {
+          once: true,
+          afterNavigation: true
         });
+        if (!shown) {
+          toast({
+            title: "Individual Created",
+            description: "Individual created successfully.",
+            type: "success"
+          });
+        }
         router.replace(`/books/${response.data.bookId}`);
       }
     } catch (error) {
-      console.error("Error saving book:", error);
+      console.error("Error saving Individual entry:", error);
       // The group-link failures (already linked / not a member) carry a message
       // the user can actually act on, so don't bury them under the generic copy.
       const message =
@@ -298,7 +277,7 @@ export default function CreateBookScreen() {
           ? error.message
           : "An error occurred. Please try again.";
       toast({
-        title: isEdit ? "Update Failed" : "Book Creation Failed",
+        title: isEdit ? "Update Failed" : "Individual Creation Failed",
         description: message,
         type: "error"
       });
@@ -310,7 +289,7 @@ export default function CreateBookScreen() {
   return (
     <Fragment>
       <FormLayout
-        title={isEdit ? "Edit Book" : "Create Book"}
+        title={isEdit ? "Edit Individual" : "Create Individual"}
         onBack={() => router.back()}
         footer={[
           <FormButton
@@ -331,8 +310,8 @@ export default function CreateBookScreen() {
 
             <FormInput
               type="text"
-              label="Book Name"
-              placeholder="Enter book name (e.g. Daily, Japan Trip)"
+              label="Name"
+              placeholder="Enter name (e.g. Daily, Japan Trip)"
               value={values.name}
               onChangeText={(text) => {
                 setValues({ ...values, name: text });
@@ -368,7 +347,7 @@ export default function CreateBookScreen() {
                 book reaches for first. */}
             <FormControl size="md">
               <FormControlLabel>
-                <FormControlLabelText>Book currency</FormControlLabelText>
+                <FormControlLabelText>Currency</FormControlLabelText>
               </FormControlLabel>
               <SelectField
                 onPress={() =>
@@ -381,102 +360,25 @@ export default function CreateBookScreen() {
               </SelectField>
               <FormControlHelper>
                 <FormControlHelperText>
-                  Budget, totals, and stats convert to it.
+                  Totals and stats convert to it.
                 </FormControlHelperText>
               </FormControlHelper>
             </FormControl>
 
-            {/* Everything below is optional and has a working default, so a book
-                can be created from a name alone. Budget leads: it's the one most
-                people came here for, and the entry currency below only matters
-                once you're tracking more than one. */}
+            {/* Optional entry currency and shared-group roll-up settings. */}
             <MoreOptions
               expanded={optionsExpanded}
               onToggle={() => setOptionsExpanded((prev) => !prev)}
             >
-              {/* Optional spending cap. Free for everyone — no Pro gate. */}
-              <FormControl size="md" isInvalid={!!formErrors.budget}>
-                <FormControlLabel>
-                  <FormControlLabelText>Budget (optional)</FormControlLabelText>
-                </FormControlLabel>
-                <AmountInput
-                  placeholder="0.00"
-                  leftAddon={currencyMeta?.sign ?? values.currency}
-                  value={values.budget}
-                  onChangeText={(text) => {
-                    setValues({ ...values, budget: text });
-                    if (formErrors.budget)
-                      setFormErrors((prev) => ({ ...prev, budget: "" }));
-                  }}
-                />
-                {formErrors.budget ? (
-                  <FormControlError>
-                    <FormControlErrorText>
-                      {formErrors.budget}
-                    </FormControlErrorText>
-                  </FormControlError>
-                ) : (
-                  <FormControlHelper>
-                    <FormControlHelperText>
-                      Other currencies convert to {values.currency} at an
-                      approximate rate. Leave blank for no budget.
-                    </FormControlHelperText>
-                  </FormControlHelper>
-                )}
-              </FormControl>
-
-              {/* Period only matters once a budget is actually set. */}
-              {parsedBudget !== null && (
-                <FormControl size="md">
-                  <FormControlLabel>
-                    <FormControlLabelText>Budget resets</FormControlLabelText>
-                  </FormControlLabel>
-                  <HStack className="gap-x-2">
-                    {budgetPeriods.map((period) => (
-                      <Pressable
-                        key={period.value}
-                        className={cn(
-                          "flex-1 py-3 rounded-lg border items-center",
-                          values.budgetPeriod === period.value
-                            ? "border-primary-200 bg-primary-0"
-                            : "border-background-200"
-                        )}
-                        onPress={() =>
-                          setValues({ ...values, budgetPeriod: period.value })
-                        }
-                      >
-                        <Text
-                          bold={values.budgetPeriod === period.value}
-                          className={cn(
-                            values.budgetPeriod === period.value
-                              ? "text-primary-500"
-                              : ""
-                          )}
-                        >
-                          {period.label}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </HStack>
-                  <FormControlHelper>
-                    <FormControlHelperText>
-                      {values.budgetPeriod === "monthly"
-                        ? "Resets on the 1st — best for ongoing books."
-                        : "One cap for the whole book — best for trips."}
-                    </FormControlHelperText>
-                  </FormControlHelper>
-                </FormControl>
-              )}
-
               {/* What Add Expense prefills — separate from the book currency so
-                  a trip can be budgeted in the currency you think in and entered
+                  a trip can be reported in the currency you think in and entered
                   in the one you're actually spending. Pro-only, since free books
                   are pinned to PHP on both counts and the field would be inert. */}
               {showEntryCurrency && (
                 <FormControl size="md">
                   <FormControlLabel>
                     <FormControlLabelText>
-                      Default for new expenses
+                      Default for New Expenses
                     </FormControlLabelText>
                   </FormControlLabel>
                   <SelectField onPress={() => setEntryCurrencySheetOpen(true)}>
@@ -487,8 +389,8 @@ export default function CreateBookScreen() {
                   <FormControlHelper>
                     <FormControlHelperText>
                       {values.defaultExpenseCurrency
-                        ? `New expenses start in ${values.defaultExpenseCurrency}, counted toward your ${values.currency} budget.`
-                        : "New expenses start in the book currency."}
+                        ? `New expenses start in ${values.defaultExpenseCurrency}, counted toward your ${values.currency} totals.`
+                        : "New expenses start in the Individual entry currency."}
                     </FormControlHelperText>
                   </FormControlHelper>
                 </FormControl>
@@ -499,7 +401,7 @@ export default function CreateBookScreen() {
               <FormControl size="md">
                 <FormControlLabel>
                   <FormControlLabelText>
-                    Linked group (optional)
+                    Linked Group (Optional)
                   </FormControlLabelText>
                 </FormControlLabel>
                 <SelectField
@@ -515,13 +417,13 @@ export default function CreateBookScreen() {
                   }
                 >
                   <Text className="text-lg" numberOfLines={1}>
-                    {linkedGroup?.name ?? "Not linked"}
+                    {linkedGroup?.name ?? "Not Linked"}
                   </Text>
                 </SelectField>
                 <FormControlHelper>
                   <FormControlHelperText>
                     Adds your share of the group&apos;s expenses to this
-                    book&apos;s total. Your personal expenses stay private.
+                    Individual entry&apos;s total. Your individual expenses stay private.
                   </FormControlHelperText>
                 </FormControlHelper>
               </FormControl>
@@ -541,7 +443,7 @@ export default function CreateBookScreen() {
       <CurrencySelectionSheet
         isOpen={currencySheetOpen}
         currency={values.currency}
-        title="Book Currency"
+        title="Individual Currency"
         onClose={() => setCurrencySheetOpen(false)}
         onCurrencyChange={(value) => setValues({ ...values, currency: value })}
       />
@@ -549,9 +451,9 @@ export default function CreateBookScreen() {
       <CurrencySelectionSheet
         isOpen={entryCurrencySheetOpen}
         currency={values.defaultExpenseCurrency}
-        title="Default For New Expenses"
+        title="Default for New Expenses"
         sameAs={{
-          label: "Same as book currency",
+          label: "Same as Individual Entry Currency",
           subtitle: currencyLabel ?? values.currency
         }}
         onClose={() => setEntryCurrencySheetOpen(false)}
@@ -571,7 +473,7 @@ export default function CreateBookScreen() {
       <UpgradeSheet
         isOpen={upgradeOpen}
         onClose={() => setUpgradeOpen(false)}
-        description="Multi-currency books are a Pro feature. Upgrade to track spending in any currency."
+        description="Multi-currency Individual entries are a Pro feature. Upgrade to track spending in any currency."
       />
     </Fragment>
   );

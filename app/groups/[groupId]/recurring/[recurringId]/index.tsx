@@ -1,3 +1,5 @@
+import { useEmptyStatePreview } from "@/hooks/useEmptyStatePreview";
+import ConfirmationSheet from "@/components/ConfirmationSheet";
 import AndroidHeaderMenu from "@/components/AndroidHeaderMenu";
 import AppAvatar from "@/components/AppAvatar";
 import CategoryIcon from "@/components/CategoryIcon";
@@ -7,16 +9,7 @@ import { ExpenseDetailsSkeleton } from "@/components/SkeletonLoader";
 import { Badge, BadgeText } from "@/components/ui/badge";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
-import { Heading } from "@/components/ui/heading";
 import { HStack } from "@/components/ui/hstack";
-import {
-  Modal,
-  ModalBody,
-  ModalBackdrop,
-  ModalContent,
-  ModalFooter,
-  ModalHeader
-} from "@/components/ui/modal";
 import { RefreshControl } from "@/components/ui/refresh-control";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { Text } from "@/components/ui/text";
@@ -36,6 +29,7 @@ import states from "@/states";
 import { RecurringExpense, SplitType } from "@/types/expenses";
 import { EmptyType } from "@/types/general";
 import { Member } from "@/types/groups";
+import { splitTypeLabels } from "@/utils/constants";
 import { getSecondaryHex } from "@/utils/getColorHex";
 import * as offlineQueue from "@/utils/offlineQueue";
 import { getUserSubtitle } from "@/utils/userDisplay";
@@ -101,7 +95,7 @@ export default function RecurringDetailsScreen() {
       // offline empty state below, not an error worth a toast.
       if (isOnline) {
         toast({
-          title: "Couldn't load",
+          title: "Couldn't Load",
           description:
             "Failed to load this recurring expense. Please try again.",
           type: "error"
@@ -138,7 +132,7 @@ export default function RecurringDetailsScreen() {
   const requireConnection = async () => {
     if (await offlineQueue.isOnline()) return true;
     toast({
-      title: "You're offline",
+      title: "You're Offline",
       description:
         "Recurring expenses need a connection. Reconnect to manage this series.",
       type: "info"
@@ -155,7 +149,7 @@ export default function RecurringDetailsScreen() {
     try {
       await services.expense.setRecurringActive(item.id, next);
       toast({
-        title: next ? "Series resumed" : "Series paused",
+        title: next ? "Series Resumed" : "Series Paused",
         description: next
           ? "Future occurrences will post on schedule again."
           : "No new occurrences will post until you resume.",
@@ -164,7 +158,7 @@ export default function RecurringDetailsScreen() {
     } catch {
       setItem((prev) => (prev ? { ...prev, is_active: !next } : prev));
       toast({
-        title: "Couldn't update",
+        title: "Couldn't Update",
         description: "Failed to change this series. Please try again.",
         type: "error"
       });
@@ -180,7 +174,7 @@ export default function RecurringDetailsScreen() {
     try {
       await services.expense.deleteRecurringExpense(item.id);
       toast({
-        title: "Series deleted",
+        title: "Series Deleted",
         description: "Future occurrences won't be posted. Past ones remain.",
         type: "success"
       });
@@ -188,7 +182,7 @@ export default function RecurringDetailsScreen() {
       router.back();
     } catch {
       toast({
-        title: "Couldn't delete",
+        title: "Couldn't Delete",
         description: "Failed to delete this series. Please try again.",
         type: "error"
       });
@@ -209,7 +203,7 @@ export default function RecurringDetailsScreen() {
           icon={item.is_active ? "pause" : "play"}
           onPress={handleToggleActive}
         >
-          {item.is_active ? "Pause series" : "Resume series"}
+          {item.is_active ? "Pause Series" : "Resume Series"}
         </Stack.Toolbar.MenuAction>
         <Stack.Toolbar.MenuAction
           icon="trash"
@@ -230,7 +224,7 @@ export default function RecurringDetailsScreen() {
         items={[
           {
             key: "toggle",
-            label: item.is_active ? "Pause series" : "Resume series",
+            label: item.is_active ? "Pause Series" : "Resume Series",
             icon: item.is_active ? Pause : Play,
             onPress: handleToggleActive
           },
@@ -267,15 +261,15 @@ export default function RecurringDetailsScreen() {
         actions={renderActions()}
         androidActions={renderAndroidActions()}
       >
-        <LoadingWrapper isLoading={loading} skeleton={<ExpenseDetailsSkeleton />}>
+        <LoadingWrapper isLoading={loading} skeleton={<ExpenseDetailsSkeleton recurring />}>
           {!item ? (
             <VStack className="flex-1 py-16">
               <EmptyList
                 type={EmptyType.EXPENSE}
                 content={
-                  isOnline
-                    ? "This recurring expense couldn't be loaded. Pull back and try again."
-                    : "You're offline. Reconnect to view this recurring expense."
+                isOnline
+                ? "Couldn't load this recurring expense. Try again."
+                : "You're offline. Reconnect to view this recurring expense."
                 }
               />
             </VStack>
@@ -309,7 +303,7 @@ export default function RecurringDetailsScreen() {
                       <BadgeText
                         className={`font-bold text-xs uppercase ${
                           item.is_active
-                            ? "text-success-600"
+                            ? "text-success-600 dark:text-success-800"
                             : "text-typography-700"
                         }`}
                       >
@@ -394,11 +388,11 @@ export default function RecurringDetailsScreen() {
                     <RowDivider />
                     <DetailRow
                       label="Split Type"
-                      value={<Text className="capitalize">{item.split_type}</Text>}
+                      value={<Text>{splitTypeLabels[item.split_type] ?? item.split_type}</Text>}
                     />
                     <RowDivider />
                     <DetailRow
-                      label="Created By"
+                      label="Created by"
                       value={
                         <HStack className="gap-x-3 items-center">
                           <AppAvatar
@@ -457,39 +451,16 @@ export default function RecurringDetailsScreen() {
         </LoadingWrapper>
       </InnerLayout>
 
-      <Modal
+      <ConfirmationSheet
         isOpen={deleteModalOpen}
-        onClose={() => !busy && setDeleteModalOpen(false)}
-      >
-        <ModalBackdrop />
-        <ModalContent>
-          <ModalHeader>
-            <Heading size="lg">Delete recurring series?</Heading>
-          </ModalHeader>
-          <ModalBody>
-            <Text className="text-sm text-secondary-950">
-              Future occurrences won't be posted. Expenses already created stay
-              in the group. This can't be undone.
-            </Text>
-          </ModalBody>
-          <ModalFooter>
-            <HStack className="gap-x-2">
-              <FormButton
-                variant="outline"
-                text="Cancel"
-                disabled={busy}
-                onPress={() => setDeleteModalOpen(false)}
-              />
-              <FormButton
-                text="Delete"
-                action="negative"
-                loading={busy}
-                onPress={handleDelete}
-              />
-            </HStack>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Recurring Series?"
+        description="Future occurrences won't be posted. Expenses already created stay in the group. This can't be undone."
+        confirmText="Delete"
+        isDelete
+        loading={busy}
+        onConfirm={handleDelete}
+      />
     </Fragment>
   );
 }
@@ -527,8 +498,14 @@ function SnapshotList({
   memberById: Map<string, Member>;
   currentUserId?: string;
 }) {
-  if (!rows.length) {
-    return <EmptyList type={EmptyType.MEMBER} />;
+  const previewEmpty = useEmptyStatePreview();
+  if (previewEmpty || !rows.length) {
+    return (
+      <EmptyList
+        type={EmptyType.MEMBER}
+        content="No members to show. Head back to your recurring expenses."
+      />
+    );
   }
 
   // Surface the current user first, mirroring the one-time expense screen.
